@@ -496,8 +496,18 @@ const hired = (s: SaveData) => A.hireAssistant(s);
     /AskPaigeButton/.test(read("src/components/kc/Kitchen.tsx")) &&
       /AskPaigeButton/.test(read("src/components/kc/Shop.tsx")) &&
       /<AssistantCard \/>/.test(read("src/components/kc/business/BusinessStaff.tsx")) &&
-      /paige \?/.test(read("src/components/kc/restaurant/GuideCard.tsx")) &&
-      /paige\?\.hired/.test(read("src/components/kc/Kitchen.tsx")),
+      /if \(paige\)/.test(read("src/components/kc/restaurant/GuideCard.tsx")) &&
+      /<PaigeStage/.test(read("src/components/kc/restaurant/GuideCard.tsx")) &&
+      /paige\?\.hired/.test(read("src/components/kc/Kitchen.tsx")) &&
+      /<PaigeStage/.test(read("src/components/kc/Kitchen.tsx")),
+  );
+  check(
+    "G5b (developer 2026-11-12: 'it looks like an app notification') every place she SPEAKS uses the one cutout + speech-bubble piece: her tips, the Congratulations card, the Next-step card and the section pointer; none uses a round portrait card",
+    /<PaigeCutout/.test(read("src/components/kc/assistant/PaigeStage.tsx")) &&
+      /<PaigeCutout/.test(read("src/components/kc/assistant/AssistantHost.tsx")) &&
+      /paige-speech/.test(read("src/components/kc/common/CelebrationCard.tsx")) &&
+      !/PaigeAvatar/.test(read("src/components/kc/restaurant/GuideCard.tsx")) &&
+      !/PaigeAvatar/.test(read("src/components/kc/Kitchen.tsx")),
   );
   const host = read("src/components/kc/assistant/AssistantHost.tsx");
   check(
@@ -570,8 +580,12 @@ const hired = (s: SaveData) => A.hireAssistant(s);
       /pose-\$\{pose\}/.test(read("src/components/kc/assistant/PaigeArt.tsx")),
   );
   check(
-    "H7 mobile: the stage height and the words scale with the screen (clamp), the bubble scrolls instead of overflowing, the words are 17-24 px",
-    /height: clamp\(/.test(css) && /overflow: auto/.test(css) && /font-size: clamp\(17px/.test(css),
+    "H7 mobile: the stage height and the words scale with the screen (clamp), the bubble scrolls instead of overflowing, the words are 16-20 px, the buttons a never-clipped row",
+    /--paige-h: clamp\(/.test(css) &&
+      /overflow: auto/.test(css) &&
+      /font-size: clamp\(16px/.test(css) &&
+      /paige-actions/.test(css) &&
+      /--paige-h/.test(css),
   );
 }
 

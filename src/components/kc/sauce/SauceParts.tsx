@@ -1,4 +1,4 @@
-import { surfaceOf } from "./sauceSurface";
+import { openingClip, surfaceOf } from "./sauceSurface";
 import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { WHISK_ZONE, type Tool } from "@/game/business/sauceStation";
@@ -103,10 +103,8 @@ export function Vessel({
   className?: string;
 }) {
   const back = useSauceArt(`${kind}-back`);
-  const mask = useSauceArt(`${kind}-mask`);
   const surf = surfaceOf(kind, level);
-  const maskUrl = `url(${sauceUrl(`${kind}-mask`)})`;
-  const art = back && mask;
+  const art = back;
   const empty = level < 0.01;
   const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
   return (
@@ -130,16 +128,7 @@ export function Vessel({
       )}
       <div
         className="absolute inset-0 overflow-hidden"
-        style={
-          art
-            ? {
-                WebkitMaskImage: maskUrl,
-                maskImage: maskUrl,
-                WebkitMaskSize: "100% 100%",
-                maskSize: "100% 100%",
-              }
-            : { clipPath: "ellipse(44% 36% at 50% 28%)" }
-        }
+        style={{ clipPath: art ? openingClip(kind) : "ellipse(44% 36% at 50% 28%)" }}
       >
         {art ? (
           empty ? null : (

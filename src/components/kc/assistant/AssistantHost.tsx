@@ -138,14 +138,14 @@ export function AssistantHost({
             AudioManager.playSfx("tap");
             setLine(line + 1);
           }}
-          className="press grid h-12 w-12 place-items-center"
+          className="paige-next press grid h-12 w-12 place-items-center"
         >
           <PaigePiece name="chevron-large" className="h-11 w-11 object-contain" />
         </button>
       ) : beat.hire ? (
         <KButton
           variant="sage"
-          className="min-h-12 flex-1"
+          className="paige-btn"
           data-testid="assistant-hire"
           onClick={() => {
             onHire();
@@ -159,7 +159,7 @@ export function AssistantHost({
           {beat.go ? (
             <KButton
               variant="copper"
-              className="min-h-12 px-3"
+              className="paige-btn paige-main"
               data-testid="assistant-go"
               onClick={() => {
                 const to = beat.go!;
@@ -167,12 +167,12 @@ export function AssistantHost({
                 onGo(to);
               }}
             >
-              Take me there →
+              Go there ›
             </KButton>
           ) : null}
           <KButton
             variant={beat.go ? "ghost" : "sage"}
-            className="min-h-12 px-4"
+            className="paige-btn"
             data-testid="assistant-ok"
             onClick={close}
           >
@@ -279,7 +279,7 @@ export function AssistantHost({
               >
                 {current.text}
               </p>
-              <div className="mt-2 flex flex-wrap items-center justify-end gap-2">{actions}</div>
+              <div className="paige-actions">{actions}</div>
             </div>
           </div>
         </div>

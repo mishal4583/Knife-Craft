@@ -62,7 +62,7 @@ import { ScrollCue } from "./common/ScrollCue";
 import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 import { AskPaigeButton } from "./assistant/AskPaigeButton";
 import { useAssistant } from "./assistant/AssistantContext";
-import { PaigeAvatar } from "./assistant/PaigeArt";
+import { PaigeStage } from "./assistant/PaigeStage";
 
 /** Icon for a level's own `unlockReward.type` (levelTypes.ts) — display-only. */
 const REWARD_TYPE_ICON: Record<"knife" | "board" | "cafe_milestone" | "story", string> = {
@@ -1089,34 +1089,54 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
           data-pointer-tab={pointer.tab}
           className="anim-up absolute inset-x-0 bottom-full h-[1200px] bg-[rgba(30,20,12,0.55)] land:inset-x-auto land:inset-y-0 land:bottom-auto land:left-full land:h-auto land:w-[2000px]"
         >
-          <div className="paper absolute inset-x-4 bottom-[64px] rounded-3xl p-4 shadow-lift land:inset-x-auto land:bottom-4 land:left-4 land:w-[340px]">
-            <p className="font-display text-[19px] font-black leading-tight text-walnut-dark">
-              {SECTION_POINTER[pointer.tab].title}
-            </p>
-            <p className="mt-1 font-hand text-[16px] leading-snug text-walnut">
-              {paige?.hired ? (
-                // Paige is the voice once she is hired (developer 2026-11-07); Grandma until then.
-                <PaigeAvatar className="mr-1.5 inline-block h-6 w-8 align-middle" />
-              ) : (
-                "👵 "
-              )}
-              “{SECTION_POINTER[pointer.tab].line}”
-            </p>
-            <div className="mt-3 flex gap-2">
-              <KButton variant="ghost" className="min-h-12 flex-1" onClick={pointer.dismiss}>
-                Later
-              </KButton>
-              <KButton
-                variant="copper"
-                className="min-h-12 flex-[2]"
-                onClick={() =>
-                  pointer.tab === "shop" ? openMarketIngredients(go) : go(pointer.tab)
-                }
-              >
-                Show me →
-              </KButton>
+          {paige?.hired ? (
+            // Paige is the voice once she is hired (developer 2026-11-07), as her cutout and speech bubble (2026-11-12); Grandma's paper card until then.
+            <div className="absolute inset-x-0 bottom-[56px] flex justify-center land:inset-x-auto land:bottom-0 land:left-4">
+              <PaigeStage pose="point">
+                <p className="paige-title font-display text-walnut-dark">
+                  {SECTION_POINTER[pointer.tab].title}
+                </p>
+                <p className="paige-hand">{SECTION_POINTER[pointer.tab].line}</p>
+                <div className="paige-actions">
+                  <KButton variant="ghost" className="paige-btn" onClick={pointer.dismiss}>
+                    Later
+                  </KButton>
+                  <KButton
+                    variant="copper"
+                    className="paige-btn paige-main"
+                    onClick={() =>
+                      pointer.tab === "shop" ? openMarketIngredients(go) : go(pointer.tab)
+                    }
+                  >
+                    Show me ›
+                  </KButton>
+                </div>
+              </PaigeStage>
             </div>
-          </div>
+          ) : (
+            <div className="paper absolute inset-x-4 bottom-[64px] rounded-3xl p-4 shadow-lift land:inset-x-auto land:bottom-4 land:left-4 land:w-[340px]">
+              <p className="font-display text-[19px] font-black leading-tight text-walnut-dark">
+                {SECTION_POINTER[pointer.tab].title}
+              </p>
+              <p className="mt-1 font-hand text-[16px] leading-snug text-walnut">
+                👵 “{SECTION_POINTER[pointer.tab].line}”
+              </p>
+              <div className="mt-3 flex gap-2">
+                <KButton variant="ghost" className="min-h-12 flex-1" onClick={pointer.dismiss}>
+                  Later
+                </KButton>
+                <KButton
+                  variant="copper"
+                  className="min-h-12 flex-[2]"
+                  onClick={() =>
+                    pointer.tab === "shop" ? openMarketIngredients(go) : go(pointer.tab)
+                  }
+                >
+                  Show me →
+                </KButton>
+              </div>
+            </div>
+          )}
         </div>
       ) : null}
       {NAV.map((n) => {

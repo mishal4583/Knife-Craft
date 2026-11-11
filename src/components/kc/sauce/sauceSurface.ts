@@ -8,9 +8,17 @@
  * liquid inside the pot is not fitting correctly and it looks unrealistic": it was a flat horizontal slab cut by the mask).
  */
 const OPENING = {
-  bowl: { cx: 0.5, cy: 0.3654, rx: 0.461, ry: 0.218 },
-  pan: { cx: 0.41, cy: 0.383, rx: 0.349, ry: 0.155 },
+  // The bowl's inner rim, a little inside the painted lip.
+  bowl: { cx: 0.5, cy: 0.368, rx: 0.45, ry: 0.205 },
+  // The pan's inner rim (measured on the painted pan: inside the lip on the left, short of the handle's brass bracket on the right; developer 2026-11-12:
+  // "water outside the pot": the old ellipse reached over the rim toward the handle).
+  pan: { cx: 0.373, cy: 0.366, rx: 0.305, ry: 0.14 },
 } as const;
+/** The opening as a CSS `clip-path` (percent of the picture): the liquid is only ever drawn INSIDE the pot. */
+export const openingClip = (kind: "bowl" | "pan"): string => {
+  const o = OPENING[kind];
+  return `ellipse(${(o.rx * 100).toFixed(2)}% ${(o.ry * 100).toFixed(2)}% at ${(o.cx * 100).toFixed(2)}% ${(o.cy * 100).toFixed(2)}%)`;
+};
 /** How far the surface sits below the rim when full, and how far down the pot's floor is (in opening heights, 2 * ry). */
 const FULL_DROP = 0.08;
 const FLOOR_DROP = 0.78;

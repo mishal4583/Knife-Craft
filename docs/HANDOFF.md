@@ -1,5 +1,11 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Paige everywhere as the cutout + bubble, tighter text, water in the pot (developer 2026-11-12, pushed)
+
+- **One piece for every place she speaks:** `assistant/PaigeStage.tsx` (cutout rising from the bottom, one speech bubble, the PAIGE nameplate). Used by the Next-step guide card (`GuideCard` in her voice), the Kitchen's section pointer when she is hired (Grandma keeps her paper card until then), and beside her tips (`AssistantHost`) and the Congratulations card. No round-portrait card is left (`assistant-qa` G5b). A guide card with a hire step still shows that person's small portrait in the title.
+- **Text and box:** words 16-20 px (`.paige-words`), the card's heading 17-21 px, its Caveat line 15.5-18 px, buttons in one never-clipped row (`.paige-actions`, 12.5-13.5 px, the main button gets the wider share; "Take me there" is "Go there ›"); the bubble's scroll height follows the stage (`--paige-h`), so the buttons are never cut off. Checked at 390 and 320 px.
+- **Water outside the pot:** the pan's ellipse was measured too wide (it reached over the rim toward the handle). The liquid is now drawn only inside the pot's inner rim (`openingClip` in `sauceSurface.ts`, pan measured on the painted pan, bowl a little inside the lip); the old mask image is no longer used.
+
 ## Deep check for logical mistakes (developer 2026-11-12)
 
 Swept the new rules with throw-away scripts over every level and many seeds (inspection crates Levels 3-100 x 25 seeds, Stockroom boards 6-100, Fridge Sort baskets 4-100, Fridge Check decks and wrap shelves 10-100 x 4 stocks x 3 salts, the delivery routine's no-soft-lock walk Levels 3-60 x 8 states), then fixed what they and a read-through found:

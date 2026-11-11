@@ -74,8 +74,8 @@ export function CelebrationCard({
             <p className="paige-words font-display font-extrabold text-walnut-dark">
               {celebration.paige}
             </p>
-            <div className="mt-2 flex justify-end">
-              <KButton variant="sage" className="min-h-12 whitespace-nowrap px-3" onClick={onClose}>
+            <div className="paige-actions">
+              <KButton variant="sage" className="paige-btn" onClick={onClose}>
                 Keep going ›
               </KButton>
             </div>

@@ -115,7 +115,10 @@ try {
     return p
       ? {
           tab: p.getAttribute("data-pointer-tab"),
-          paigeFace: !!p.querySelector("img[data-paige-avatar]"),
+          // 2026-11-12: her pointer is the cutout + speech bubble with the PAIGE nameplate (no round face any more)
+          paigeFace:
+            !!p.querySelector('.paige-speech [data-testid="assistant-nameplate"]') &&
+            !!p.querySelector("img[data-paige-pose]"),
           grandma: p.textContent.includes("\u{1F475}"),
           text: p.textContent.replace(/\s+/g, " ").slice(0, 120),
         }
@@ -123,7 +126,7 @@ try {
   });
   await shot(page, "paige-2-pointer");
   check(
-    "P2 hiring is free (credits and ledger unchanged), it is saved, and THEN Grandma's pointer appears with Paige's face and no stale 'hire first' line",
+    "P2 hiring is free (credits and ledger unchanged), it is saved, and THEN the section pointer appears as Paige (her cutout, speech bubble and nameplate) and no stale 'hire first' line",
     after.business.assistant?.hired === true &&
       after.credits === before.credits &&
       JSON.stringify(after.economyLedger) === JSON.stringify(before.economyLedger) &&
