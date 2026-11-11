@@ -26,14 +26,14 @@ export const CHESTS: readonly Chest[] = [
   {
     level: 15,
     hype: 30,
-    title: "Halfway to the finale!",
-    paige: "Steak on the menu. You're a real chef now!",
+    title: "Fifteen services done!",
+    paige: "Your first steak is served! That was a tough one.",
   },
   {
     level: 20,
     hype: 40,
-    title: "Chapter finale!",
-    paige: "Twenty levels. I'm so proud of you. There is so much more ahead!",
+    title: "Twenty services done!",
+    paige: "Twenty services. I'm so proud of you. There is so much more ahead!",
   },
 ];
 

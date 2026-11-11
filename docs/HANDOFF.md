@@ -1,5 +1,17 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Paige audit: every line checked against the game, Second Floor reminders (developer 2026-11-11)
+
+Every Paige line (the 40 beats in `restaurant/assistant.ts`, the four chests, the Congratulations cards, the guide card in her voice) was read against the real rules (a script walked Levels 1-92 and listed what fires when). Found and fixed:
+- **"Service N done! You're becoming a real chef"** fired one level EARLY (on the level about to be played, so "Service 10 done" with 9 done) and "real chef" is wrong at Service 80. Now `milestone:30..80` fire only once N services are DONE (`completed`), say "N services done!" with a true second half; 10 and 20 are left to their chests.
+- **The Level 15 chest** said "Halfway to the finale! ... You're a real chef now!" (L15 is not halfway to anything): now "Fifteen services done! Your first steak is served!". The Level 20 chest "Chapter finale" is "Twenty services done!".
+- **The finale tip** ("You did it!") fired on Level 90, two levels before the end: now only when the LAST level is done (91 services).
+- **Level 27 staff tip** said "You can hire a team now" (the Server and Cashier are hired from Level 1-2): now "Services are getting busy. A Prep Cook will soon be needed" (the Prep Cook is required from Level 30). **Level 31 cuisine tip** now names the Indian Chef (the French Bistro at 23 needs none).
+- **Fridge Check tip** said "practise it in Inventory": it is a mandatory closing chore with Bin / Use next. New **`sauce-daily`** tip at Level 10 (the Sauce Station is a daily step from then).
+- **Second Floor reminders** (`restaurant/floorAdvice.ts`, `EARLY_TWO_MACHINES_BY_LEVEL` = 20): Paige reminds with the beats `floor-nudge:<kind>:<level>` (one per level and kind, repeatable), only when the player can really pay AND keep $300: `first-machine` (from Level 14), `second-machine` (one machine, before Level 20, from Level 12; the two cheap ones are Coffee $500 and Drinks $1,000), `new-machine` (the wallet covers the next machine + a polish step + the reserve) and `polish` (three polish steps + the reserve). Never two levels in a row; every second level before Level 20 while fewer than two machines, else every third. Not in the notebook; when her list is full the old reminders go first. The Kitchen guide card also says "Add a second machine" (`floor-machine2`). It nudges only: nothing is bought for the player, no money moves.
+- Tests: `assistant-qa` C8/C9 (rule changed) and new I1-I13. No new art is needed for any of this (the poses exist).
+- `tools/e2e/guide.mjs` G1/G3/G4b are stale (seed Level 6 with $20; the Second Floor opens at Level 11): not run green, not changed.
+
 ## Bugs and Issues round 2, 10 items (developer 2026-11-11, UNCOMMITTED)
 
 Plan for item 7: docs/planning/MINIGAME-DIFFICULTY-PLAN-2026-11-11.md. Codex prompts for Paige's art: docs/planning/PAIGE-CUTOUT-CODEX-PROMPTS-2026-11-11.md.

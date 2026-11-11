@@ -31,6 +31,7 @@ import {
   secondFloorOf,
 } from "./secondFloor";
 import { STAFF_RULES, restaurantStaffOf, staffHireFee } from "./staffRequirements";
+import { floorAdvice } from "./floorAdvice";
 import { PREP_COOK_CUTS_FROM } from "./prepCookAuto";
 import { BUSINESS_STAFF_CATALOG, dailyPayroll } from "../business/businessStaff";
 import { cityRanking } from "./cityRanking";
@@ -104,6 +105,19 @@ const RULES: readonly Rule[] = [
         icon: "⬆️",
         title: "Go up to the 2nd floor",
         why: `Machines there earn money while you cook. The ${cheapest.name} starts at ${formatUsd(cheapest.price)}.`,
+        button: "Go upstairs",
+        to: "second-floor",
+      };
+    }
+    // Developer 2026-11-11: before Level 20 a player with the money owns TWO cheap machines (restaurant/floorAdvice.ts decides when it is affordable).
+    const advice = floorAdvice(save, level);
+    if (advice && advice.kind === "second-machine") {
+      const def = STATIONS.find((s) => s.id === advice.id)!;
+      return {
+        id: "floor-machine2",
+        icon: "⬆️",
+        title: "Add a second machine",
+        why: `Two machines earn much more than one. The ${def.name} is ${formatUsd(advice.price)}, and you can afford it now.`,
         button: "Go upstairs",
         to: "second-floor",
       };

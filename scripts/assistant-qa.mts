@@ -171,22 +171,209 @@ const hired = (s: SaveData) => A.hireAssistant(s);
     !!top && applicable.every((b) => b.priority <= top.priority),
     { top: top?.id, applicable: applicable.map((b) => `${b.id}:${b.priority}`) },
   );
-  const fin = hired(at(LAST_CAMPAIGN_LEVEL));
+  // 2026-11-11: the finale is for AFTER the last level (it used to fire on Level 90, two levels early): `at(n)` has n - 1 services done.
+  const fin = hired(at(LAST_CAMPAIGN_LEVEL + 1));
   check(
-    "C8 the finale is for the last levels only",
-    A.assistantBeatFor(fin)?.id === "finale" && !A.beatById("finale")!.when(at(40), 40),
+    "C8 the finale comes only once the LAST level is finished (91 services done), not before",
+    A.assistantBeatFor(fin)?.id === "finale" &&
+      !A.beatById("finale")!.when(at(40), 40) &&
+      !A.beatById("finale")!.when(at(LAST_CAMPAIGN_LEVEL), LAST_CAMPAIGN_LEVEL) &&
+      A.beatById("finale")!.when(fin, LAST_CAMPAIGN_LEVEL + 1),
     A.assistantBeatFor(fin)?.id,
   );
   const ms = A.ASSISTANT_BEATS.filter((b) => b.id.startsWith("milestone:"));
   check(
-    "C9 a cheer every ten services ('Service N'), none on the last ones",
-    ms.length >= 8 && // one every ten services below the last: 8 in the 91-level campaign (12+ in the 148-level one)
+    "C9 a cheer every ten services from the 30th (the 10th and 20th have their chests), none on the last ones",
+    ms.length >= 6 && // 30, 40, 50, 60, 70, 80 in the 91-level campaign
       ms.every(
         (b) =>
           Number(b.id.split(":")[1]) % 10 === 0 &&
           Number(b.id.split(":")[1]) < LAST_CAMPAIGN_LEVEL - 1,
       ),
     ms.length,
+  );
+}
+
+// ── I. Is what she says TRUE where she says it? (developer 2026-11-11: "analyse all the Paige interactions and make sure everything matches the situation") ──
+{
+  const { CHESTS } = await import("../src/game/restaurant/milestoneChests.ts");
+  const { celebrationFor } = await import("../src/game/restaurant/celebrations.ts");
+  const F = await import("../src/game/restaurant/floorAdvice.ts");
+  const G = await import("../src/game/restaurant/restaurantGuide.ts");
+  const { EARLY_TWO_MACHINES_BY_LEVEL } = await import("../src/game/config/earlyLevels.ts");
+  const withFloor = (
+    n: number,
+    credits: number,
+    stations: Record<string, unknown> = {},
+  ): SaveData => {
+    const b = hired(at(n));
+    return {
+      ...b,
+      credits,
+      business: { ...b.business, secondFloor: { stations } as never },
+    } as SaveData;
+  };
+  const coffee = { level: 1, lastCollectAt: 0 };
+  const drinks = { level: 1, lastCollectAt: 0 };
+
+  // I1: the milestone cheers say what is true: N services are DONE when they fire (they fired one level early), and nobody "becomes a chef".
+  const ms = A.ASSISTANT_BEATS.filter((b) => b.id.startsWith("milestone:"));
+  check(
+    "I1 a milestone cheer fires only when its N services are really done (not on the level about to be played), for two levels, and says 'N services done'",
+    ms.every((b) => {
+      const n = Number(b.id.split(":")[1]);
+      return (
+        !b.when(at(n), n) &&
+        b.when(at(n + 1), n + 1) &&
+        b.when(at(n + 2), n + 2) &&
+        !b.when(at(n + 3), n + 3) &&
+        b.lines[0]!.text.startsWith(`${n} services done`)
+      );
+    }),
+  );
+  const said = [
+    ...A.ASSISTANT_BEATS.flatMap((b) => b.lines.map((l) => l.text)),
+    ...CHESTS.map((c) => `${c.title} ${c.paige}`),
+    celebrationFor({ rank: { from: 5, to: 4, passed: "X" }, popularity: null, spotlessStreak: 0 })!
+      .paige,
+  ];
+  check(
+    "I2 nobody tells the owner they 'became a chef' (the player runs a restaurant; chefs are staff they hire)",
+    said.every(
+      (t) => !/real chef|becoming a (real )?chef|you'?re a (real )?chef|become a chef/i.test(t),
+    ),
+    said.filter((t) => /chef/i.test(t)),
+  );
+  check(
+    "I3 the Level 15 and 20 chests say what happened (the first steak; twenty services), not a 'halfway to the finale' that is not true",
+    CHESTS.find((c) => c.level === 15)!.title === "Fifteen services done!" &&
+      /steak/i.test(CHESTS.find((c) => c.level === 15)!.paige) &&
+      CHESTS.find((c) => c.level === 20)!.title === "Twenty services done!" &&
+      CHESTS.every((c) => !/halfway|chapter finale/i.test(c.title)),
+    CHESTS.map((c) => c.title),
+  );
+  const staff = A.beatById("system:staff")!;
+  const cuis = A.beatById("system:cuisines")!;
+  check(
+    "I4 Level 27's staff tip does not say 'you can hire a team now' (the Server and Cashier are on the team from Level 2): it says what is true, a Prep Cook is coming; Level 31's cuisine tip names the Indian Chef (French needs none)",
+    !/hire a team now/i.test(staff.lines[0]!.text) &&
+      /Prep Cook/.test(staff.lines[0]!.text) &&
+      /Indian/.test(cuis.lines[0]!.text),
+    [staff.lines[0]!.text, cuis.lines[0]!.text],
+  );
+  const fc = A.beatById("fridge-check")!;
+  check(
+    "I5 the Fridge Check tip matches the game now: a closing chore with Bin and Use next, no 'practise' (the word is gone from the mini-games)",
+    !/practi[cs]e/i.test(fc.lines.map((l) => l.text).join(" ")) &&
+      /bin/i.test(fc.lines[0]!.text) &&
+      /use next/i.test(fc.lines[1]!.text),
+    fc.lines.map((l) => l.text),
+  );
+  const sd = A.beatById("sauce-daily")!;
+  check(
+    "I6 from Level 10 the Sauce Station is a daily step: her 'sauce-daily' tip comes with it, only while the step really waits",
+    !!sd && sd.when(hired(at(10)), 10) && !sd.when(hired(at(9)), 9) && !sd.when(hired(at(30)), 30),
+  );
+
+  // I7: the Second Floor reminders (floorAdvice.ts).
+  const poor = withFloor(16, 40_000);
+  const rich0 = withFloor(16, 400_000);
+  const rich1 = withFloor(16, 400_000, { coffee });
+  const richLate = withFloor(30, 400_000, { coffee, drinks });
+  check(
+    "I7 floorAdvice: nothing when the money is short; 'first-machine' with the price + the $300 reserve; 'second-machine' with one machine before Level 20; later 'new-machine' / 'polish'; never before the floor opens",
+    F.floorAdvice(poor, 16) === null &&
+      F.floorAdvice(rich0, 16)?.kind === "first-machine" &&
+      F.floorAdvice(rich1, 16)?.kind === "second-machine" &&
+      F.floorAdvice(
+        withFloor(EARLY_TWO_MACHINES_BY_LEVEL, 400_000, { coffee }),
+        EARLY_TWO_MACHINES_BY_LEVEL,
+      )?.kind === "new-machine" &&
+      F.floorAdvice(withFloor(30, 600_000, { coffee, drinks }), 30)?.kind !== undefined &&
+      F.floorAdvice(withFloor(10, 4_000_000), 10) === null &&
+      F.floorAdvice(withFloor(16, 49_999), 16) === null &&
+      F.floorAdvice(withFloor(16, 50_000 + 30_000), 16)?.kind === "first-machine" &&
+      F.floorAdvice(withFloor(16, 50_000 + 29_999), 16) === null,
+    [F.floorAdvice(rich1, 16)?.kind, F.floorAdvice(richLate, 30)?.kind],
+  );
+  // The reminder the rules offer at level n (the other beats are not in the way: only the reminders are asked).
+  const nudge = (s: SaveData, n: number) =>
+    A.ASSISTANT_BEATS.find((x) => x.id.startsWith(A.FLOOR_NUDGE_PREFIX) && x.when(s, n)) ?? null;
+  const seenIntro = (s: SaveData) => A.markAssistantSeen(s, "second-floor");
+  check(
+    "I8 Paige reminds a player with the money: the first machine from Level 14, a second cheap machine from Level 12 (before Level 20), and not a player who is short of money",
+    nudge(seenIntro(rich0), 16)?.id === "floor-nudge:first-machine:16" &&
+      nudge(withFloor(12, 400_000, { coffee }), 12)?.id === "floor-nudge:second-machine:12" &&
+      nudge(withFloor(13, 400_000), 13) === null &&
+      nudge(seenIntro(poor), 16) === null,
+    [nudge(seenIntro(rich0), 16)?.id, nudge(withFloor(12, 400_000, { coffee }), 12)?.id],
+  );
+  const gaveAt15 = A.markAssistantSeen(
+    seenIntro(withFloor(16, 400_000)),
+    "floor-nudge:first-machine:15",
+  );
+  const gaveAt14 = A.markAssistantSeen(
+    seenIntro(withFloor(16, 400_000)),
+    "floor-nudge:first-machine:14",
+  );
+  const gaveAt27 = A.markAssistantSeen(
+    withFloor(30, 400_000, { coffee, drinks }),
+    "floor-nudge:new-machine:27",
+  );
+  const gaveAt28 = A.markAssistantSeen(
+    withFloor(30, 400_000, { coffee, drinks }),
+    "floor-nudge:new-machine:28",
+  );
+  check(
+    "I9 never two reminders in a row; before Level 20 with fewer than two machines every second level; after that one every third level",
+    nudge(gaveAt15, 16) === null &&
+      nudge(gaveAt14, 16) !== null &&
+      nudge(gaveAt27, 30) !== null &&
+      nudge(gaveAt28, 30) === null,
+  );
+  check(
+    "I10 a player with two machines is not pushed to 'add a second machine'; the second-machine reminder stops at Level 20",
+    !A.ASSISTANT_BEATS.some(
+      (b) =>
+        b.id.startsWith("floor-nudge:second-machine:") &&
+        Number(b.id.split(":")[2]) >= EARLY_TWO_MACHINES_BY_LEVEL &&
+        b.when(
+          withFloor(Number(b.id.split(":")[2]), 400_000, { coffee }),
+          Number(b.id.split(":")[2]),
+        ),
+    ) && F.floorAdvice(richLate, 30)?.kind !== "second-machine",
+  );
+  const book = A.notebookEntries(
+    A.markAssistantSeen(A.markAssistantSeen(hired(at(16)), "floor-nudge:polish:20"), "restock"),
+  );
+  check(
+    "I11 the reminders are not kept in the notebook, and when the list of given tips is full the OLD reminders go first, never a one-off tip she already gave",
+    book.map((e) => e.id).join() === "restock" &&
+      (() => {
+        let st = A.markAssistantSeen(hired(at(16)), "first-pay");
+        for (let i = 0; i < A.SEEN_KEPT + 10; i++)
+          st = A.markAssistantSeen(st, `${A.FLOOR_NUDGE_PREFIX}polish:${100 + i}`);
+        return (
+          A.assistantOf(st).seen.includes("first-pay") &&
+          A.assistantOf(st).seen.length === A.SEEN_KEPT
+        );
+      })(),
+  );
+  const guide = (s: SaveData) => G.guideStepsApplying(s).map((x) => x.id);
+  check(
+    "I12 the guide card also says 'Add a second machine' (one machine, the money for another, before Level 20) and goes away with two machines, with short money or from Level 20",
+    guide(rich1).includes("floor-machine2") &&
+      !guide(richLate).includes("floor-machine2") &&
+      !guide(withFloor(16, 40_000, { coffee })).includes("floor-machine2") &&
+      !guide(withFloor(EARLY_TWO_MACHINES_BY_LEVEL, 400_000, { coffee })).includes(
+        "floor-machine2",
+      ),
+    guide(rich1),
+  );
+  const rel = read("src/game/restaurant/floorAdvice.ts").replace(/\/\*[\s\S]*?\*\//g, "");
+  check(
+    "I13 the reminders move no money: floorAdvice is read-only (no buy, no ledger, no random)",
+    !/buyStation|buyPolish|appendLedgerEntry|economyLedger|Math\.random|credits\s*[-+]?=/.test(rel),
   );
 }
 

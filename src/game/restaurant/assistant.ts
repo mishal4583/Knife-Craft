@@ -20,9 +20,14 @@ import { FRIDGE_SORT_FIRST_LEVEL } from "../business/fridgeSort";
 import { INSPECTION_FIRST_LEVEL } from "../business/deliveryInspection";
 import { flowSteps } from "../business/deliveryFlow";
 import { STOCKROOM_FIRST_LEVEL } from "../business/stockroomSort";
-import { SAUCE_FIRST_LEVEL } from "../business/sauceStation";
+import { SAUCE_FIRST_LEVEL, SAUCE_REQUIRED_FROM } from "../business/sauceStation";
 import { marketPlanFor } from "./marketPlan";
-import { SECOND_FLOOR_RESERVE_CENTS, SECOND_FLOOR_FROM_LEVEL } from "../config/earlyLevels";
+import {
+  EARLY_TWO_MACHINES_BY_LEVEL,
+  SECOND_FLOOR_RESERVE_CENTS,
+  SECOND_FLOOR_FROM_LEVEL,
+} from "../config/earlyLevels";
+import { FLOOR_ADVICE_KINDS, floorAdvice, type FloorAdviceKind } from "./floorAdvice";
 import { STATIONS, secondFloorOf } from "./secondFloor";
 import {
   LAST_CAMPAIGN_LEVEL,
@@ -122,13 +127,16 @@ const SYSTEM_TIPS: Partial<
     pose: "explain",
     go: "inventory-supplies",
   },
+  // Level 27: the Server and the Cashier have been on the team since Level 1-2, so "you can hire a team now" was wrong. What is true: the services get busy
+  // and the Prep Cook is needed from Level 30 (staffRequirements.ts).
   staff: {
-    text: "You can hire a team now. They do the routine work for you.",
+    text: "Services are getting busy. A Prep Cook will soon be needed. See Staff.",
     pose: "thumbs",
     go: "business-staff",
   },
+  // Level 31: the Indian cuisine opens and needs its own Indian Chef (the French Bistro at Level 23 needs none); the next ones follow at 38, 40 and 47.
   cuisines: {
-    text: "New cuisines! Each one needs its own chef.",
+    text: "A new cuisine! Indian dishes need an Indian Chef. Hire one in Staff.",
     pose: "surprised",
     go: "business-staff",
   },
@@ -172,17 +180,100 @@ const systemBeats = (): AssistantBeat[] =>
     ];
   });
 
-/** A cheer every ten services (the restaurant build counts services), tied to what is next. */
-const milestoneBeats = (): AssistantBeat[] => {
-  const out: AssistantBeat[] = [];
-  for (let n = 10; n < LAST_CAMPAIGN_LEVEL - 1; n += 10) {
-    out.push({
+/**
+ * A cheer every ten services from the 30th (developer 2026-11-11: "at some level Paige says you became a chef": wrong. The line fired one level EARLY, on the level
+ * about to be played, and "becoming a real chef" is not what happens at Service 80). It now fires once N services are really DONE (`completed`), and says what is true
+ * at that point. Services 10 and 20 have their own chests and cards (milestoneChests.ts), so they are not repeated here.
+ */
+const MILESTONE_LINES: Readonly<Record<number, string>> = {
+  30: "30 services done! This is a real restaurant now.",
+  40: "40 services done! Your kitchen is busier every day.",
+  50: "50 services done! Over halfway there. Look how far you have come!",
+  60: "60 services done! Guests come back for your cooking.",
+  70: "70 services done! Your restaurant runs like clockwork.",
+  80: "80 services done! The finish line is in sight.",
+};
+const milestoneBeats = (): AssistantBeat[] =>
+  Object.entries(MILESTONE_LINES)
+    .filter(([n]) => Number(n) < LAST_CAMPAIGN_LEVEL - 1)
+    .map(([n, text]) => ({
       id: `milestone:${n}`,
-      lines: [{ text: `Service ${n} done! You're becoming a real chef.`, pose: "cheer" }],
+      lines: [{ text, pose: "cheer" }],
       tone: "success",
       priority: 20,
-      when: (_save, level) => level >= n && level < n + 2,
-    });
+      when: (save: SaveData) => completed(save) >= Number(n) && completed(save) < Number(n) + 2,
+    }));
+
+/**
+ * THE SECOND FLOOR REMINDERS (developer 2026-11-11; restaurant/floorAdvice.ts decides when): "Paige reminds the player to visit the Second Floor and buy machines when
+ * there is more than enough money". One beat per level and kind, so the same tip can come again on a later level; at most one every level (never two in a row), and
+ * only one every three levels once the player owns two machines or is past Level 20 (the first two machines are pushed harder). They are not kept in the notebook.
+ */
+export const FLOOR_NUDGE_PREFIX = "floor-nudge:";
+const NUDGE_TEXT: Record<FloorAdviceKind, { lines: readonly AssistantLine[]; from: number }> = {
+  "first-machine": {
+    from: SECOND_FLOOR_FROM_LEVEL + 3,
+    lines: [
+      {
+        text: "Your Second Floor is waiting! A machine earns money while you cook.",
+        pose: "point",
+      },
+      { text: "You have enough for your first machine. Go and take a look!", pose: "cheer" },
+    ],
+  },
+  "second-machine": {
+    from: SECOND_FLOOR_FROM_LEVEL + 1,
+    lines: [
+      { text: "Add a second machine! Two machines earn much more than one.", pose: "cheer" },
+      { text: "You have enough for another cheap machine. Visit the Second Floor!", pose: "point" },
+    ],
+  },
+  "new-machine": {
+    from: SECOND_FLOOR_FROM_LEVEL + 3,
+    lines: [
+      { text: "You have cash to spare! Buy a new machine and polish it.", pose: "cheer" },
+      { text: "The Second Floor earns while you cook. Go upstairs!", pose: "point" },
+    ],
+  },
+  polish: {
+    from: SECOND_FLOOR_FROM_LEVEL + 3,
+    lines: [
+      { text: "Cash to spare! Polish your machines for more income.", pose: "tip" },
+      { text: "Each polish step makes a machine earn more. Go upstairs!", pose: "point" },
+    ],
+  },
+};
+
+/** The level a nudge was given at (the number at the end of its id), or 0. */
+const nudgeLevel = (id: string): number =>
+  id.startsWith(FLOOR_NUDGE_PREFIX) ? Number(id.slice(id.lastIndexOf(":") + 1)) || 0 : 0;
+
+const floorNudgeBeats = (): AssistantBeat[] => {
+  const out: AssistantBeat[] = [];
+  for (const kind of FLOOR_ADVICE_KINDS) {
+    const { lines, from } = NUDGE_TEXT[kind];
+    for (let n = from; n <= LAST_CAMPAIGN_LEVEL; n++)
+      out.push({
+        id: `${FLOOR_NUDGE_PREFIX}${kind}:${n}`,
+        lines,
+        go: "second-floor",
+        tone: "success",
+        priority: 48,
+        when: (save, level) => {
+          if (level !== n) return false;
+          const advice = floorAdvice(save, level);
+          if (!advice || advice.kind !== kind) return false;
+          const given = assistantOf(save)
+            .seen.map(nudgeLevel)
+            .filter((l) => l > 0);
+          const last = given.length ? Math.max(...given) : 0;
+          // Never two levels in a row; one every three levels after the first two machines (or after Level 20).
+          const pushHard =
+            Object.keys(secondFloorOf(save).stations).length < 2 &&
+            level < EARLY_TWO_MACHINES_BY_LEVEL;
+          return level - last >= (pushHard ? 2 : 3);
+        },
+      });
   }
   return out;
 };
@@ -322,10 +413,25 @@ export const ASSISTANT_BEATS: readonly AssistantBeat[] = [
     when: (_save, level) => within(level, SAUCE_FIRST_LEVEL),
   },
   {
+    // Developer 2026-11-11: from Level 10 one Sauce Station round a day is part of the routine before service (deliveryFlow.ts).
+    id: "sauce-daily",
+    lines: [
+      { text: "From now on, make a sauce each day before you open.", pose: "explain" },
+      {
+        text: "It is the last step of 'Before you open'. Your Prep Cook can do it too.",
+        pose: "tip",
+      },
+    ],
+    go: "inventory",
+    priority: 51,
+    when: (save, level) =>
+      within(level, SAUCE_REQUIRED_FROM) && flowSteps(save, level).some((x) => x.id === "sauce"),
+  },
+  {
     id: "fridge-check",
     lines: [
-      { text: "Before closing, check the fridge for spoiled food.", pose: "think" },
-      { text: "You can practise it in Inventory any time.", pose: "tip" },
+      { text: "Before you close, check the fridge. Bin the spoiled food!", pose: "think" },
+      { text: "Food that is almost old goes 'Use next'. Fresh food stays.", pose: "tip" },
     ],
     go: "inventory",
     tone: "warning",
@@ -343,6 +449,7 @@ export const ASSISTANT_BEATS: readonly AssistantBeat[] = [
   },
   ...systemBeats(),
   ...milestoneBeats(),
+  ...floorNudgeBeats(),
   {
     id: "finale",
     lines: [
@@ -351,7 +458,8 @@ export const ASSISTANT_BEATS: readonly AssistantBeat[] = [
     ],
     tone: "success",
     priority: 90,
-    when: (_save, level) => level >= LAST_CAMPAIGN_LEVEL - 1,
+    // Only once the LAST level is finished (it used to fire two levels early, on Level 90, before the end).
+    when: (save) => completed(save) >= LAST_CAMPAIGN_LEVEL,
   },
 ];
 
@@ -390,7 +498,13 @@ export function hireAssistant(save: SaveData): SaveData {
 export function markAssistantSeen(save: SaveData, id: string): SaveData {
   const s = assistantOf(save);
   if (s.seen.includes(id)) return save;
-  return withAssistant(save, { ...s, seen: [...s.seen, id].slice(-SEEN_KEPT) });
+  let seen = [...s.seen, id];
+  // Over the limit: the oldest Second Floor reminders go first, so a one-off tip she already gave can never come back.
+  while (seen.length > SEEN_KEPT) {
+    const old = seen.findIndex((x) => x.startsWith(FLOOR_NUDGE_PREFIX));
+    seen = old >= 0 && old < seen.length - 1 ? seen.filter((_, i) => i !== old) : seen.slice(1);
+  }
+  return withAssistant(save, { ...s, seen });
 }
 
 /** "Tips: On / Off". */
@@ -430,7 +544,8 @@ export function notebookEntries(
   save: SaveData,
 ): { id: string; text: string; beat: AssistantBeat }[] {
   return assistantOf(save)
-    .seen.map((id) => beatById(id))
+    .seen.filter((id) => !id.startsWith(FLOOR_NUDGE_PREFIX))
+    .map((id) => beatById(id))
     .filter((b): b is AssistantBeat => !!b && !b.hire)
     .map((beat) => ({ id: beat.id, text: beat.lines[0]!.text, beat }));
 }
