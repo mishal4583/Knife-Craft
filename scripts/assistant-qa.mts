@@ -383,8 +383,8 @@ const hired = (s: SaveData) => A.hireAssistant(s);
       /pose-\$\{pose\}/.test(read("src/components/kc/assistant/PaigeArt.tsx")),
   );
   check(
-    "H7 mobile: the stage height and the words scale with the screen (clamp), the bubble scrolls instead of overflowing, nothing smaller than 14 px",
-    /height: clamp\(/.test(css) && /overflow: auto/.test(css) && /font-size: clamp\(15px/.test(css),
+    "H7 mobile: the stage height and the words scale with the screen (clamp), the bubble scrolls instead of overflowing, the words are 17-24 px",
+    /height: clamp\(/.test(css) && /overflow: auto/.test(css) && /font-size: clamp\(17px/.test(css),
   );
 }
 

@@ -92,22 +92,35 @@
   margin: 0 calc(-12px * var(--s)) calc(-14px * var(--s)) calc(-52px * var(--s));
 }
 
-/* ── The cutout and the big speech bubble (developer 2026-11-11). Sizes follow the screen's own width (the game scales as one portrait box), so the
-   same layout holds from 320 to 768 px: Paige takes the left 42%, the bubble reaches to the right edge with its tail at her mouth. ── */
+/* ── The cutout and the big speech bubble (developer 2026-11-11). Sizes follow the screen (the game scales as one portrait box), so the same
+   layout holds from 320 to 768 px: Paige stands on the bottom edge on the left, a warm glow behind her; the bubble reaches to the right edge
+   with its tail at her mouth; the words are 17-24 px; every button is 48 px. ── */
 .paige-stage {
-  height: clamp(210px, 44vh, 400px);
+  height: clamp(220px, 46vh, 420px);
   padding: 0 12px;
   box-sizing: border-box;
+}
+/* a warm pool of light behind her, so she stands out from the blurred screen */
+.paige-stage::after {
+  content: "";
+  position: absolute;
+  left: -10%;
+  bottom: -8%;
+  width: 78%;
+  height: 92%;
+  z-index: -1;
+  background: radial-gradient(ellipse at 45% 60%, rgba(255, 214, 140, 0.5), rgba(255, 190, 100, 0.12) 55%, transparent 72%);
+  pointer-events: none;
 }
 .paige-cutout {
   height: 100%;
   width: auto;
-  max-width: 48%;
+  max-width: 62%;
   object-fit: contain;
   object-position: left bottom;
-  margin-left: 6px;
-  filter: drop-shadow(0 6px 14px rgba(20, 10, 4, 0.5));
-  /* The first set of poses ends at the waist: fade that edge out. */
+  margin-left: 2px;
+  filter: drop-shadow(0 8px 16px rgba(20, 10, 4, 0.55));
+  /* The first set of poses ends at the waist: fade that edge out when she is not standing on the screen's edge. */
   -webkit-mask-image: linear-gradient(to bottom, #000 86%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 86%, transparent 100%);
 }
@@ -115,91 +128,89 @@
   -webkit-mask-image: none;
   mask-image: none;
 }
+/* Paige rises from the bottom edge of the screen (developer 2026-11-11: "not from the middle, let her pop up on the bottom"): no fade, the edge cuts her. */
+.paige-stage[data-edge="bottom"] {
+  height: clamp(270px, 54vh, 500px);
+  animation: paige-rise 0.34s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+.paige-stage[data-edge="bottom"] .paige-cutout {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+@keyframes paige-rise {
+  0% { opacity: 0; transform: translateY(70px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.kc-reduced-motion .paige-stage[data-edge="bottom"] { animation: none; }
+
 .paige-speech {
-  left: clamp(104px, 36%, 230px);
-  right: 12px;
-  top: 12%;
-  padding: 18px 14px 10px;
-  border: 3px solid #b8873f;
-  border-radius: 26px;
-  background: linear-gradient(170deg, #fffaf0 0%, #f8ecce 100%);
+  left: clamp(124px, 38%, 230px);
+  right: 10px;
+  top: 6%;
+  padding: 24px 16px 12px;
+  border: 3px solid #a8742f;
+  border-radius: 28px;
+  background:
+    radial-gradient(120% 90% at 20% 0%, #fffdf6 0%, #fbf1d6 60%, #f3e2b6 100%);
   box-shadow:
-    0 10px 28px rgba(20, 10, 4, 0.45),
-    inset 0 0 0 2px rgba(255, 255, 255, 0.6);
+    0 14px 32px rgba(20, 10, 4, 0.5),
+    inset 0 0 0 2px #fff6dc,
+    inset 0 0 0 4px rgba(168, 116, 47, 0.35);
 }
-.paige-speech[data-tone="success"] {
-  border-color: #6a8a3a;
-}
-.paige-speech[data-tone="warning"] {
-  border-color: #b4552f;
-}
+.paige-speech[data-tone="success"] { border-color: #5f8030; box-shadow: 0 14px 32px rgba(20,10,4,.5), inset 0 0 0 2px #f6ffe6, inset 0 0 0 4px rgba(95,128,48,.35); }
+.paige-speech[data-tone="warning"] { border-color: #b4552f; box-shadow: 0 14px 32px rgba(20,10,4,.5), inset 0 0 0 2px #fff0e8, inset 0 0 0 4px rgba(180,85,47,.35); }
 /* the tail, at her mouth */
 .paige-speech::before {
   content: "";
   position: absolute;
-  left: -13px;
-  top: 34px;
-  width: 22px;
-  height: 22px;
+  left: -14px;
+  top: 46px;
+  width: 24px;
+  height: 24px;
   background: #fdf3da;
-  border-left: 3px solid #b8873f;
-  border-bottom: 3px solid #b8873f;
-  border-radius: 0 0 0 6px;
+  border-left: 3px solid #a8742f;
+  border-bottom: 3px solid #a8742f;
+  border-radius: 0 0 0 7px;
   transform: rotate(45deg);
 }
-.paige-speech[data-tone="success"]::before {
-  border-color: #6a8a3a;
-}
-.paige-speech[data-tone="warning"]::before {
-  border-color: #b4552f;
-}
+.paige-speech[data-tone="success"]::before { border-color: #5f8030; }
+.paige-speech[data-tone="warning"]::before { border-color: #b4552f; }
 .paige-scroll {
-  max-height: calc(clamp(210px, 44vh, 400px) * 0.78);
+  max-height: calc(clamp(220px, 46vh, 420px) * 0.74);
   overflow: auto;
   overscroll-behavior: contain;
 }
 .paige-words {
-  margin: 6px 0 0;
-  font-size: clamp(15px, 4.4vw, 21px);
-  line-height: 1.3;
+  margin: 0;
+  font-size: clamp(17px, 4.9vw, 24px);
+  line-height: 1.32;
+  letter-spacing: 0.005em;
 }
 .paige-nameplate {
   position: absolute;
   left: 50%;
-  top: -15px;
+  top: -17px;
   transform: translateX(-50%);
   display: inline-grid;
   place-items: center;
-  min-width: 92px;
-  height: 30px;
-  padding: 0 16px;
+  min-width: 104px;
+  height: 34px;
+  padding: 0 20px;
   border-radius: 999px;
   border: 2px solid #7a4a17;
-  background: linear-gradient(180deg, #e2a93f, #b9791f);
-  box-shadow: 0 3px 6px rgba(20, 10, 4, 0.4);
+  background: linear-gradient(180deg, #f0bd55, #bf8024 55%, #a86d1a);
+  box-shadow: 0 4px 8px rgba(20, 10, 4, 0.42), inset 0 1px 0 rgba(255, 244, 205, 0.7);
 }
-.paige-nameplate[data-tone="success"] {
-  background: linear-gradient(180deg, #8fb04e, #5f8030);
-  border-color: #3e5a1d;
-}
-.paige-nameplate[data-tone="warning"] {
-  background: linear-gradient(180deg, #d9744a, #b4552f);
-  border-color: #7a2f15;
-}
-.paige-nameplate-art {
-  position: absolute;
-  inset: -6px -14px;
-  width: calc(100% + 28px);
-  height: calc(100% + 12px);
-  object-fit: fill;
-}
+.paige-nameplate[data-tone="success"] { background: linear-gradient(180deg, #a3c45e, #6a8a3a 55%, #557228); border-color: #3e5a1d; }
+.paige-nameplate[data-tone="warning"] { background: linear-gradient(180deg, #e8865a, #b4552f 55%, #9a4524); border-color: #7a2f15; }
+.paige-nameplate-art { position: absolute; inset: -6px -14px; width: calc(100% + 28px); height: calc(100% + 12px); object-fit: fill; }
 .paige-nameplate-text {
   position: relative;
   font-family: var(--font-display, serif);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 900;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.16em;
   color: #fff8e4;
   text-transform: uppercase;
-  text-shadow: 0 1px 0 rgba(60, 30, 5, 0.6);
+  text-shadow: 0 1px 0 rgba(60, 30, 5, 0.65);
 }

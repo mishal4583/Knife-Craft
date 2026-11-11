@@ -248,7 +248,7 @@ export function AssistantHost({
             ? cardTop
               ? "top-[max(48px,env(safe-area-inset-top))]"
               : "bottom-[84px]"
-            : "inset-y-0 items-center",
+            : "bottom-0",
         )}
         role="status"
         aria-live="polite"
@@ -256,6 +256,7 @@ export function AssistantHost({
         <div
           className="paige-stage paige-in pointer-events-none relative w-full max-w-[520px]"
           data-tone={tone}
+          data-edge={rect ? "free" : "bottom"}
           data-testid="assistant-stage"
         >
           <PaigeCutout pose={current.pose} className="paige-cutout absolute bottom-0 left-0" />
@@ -278,7 +279,7 @@ export function AssistantHost({
               >
                 {current.text}
               </p>
-              <div className="mt-2 flex items-center justify-end gap-2">{actions}</div>
+              <div className="mt-2 flex flex-wrap items-center justify-end gap-2">{actions}</div>
             </div>
           </div>
         </div>
