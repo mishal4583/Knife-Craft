@@ -1,11 +1,11 @@
 """
-Builds Paige's standalone cutouts (developer 2026-11-11: "Paige is a standalone character cutout, on the left, with a big speech bubble").
+Builds Paige's sharper cutouts: the SAME 12 poses of the current look, redrawn at 3x (developer 2026-11-11: the current look is enough).
 
 Run:  python scripts/make-paige-cutouts.py        (needs Pillow; use `python`, not the MSYS `python3`)
 
 Input (LOCAL ONLY, gitignored): Paige Cutout Assets/
   cutout-<pose>.png  one per pose (wave, explain, point, tip, cheer, thumbs, oops, surprised, think, sorry, clap, clipboard),
-                     768 x 1024, transparent background, the SAME canvas, scale and standing place in every file
+                     756 x 972 (3x the old 252 x 324 poses), transparent background, the SAME canvas, scale and standing place in every file
   nameplate.png      a blank brass plate, about 512 x 128, transparent (the word PAIGE is drawn by the game)
 Output (committed, small WebP): public/business/assistant/cutout-<pose>.webp and nameplate.webp
 
@@ -22,7 +22,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SRC = os.path.join(ROOT, "Paige Cutout Assets")
 OUT = os.path.join(ROOT, "public", "business", "assistant")
 POSES = ["wave", "explain", "point", "tip", "cheer", "thumbs", "oops", "surprised", "think", "sorry", "clap", "clipboard"]
-CANVAS = (768, 1024)
+CANVAS = (756, 972)
 
 
 def clean(img: Image.Image) -> Image.Image:
