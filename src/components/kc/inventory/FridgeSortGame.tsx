@@ -116,8 +116,10 @@ const EDGE_SCROLL_PX = 44;
  * Positions are percentages of the basket's box (the piece's own centre); `size` is the piece's side in px.
  */
 function pileLayout(n: number): { x: number; y: number; rot: number; size: number }[] {
-  const size = n <= 8 ? 56 : n <= 12 ? 52 : 48;
-  const cols = n <= 4 ? n : n <= 9 ? Math.ceil(n / 2) : Math.ceil(n / 3);
+  // A bigger basket (up to 22 pieces, developer 2026-11-12) packs four rows of smaller pieces; the small ones stay as they were.
+  const size = n <= 8 ? 56 : n <= 12 ? 52 : n <= 16 ? 46 : 40;
+  const cols =
+    n <= 4 ? n : n <= 9 ? Math.ceil(n / 2) : n <= 16 ? Math.ceil(n / 3) : Math.ceil(n / 4);
   const rows = Math.ceil(n / Math.max(1, cols));
   const out: { x: number; y: number; rot: number; size: number }[] = [];
   for (let i = 0; i < n; i++) {

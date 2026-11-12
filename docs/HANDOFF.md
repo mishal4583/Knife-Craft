@@ -1,5 +1,26 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Tougher mini-games and a restaurant that buys a lot more (developer 2026-11-12, player reviews, UNCOMMITTED)
+
+Plan and numbers: docs/planning/MINIGAME-TOUGHNESS-AND-PURCHASES-PLAN-2026-11-12.md. Suite: `prep-batch-qa` (new).
+
+- **The prep batch** (`restaurant/prepBatch.ts`, pure): from Level 3 a level's OWN orders use `prepBatchAt(level)` times their plate portion (3x at Level 3, 4x at 8, 5x at 14, 6x at 23, 7x at 40, 8x at 70, smooth; one
+  ingredient of one order at most 4 units until Level 22, 6 after). ONE function, `campaignStock.orderRequirements(save, recipe, which, level)`, feeds the Pre-Service Check, the serve, the Market plan and the level goals, so the check
+  and the serve agree and nothing is left over. **Menu guests and walk-ins stay one plate** (`asPlate`, a WeakSet marker on a copy in `menuGuests.ts` / `orderPool.ts`). No pay, reward, ledger rule or save field moved; the
+  frozen campaign baseline does not read it (`prep-batch-qa` D5).
+- **Result** (own orders, empty fridge): Levels 4-20 deliver about 20 pieces a service (about 8 before), the whole campaign's food bill is about $3,300 (was $610, against about $299k earned), one service needs at most 17 fridge units
+  until Level 22 and 38 after (Basic 40, Commercial 100). The completionist still ends above $150k; the campaign simulation, Endless and the fridge-pressure suites pass.
+- **The games ask for more:** Unpack the delivery baskets 12 / 15 / 18 / 20 / 22 pieces (were 8-16; one ingredient up to 6-12 pieces, `piecesCapAt`), shelves 4 / 6 / 7 / 9 / 10, tighter clocks (x1.5 / 1.25 / 1.12 / 1.08 / 1.05); Delivery
+  Inspection 12 / 14 / 17 / 20 / 24 items with 3 / 4 / 4-5 / 5-6 / 6-8 bad ones and longer clocks (70-55 s); Stock the shelves boards 3 / 5 / 7 / 9 / 9 sets and a purchase makes up to 4 sets (1, 2-3, 4-6, 7+ packs);
+  Fridge Check 8-16 cards at least with 2-5 Bin and 2-4 Use next; Sauce Station 65 / 62 / 58 / 54 s clocks and a tighter colour tolerance (x1.3 / x1.1).
+- **Stars stay fair:** `fridge-sort-qa` H4b walks every level and basket size 4-22: one wrong drop never earns three stars. STAR_AT unchanged; the late tiers' clock factors went up a little so an average player still gets a star 95% of the time.
+- **Temporary Shortage** (one day in nine, one purchase at most 10 units): a late row can need 18-22 units (chicken Level 55, steak Level 80), so the player buys 10 and the rest in a second tap; the simulated player now does that (`restaurantCampaignSim.mts`).
+  The event's own number is untouched. The Basic fridge holds a whole day's plan only until about Level 23 (the completionist buys the Commercial fridge there, the Professional at 26).
+- **Tests changed to the new rule (CLAUDE section 8):** `fridge-sort-qa`, `stockroom-sort-qa`, `fridge-check-qa`, `difficulty-ramp-qa`, `restaurant-stock-qa`, `walkin-qa`, `restaurant-market-needs-qa`, `iphone-fixes-qa`, `restaurant-economy-pass-qa`, `oven-step-qa` (E2 allowlist),
+  `restaurantCampaignSim.mts`, browser `fridgesort.mjs` / `deliveryinspection.mjs` / `fridgecheck.mjs`. Looked at in Chrome at 390 x 844 and 320 x 568 (a 21-piece basket, a 24-item crate).
+- **Not done / to look at:** the biggest basket and crate on a real phone; if the live `level_completed` shows a cliff at Levels 3-14, lower `PREP_BATCH_TIERS` there first (one table). The restaurant's supplies (tableware, napkins) follow
+  covers and tables, not the batch: the Stock the shelves boards grew through their tier numbers and the sets per purchase only.
+
 ## Paige everywhere as the cutout + bubble, tighter text, water in the pot (developer 2026-11-12, pushed)
 
 - **One piece for every place she speaks:** `assistant/PaigeStage.tsx` (cutout rising from the bottom, one speech bubble, the PAIGE nameplate). Used by the Next-step guide card (`GuideCard` in her voice), the Kitchen's section pointer when she is hired (Grandma keeps her paper card until then), and beside her tips (`AssistantHost`) and the Congratulations card. No round-portrait card is left (`assistant-qa` G5b). A guide card with a hire step still shows that person's small portrait in the title.

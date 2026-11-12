@@ -98,10 +98,10 @@ console.log("A. When it opens");
   );
   assert(
     TIERS.map((t) => t.from).join() === "6,19,31,44,74" &&
-      TIERS.map((t) => t.maxSets).join() === "2,4,6,8,8" &&
+      TIERS.map((t) => t.maxSets).join() === "3,5,7,9,9" &&
       TIERS.map((t) => t.timeFactor).join() === "2,1.6,1.3,1.1,1" &&
       TIERS.map((t) => t.hint).join() === "always,always,after-miss,never,never",
-    "A4: five tiers: 2 / 4 / 6 / 8 / 8 sets, clock x2 / 1.6 / 1.3 / 1.1 / 1, hints fade out",
+    "A4: five tiers: 3 / 5 / 7 / 9 / 9 sets (2 / 4 / 6 / 8 / 8 until 2026-11-12), clock x2 / 1.6 / 1.3 / 1.1 / 1, hints fade out",
   );
   assert(
     tierAt(6).from === 6 &&
@@ -124,12 +124,14 @@ console.log("B. The crate");
 {
   assert(
     setsFor(1) === 1 &&
-      setsFor(2) === 1 &&
+      setsFor(2) === 2 &&
       setsFor(3) === 2 &&
-      setsFor(5) === 2 &&
+      setsFor(4) === 3 &&
       setsFor(6) === 3 &&
-      setsFor(99) === MAX_SETS_PER_LINE,
-    "B1: 1-2 packs = 1 set, 3-5 = 2 sets, 6 or more = 3 sets (never more than 3)",
+      setsFor(7) === 4 &&
+      setsFor(99) === MAX_SETS_PER_LINE &&
+      MAX_SETS_PER_LINE === 4,
+    "B1: 1 pack = 1 set, 2-3 = 2 sets, 4-6 = 3 sets, 7 or more = 4 sets (never more than 4; it was 1-2 / 3-5 / 6+ and 3 until 2026-11-12: buy more, sort more)",
   );
   let s = buy(fresh(), [
     ["dinner-plates", 1],
@@ -150,9 +152,9 @@ console.log("B. The crate");
   assert(st.seed === 1, "B3: a new delivery starts a new seed");
   const s2 = buy(s, [["dinner-plates", 6]]);
   assert(
-    stockroomSortOf(s2).crate!.find((l) => l.id === "dinner-plates")!.sets === 3 &&
+    stockroomSortOf(s2).crate!.find((l) => l.id === "dinner-plates")!.sets === 4 &&
       stockroomSortOf(s2).seed === 1,
-    "B4: a supply already waiting gets more sets (capped at 3) and keeps the seed",
+    "B4: a supply already waiting gets more sets (1 + 3 = 4, capped at 4) and keeps the seed",
   );
   assert(
     buy(s2, [["dinner-plates", 6]]) === s2 && buy(s2, []) === s2,
@@ -208,7 +210,7 @@ console.log("B. The crate");
       boardsLeft(six, 80) === 1 &&
       boardsLeft(fresh(), 20) === 0 &&
       boardsLeft(six, 5) === 0,
-    "B10: boardsLeft: 7 sets = 2 boards at Level 20 (4 a board), 1 at Level 80 (8 a board); none when empty or closed",
+    "B10: boardsLeft: 7 sets = 2 boards at Level 20 (5 a board), 1 at Level 80 (9 a board); none when empty or closed",
     [boardsLeft(six, 20), boardsLeft(six, 80)],
   );
   assert(
@@ -216,9 +218,9 @@ console.log("B. The crate");
       boardsFor(six, 20, [
         { id: "mixing-bowls", packs: 1 },
         { id: "tamper-labels", packs: 1 },
-      ]) === 3 &&
+      ]) === 2 &&
       boardsFor(fresh(), 5, [{ id: "tongs", packs: 1 }]) === 0,
-    "B11: boardsFor counts what a purchase would add",
+    "B11: boardsFor counts what a purchase would add (7 waiting sets + 2 = 9 sets: 2 boards of 5 at Level 20; it was 3 boards of 4)",
   );
   const r = roundFor(s, 20)!;
   assert(
@@ -510,7 +512,7 @@ console.log("F. Finishing a board");
     zero.effects.hype === 0 && stockroomSortOf(zero.save).chain === undefined,
     "F6: 0 stars give no Hype and start the run over",
   );
-  // a big delivery: 3 boards, every one with a star, the last one empties the crate
+  // a big delivery: 3 boards (Level 6: 3 sets a board, 9 sets), every one with a star, the last one empties the crate
   const sB = buy(
     fresh(),
     [
@@ -524,7 +526,7 @@ console.log("F. Finishing a board");
       "mixing-bowls",
       "tamper-labels",
     ].map((id) => [id, 1] as [string, number]),
-    19,
+    6,
   );
   let cur = sB;
   let last = { hype: 0, bigHype: 0, boards: 0 } as {
@@ -533,8 +535,8 @@ console.log("F. Finishing a board");
     boards?: number;
   };
   let n = 0;
-  while (roundFor(cur, 19)) {
-    const r = roundFor(cur, 19)!;
+  while (roundFor(cur, 6)) {
+    const r = roundFor(cur, 6)!;
     const out = finishRound(cur, { stars: 2, score: 500, stocked: r.sets });
     cur = out.save;
     last = out.effects;
@@ -546,7 +548,7 @@ console.log("F. Finishing a board");
       last.boards === 3 &&
       stockroomSortOf(cur).crate === undefined &&
       stockroomSortOf(cur).chain === undefined,
-    "F7: a 3-board delivery with a star each pays the big-delivery bonus (+10 Hype) when the last board empties the crate",
+    "F7: a 3-board delivery (9 sets at Level 6, 3 a board; Level 19 now holds 5 a board) with a star each pays the big-delivery bonus (+10 Hype) when the last board empties the crate",
     [n, last],
   );
   const broke = finishRound(sB, { stars: 0, score: 50, stocked: roundFor(sB, 19)!.sets });
@@ -638,7 +640,7 @@ console.log("H. Saves");
   assert(
     JSON.stringify(g.crate) ===
       JSON.stringify([
-        { id: "tongs", sets: 3 },
+        { id: "tongs", sets: 4 },
         { id: "whisks", sets: 2 },
       ]) &&
       g.seed === 0 &&
@@ -647,7 +649,7 @@ console.log("H. Saves");
       g.perfect === 0 &&
       g.rounds === 2 &&
       g.chain === 50,
-    "H2: garbage is dropped (unknown or repeated supplies, bad numbers), sets are 1-3, the run is capped",
+    "H2: garbage is dropped (unknown or repeated supplies, bad numbers), sets are 1-4, the run is capped",
     g,
   );
   const s = buy(fresh(), [["tongs", 1]]);

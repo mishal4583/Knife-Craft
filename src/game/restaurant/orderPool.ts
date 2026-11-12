@@ -25,6 +25,7 @@ import { businessDishForRecipeId } from "../business/businessServiceCatalog";
 import { activeMenuRecipes } from "./restaurantMenu";
 import { dishesUnlockedAt } from "./restaurantProgression";
 import { serviceStockCheck, serviceUsesStock } from "./campaignStock";
+import { asPlate } from "./prepBatch";
 import { dishRisePct, heatWeight } from "./dishHeat";
 
 /** A dish counts as new for this many services after it joins the menu. */
@@ -62,9 +63,11 @@ export function portionsInStock(
   reserve: readonly RecipeDefinition[],
 ): number {
   if (!serviceUsesStock(n)) return STOCK_PORTIONS_COUNTED;
+  // A guest's dish is one plate (prepBatch.ts: only a level's own orders are batched).
+  const plate = asPlate(recipe);
   const fits = (k: number) => {
     const check = serviceStockCheck(save, n, [
-      ...Array<RecipeDefinition>(k).fill(recipe),
+      ...Array<RecipeDefinition>(k).fill(plate),
       ...reserve,
     ]);
     return !check.applies || check.ready;

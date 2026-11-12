@@ -17,7 +17,7 @@ import {
   measureOf,
 } from "@/game/business/measure";
 import { MARKET_PLAN_DAYS, marketPlanFor, type MarketPlanRow } from "@/game/restaurant/marketPlan";
-import { basketsFor, piecesFor } from "@/game/business/fridgeSort";
+import { basketsFor, piecesCapAt, piecesFor } from "@/game/business/fridgeSort";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import type { PurchaseIngredientResult } from "@/game/business/BusinessInventoryManager";
 import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
@@ -78,10 +78,11 @@ export function MarketPlanPanel({
   }, [listShape]);
   const affordable = save.credits >= plan.totalCost;
   // Fridge Sort: this plan's food is loose pieces to put away; a bigger plan = more baskets (a bonus for finishing them all).
+  const planLevel = restaurantLevelOf(save.levelProgress);
   const baskets = basketsFor(
     save,
-    restaurantLevelOf(save.levelProgress),
-    plan.rows.reduce((n, r) => n + piecesFor(r.ingredientId, r.stock), 0),
+    planLevel,
+    plan.rows.reduce((n, r) => n + piecesFor(r.ingredientId, r.stock, piecesCapAt(planLevel)), 0),
   );
 
   function buy(row: MarketPlanRow) {

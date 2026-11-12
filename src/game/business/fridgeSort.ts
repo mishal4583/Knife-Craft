@@ -142,19 +142,24 @@ export type Difficulty = {
   expiryBonus: boolean;
 };
 
+/**
+ * More to sort (developer 2026-11-12, player reviews: "the mini-games are too easy, increase the count of ingredients"): the basket holds 12 pieces
+ * at the first level (was 8) and 22 at the top (was 16), more shelves are on screen, and the clock is tighter. The restaurant now buys several times
+ * more (restaurant/prepBatch.ts), so there is the food to fill them; a longer delivery still queues as the next basket.
+ */
 export const DIFFICULTY: readonly Difficulty[] = [
-  { from: 3, maxTokens: 8, minTargets: 3, hint: "always", timeFactor: 1.6, expiryBonus: false },
-  { from: 14, maxTokens: 10, minTargets: 5, hint: "always", timeFactor: 1.3, expiryBonus: false },
+  { from: 3, maxTokens: 12, minTargets: 4, hint: "always", timeFactor: 1.5, expiryBonus: false },
+  { from: 14, maxTokens: 15, minTargets: 6, hint: "always", timeFactor: 1.25, expiryBonus: false },
   {
     from: 27,
-    maxTokens: 12,
-    minTargets: 6,
+    maxTokens: 18,
+    minTargets: 7,
     hint: "after-miss",
-    timeFactor: 1.1,
+    timeFactor: 1.12,
     expiryBonus: false,
   },
-  { from: 44, maxTokens: 14, minTargets: 8, hint: "never", timeFactor: 1, expiryBonus: false },
-  { from: 74, maxTokens: 16, minTargets: 10, hint: "never", timeFactor: 1, expiryBonus: true },
+  { from: 44, maxTokens: 20, minTargets: 9, hint: "never", timeFactor: 1.08, expiryBonus: false },
+  { from: 74, maxTokens: 22, minTargets: 10, hint: "never", timeFactor: 1.05, expiryBonus: true },
 ];
 
 export function difficultyAt(level: number): Difficulty {
@@ -192,8 +197,20 @@ export type FridgeSortState = {
 };
 
 export const MAX_CRATE_QUEUE = 24;
-/** The most pieces of ONE ingredient that go in the basket (a 10 lb sack of potatoes is not 30 pieces to sort). */
+/** The most pieces of ONE ingredient that go in the basket at the start (a 10 lb sack of potatoes is not 30 pieces to sort); `piecesCapAt` raises it with the level. */
 export const MAX_PIECES_PER_INGREDIENT = 5;
+/** The cap by level (developer 2026-11-12: the restaurant buys a batch now, so one ingredient can be more pieces): 6 at the first level, 12 at Level 44. */
+const PIECES_CAP_TIERS: readonly { from: number; cap: number }[] = [
+  { from: 3, cap: 6 },
+  { from: 14, cap: 8 },
+  { from: 27, cap: 10 },
+  { from: 44, cap: 12 },
+];
+export const MAX_PIECES_HARD = 12;
+export const piecesCapAt = (level: number): number =>
+  level < PIECES_CAP_TIERS[0]!.from
+    ? MAX_PIECES_PER_INGREDIENT
+    : rampOf(PIECES_CAP_TIERS, level, (t) => t.cap);
 export const MAX_MAGNETS = 12;
 export const PERFECTS_PER_MAGNET = 3;
 const KNOWN = new Set<string>(Object.keys(INGREDIENTS));
@@ -218,7 +235,7 @@ export function fridgeSortOf(save: SaveData): FridgeSortState {
   }
   const counts: Partial<Record<IngredientId, number>> = {};
   for (const id of crate) {
-    const n = whole(raw?.counts?.[id], MAX_PIECES_PER_INGREDIENT);
+    const n = whole(raw?.counts?.[id], MAX_PIECES_HARD);
     if (n > 0) counts[id] = n;
   }
   return {
@@ -254,8 +271,11 @@ export const magnetsOf = (save: SaveData): number =>
 // ── The crate ────────────────────────────────────────────────────────────────
 
 /** Pieces in the basket for `stock` of an ingredient (lb or pieces): 1 lb of tomato ≈ 3 tomatoes. At least 1, at most MAX_PIECES_PER_INGREDIENT. */
-export const piecesFor = (id: IngredientId, stock: number): number =>
-  Math.min(MAX_PIECES_PER_INGREDIENT, Math.max(1, Math.round(itemCount(id, stock))));
+export const piecesFor = (
+  id: IngredientId,
+  stock: number,
+  cap: number = MAX_PIECES_PER_INGREDIENT,
+): number => Math.min(cap, Math.max(1, Math.round(itemCount(id, stock))));
 
 /** The pieces of `id` waiting: what was bought, or what one pound holds when no amount was recorded (an old save). */
 export const piecesOf = (state: FridgeSortState, id: IngredientId): number =>
@@ -287,9 +307,10 @@ export function addToCrate(
   for (const raw of new Set(bought)) {
     if (!KNOWN.has(raw)) continue;
     const id = raw as IngredientId;
-    const add = piecesFor(id, stock?.[id] ?? 1);
+    const cap = piecesCapAt(reachedLevel);
+    const add = piecesFor(id, stock?.[id] ?? 1, cap);
     if (crate.includes(id)) {
-      const now = Math.min(MAX_PIECES_PER_INGREDIENT, (counts[id] ?? piecesFor(id, 1)) + add);
+      const now = Math.min(cap, (counts[id] ?? piecesFor(id, 1)) + add);
       if (now !== (counts[id] ?? piecesFor(id, 1))) {
         counts[id] = now;
         changed = true;

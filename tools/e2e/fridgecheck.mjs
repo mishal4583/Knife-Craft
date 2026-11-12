@@ -149,7 +149,8 @@ async function tapChore(kind) {
 /** Answers every card with its real verdict through the buttons; returns how many answers and the notes. */
 async function answerAll() {
   const notes = [];
-  for (let i = 0; i < 14; i++) {
+  // up to 18 cards a night since 2026-11-12 (12 before)
+  for (let i = 0; i < 40; i++) {
     const v = await attr('[data-testid="fc-card"]', "data-verdict");
     if (!v) break;
     await click(`[data-testid="fc-${v === "use-first" ? "first" : v}"]`, 300);

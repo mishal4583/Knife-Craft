@@ -135,7 +135,8 @@ console.log('X. Item effects on real stock (developer: "move to real stock")');
     "X2: a better knife uses less real stock, and the Pre-Service Check plans exactly what the serve uses",
   );
   // The knife dulls during a service: a serve never blocks while the floor is in stock.
-  const planned = orderRequirements(base, veg);
+  // The check plans the order's batched amount of its level (developer 2026-11-12, restaurant/prepBatch.ts): stock exactly that.
+  const planned = orderRequirements(base, veg, "factor", n);
   let tight = base;
   for (const r of planned)
     tight = {

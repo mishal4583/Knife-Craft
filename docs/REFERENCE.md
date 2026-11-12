@@ -1488,6 +1488,17 @@ preparation = PreparationScene; events = `events.ts`; platform =
 - **Peeling** is the old method again (the blade goes straight to the finger; `PEEL.STROKE_WIDTH_FRAC` 0.34, `COMPLETION_THRESHOLD` 0.8).
 - Tests: `delivery-flow-qa`, `difficulty-ramp-qa`, `fridge-check-qa`, `fridge-sort-qa`, `assistant-qa`, `audio-qa` (X1-X3), e2e `deliveryflow.mjs`, `paige.mjs`.
 
+### The prep batch and the tougher mini-games (developer 2026-11-12, player reviews)
+
+- **Batch** (`restaurant/prepBatch.ts`, plan docs/planning/MINIGAME-TOUGHNESS-AND-PURCHASES-PLAN-2026-11-12.md): `PREP_BATCH_TIERS` 3 / 4 / 5 / 6 / 7 / 8 at Levels 3 / 8 / 14 / 23 / 40 / 70 (smooth, 1 below Level 3 or with no level);
+  `batchedQuantity(serving, level)` = min(serving x batch, max(serving, `rowCapAt(level)`)), cap 4 until Level 22 and 6 after. `campaignStock.orderRequirements(save, recipe, which, level?)` is the ONE rule the Pre-Service Check
+  (`serviceStockCheck`), the serve (`consumeCampaignOrderStock`), `marketPlan.addNeeds` and `levelGoals.dishIngredientsFor` read. A recipe copy marked `asPlate` (menu guests, walk-ins, the order pool's guest dishes) is one plate.
+- **Numbers by game:** `fridgeSort.DIFFICULTY` (12 / 15 / 18 / 20 / 22 pieces, 4 / 6 / 7 / 9 / 10 shelves, clock x1.5 / 1.25 / 1.12 / 1.08 / 1.05), `piecesCapAt` (6 at Level 3 to 12 at Level 44, `MAX_PIECES_HARD` 12 for saved counts),
+  `deliveryInspection.INSPECTION_TIERS` (items 12-24, bad ones 3-8, 70-55 s), `stockroomSort.TIERS` (3 / 5 / 7 / 9 / 9 sets, `setsFor` 1 / 2 / 3 / 4 from 1 / 2 / 4 / 7 packs, `MAX_SETS_PER_LINE` 4),
+  `fridgeCheck.checkTiers` (9 / 12 / 14 / 16 / 18 cards at most, 8 / 10 / 12 / 14 / 16 at least, Bin 2-5, Use next 2-4, wrap shelf 5-9), `sauceStation.SAUCE_TIERS` (65 / 62 / 58 / 54 s, tolerance x1.3 / x1.1 / 1 / 1).
+- **Stars:** `STAR_AT` is [0.5, 0.74, 0.92]; `fridge-sort-qa` H4b proves one wrong drop costs the third star at every size.
+- Tests: `prep-batch-qa` (A-G), `fridge-sort-qa`, `stockroom-sort-qa`, `fridge-check-qa`, `difficulty-ramp-qa`, `restaurant-stock-qa`, `walkin-qa`, `restaurant-final-economy-qa`, `restaurant-fridge-pressure-qa`, e2e `fridgesort.mjs`, `deliveryinspection.mjs`, `fridgecheck.mjs`.
+
 ### Market needs: what today needs, highlighted (developer 2026-10-16)
 
 - `restaurant/marketNeeds.ts` (read-only, from the game's own checks): for the current level's

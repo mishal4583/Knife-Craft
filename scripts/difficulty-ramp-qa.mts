@@ -45,7 +45,7 @@ assert(
   }),
   "A2: whole numbers, never outside [a, b]",
 );
-assert(rampOf(DIFFICULTY, 500, (t) => t.maxTokens) === 16, "A3: the last tier is flat");
+assert(rampOf(DIFFICULTY, 500, (t) => t.maxTokens) === 22, "A3: the last tier is flat");
 
 console.log("B. The games");
 {

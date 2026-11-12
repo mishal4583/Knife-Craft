@@ -227,6 +227,8 @@ Release zip: the CONTENTS of `dist/` →
   (developer 2026-11-02: "let the player be rich, like every idle game"; the old "extra
   on top" and "ads make the player ~20% richer" limits no longer apply to the floor;
   campaign pay is unchanged). Spec: `docs/planning/SECOND-FLOOR-FINAL-SPEC-2026-11-02.md`.
+- **Prep batch** (developer 2026-11-12, `restaurant/prepBatch.ts`): from Level 3 a level's own orders use 3x (Level 3) to 8x (Level 70) their plate portion of stock; menu guests and walk-ins stay one plate; the
+  check, the serve, the Market plan and the goals read ONE function (`orderRequirements(save, recipe, which, level)`). No pay moves. Details: `docs/planning/MINIGAME-TOUGHNESS-AND-PURCHASES-PLAN-2026-11-12.md`.
 - **Menu price cap:** a dish sells for at most 1.5 × its suggested price
   (`menuPriceCap`; old saves read at the cap).
 - **Never negative:** credits, inventory, capacity, menu price, equipment

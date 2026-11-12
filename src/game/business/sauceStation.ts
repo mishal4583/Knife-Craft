@@ -552,14 +552,18 @@ export type SauceTier = {
   window: number;
 };
 
+/**
+ * Tighter clocks and colour tolerance (developer 2026-11-12, player reviews: "increase the toughness of the mini games"): the first tier is 65 s at x1.3 (was 75 s at
+ * x1.5), then 62 / 58 / 54 s (was 70 / 65 / 60); the tiers still only get harder (sauce-station-qa D19).
+ */
 export const SAUCE_TIERS: readonly SauceTier[] = [
   {
     from: SAUCE_FIRST_LEVEL,
     cap: 9,
-    timeMs: 75_000,
+    timeMs: 65_000,
     help: "pips",
     tastes: Infinity,
-    tolerance: 1.5,
+    tolerance: 1.3,
     oilLimit: 2,
     bottles: 3,
     window: 0.25,
@@ -567,10 +571,10 @@ export const SAUCE_TIERS: readonly SauceTier[] = [
   {
     from: 40,
     cap: 10,
-    timeMs: 70_000,
+    timeMs: 62_000,
     help: "list",
     tastes: 5,
-    tolerance: 1.2,
+    tolerance: 1.1,
     oilLimit: 1.4,
     bottles: 4,
     window: 0.18,
@@ -578,7 +582,7 @@ export const SAUCE_TIERS: readonly SauceTier[] = [
   {
     from: 55,
     cap: 12,
-    timeMs: 65_000,
+    timeMs: 58_000,
     help: "color",
     tastes: 3,
     tolerance: 1,
@@ -589,7 +593,7 @@ export const SAUCE_TIERS: readonly SauceTier[] = [
   {
     from: 75,
     cap: 12,
-    timeMs: 60_000,
+    timeMs: 54_000,
     help: "swatch",
     tastes: 2,
     tolerance: 1,

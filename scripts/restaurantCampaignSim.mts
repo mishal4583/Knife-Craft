@@ -67,6 +67,10 @@ import {
 } from "../src/game/progression/milestoneRewards.ts";
 import { collectAllAchievements } from "../src/game/progression/achievements.ts";
 import { purchaseIngredient } from "../src/game/business/BusinessInventoryManager.ts";
+import {
+  eventForDay,
+  maxPurchaseQuantityFor,
+} from "../src/game/business/businessSupplierEvents.ts";
 import { purchaseSupply } from "../src/game/business/BusinessSuppliesManager.ts";
 import {
   getSupplyItem,
@@ -245,7 +249,28 @@ function persist(next: SaveData, stats: Stats, where: string): SaveData {
 }
 
 /** Buys `units` of an ingredient the way App.purchaseIngredient records it. */
+/**
+ * One Market tap, and on a Temporary Shortage day (a single purchase is capped at 10 units, businessSupplierEvents.ts) the rest in further taps: since
+ * 2026-11-12 a service preps a batch (restaurant/prepBatch.ts) and one ingredient can need more than the cap (13.5 lb of chicken at Level 55), so a
+ * player buys "10 now, the rest in a second tap". Each tap is its own purchase, ledger entry and bulk-discount step, like the Market card.
+ */
 function buyIngredient(s: SaveData, id: string, units: number) {
+  const first = buyOnce(s, id, units);
+  if (first.ok || first.reason !== "exceedsShortageLimit") return first;
+  const cap = maxPurchaseQuantityFor(eventForDay(s.business.calendar.businessDay));
+  if (!cap) return first;
+  let cur = s;
+  let left = units;
+  while (left > 1e-9) {
+    const q = Math.min(cap, left);
+    const r = buyOnce(cur, id, q);
+    if (!r.ok) return r;
+    cur = r.s;
+    left = Math.round((left - q) * 1000) / 1000;
+  }
+  return { s: cur, ok: true as const };
+}
+function buyOnce(s: SaveData, id: string, units: number) {
   // As App.buyOn: the restaurant Market sells weighed goods by the ¼ (business/measure.ts).
   const r = purchaseIngredient(
     s,

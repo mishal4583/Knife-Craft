@@ -49,6 +49,12 @@ const atLevel = (n: number, measure: "lb" | "kg" = "lb"): SaveData => {
   return {
     ...s,
     credits: 10_000_000,
+    // Rule changed (developer 2026-11-12, prep batch): a service's own orders buy several times more (45 fridge units at Level 80, the Basic fridge
+    // holds 40), so a player from Level 23 on has the Commercial fridge, as the completionist buys it there (restaurant-fridge-pressure-qa).
+    business: {
+      ...s.business,
+      refrigerator: { refrigeratorId: n >= 23 ? "commercial-refrigerator" : "basic-refrigerator" },
+    },
     settings: { ...s.settings, measure },
     levelProgress: {
       ...s.levelProgress,

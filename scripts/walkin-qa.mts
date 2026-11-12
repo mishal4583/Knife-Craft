@@ -82,11 +82,18 @@ const saveAt = (
 });
 const lv = (n: number) => getLevel(`level-${n}`)!;
 /** Stock exactly what `recipes` use (plus `pad` of each), fresh today. */
-function stocked(save: SaveData, recipes: readonly RecipeDefinition[], pad = 0): SaveData {
+// Rule changed (developer 2026-11-12): from Level 3 a service preps a batch (restaurant/prepBatch.ts), so the stock an order uses is the batched amount of
+// the level it is served in: `level` stocks exactly that.
+function stocked(
+  save: SaveData,
+  recipes: readonly RecipeDefinition[],
+  pad = 0,
+  level?: number,
+): SaveData {
   let inv = save.business.inventory;
   const need = new Map<string, number>();
   for (const r of recipes)
-    for (const q of orderRequirements(save, r))
+    for (const q of orderRequirements(save, r, "factor", level))
       need.set(q.ingredientId, (need.get(q.ingredientId) ?? 0) + q.quantity);
   for (const [id, q] of need)
     inv = addStock(inv, id as never, q + pad, 100, save.business.calendar.businessDay);
@@ -164,7 +171,7 @@ console.log("R. The reserve for the next level's own orders");
   const guest = menuGuestQueue(base, lv(8));
   const walkIn = walkInQueue(base, lv(8));
   const next = reservedTicketsFor(base, lv(8));
-  let s = stocked(base, [...own, ...guest, ...walkIn]);
+  let s = stocked(base, [...own, ...guest, ...walkIn], 0, 8);
   // The level's own order and its guest are served first (their stock taken, as in the game).
   for (const r of [...own, ...guest]) {
     const c = consumeCampaignOrderStock(s, 8, r, true);
@@ -172,7 +179,9 @@ console.log("R. The reserve for the next level's own orders");
   }
   s = { ...s, levelProgress: { ...s.levelProgress, menuGuests: { "level-8": guest.length } } };
   const tight = nextMenuGuest(s, lv(8));
-  const shared = next.flatMap((r) => orderRequirements(s, r).map((q) => q.ingredientId));
+  const shared = next.flatMap((r) =>
+    orderRequirements(s, r, "factor", 9).map((q) => q.ingredientId),
+  );
   assert(
     walkIn.length === 1 &&
       ids(walkIn) === "camp-simple-garden-salad" &&
@@ -185,7 +194,7 @@ console.log("R. The reserve for the next level's own orders");
     "R1: with only the walk-in's own stock, it is refused — the tomato is kept for L9's order (nothing else is short)",
     { walkIn: ids(walkIn), next: ids(next), short: tight?.short },
   );
-  const roomy = stocked(s, next);
+  const roomy = stocked(s, next, 0, 9);
   const ok = nextMenuGuest(roomy, lv(8));
   const served = consumeCampaignOrderStock(roomy, 8, walkIn[0]!, true);
   const left = served.ok ? serviceStockCheck(served.save, 9, next) : null;
@@ -249,7 +258,7 @@ console.log("I. Insufficient stock");
     "I3: after buying the check's rows (through the Market), the walk-in can be served, the reserve intact",
   );
   // Optional: the own orders' check (which decides START) never includes the walk-in.
-  const bare = stocked(saveAt(5), servicePlanFor(saveAt(5), lv(5))!.tickets);
+  const bare = stocked(saveAt(5), servicePlanFor(saveAt(5), lv(5))!.tickets, 0, 5);
   const barePlan = servicePlanFor(bare, lv(5))!;
   assert(
     barePlan.check.applies &&
@@ -269,6 +278,7 @@ console.log("P. Paid once");
       ...reservedTicketsFor(saveAt(8), lv(8)),
     ],
     1,
+    8,
   );
   s = { ...s, levelProgress: progressAt(8, { "level-8": 1 }) };
   const w = nextMenuGuest(s, lv(8))!;

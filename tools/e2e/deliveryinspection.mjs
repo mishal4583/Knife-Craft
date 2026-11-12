@@ -218,8 +218,8 @@ await shot(page, "insp-2-ready");
 await start(page);
 const s1 = await state(page);
 check(
-  "I3 the crate is dealt: mixed ingredients, the goal says how many are NOT FRESH",
-  s1?.phase === "playing" && s1.items >= 8 && s1.total === 2 && /Find 2/.test(s1.goal ?? ""),
+  "I3 the crate is dealt: mixed ingredients (11-12 at the first tier, 8-9 until 2026-11-12), the goal says how many are NOT FRESH (3, was 2)",
+  s1?.phase === "playing" && s1.items >= 11 && s1.total === 3 && /Find 3/.test(s1.goal ?? ""),
   s1,
 );
 await shot(page, "insp-3-playing");
@@ -265,9 +265,12 @@ check(
   { posBefore, moved: { x: moved.x, y: moved.y }, found: s3?.found },
 );
 
-// I6: find the last defect
-const last = (await items(page)).find((i) => i.defect && !i.found);
-await tapItem(page, last.id);
+// I6: find the rest of the defects (3 at the first tier since 2026-11-12, 2 before)
+for (let k = 0; k < 8; k++) {
+  const rest = (await items(page)).find((i) => i.defect && !i.found);
+  if (!rest) break;
+  await tapItem(page, rest.id);
+}
 await sleep(1600);
 const done = await page.evaluate(() => ({
   stars: Number(document.querySelector('[data-testid="insp-result"]')?.dataset.stars ?? -1),
@@ -404,8 +407,8 @@ await sleep(200);
 const lens = await page.evaluate(() => !!document.querySelector('[data-testid="insp-lens"]'));
 await shot(page, "insp-11-tier3");
 check(
-  "I11 tier 3: 12 ingredients (bigger, 15 before 2026-11-08), 3-4 defects, the magnifier button and its lens",
-  t3?.tier === 3 && t3.items === 12 && t3.total >= 3 && lensBtn && lens,
+  "I11 tier 3: 17-18 ingredients (12 until 2026-11-12), 4-5 defects, the magnifier button and its lens",
+  t3?.tier === 3 && t3.items >= 17 && t3.items <= 18 && t3.total >= 4 && lensBtn && lens,
   { tier: t3?.tier, items: t3?.items, total: t3?.total, lensBtn, lens },
 );
 const decoyAt = await page.evaluate(() => {

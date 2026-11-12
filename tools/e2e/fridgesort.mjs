@@ -17,8 +17,8 @@
 //   S15 the painted pieces (HUD, star bar, basket, bins, drawers, racks, shelves) all load
 //   S16 the how-to card is shown once (until a crate is finished) and the ? button brings it back
 //   S17 an empty shelf shows pictures of what lives there at EVERY level (developer 2026-11-07: players could not tell the shelves apart)
-//   S18 Level 4: the first basket is small (8 pieces at most) and a wrong shelf tells where the piece goes
-//   S20 a delivery of 30 pieces is 3 baskets: the run is shown, and the whole delivery adds bonus Hype
+//   S18 Level 4: the first basket is small (12 pieces at most; 8 until 2026-11-12) and a wrong shelf tells where the piece goes
+//   S20 a delivery of 42 pieces is 3 baskets (30 until 2026-11-12, when a basket held 10): the run is shown, and the whole delivery adds bonus Hype
 //   S19 two or more stars keep the stock fresh longer: the result says so and the stock's purchase day moves (quantity unchanged)
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -538,8 +538,8 @@ try {
     () => document.querySelector('[data-testid="sort-note"]')?.textContent ?? "",
   );
   check(
-    "S18 Level 4: a basket of 5 pieces and 3 shelves; a wrong shelf says where the tomato goes",
-    l3?.tokens === 5 && l3targets === 3 && /Tomato goes in: .*Salad/.test(l3note),
+    "S18 Level 4: a basket of 5 pieces and 4 shelves (3 until 2026-11-12); a wrong shelf says where the tomato goes",
+    l3?.tokens === 5 && l3targets === 4 && /Tomato goes in: .*Salad/.test(l3note),
     { l3, l3targets, l3note },
   );
 
@@ -560,8 +560,8 @@ try {
     { beforeDays, after: afterSave.business.inventory.tomato.purchaseDay, today },
   );
 
-  // ---- S20: a big delivery (30 pieces = 3 baskets at Level 20): the run, then the bonus ----
-  const five = Object.fromEntries(CRATE.map((id) => [id, 5]));
+  // ---- S20: a big delivery (42 pieces = 3 baskets of 14 at Level 20, where a basket holds 16): the run, then the bonus ----
+  const five = Object.fromEntries(CRATE.map((id) => [id, 7]));
   await boot(
     page,
     saveAt(20, {}, { fridgeSort: { crate: CRATE, counts: five, seed: 1, rounds: 1 } }),
@@ -592,8 +592,8 @@ try {
   );
   const bigSave = await readSave(page);
   check(
-    "S20 30 pieces = 3 baskets: the chip counts 30, the first basket says 2 more + the bonus, the last shows 'Whole delivery unpacked' +10 Hype",
-    /Fridge Sort · 30/.test(chipBig) &&
+    "S20 42 pieces = 3 baskets: the chip counts 42, the first basket says 2 more + the bonus, the last shows 'Whole delivery unpacked' +10 Hype",
+    /Fridge Sort · 42/.test(chipBig) &&
       /\+2 more baskets/.test(slipMore) &&
       /2 more baskets/.test(chain1) &&
       /\+10 Hype/.test(chain1) &&

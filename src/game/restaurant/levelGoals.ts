@@ -32,6 +32,7 @@ import type { RecipeDefinition } from "../recipes/recipeTypes";
 import { qualityFor } from "../CutEvaluator";
 import { usableQuantity } from "../business/perishability";
 import { orderRequirements } from "./campaignStock";
+import { levelNumber } from "../levels/levelMastery";
 import { savedTicketsFor } from "./serviceTickets";
 
 /** The levels the goals, stars, customer lines and checklist are for. */
@@ -145,7 +146,7 @@ export function dishIngredientsFor(save: SaveData, level: LevelDefinition): Dish
   const day = save.business.calendar.businessDay;
   return levelRecipes(save, level).map((recipe) => ({
     dish: recipe.name,
-    rows: orderRequirements(save, recipe).map((r) => ({
+    rows: orderRequirements(save, recipe, "factor", levelNumber(level.id)).map((r) => ({
       ingredientId: r.ingredientId,
       need: r.quantity,
       have: usableQuantity(save.business.inventory, r.ingredientId, day),

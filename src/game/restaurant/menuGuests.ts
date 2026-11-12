@@ -54,6 +54,7 @@ import { serviceStockCheck } from "./campaignStock";
 import { guestDemandFor, type GuestDemand } from "./guestDemand";
 import { ticketsFor } from "./serviceTickets";
 import { dishWeight, pickGuestDish } from "./orderPool";
+import { asPlate } from "./prepBatch";
 
 /** The guests a service of `level` brings, in order (pure; same every time for the same menu). */
 export function menuGuestQueue(save: SaveData, level: LevelDefinition): RecipeDefinition[] {
@@ -79,7 +80,8 @@ export function menuGuestQueue(save: SaveData, level: LevelDefinition): RecipeDe
     if (!pick) break;
     guests.push(pick);
   }
-  return guests;
+  // Menu guests order one plate at a time (prepBatch.ts: only the level's own orders are batched).
+  return guests.map(asPlate);
 }
 
 /**
@@ -182,7 +184,7 @@ export function walkInQueue(save: SaveData, level: LevelDefinition): RecipeDefin
     if (!pick) break;
     out.push(pick);
   }
-  return out;
+  return out.map(asPlate);
 }
 
 /** The level after `level`, while it still has its own orders to serve (null at the end). */
@@ -220,6 +222,8 @@ export function walkInStock(
   const n = levelNumber(level.id);
   const reserved = reservedTicketsFor(save, level);
   const next = nextLevelOf(save, level);
+  // The walk-in's dish is one plate (the next level's own orders in the reserve are batched).
+  recipe = asPlate(recipe);
   const check = serviceStockCheck(save, n, [recipe, ...reserved]);
   if (!check.applies) return { ok: true, short: [], reservedFor: next?.title ?? null };
   const own = serviceStockCheck(save, n, [recipe]);
@@ -314,9 +318,10 @@ export function nextMenuGuest(save: SaveData, level: LevelDefinition): MenuGuest
   const recent = queue.slice(Math.max(0, served - 3), served).map((c) => c.recipe);
   // A substitute leaves alone what the customers still to come were planned to order.
   const later = queue.slice(served + 1).map((c) => c.recipe);
-  const recipe =
+  const recipe = asPlate(
     pickGuestDish(save, level, next.recipe, reserve, served, recent, [...reserve, ...later]) ??
-    next.recipe;
+      next.recipe,
+  );
   const dish = businessDishForRecipeId(recipe.id);
   if (!dish) return null;
   const guests = queue.filter((c) => c.kind === "guest").length;

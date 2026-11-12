@@ -114,9 +114,9 @@ console.log("A. Tiers and when it opens");
     t.map((x) => x.from),
   );
   assert(
-    t.map((x) => x.maxCards).join() === "6,8,10,12,12" &&
+    t.map((x) => x.maxCards).join() === "9,12,14,16,18" &&
       t.map((x) => x.timeFactor).join() === "2,1.6,1.3,1.1,1",
-    "A3: 6 / 8 / 10 / 12 / 12 cards, clock x2 / 1.6 / 1.3 / 1.1 / 1",
+    "A3: 9 / 12 / 14 / 16 / 18 cards (6 / 8 / 10 / 12 / 12 until 2026-11-12), clock x2 / 1.6 / 1.3 / 1.1 / 1",
   );
   assert(
     t.map((x) => x.piles).join() === "3,3,3,3,3" &&
@@ -304,7 +304,7 @@ console.log("C. The deck");
     "C4: another night is dealt from its own seed",
   );
   const tier1 = checkCards(s, FRESH);
-  assert(tier1.length === 6, "C5: tier 1 shows 6 cards", tier1.length);
+  assert(tier1.length === 9, "C5: tier 1 shows 9 cards (6 until 2026-11-12)", tier1.length);
   assert(new Set(deck.map((c) => c.id)).size === deck.length, "C6: no ingredient twice");
 }
 

@@ -42,6 +42,7 @@ import {
 import {
   serviceStockCheck,
   consumeCampaignOrderStock,
+  orderRequirements,
   serviceUsesStock,
 } from "../src/game/restaurant/campaignStock.ts";
 import { serviceCheckFor, serviceNeedsAttention } from "../src/game/restaurant/preServiceCheck.ts";
@@ -51,6 +52,7 @@ import { repayFromEarnings, supplierCreditOf } from "../src/game/restaurant/supp
 import {
   recipeRequirements,
   requirementsForRecipes,
+  sumRequirements,
 } from "../src/game/restaurant/recipeRequirements.ts";
 import {
   createTicketedServiceSession,
@@ -97,9 +99,20 @@ const saveAt = (n: number, extra: Partial<SaveData> = {}): SaveData => ({
   ...extra,
 });
 /** Stocks exactly what `recipes` need (rounded up to whole units), bought today at $1/unit. */
-function stocked(save: SaveData, recipes: Parameters<typeof requirementsForRecipes>[0], extra = 0) {
+function stocked(
+  save: SaveData,
+  recipes: Parameters<typeof requirementsForRecipes>[0],
+  extra = 0,
+  // Rule changed (developer 2026-11-12): from Level 3 a service preps a batch (restaurant/prepBatch.ts), so the stock a level needs is the batched
+  // amount; give the level the service is played at to stock exactly that (left out = the plain plate).
+  level?: number,
+) {
   let inventory = save.business.inventory;
-  for (const r of requirementsForRecipes(recipes))
+  const needs =
+    level === undefined
+      ? requirementsForRecipes(recipes)
+      : sumRequirements(recipes.flatMap((r) => orderRequirements(save, r, "factor", level)));
+  for (const r of needs)
     inventory = addStock(
       inventory,
       r.ingredientId,
@@ -187,9 +200,9 @@ console.log("A/B/D/V. Stock use");
     "A1: from L1 a level's own order and a menu guest need their stock (empty fridge → refused); replays never",
   );
   const [t1] = rollServiceTickets(pool30);
-  const before = stocked(saveAt(17), [t1!], 1);
+  const before = stocked(saveAt(17), [t1!], 1, 19);
   const used = consumeCampaignOrderStock(before, 19, t1!, true);
-  const req = requirementsForRecipes([t1!]);
+  const req = orderRequirements(before, t1!, "factor", 19);
   assert(
     used.ok &&
       used.used &&
@@ -200,7 +213,7 @@ console.log("A/B/D/V. Stock use");
           r.quantity,
         ),
       ),
-    "A2/B1: from Level 11 a served order takes exactly its recipe's stock from business.inventory",
+    "A2/B1: from Level 11 a served order takes exactly its recipe's stock from business.inventory (the batch of its level: 5x the plate at Level 19, prepBatch.ts; the plain plate until 2026-11-12)",
   );
   assert(
     used.ok &&
@@ -230,7 +243,7 @@ console.log("E. Expired stock");
 {
   const [t1] = rollServiceTickets(pool30);
   const id = recipeRequirements(t1!)[0]!.ingredientId;
-  const old = stocked(saveAt(17), [t1!], 2);
+  const old = stocked(saveAt(17), [t1!], 2, 19);
   const later: SaveData = {
     ...old,
     business: {
@@ -279,7 +292,7 @@ console.log("K. Pre-Service Check");
       check.affordable,
     "K1: empty fridge: every ingredient missing, the Market's smallest steps (¼ lb, whole pieces) at its own price, affordable",
   );
-  const full = stocked(empty, tickets);
+  const full = stocked(empty, tickets, 0, 19);
   const ready = serviceStockCheck(full, 19, tickets);
   assert(
     ready.applies && ready.ready && ready.missingCost === 0,

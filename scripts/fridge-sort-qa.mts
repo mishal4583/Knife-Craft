@@ -34,6 +34,7 @@ import {
   MAX_FRESH_DAYS_AHEAD,
   MAX_MAGNETS,
   MAX_PIECES_PER_INGREDIENT,
+  piecesCapAt,
   STAR_AT,
   TARGETS,
   VEG_BINS,
@@ -163,9 +164,10 @@ console.log("C. The crate");
   );
   const full = addToCrate(fresh(), ["tomato"], 14, { tomato: 30 });
   assert(
-    fridgeSortOf(full).counts!.tomato === MAX_PIECES_PER_INGREDIENT &&
+    fridgeSortOf(full).counts!.tomato === piecesCapAt(14) &&
+      piecesCapAt(14) === 8 &&
       addToCrate(full, ["tomato"], 14, { tomato: 30 }) === full,
-    "C2b: a big sack is capped (5 pieces of one ingredient), and a full entry changes nothing",
+    "C2b: a big sack is capped (8 pieces of one ingredient at Level 14; the cap was 5 until 2026-11-12), and a full entry changes nothing",
     fridgeSortOf(full).counts,
   );
   assert(
@@ -182,10 +184,10 @@ console.log("C. The crate");
     14,
   )!;
   assert(
-    tw.tokens.filter((x) => x === "tomato").length === 5 &&
+    tw.tokens.filter((x) => x === "tomato").length === 7 &&
       tw.ingredients.join() === "tomato,cheddar" &&
       tw.tokens.length === tw.tokens.filter((x) => x === "tomato" || x === "cheddar").length,
-    "C2d: the round holds one piece per count, all the ingredients mixed in one basket",
+    "C2d: the round holds one piece per count (2 lb of tomato = 7 tomatoes at Level 14, the cap is 8), all the ingredients mixed in one basket",
     tw.tokens,
   );
   assert(fridgeSortOf(s1).seed === 1, "C3: a new crate takes a new seed", fridgeSortOf(s1).seed);
@@ -204,9 +206,9 @@ console.log("C. The crate");
     (d) => roundFor(many, Math.max(d.from, FRIDGE_SORT_FIRST_LEVEL))!.tokens.length,
   );
   assert(
-    DIFFICULTY.map((d) => d.maxTokens).join() === "8,10,12,14,16" &&
-      sizes.every((n, i) => n <= DIFFICULTY[i]!.maxTokens && n > DIFFICULTY[i]!.maxTokens - 5),
-    "C6: a basket holds up to 8, 10, 12, 14 and 16 pieces by level (3, 14, 27, 44, 74), filled with whole ingredients",
+    DIFFICULTY.map((d) => d.maxTokens).join() === "12,15,18,20,22" &&
+      sizes.every((n, i) => n <= DIFFICULTY[i]!.maxTokens && n > DIFFICULTY[i]!.maxTokens - 8),
+    "C6: a basket holds up to 12, 15, 18, 20 and 22 pieces by level (3, 14, 27, 44, 74; it was 8 / 10 / 12 / 14 / 16 until 2026-11-12), filled with whole ingredients",
     sizes,
   );
   const r1 = roundFor(many, 14)!;
@@ -241,16 +243,16 @@ console.log("C. The crate");
   const t = targetsFor(["tomato", "cheddar"], 14);
   const order = TARGETS.map((x) => x.id);
   assert(
-    t.length === 5 &&
+    t.length === 6 &&
       t.includes("veg-salad") &&
       t.includes("dairy") &&
       JSON.stringify(t) === JSON.stringify(order.filter((id) => t.includes(id))),
-    "C11: the crate's own targets are always shown, decoys fill up to the level's minimum (5), all in fridge order",
+    "C11: the crate's own targets are always shown, decoys fill up to the level's minimum (6 at Level 14), all in fridge order",
     t,
   );
   assert(
-    [14, 27, 44, 74].map((l) => targetsFor(["tomato"], l).length).join() === "5,6,8,10",
-    "C12: 5, 6, 8 and 10 targets by level",
+    [14, 27, 44, 74].map((l) => targetsFor(["tomato"], l).length).join() === "6,7,9,10",
+    "C12: 6, 7, 9 and 10 targets by level (14, 27, 44, 74; it was 5 / 6 / 8 / 10)",
   );
   const needMore = targetsFor(
     ["tomato", "carrot", "cheddar", "apple", "salmon", "basil", "garlic", "butter"],
@@ -265,15 +267,15 @@ console.log("C. The crate");
 console.log("D. Time, points, stars");
 {
   assert(
-    timeLimitMs(8, 50) === 37_000 && timeLimitMs(12, 80) === 49_000,
-    "D1: 15 s + 2.8 s a piece (a piece is quicker than a whole ingredient): 8 pieces = 37 s (37.4), 12 = 49 s (48.6)",
+    timeLimitMs(8, 50) === 40_000 && timeLimitMs(12, 80) === 51_000,
+    "D1: 15 s + 2.8 s a piece (a piece is quicker than a whole ingredient), x1.08 at Level 44-73 and x1.05 from 74 (they were x1 until 2026-11-12, before the 20-22 piece baskets): 8 pieces at Level 50 = 40 s (40.4), 12 at Level 80 = 51 s (51.0)",
     [timeLimitMs(8, 50), timeLimitMs(12, 80)],
   );
   assert(
-    timeLimitMs(8, 5) === 60_000 &&
-      timeLimitMs(10, 14) === 56_000 &&
-      timeLimitMs(12, 30) === 53_000,
-    "D2: more time while learning: x1.6 at Level 3-13 (8 pieces = 60 s), x1.3 at 14-26 (10 = 56 s), x1.1 at 27-43 (12 = 53 s)",
+    timeLimitMs(8, 5) === 56_000 &&
+      timeLimitMs(10, 14) === 54_000 &&
+      timeLimitMs(12, 30) === 54_000,
+    "D2: more time while learning: x1.5 at Level 3-13 (8 pieces = 56 s), x1.25 at 14-26 (10 = 54 s), x1.12 at 27-43 (12 = 54 s); tighter than the x1.6 / x1.3 / x1.1 of before 2026-11-12",
     [timeLimitMs(8, 5), timeLimitMs(10, 14), timeLimitMs(12, 30)],
   );
   assert(
@@ -305,8 +307,8 @@ console.log("D. Time, points, stars");
   );
   const best = bestPossible(8, 30);
   assert(
-    best === 1500 + 20 * Math.floor((timeLimitMs(8, 30) - 8000) / 1000) && best === 2160,
-    "D9: the best possible 8-piece round at the reference pace (1 s a piece) = 1500 + 20 a second left = 2160",
+    best === 1500 + 20 * Math.floor((timeLimitMs(8, 30) - 8000) / 1000) && best === 2180,
+    "D9: the best possible 8-piece round at the reference pace (1 s a piece) = 1500 + 20 a second left = 2180 (42 s at x1.12 from Level 27; it was 2160 at x1.1)",
     best,
   );
   const stars = (score: number) => starsFor(score, 8, 30);
@@ -565,10 +567,38 @@ console.log("H. Simulated players");
   );
   const careful = profile(2200, 0.05);
   assert(
-    careful.atLeast(1) === 1 && careful.atLeast(2) >= 0.72 && careful.d[3] / careful.n <= 0.06,
-    "H4: a careful player (2.2 s, 5 % wrong drops): always a star, two or more at least 18 times in 25 (was 3 in 4 before the 2026-11-11 ramp made the levels between the tiers a little harder: 74 % measured), a mistake costs the third star (at most 6 % of careful rounds still get three; it was 5 % before the basket of loose pieces, developer 2026-11-05)",
+    careful.atLeast(1) >= 0.995 && careful.atLeast(2) >= 0.72 && careful.d[3] / careful.n <= 0.25,
+    "H4: a careful player (2.2 s, 5 % wrong drops): a star at least 99.5 % of rounds, two or more at least 18 times in 25; the rounds with three stars are the FLAWLESS ones (H4b: a mistake always costs it). Since 2026-11-12 a basket holds 12-22 pieces (was 8-16), a flawless careful round is rarer to miss by luck and a lucky one earns three: at most 25 % of careful rounds (22 % measured; it was 6 % with the small baskets), and 1 round in 480 of unlucky wrong drops can end with no star (before: none in 480)",
     careful.d,
   );
+  // H4b: the rule itself, not a percentage: at every size and level one wrong drop in the middle never earns three stars, and a careful pace with two
+  // wrong drops still earns a star.
+  {
+    let threeAfterMistake = 0;
+    let zeroWithTwo = 0;
+    for (const level of [4, 14, 20, 27, 44, 74, 120])
+      for (const n of [4, 8, 12, 15, 18, 22]) {
+        const limit = timeLimitMs(n, level);
+        const drops = Array(n + 1).fill(true);
+        drops[Math.floor(n / 2)] = false;
+        const one = scoreRound({ drops, tokens: n, msLeft: Math.max(0, limit - 2000 * (n + 1)) });
+        if (starsFor(one, n, level) === 3) threeAfterMistake++;
+        const two = Array(n + 2).fill(true);
+        two[1] = false;
+        two[Math.floor(n / 2)] = false;
+        const sc = scoreRound({
+          drops: two,
+          tokens: n,
+          msLeft: Math.max(0, limit - 2200 * (n + 2)),
+        });
+        if (n >= 8 && starsFor(sc, n, level) === 0) zeroWithTwo++;
+      }
+    assert(
+      threeAfterMistake === 0 && zeroWithTwo === 0,
+      "H4b: at every level and basket size (4-22 pieces) one wrong drop always costs the third star, and a careful pace with two wrong drops still earns a star",
+      { threeAfterMistake, zeroWithTwo },
+    );
+  }
   const average = profile(3000, 0.1);
   assert(
     average.atLeast(1) >= 0.95 && average.d[3] === 0,
@@ -817,8 +847,8 @@ console.log("L. The basket: pieces, the freshness reward, the pictures on the sh
   );
   const first = roundFor(addToCrate(fresh(), all.slice(0, 12), 3), FRIDGE_SORT_FIRST_LEVEL)!;
   assert(
-    first.tokens.length <= 8 && first.difficulty.hint === "always" && first.targets.length >= 3,
-    "L7: the first baskets are small (8 pieces at most), with the shelf hint always on",
+    first.tokens.length <= 12 && first.difficulty.hint === "always" && first.targets.length >= 4,
+    "L7: the first baskets are the smallest (12 pieces at most; 8 until 2026-11-12), with the shelf hint always on",
     first.tokens.length,
   );
   const game = fs.readFileSync(
@@ -847,8 +877,8 @@ console.log("M. Big deliveries: several baskets, a bonus for putting them all aw
       bigDeliveryHype(9) === BIG_DELIVERY_HYPE_MAX,
     "M1: +5 Hype for each basket after the first, never more than +20",
   );
-  // 10 ingredients of 5 pieces = 50 pieces; at Level 14 (the tier's first level, where the ramp equals the tier) a basket holds 10 pieces = 2 ingredients, so 5 baskets
-  const ids = all.slice(0, 10);
+  // 5 ingredients of 8 pieces (the cap at Level 14) = 40 pieces; at Level 14 (the tier's first level, where the ramp equals the tier) a basket holds 15 pieces = 1 ingredient (two would be 16), so 5 baskets
+  const ids = all.slice(0, 5);
   let s = addToCrate(fresh(), ids, 14, Object.fromEntries(ids.map((id) => [id, 100])));
   const total = basketsLeft(s, 14);
   assert(
@@ -858,10 +888,10 @@ console.log("M. Big deliveries: several baskets, a bonus for putting them all aw
   );
   assert(
     basketsFor(fresh(), 14, 0) === 0 &&
-      basketsFor(fresh(), 14, 10) === 1 &&
-      basketsFor(fresh(), 14, 11) === 2 &&
-      basketsFor(s, 14, 14) === 7,
-    "M3: the Market plan's hint rounds the pieces up to baskets, counting what already waits",
+      basketsFor(fresh(), 14, 15) === 1 &&
+      basketsFor(fresh(), 14, 16) === 2 &&
+      basketsFor(s, 14, 14) === 4,
+    "M3: the Market plan's hint rounds the pieces up to baskets of 15 at Level 14 (it was 10), counting what already waits (40 waiting + 14 = 54 pieces = 4: a hint, the real packing needs 5)",
   );
   // put every basket away with a star: the chain grows, the last one adds the bonus
   const bonuses: number[] = [];

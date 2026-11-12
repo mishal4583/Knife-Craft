@@ -55,7 +55,7 @@ export type Tier = {
 export const TIERS: readonly Tier[] = [
   {
     from: STOCKROOM_FIRST_LEVEL,
-    maxSets: 2,
+    maxSets: 3,
     spare: 2,
     depth: 0,
     locks: 0,
@@ -65,7 +65,7 @@ export const TIERS: readonly Tier[] = [
   },
   {
     from: 19,
-    maxSets: 4,
+    maxSets: 5,
     spare: 2,
     depth: 0,
     locks: 0,
@@ -75,7 +75,7 @@ export const TIERS: readonly Tier[] = [
   },
   {
     from: 31,
-    maxSets: 6,
+    maxSets: 7,
     spare: 1,
     depth: 0,
     locks: 0,
@@ -85,7 +85,7 @@ export const TIERS: readonly Tier[] = [
   },
   {
     from: 44,
-    maxSets: 8,
+    maxSets: 9,
     spare: 1,
     depth: 2,
     locks: 0,
@@ -95,7 +95,7 @@ export const TIERS: readonly Tier[] = [
   },
   {
     from: 74,
-    maxSets: 8,
+    maxSets: 9,
     spare: 1,
     depth: 2,
     locks: 1,
@@ -138,16 +138,16 @@ export type StockroomSortState = {
 };
 
 export const MAX_CRATE_LINES = 30;
-/** The most sets of ONE supply: a bulk line is 3 sets at most, so it cannot swamp the shelf. */
-export const MAX_SETS_PER_LINE = 3;
+/** The most sets of ONE supply: a bulk line is 4 sets at most (was 3, developer 2026-11-12: bigger deliveries), so it cannot swamp the shelf. */
+export const MAX_SETS_PER_LINE = 4;
 export const MAX_BADGES = 12;
 export const PERFECTS_PER_BADGE = 3;
 const whole = (v: unknown, max = Number.MAX_SAFE_INTEGER) =>
   Math.min(max, Math.max(0, Math.floor(Number(v) || 0)));
 
-/** Sets for a purchase of `packs`: 1-2 packs = 1 set, 3-5 = 2 sets, 6 or more = 3 sets. */
+/** Sets for a purchase of `packs`: 1 pack = 1 set, 2-3 = 2 sets, 4-6 = 3 sets, 7 or more = 4 sets (was 1-2 / 3-5 / 6+, developer 2026-11-12: buy more, sort more). */
 export const setsFor = (packs: number): number =>
-  Math.min(MAX_SETS_PER_LINE, packs >= 6 ? 3 : packs >= 3 ? 2 : 1);
+  Math.min(MAX_SETS_PER_LINE, packs >= 7 ? 4 : packs >= 4 ? 3 : packs >= 2 ? 2 : 1);
 
 /** The saved state (absent on older saves = nothing waiting); unknown supplies, duplicates and bad numbers are dropped. */
 export function stockroomSortOf(save: SaveData): StockroomSortState {

@@ -91,9 +91,14 @@ function serviceRecipes(
   return { orders: tickets.slice(paid), guests };
 }
 
-function addNeeds(save: SaveData, need: Map<IngredientId, number>, recipes: RecipeDefinition[]) {
+function addNeeds(
+  save: SaveData,
+  need: Map<IngredientId, number>,
+  recipes: RecipeDefinition[],
+  level: number,
+) {
   for (const recipe of recipes)
-    for (const r of orderRequirements(save, recipe))
+    for (const r of orderRequirements(save, recipe, "factor", level))
       need.set(r.ingredientId, normalizeQuantity((need.get(r.ingredientId) ?? 0) + r.quantity));
 }
 
@@ -151,9 +156,9 @@ function dailyNeeds(
       const { orders, guests } = serviceRecipes(save, level);
       if (day === 0 && !nextFound && orders.length > 0) {
         nextFound = true;
-        addNeeds(save, next, orders);
+        addNeeds(save, next, orders, n);
       }
-      addNeeds(save, need, [...orders, ...guests]);
+      addNeeds(save, need, [...orders, ...guests], n);
     }
     return need;
   });

@@ -41,12 +41,20 @@ function check(id: string, ok: boolean, detail?: unknown) {
 const read = (p: string) =>
   fs.readFileSync(path.join(process.cwd(), p), "utf8").replace(/\r\n/g, "\n");
 
-/** A player `n` services in. */
+/**
+ * A player `n` services in. Rule changed (developer 2026-11-12, prep batch: restaurant/prepBatch.ts): a service's own orders buy several times
+ * more, so the Basic fridge (40) holds a whole day's plan only until about Level 23, where the completionist buys the Commercial one
+ * (restaurant-fridge-pressure-qa): a player from Level 23 on has it here, so "Buy all" can really stock the plan.
+ */
 const at = (n: number): SaveData => {
   const s = structuredClone(DEFAULT_SAVE);
   return {
     ...s,
     credits: 5_000_000,
+    business: {
+      ...s.business,
+      refrigerator: { refrigeratorId: n >= 23 ? "commercial-refrigerator" : "basic-refrigerator" },
+    },
     story: { ...s.story, introDone: true },
     levelProgress: {
       ...s.levelProgress,

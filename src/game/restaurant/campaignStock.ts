@@ -37,6 +37,7 @@ import { realCogsFor } from "../business/BusinessFinanceManager";
 import { getAvailableStorageCapacity } from "../business/RefrigeratorManager";
 import { isSystemLive } from "./unlocks";
 import { recipeRequirements, sumRequirements } from "./recipeRequirements";
+import { batchedQuantity, isPlate, prepBatchAt } from "./prepBatch";
 import { restaurantQuote, stockUseFor } from "./restaurantEconomy";
 import { marketUnitsCovering, measureOf, stockForMarketUnits } from "../business/measure";
 
@@ -50,12 +51,27 @@ export function orderRequirements(
   save: SaveData,
   recipe: RecipeDefinition,
   which: "factor" | "floor" = "factor",
+  /**
+   * The level the order is served in: from Level 3 a service preps a BATCH (prepBatch.ts, developer 2026-11-12), so it uses that many plates'
+   * worth of each ingredient. Left out = the plain plate (unit tests and tools that have no level).
+   */
+  level?: number,
 ): IngredientRequirement[] {
   const k = stockUseFor(save, recipe)[which];
+  const plate = recipeRequirements(recipe);
+  // A menu guest's or a walk-in's dish (`asPlate`) is ordered one plate at a time: only a level's own orders are batched.
+  if (prepBatchAt(level) <= 1 || isPlate(recipe))
+    return sumRequirements(
+      plate.map((r) => ({
+        ingredientId: r.ingredientId,
+        quantity: normalizeQuantity(r.quantity * k),
+      })),
+    );
+  // The batch is taken per ingredient (its plate portions summed first), so the row cap holds for the whole ingredient of the order.
   return sumRequirements(
-    recipeRequirements(recipe).map((r) => ({
+    sumRequirements(plate).map((r) => ({
       ingredientId: r.ingredientId,
-      quantity: normalizeQuantity(r.quantity * k),
+      quantity: normalizeQuantity(batchedQuantity(r.quantity, level) * k),
     })),
   );
 }
@@ -109,7 +125,7 @@ export function serviceStockCheck(
   const inventory = save.business.inventory;
   const measure = measureOf(save);
   const rows: StockRow[] = sumRequirements(
-    tickets.flatMap((recipe) => orderRequirements(save, recipe)),
+    tickets.flatMap((recipe) => orderRequirements(save, recipe, "factor", levelNumber)),
   ).map(({ ingredientId, quantity }) => {
     const onHand = getQuantity(inventory, ingredientId);
     const usable = usableQuantity(inventory, ingredientId, day);
@@ -174,9 +190,9 @@ export function consumeCampaignOrderStock(
   const inventory = save.business.inventory;
   const day = save.business.calendar.businessDay;
   const floor = new Map(
-    orderRequirements(save, recipe, "floor").map((r) => [r.ingredientId, r.quantity]),
+    orderRequirements(save, recipe, "floor", levelNumber).map((r) => [r.ingredientId, r.quantity]),
   );
-  const requirements = orderRequirements(save, recipe).map((r) => {
+  const requirements = orderRequirements(save, recipe, "factor", levelNumber).map((r) => {
     const usable = usableQuantity(inventory, r.ingredientId, day);
     const least = floor.get(r.ingredientId) ?? r.quantity;
     return usable < r.quantity && usable >= least
