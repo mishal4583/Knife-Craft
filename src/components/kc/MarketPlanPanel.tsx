@@ -17,6 +17,7 @@ import {
   measureOf,
 } from "@/game/business/measure";
 import { MARKET_PLAN_DAYS, marketPlanFor, type MarketPlanRow } from "@/game/restaurant/marketPlan";
+import { purchaseParts } from "@/game/restaurant/purchaseParts";
 import { basketsFor, piecesCapAt, piecesFor } from "@/game/business/fridgeSort";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import type { PurchaseIngredientResult } from "@/game/business/BusinessInventoryManager";
@@ -86,8 +87,19 @@ export function MarketPlanPanel({
   );
 
   function buy(row: MarketPlanRow) {
-    const r = purchaseIngredient(row.ingredientId, row.buyUnits);
     const name = INGREDIENTS[row.ingredientId].name;
+    // A Temporary Shortage day sells 10 units a purchase: a bigger row is bought as several purchases (restaurant/purchaseParts.ts).
+    const parts = purchaseParts(save, row.ingredientId, row.buyUnits);
+    if (parts.length > 1 && purchaseIngredients) {
+      const all = purchaseIngredients([{ ingredientId: row.ingredientId, quantity: row.buyUnits }]);
+      setNotice(
+        all.bought > 0
+          ? `✓ ${row.buyUnits} ${marketUnitLabel(row.ingredientId, measure, row.buyUnits)} ${name} · ${formatUsd(all.totalCost)} · 🚚 ${parts.length} deliveries`
+          : `✗ ${name} · check 💸 money and ❄️ space`,
+      );
+      return;
+    }
+    const r = purchaseIngredient(row.ingredientId, row.buyUnits);
     setNotice(
       r.ok
         ? `✓ ${row.buyUnits} ${marketUnitLabel(row.ingredientId, measure, row.buyUnits)} ${name} · ${formatUsd(r.totalCost)}`

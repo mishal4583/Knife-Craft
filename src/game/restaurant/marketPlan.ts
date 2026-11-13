@@ -41,7 +41,7 @@ import { menuGuestQueue, remainingMenuGuests } from "./menuGuests";
 import { orderRequirements, serviceUsesStock } from "./campaignStock";
 import { restaurantDayOf, todaysServices } from "./restaurantDay";
 import { LAST_CAMPAIGN_LEVEL, servicesForDayAt } from "./restaurantProgression";
-import { restaurantQuote } from "./restaurantEconomy";
+import { partsCost } from "./purchaseParts";
 
 export const MARKET_PLAN_DAYS = [1, 2, 3] as const;
 
@@ -243,7 +243,8 @@ export function marketPlanFor(save: SaveData, days: number): MarketPlan {
         ingredientId,
         stock,
         buyUnits,
-        cost: restaurantQuote(save, ingredientId, buyUnits).totalCost,
+        // The price of buying it today (on a shortage day: in several purchases, purchaseParts.ts).
+        cost: partsCost(save, ingredientId, buyUnits),
         firstDay: firstDay.get(ingredientId) ?? 0,
         forToday: forToday.has(ingredientId),
         forNextService: next.has(ingredientId),

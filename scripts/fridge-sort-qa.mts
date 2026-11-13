@@ -28,6 +28,7 @@ import {
   FRIDGE_SORT_FIRST_LEVEL,
   FRIDGE_SORT_CRATE_LEVEL,
   HYPE_BY_STARS,
+  MAX_BASKETS_WAITING,
   MAX_CRATE_QUEUE,
   BIG_DELIVERY_HYPE_MAX,
   FRESH_DAYS_BY_STARS,
@@ -871,27 +872,61 @@ console.log("M. Big deliveries: several baskets, a bonus for putting them all aw
 {
   assert(
     bigDeliveryHype(1) === 0 &&
-      bigDeliveryHype(2) === 5 &&
-      bigDeliveryHype(3) === 10 &&
+      bigDeliveryHype(2) === 10 &&
+      bigDeliveryHype(3) === BIG_DELIVERY_HYPE_MAX &&
       bigDeliveryHype(5) === BIG_DELIVERY_HYPE_MAX &&
       bigDeliveryHype(9) === BIG_DELIVERY_HYPE_MAX,
-    "M1: +5 Hype for each basket after the first, never more than +20",
+    // Changed 2026-11-13 (developer: "do whatever is best for the game"): +10 a basket, was +5; a delivery is at most three baskets now.
+    "M1: +10 Hype for each basket after the first, never more than +20 (the full bonus with three baskets)",
   );
-  // 5 ingredients of 8 pieces (the cap at Level 14) = 40 pieces; at Level 14 (the tier's first level, where the ramp equals the tier) a basket holds 15 pieces = 1 ingredient (two would be 16), so 5 baskets
+  // 5 ingredients of 8 pieces (the cap at Level 14) = 40 pieces; at Level 14 a basket holds 15 pieces, which was 5 baskets (one ingredient each).
+  // Changed 2026-11-12 (deep check): one waiting delivery is at most MAX_BASKETS_WAITING = 3 baskets (a two-day "Buy all" had become up to 15
+  // baskets to check and unpack before opening); the biggest ingredients lose a piece until it fits: 8, 8, 7, 7, 7 = 37 pieces = [8] [8, 7] [7, 7].
   const ids = all.slice(0, 5);
   let s = addToCrate(fresh(), ids, 14, Object.fromEntries(ids.map((id) => [id, 100])));
   const total = basketsLeft(s, 14);
   assert(
-    total === 5 && basketsLeft(fresh(), 14) === 0 && basketsLeft(s, 2) === 0,
-    "M2: the waiting crate makes 5 baskets at Level 14 (0 when nothing waits or the game is closed)",
-    total,
+    total === MAX_BASKETS_WAITING &&
+      MAX_BASKETS_WAITING === 3 &&
+      piecesWaiting(s) === 37 &&
+      fridgeSortOf(s).crate!.length === 5 &&
+      basketsLeft(fresh(), 14) === 0 &&
+      basketsLeft(s, 2) === 0,
+    "M2: a big delivery waits as 3 baskets at Level 14 (was 5), every ingredient still in it (0 when nothing waits or the game is closed)",
+    { total, pieces: piecesWaiting(s) },
   );
+  {
+    // Every level, the biggest shopping there is (24 different ingredients, far more than a basket of each): never more than three baskets,
+    // each within the level's size; a delivery that fits is not touched.
+    let worst = 0;
+    let over: unknown = null;
+    for (let level = FRIDGE_SORT_FIRST_LEVEL; level <= 91; level++) {
+      const many = all.slice(0, 24);
+      let big = addToCrate(fresh(), many, level, Object.fromEntries(many.map((id) => [id, 100])));
+      // ...and bought again on top (a second trip before unpacking)
+      big = addToCrate(big, many, level, Object.fromEntries(many.map((id) => [id, 100])));
+      const n = basketsLeft(big, level);
+      worst = Math.max(worst, n);
+      const round = roundFor(big, level)!;
+      if (!over && (n > MAX_BASKETS_WAITING || round.tokens.length > round.difficulty.maxTokens))
+        over = { level, n, tokens: round.tokens.length };
+    }
+    const small = addToCrate(fresh(), ["tomato", "onion"], 14, { tomato: 1, onion: 1 });
+    assert(
+      over === null &&
+        worst === MAX_BASKETS_WAITING &&
+        piecesWaiting(small) === piecesFor("tomato", 1, 8) + piecesFor("onion", 1, 8),
+      "M2b: at every level the biggest shopping (bought twice) waits as at most 3 baskets of the level's size; a small delivery is untouched",
+      { over, worst },
+    );
+  }
   assert(
     basketsFor(fresh(), 14, 0) === 0 &&
       basketsFor(fresh(), 14, 15) === 1 &&
       basketsFor(fresh(), 14, 16) === 2 &&
-      basketsFor(s, 14, 14) === 4,
-    "M3: the Market plan's hint rounds the pieces up to baskets of 15 at Level 14 (it was 10), counting what already waits (40 waiting + 14 = 54 pieces = 4: a hint, the real packing needs 5)",
+      basketsFor(s, 14, 14) === 3 &&
+      basketsFor(fresh(), 14, 400) === 3,
+    "M3: the Market plan's hint rounds the pieces up to baskets of 15 at Level 14, counting what already waits, never more than the 3 that can wait",
   );
   // put every basket away with a star: the chain grows, the last one adds the bonus
   const bonuses: number[] = [];
@@ -904,11 +939,11 @@ console.log("M. Big deliveries: several baskets, a bonus for putting them all aw
     s = out.save;
   }
   assert(
-    bonuses.join() === "0,0,0,0,20" &&
-      chains.join() === "1,2,3,4," &&
+    bonuses.join() === "0,0,20" &&
+      chains.join() === "1,2," &&
       fridgeSortOf(s).crate === undefined &&
-      secondFloorOf(s).hype === 5 * 10 + 20,
-    "M4: five baskets with a star each: the chain counts up, the last basket adds +20 Hype (5 x 10 from the stars, + 20)",
+      secondFloorOf(s).hype === 3 * 10 + 20,
+    "M4: three baskets with a star each: the chain counts up, the last basket adds the full +20 Hype (3 x 10 from the stars, + 20; rule changed 2026-11-13, it was +10)",
     { bonuses, chains, hype: secondFloorOf(s).hype },
   );
   // a basket with no star starts the delivery over

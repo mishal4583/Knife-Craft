@@ -14,6 +14,7 @@ import type { StockroomSortState } from "./stockroomSort";
 import type { FridgeCheckState } from "../restaurant/fridgeCheck";
 import type { DeliveryInspectionState } from "./deliveryInspection";
 import type { SauceStationState } from "./sauceStation";
+import type { HealthInspectorState } from "../restaurant/healthInspector";
 import type { AssistantState } from "../restaurant/assistant";
 import type { EndlessStarsState } from "../restaurant/restaurantStanding";
 /**
@@ -221,6 +222,11 @@ export type BusinessState = {
    * Absent = nothing done yet. Never holds money or stock.
    */
   sauceStation?: SauceStationState;
+  /**
+   * The health inspector's visits during the campaign (restaurant/healthInspector.ts): the level of his next visit, the Grade A streak and
+   * the last visit's result. Absent = he has not come yet. Never holds money or stock.
+   */
+  healthInspector?: HealthInspectorState;
   /**
    * The delivery routine's rewarded "skip this step" (developer 2026-11-11): the business day and how many were used that day. No money, no ledger.
    * Absent = none used.

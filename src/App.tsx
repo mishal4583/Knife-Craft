@@ -179,7 +179,10 @@ import {
 import { cleaningVariant } from "@/game/restaurant/cleaningDirt";
 import { ticketsFor } from "@/game/restaurant/serviceTickets";
 import { consumeCampaignOrderStock } from "@/game/restaurant/campaignStock";
+import { purchaseParts } from "@/game/restaurant/purchaseParts";
 import { servicePlanFor, servicePlanNeedsSheet } from "@/game/restaurant/preServiceCheck";
+import { buyNeededFridge, newFridgeDiscountRewardId } from "@/game/restaurant/fridgeUpgradeNeed";
+import { runInspectorVisit } from "@/game/restaurant/healthInspector";
 import { closeDay, openDay, recordService, restaurantDayOf } from "@/game/restaurant/restaurantDay";
 import { cleanerClosing, doClosingChore } from "@/game/restaurant/closingChores";
 import {
@@ -2051,20 +2054,35 @@ export function App() {
     if (!save) return { bought: 0, skipped: lines.length, totalCost: 0 };
     let next = save;
     const recorded: { ingredientId: string; totalCost: number; stock: number }[] = [];
+    let bought = 0;
     for (const line of lines) {
-      const r = buyOn(next, line.ingredientId, line.quantity);
-      if (!r.ok) continue;
-      next = r.save;
-      recorded.push({
-        ingredientId: line.ingredientId,
-        totalCost: r.totalCost,
-        stock: line.quantity * lbPerMarketUnit(line.ingredientId as IngredientId, measureOf(next)),
-      });
+      // A Temporary Shortage day sells at most 10 units in one purchase: a bigger line is bought as several ordinary purchases
+      // (restaurant/purchaseParts.ts), each with its own ledger entry. The line is all-or-nothing.
+      const parts =
+        RESTAURANT_MODE && isKnownIngredient(line.ingredientId)
+          ? purchaseParts(next, line.ingredientId, line.quantity)
+          : [line.quantity];
+      let after = next;
+      const made: typeof recorded = [];
+      for (const units of parts) {
+        const r = buyOn(after, line.ingredientId, units);
+        if (!r.ok) break;
+        after = r.save;
+        made.push({
+          ingredientId: line.ingredientId,
+          totalCost: r.totalCost,
+          stock: units * lbPerMarketUnit(line.ingredientId as IngredientId, measureOf(after)),
+        });
+      }
+      if (made.length === 0 || made.length < parts.length) continue;
+      next = after;
+      bought += 1;
+      recorded.push(...made);
     }
     if (recorded.length > 0) persistIngredientPurchases(next, recorded);
     return {
-      bought: recorded.length,
-      skipped: lines.length - recorded.length,
+      bought,
+      skipped: lines.length - bought,
       totalCost: recorded.reduce((t, l) => t + l.totalCost, 0),
     };
   }
@@ -2096,12 +2114,14 @@ export function App() {
           lines.reduce((sum, line) => sum + line.totalCost, 0),
           lines.length,
         ),
-        lines.map((line) => line.ingredientId),
+        [...new Set(lines.map((line) => line.ingredientId))],
         restaurantLevelOf(next.levelProgress),
         // How much arrived (lb or pieces), so the basket holds that many loose pieces (1 lb of tomato is about 3).
-        Object.fromEntries(
-          lines.filter((l) => l.stock !== undefined).map((l) => [l.ingredientId, l.stock!]),
-        ),
+        // Summed per ingredient: a line bought in several purchases (a shortage day) is still one delivery of that food.
+        lines.reduce<Record<string, number>>((sum, l) => {
+          if (l.stock !== undefined) sum[l.ingredientId] = (sum[l.ingredientId] ?? 0) + l.stock;
+          return sum;
+        }, {}),
       ),
     );
   }
@@ -2204,6 +2224,86 @@ export function App() {
       const next = latest && plan ? coverWithAd(latest, plan, part) : null;
       if (!next) return { ok: false, reason: "nothingToCover" };
       persist(next);
+      return { ok: true };
+    } finally {
+      coverAdBusyRef.current = false;
+    }
+  }
+
+  /**
+   * The Pre-Service Check's bigger fridge (fridgeUpgradeNeed.ts, developer 2026-11-13): bought there with one tap, or, when the wallet is
+   * short by no more than the discount, after a rewarded ad (only on `rewarded`, on the LATEST save, once a day; the discount is one
+   * "rewarded-ad" entry, the fridge one "refrigerator-purchase" entry at its full price).
+   */
+  /** The health inspector's visit (healthInspector.ts): "Let him in" on the Pre-Service Check. A fine is one "inspection-fine" entry. */
+  function letInspectorIn() {
+    const latest = saveRef.current;
+    const level = serviceCheckRef.current ? getLevel(serviceCheckRef.current) : undefined;
+    if (!latest || !level) return;
+    const result = runInspectorVisit(latest, level, levelNumber(level.id));
+    if (!result) return;
+    persist(result.save);
+    sendAnalyticsEvent("health_inspection", {
+      level: result.visit.level,
+      grade: result.visit.grade,
+      fine: result.visit.fine,
+      failed: result.visit.rows
+        .filter((r) => r.verdict !== "PASS")
+        .map((r) => r.id)
+        .join(","),
+    });
+  }
+  function fridgeNeedNow(latest: SaveData | null) {
+    const level = serviceCheckRef.current ? getLevel(serviceCheckRef.current) : undefined;
+    return latest && level ? (servicePlanFor(latest, level)?.fridgeNeed ?? null) : null;
+  }
+  function buyNeededFridgeNow(): boolean {
+    const latest = saveRef.current;
+    if (!latest) return false;
+    const need = fridgeNeedNow(latest);
+    const result = buyNeededFridge(latest, need, null);
+    if (!result.ok) return false;
+    persist(recordCapitalExpenditure(result.save, result.price));
+    sendAnalyticsEvent("fridge_need_bought", {
+      fridge: result.fridgeId,
+      level: restaurantLevelOf(latest.levelProgress),
+      reason: need?.reason ?? "",
+      ad: 0,
+    });
+    return true;
+  }
+  async function buyNeededFridgeWithAd(): Promise<CoverAdOutcome> {
+    if (coverAdBusyRef.current) return { ok: false, reason: "busy" };
+    if (!fridgeNeedNow(saveRef.current)?.adDiscount) return { ok: false, reason: "nothingToCover" };
+    coverAdBusyRef.current = true;
+    try {
+      const rewardId = newFridgeDiscountRewardId();
+      const ad = await requestRewardedAd(rewardId, AD_PLACEMENT.fridgeDiscount);
+      sendAnalyticsEvent("fridge_discount_ad", { status: ad.status });
+      if (ad.status !== "rewarded") {
+        return {
+          ok: false,
+          reason:
+            ad.status === "not-rewarded"
+              ? "notRewarded"
+              : ad.status === "busy"
+                ? "busy"
+                : ad.status === "unavailable"
+                  ? "adUnavailable"
+                  : "adFailed",
+        };
+      }
+      const latest = saveRef.current;
+      const need = fridgeNeedNow(latest);
+      const result = latest ? buyNeededFridge(latest, need, rewardId) : null;
+      if (!latest || !result || !result.ok) return { ok: false, reason: "nothingToCover" };
+      persist(recordCapitalExpenditure(result.save, result.price));
+      sendAnalyticsEvent("fridge_need_bought", {
+        fridge: result.fridgeId,
+        level: restaurantLevelOf(latest.levelProgress),
+        reason: need?.reason ?? "",
+        ad: 1,
+      });
       return { ok: true };
     } finally {
       coverAdBusyRef.current = false;
@@ -4834,6 +4934,9 @@ export function App() {
             adAvailable={rewardedAdsAvailable()}
             onCoverWithAd={coverServiceWithAd}
             onCoverWithCredit={coverServiceWithCredit}
+            onLetInspectorIn={letInspectorIn}
+            onBuyFridge={buyNeededFridgeNow}
+            onBuyFridgeWithAd={buyNeededFridgeWithAd}
             cleanlinessAction={cleanlinessAction}
             onQuickRestock={(next, lines) =>
               persistIngredientPurchases(

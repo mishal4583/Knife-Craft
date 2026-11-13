@@ -334,5 +334,173 @@ console.log("F. Wiring and saves");
   );
 }
 
+console.log("H. A shortage day and a walk-in's reserve (deep check 2026-11-12)");
+{
+  const { purchaseParts } = await import("../src/game/restaurant/purchaseParts.ts");
+  const { eventForDay, maxPurchaseQuantityFor } =
+    await import("../src/game/business/businessSupplierEvents.ts");
+  const { lbPerMarketUnit, marketStep, measureOf } =
+    await import("../src/game/business/measure.ts");
+  const { restaurantQuote } = await import("../src/game/restaurant/restaurantEconomy.ts");
+  const { marketPlanFor } = await import("../src/game/restaurant/marketPlan.ts");
+  const { reservedTicketsFor } = await import("../src/game/restaurant/menuGuests.ts");
+  const { atLevel, ownLevelOf } = await import("../src/game/restaurant/prepBatch.ts");
+  const days = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const shortageDay = days.find((d) => eventForDay(d)?.id === "temporary-shortage")!;
+  const quiet = days.find((d) => maxPurchaseQuantityFor(eventForDay(d)) === undefined)!;
+  const cap = maxPurchaseQuantityFor(eventForDay(shortageDay))!;
+  const at = (n: number, day: number, measure: "lb" | "kg" = "lb") => {
+    const s = fresh();
+    s.credits = 5_000_000;
+    s.settings = { ...s.settings, measure };
+    s.levelProgress.highestUnlockedLevelId = `level-${n}`;
+    s.levelProgress.completedLevelIds = Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`);
+    s.business.calendar.businessDay = day;
+    if (n >= 23)
+      s.business.refrigerator.refrigeratorId =
+        n >= 26 ? "professional-refrigerator" : "commercial-refrigerator";
+    return s;
+  };
+  assert(
+    purchaseParts(at(50, quiet), "steak", 42).join() === "42" &&
+      purchaseParts(at(50, shortageDay), "steak", 10).join() === "10" &&
+      purchaseParts(at(50, shortageDay), "steak", 0).length === 0,
+    "H1: a day with no limit, or an amount within it, is one purchase; nothing is no purchase",
+  );
+  let bad: unknown = null;
+  let rowsOver = 0;
+  for (const measure of ["lb", "kg"] as const)
+    for (let n = 3; n <= 91; n++) {
+      const s = at(n, shortageDay, measure);
+      for (const row of marketPlanFor(s, 2).rows) {
+        const parts = purchaseParts(s, row.ingredientId, row.buyUnits);
+        if (parts.length > 1) rowsOver++;
+        const per = lbPerMarketUnit(row.ingredientId, measureOf(s));
+        const step = marketStep(row.ingredientId);
+        const sum = parts.reduce((t, x) => t + x, 0);
+        const okParts = parts.every(
+          (u) =>
+            u > 0 &&
+            u * per <= cap + 1e-6 &&
+            Math.abs(u / step - Math.round(u / step)) < 1e-6 &&
+            restaurantQuote(s, row.ingredientId, u).verdict === "ok",
+        );
+        if (!bad && (parts.length === 0 || Math.abs(sum - row.buyUnits) > 1e-6 || !okParts))
+          bad = { n, measure, id: row.ingredientId, units: row.buyUnits, parts };
+      }
+    }
+  assert(
+    bad === null && rowsOver > 50,
+    "H2: on a shortage day every row of the two-day plan (Levels 3-91, lb and kg) splits into purchases the Market accepts, adding up exactly",
+    { bad, rowsOver },
+  );
+  assert(
+    purchaseParts(at(60, shortageDay), "watermelon", 2).join() === "1,1" &&
+      purchaseParts(at(60, shortageDay), "pineapple", 3).join() === "2,1",
+    "H3: whole items split by whole items (a watermelon is the limit by itself)",
+  );
+  const app = read("src/App.tsx");
+  assert(
+    app.includes("purchaseParts(next, line.ingredientId, line.quantity)") &&
+      app.includes("made.length < parts.length) continue") &&
+      read("src/components/kc/MarketPlanPanel.tsx").includes(
+        "purchaseParts(save, row.ingredientId, row.buyUnits)",
+      ),
+    "H4: Buy all and a plan row's own button buy a big line in parts, all or nothing, one ledger entry a purchase",
+  );
+  assert(
+    !read("src/game/business/BusinessInventoryManager.ts").includes("purchaseParts") && cap === 10,
+    "H5: the supplier's own rule is untouched (one purchase is still at most 10)",
+  );
+  {
+    // The price on the plan's buttons is the price the purchases charge (each part at its own bulk tier), shortage day or not.
+    const { purchaseIngredient } = await import("../src/game/business/BusinessInventoryManager.ts");
+    const { ingredientBulkDiscount } = await import("../src/game/restaurant/bulkBuying.ts");
+    const { supplierEffects, supplierPriceFactor } =
+      await import("../src/game/restaurant/restaurantEconomy.ts");
+    const { partsCost } = await import("../src/game/restaurant/purchaseParts.ts");
+    let wrong: unknown = null;
+    let split = 0;
+    for (const day of [shortageDay, quiet])
+      for (const n of [12, 30, 52, 55, 70, 80]) {
+        let s = at(n, day);
+        const plan = marketPlanFor(s, 2);
+        const start = s.credits;
+        for (const row of plan.rows) {
+          const parts = purchaseParts(s, row.ingredientId, row.buyUnits);
+          if (parts.length > 1) split++;
+          for (const units of parts) {
+            const m = measureOf(s);
+            const r = purchaseIngredient(
+              s,
+              row.ingredientId,
+              units,
+              ingredientBulkDiscount(row.ingredientId, units, m),
+              supplierPriceFactor(s),
+              supplierEffects(s).freshnessBonusDays,
+              lbPerMarketUnit(row.ingredientId, m),
+              marketStep(row.ingredientId),
+            );
+            if (!r.ok) {
+              wrong = wrong ?? { n, day, id: row.ingredientId, units, reason: r.reason };
+              break;
+            }
+            s = r.save;
+          }
+        }
+        if (!wrong && start - s.credits !== plan.totalCost)
+          wrong = { n, day, charged: start - s.credits, shown: plan.totalCost };
+        const check = servicePlanFor(at(n, day), getLevel(`level-${n}`)!)!.check;
+        if (!wrong && check.applies) {
+          const sum = check.missingRows.reduce(
+            (t, r) => t + partsCost(at(n, day), r.ingredientId, r.buyUnits),
+            0,
+          );
+          if (sum !== check.missingCost) wrong = { n, day, sum, missingCost: check.missingCost };
+        }
+      }
+    assert(
+      wrong === null && split > 10,
+      "H7: the plan's total is exactly what its purchases charge, on a shortage day (in parts) and on a quiet day; the check's missing total is priced the same way",
+      { wrong, split },
+    );
+  }
+  // The reserve of a walk-in at Level n is Level n+1's own orders at Level n+1's batch.
+  let short: unknown = null;
+  let compared = 0;
+  for (let n = 4; n <= 89; n++) {
+    const s = at(n, quiet);
+    const level = getLevel(`level-${n}`)!;
+    const next = getLevel(`level-${n + 1}`)!;
+    const reserved = reservedTicketsFor(s, level);
+    if (reserved.length === 0) continue;
+    const viaReserve = serviceStockCheck(s, n, reserved);
+    const own = serviceStockCheck(
+      s,
+      n + 1,
+      reserved.map((r) => ({ ...r })),
+    );
+    if (!viaReserve.applies || !own.applies) continue;
+    compared++;
+    const key = (rows: { ingredientId: string; needed: number }[]) =>
+      rows
+        .map((r) => `${r.ingredientId}:${r.needed}`)
+        .sort()
+        .join();
+    if (!short && key(viaReserve.rows) !== key(own.rows))
+      short = { n, reserve: key(viaReserve.rows), own: key(own.rows) };
+  }
+  const r0 = reservedTicketsFor(at(21, quiet), getLevel("level-21")!)[0]!;
+  assert(
+    short === null &&
+      compared > 60 &&
+      ownLevelOf(r0) === 22 &&
+      ownLevelOf(atLevel(r0, 23)) === 23 &&
+      ownLevelOf({ ...r0 }) === undefined,
+    "H6: a walk-in's reserve needs exactly what the next level's own orders need at the next level's batch (Levels 4-89)",
+    { short, compared },
+  );
+}
+
 console.log(failures === 0 ? "PREP BATCH QA: ALL PASS" : `PREP BATCH QA: ${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

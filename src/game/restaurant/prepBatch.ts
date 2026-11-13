@@ -76,3 +76,20 @@ export function asPlate<T extends object>(recipe: T): T {
 
 /** True for a recipe marked by `asPlate`: its order uses the plain plate, never the batch. */
 export const isPlate = (recipe: object): boolean => PLATE_ONLY.has(recipe);
+
+/**
+ * Recipes (copies) that belong to ANOTHER level than the one being checked: the next level's own orders that a walk-in must leave alone
+ * (menuGuests `reservedTicketsFor`). They are batched at their own level, not at the level of the check that counts them (deep check 2026-11-12:
+ * the reserve was a little too small where the batch or the row cap grows, so a walk-in could eat into the next service's stock).
+ */
+const OWN_LEVEL = new WeakMap<object, number>();
+
+/** A copy of `recipe` whose order is batched at `level`, whatever level the check is for. */
+export function atLevel<T extends object>(recipe: T, level: number): T {
+  const copy = { ...recipe } as T;
+  OWN_LEVEL.set(copy, level);
+  return copy;
+}
+
+/** The level a recipe marked by `atLevel` is batched at (undefined: the level of the check). */
+export const ownLevelOf = (recipe: object): number | undefined => OWN_LEVEL.get(recipe);

@@ -286,5 +286,78 @@ console.log("W. Wiring");
   );
 }
 
+console.log("X. A full fridge with no bigger fridge within reach (deep check 2026-11-12)");
+{
+  const { fridgeStuckFor } = await import("../src/game/restaurant/serviceCover.ts");
+  const { servicePlanFor } = await import("../src/game/restaurant/preServiceCheck.ts");
+  const { addStock } = await import("../src/game/business/businessInventory.ts");
+  const { REFRIGERATOR_CATALOG } = await import("../src/game/business/refrigeratorDefinitions.ts");
+  const { supplierCreditOf } = await import("../src/game/restaurant/supplierCredit.ts");
+  const commercial = REFRIGERATOR_CATALOG.find((f) => f.capacity === 100)!;
+  // Level 46 with the Basic fridge (40) nearly full of fresh food this service does not use (a watermelon and pumpkins bought today).
+  const full = (credits: number): SaveData => {
+    const s = saveAt(46, credits);
+    let inventory = s.business.inventory;
+    for (const [id, q] of [
+      ["watermelon", 20],
+      ["pumpkin", 16],
+    ] as const)
+      inventory = addStock(inventory, id, q, 100, s.business.calendar.businessDay);
+    return { ...s, business: { ...s.business, inventory } };
+  };
+  const level = getLevel("level-46")!;
+  const poor = full(50_000); // $500: pays for the food, not for the $2,000 fridge
+  const rich = full(commercial.price + 100_000);
+  const pPoor = servicePlanFor(poor, level)!;
+  const pRich = servicePlanFor(rich, level)!;
+  const c = pPoor.check;
+  assert(
+    c.applies &&
+      !c.ready &&
+      c.affordable &&
+      c.storageNeeded > c.storageFree &&
+      commercial.price === 200_000 &&
+      fridgeStuckFor(poor, c) &&
+      pPoor.fridgeStuck &&
+      !fridgeStuckFor(rich, pRich.check) &&
+      !pRich.fridgeStuck,
+    "X1: the food is affordable but does not fit and the $2,000 fridge is out of reach: stuck; with the fridge's price in the wallet: not stuck",
+    c.applies ? { need: c.storageNeeded, free: c.storageFree, cost: c.missingCost } : null,
+  );
+  const roomy = servicePlanFor(saveAt(46, 50_000), level)!;
+  assert(
+    coverFor(pPoor, "stock")?.creditCost === (c.applies ? c.missingCost : -1) &&
+      coverFor(pRich, "stock") === null &&
+      !roomy.fridgeStuck &&
+      coverFor(roomy, "stock") === null,
+    "X2: only the stuck player is offered the cover (who can buy the fridge, or has room, buys as before)",
+  );
+  const byCredit = coverWithCredit(poor, pPoor, "stock")!;
+  const byAd = coverWithAd(poor, pPoor, "stock")!;
+  const after = (s: SaveData) => servicePlanFor(s, level)!.check;
+  assert(
+    !!byCredit &&
+      !!byAd &&
+      after(byCredit).applies &&
+      (after(byCredit) as { ready: boolean }).ready &&
+      (after(byAd) as { ready: boolean }).ready &&
+      byCredit.credits === poor.credits &&
+      byAd.credits === poor.credits &&
+      supplierCreditOf(byCredit).owed === (c.applies ? c.missingCost : -1) &&
+      supplierCreditOf(byAd).owed === 0 &&
+      byCredit.economyLedger.length === poor.economyLedger.length,
+    "X3: the ad (free) or supplier credit (owed, no wallet movement, no ledger entry yet) brings the food and the service is ready",
+  );
+  const ui = read("src/components/kc/restaurant/PreServiceCheck.tsx");
+  assert(
+    ui.includes('data-testid="psc-fridge-cover"') &&
+      ui.includes("cover?.stock && stock.affordable") &&
+      read("src/game/restaurant/preServiceCheck.ts").includes(
+        "fridgeStuck: fridgeStuckFor(save, check)",
+      ),
+    "X4: the Pre-Service Check shows the cover under 'Fridge full' (beside 'Manage fridge'), from the plan's own flag",
+  );
+}
+
 console.log(failures ? `SERVICE COVER QA: ${failures} FAILURE(S)` : "SERVICE COVER QA: ALL PASS");
 process.exit(failures ? 1 : 0);

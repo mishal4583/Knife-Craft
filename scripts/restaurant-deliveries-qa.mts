@@ -167,6 +167,44 @@ console.log("I. Once only");
   );
 }
 
+console.log("S. A Temporary Shortage day (deep check 2026-11-12)");
+{
+  // Business day 5 is the Temporary Shortage (one purchase at most 10 units). Since the prep batch most lines of a delivery are over 10:
+  // the whole line was skipped. Now it arrives as several ordinary purchases, each with its ledger entry.
+  const { eventForDay } = await import("../src/game/business/businessSupplierEvents.ts");
+  const { lbPerMarketUnit } = await import("../src/game/business/measure.ts");
+  const withFridge = (s: SaveData, businessDay: number): SaveData => ({
+    ...s,
+    business: {
+      ...s.business,
+      calendar: { ...s.business.calendar, businessDay },
+      refrigerator: { ...s.business.refrigerator, refrigeratorId: "professional-refrigerator" },
+    },
+  });
+  const short = withFridge(on(saveAt(50, 12)), 5);
+  const quiet = withFridge(on(saveAt(50, 12)), 8);
+  const a = afterNight(short, 50);
+  const b = afterNight(quiet, 50);
+  const big = (a.received[0]?.lines ?? []).filter(
+    (l) => l.qty * lbPerMarketUnit(l.id as never, "lb") > 10,
+  );
+  const entries = a.save.economyLedger.filter((e) => e.category === "inventory-purchase");
+  assert(
+    eventForDay(5)?.id === "temporary-shortage" &&
+      eventForDay(8) === null &&
+      a.received.length === 1 &&
+      a.received[0]!.skipped.length === 0 &&
+      big.length > 0 &&
+      a.received[0]!.lines.map((l) => `${l.id}:${l.qty}`).join() ===
+        b.received[0]!.lines.map((l) => `${l.id}:${l.qty}`).join() &&
+      entries.length > a.received[0]!.lines.length &&
+      short.credits + signed(a.save) - signed(short) === a.save.credits &&
+      a.received[0]!.cost === short.credits - a.save.credits,
+    "S1: on a shortage day the delivery brings the same lines as on a quiet day (none skipped): a line over 10 units comes as several purchases, one ledger entry each, and the ledger adds up",
+    { skipped: a.received[0]?.skipped, big: big.length, entries: entries.length },
+  );
+}
+
 console.log("V. Odd saves");
 {
   const odd = {

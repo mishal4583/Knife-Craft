@@ -21,6 +21,8 @@
 import type { SaveData } from "../SaveManager";
 import { addStock, normalizeQuantity } from "../business/businessInventory";
 import { discardExpiredStock } from "../business/discardExpired";
+import { getRefrigeratorCapacity } from "../business/RefrigeratorManager";
+import { REFRIGERATOR_CATALOG } from "../business/refrigeratorDefinitions";
 import { measureOf, stockForMarketUnits } from "../business/measure";
 import { getSupplyItem, supplyPackPrice } from "../business/businessSupplies";
 import { purchaseSupply } from "../business/BusinessSuppliesManager";
@@ -47,7 +49,24 @@ type Short = {
   supplies: ServiceSuppliesCheck;
   /** Kitchen tools (kitchenTools.ts; absent = none needed). */
   tools?: ToolsCheck;
+  /** The fridge cannot take the missing stock and the wallet cannot pay for a bigger one (`fridgeStuckFor`). */
+  fridgeStuck?: boolean;
 };
+
+/**
+ * NO SOFT-LOCK ON FRIDGE SPACE (deep check 2026-11-12). Since the prep batch one late service can need more room than the Basic fridge (40) has
+ * left (a simulated player who never upgrades is stopped at Level 46). The Pre-Service Check then says "Fridge full" with a way to the bigger
+ * fridge. But a player who has spent the money (a kitchen, the Second Floor) may hold enough for the food and not for the fridge ($2,000): no
+ * purchase fits and nothing else is offered. In exactly that case the same cover as for a short wallet is offered (an ad, or supplier credit):
+ * the supplier brings the missing food itself, which the service uses at once. True only when the missing stock does not fit AND no bigger
+ * fridge is affordable (or none exists).
+ */
+export function fridgeStuckFor(save: SaveData, check: ServiceStockCheck): boolean {
+  if (!check.applies || check.ready || !(check.storageNeeded > check.storageFree)) return false;
+  const capacity = getRefrigeratorCapacity(save.business.refrigerator.refrigeratorId);
+  const bigger = REFRIGERATOR_CATALOG.filter((f) => f.capacity > capacity);
+  return bigger.length === 0 || save.credits < Math.min(...bigger.map((f) => f.price));
+}
 
 /** The supply lines a part is short of: id, missing units, Market packs. */
 function shortSupplyLines(plan: Short, part: "supplies" | "tools") {
@@ -62,13 +81,16 @@ function shortSupplyLines(plan: Short, part: "supplies" | "tools") {
 /**
  * The cover on offer for `part`, or null: only from Level 3, only when that
  * part is short AND the wallet can't pay for it (otherwise the player buys
- * it — "ask the user to purchase it").
+ * it — "ask the user to purchase it"), or, for ingredients, when the fridge
+ * can't take them and no bigger fridge is within reach (`fridgeStuckFor`).
  */
 export function coverFor(plan: Short, part: CoverPart): CoverOffer | null {
   if (plan.levelNumber < FIRST_INGREDIENT_PURCHASE_LEVEL) return null;
   if (part === "stock") {
     const c = plan.check;
-    if (!c.applies || c.ready || c.affordable) return null;
+    if (!c.applies || c.ready) return null;
+    // The wallet covers it: the player buys it, unless the fridge cannot take it and no bigger fridge is within reach.
+    if (c.affordable && !plan.fridgeStuck) return null;
     return { part, creditCost: c.missingCost, items: c.missingRows.length };
   }
   const s = part === "tools" ? plan.tools : plan.supplies;

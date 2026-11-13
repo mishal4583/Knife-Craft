@@ -592,11 +592,11 @@ try {
   );
   const bigSave = await readSave(page);
   check(
-    "S20 42 pieces = 3 baskets: the chip counts 42, the first basket says 2 more + the bonus, the last shows 'Whole delivery unpacked' +10 Hype",
+    "S20 42 pieces = 3 baskets: the chip counts 42, the first basket says 2 more + the bonus, the last shows 'Whole delivery unpacked' +20 Hype (rule changed 2026-11-13: +10 a basket, it was +5)",
     /Fridge Sort · 42/.test(chipBig) &&
       /\+2 more baskets/.test(slipMore) &&
       /2 more baskets/.test(chain1) &&
-      /\+10 Hype/.test(chain1) &&
+      /\+20 Hype/.test(chain1) &&
       /Whole delivery unpacked \(3 baskets\)/.test(bigText) &&
       !bigSave.business.fridgeSort?.crate?.length &&
       !bigSave.business.fridgeSort?.chain,

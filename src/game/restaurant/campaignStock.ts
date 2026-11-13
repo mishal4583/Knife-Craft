@@ -37,8 +37,9 @@ import { realCogsFor } from "../business/BusinessFinanceManager";
 import { getAvailableStorageCapacity } from "../business/RefrigeratorManager";
 import { isSystemLive } from "./unlocks";
 import { recipeRequirements, sumRequirements } from "./recipeRequirements";
-import { batchedQuantity, isPlate, prepBatchAt } from "./prepBatch";
+import { batchedQuantity, isPlate, ownLevelOf, prepBatchAt } from "./prepBatch";
 import { restaurantQuote, stockUseFor } from "./restaurantEconomy";
+import { partsCost } from "./purchaseParts";
 import { marketUnitsCovering, measureOf, stockForMarketUnits } from "../business/measure";
 
 /**
@@ -58,6 +59,8 @@ export function orderRequirements(
   level?: number,
 ): IngredientRequirement[] {
   const k = stockUseFor(save, recipe)[which];
+  // A reserved order of another level (a walk-in's reserve) is batched at its own level.
+  level = ownLevelOf(recipe) ?? level;
   const plate = recipeRequirements(recipe);
   // A menu guest's or a walk-in's dish (`asPlate`) is ordered one plate at a time: only a level's own orders are batched.
   if (prepBatchAt(level) <= 1 || isPlate(recipe))
@@ -144,7 +147,11 @@ export function serviceStockCheck(
     };
   });
   const missingRows = rows.filter((r) => r.missing > 0);
-  const missingCost = missingRows.reduce((sum, r) => sum + (r.quote?.totalCost ?? 0), 0);
+  // What buying them costs today (on a shortage day a big row is several purchases: purchaseParts.ts).
+  const missingCost = missingRows.reduce(
+    (sum, r) => sum + partsCost(save, r.ingredientId, r.buyUnits),
+    0,
+  );
   const storageNeeded = normalizeQuantity(
     missingRows.reduce(
       (sum, r) => sum + stockForMarketUnits(r.ingredientId, r.buyUnits, measure),

@@ -58,6 +58,9 @@ export function ServiceCheckLayer({
   adAvailable,
   onCoverWithAd,
   onCoverWithCredit,
+  onBuyFridge,
+  onBuyFridgeWithAd,
+  onLetInspectorIn,
   cleanlinessAction,
   onCollectTableCash,
 }: {
@@ -75,6 +78,11 @@ export function ServiceCheckLayer({
   onCoverWithAd: (part: CoverPart) => Promise<CoverAdOutcome>;
   /** …or supplier credit (App.coverServiceWithCredit). */
   onCoverWithCredit: (part: CoverPart) => void;
+  /** The bigger fridge the check asks for (fridgeUpgradeNeed.ts): bought here, or with the ad's discount. */
+  onBuyFridge?: () => boolean;
+  onBuyFridgeWithAd?: () => Promise<CoverAdOutcome>;
+  /** The health inspector's visit (healthInspector.ts): runs it on the latest save. */
+  onLetInspectorIn?: () => void;
   /** A real restaurant's day: the opening / lull checklist's actions (App.cleanlinessAction). */
   cleanlinessAction?: (action: CleanlinessAction) => CleanlinessActionResult | null;
   /** Quick restock bought: App records one ledger entry per ingredient and saves. */
@@ -178,6 +186,14 @@ export function ServiceCheckLayer({
       adAvailable={adAvailable}
       onCoverWithAd={onCoverWithAd}
       onCoverWithCredit={onCoverWithCredit}
+      inspector={plan.inspector}
+      {...(onLetInspectorIn ? { onLetInspectorIn } : {})}
+      onRestockCleaning={(id) =>
+        openMarketSupplies(go, getSupplyItem(id)?.section ?? "cleaning", id)
+      }
+      fridgeNeed={plan.fridgeNeed}
+      {...(onBuyFridge ? { onBuyFridge } : {})}
+      {...(onBuyFridgeWithAd ? { onBuyFridgeWithAd } : {})}
       owed={supplierCreditOf(save).owed}
       canBuy={canBuy}
       onUpgradeFridge={() => go("business-refrigerator")}

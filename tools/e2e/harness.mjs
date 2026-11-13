@@ -120,6 +120,9 @@ export function GIFT_TAKEN_TODAY() {
  */
 export const PAIGE_QUIET = { hired: true, seen: [], tipsOff: true };
 
+/** The health inspector is not due (his next visit is past the last level). */
+export const INSPECTOR_AWAY = { nextLevel: 999, streak: 0, visits: 0, last: null };
+
 export function seedSave(overrides = {}) {
   const completed = Array.from({ length: 9 }, (_, i) => `level-${i + 1}`);
   const { business: ownBusiness, ...rest } = overrides;
@@ -138,7 +141,16 @@ export function seedSave(overrides = {}) {
     // cover the Kitchen; adbonuses.mjs seeds a save without it on purpose.
     economyLedger: [GIFT_TAKEN_TODAY()],
     ...rest,
-    business: { ...(ownBusiness ?? {}), assistant: ownBusiness?.assistant ?? PAIGE_QUIET },
+    business: {
+      ...(ownBusiness ?? {}),
+      assistant: ownBusiness?.assistant ?? PAIGE_QUIET,
+      // The health inspector (restaurant/healthInspector.ts, 2026-11-13) stays away in every seeded save, so a test about something else is
+      // not stopped at the Pre-Service Check; a test of his visit passes `healthInspector: undefined` (precheckvisits.mjs).
+      healthInspector:
+        ownBusiness && "healthInspector" in ownBusiness
+          ? ownBusiness.healthInspector
+          : INSPECTOR_AWAY,
+    },
     // Seeds use the current campaign numbers (the 91-level plan, 2026-11-07; they were the 150-level numbers before). Without the stamp the game
     // renumbers a save as a 250-level one; a test of that migration passes
     // `campaignVersion: undefined` (dropped when the save is written).

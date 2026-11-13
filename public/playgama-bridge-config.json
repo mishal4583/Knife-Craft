@@ -28,7 +28,8 @@
                 { "id": "skip_ahead" },
                 { "id": "rush_hour" },
                 { "id": "sauce_rounds" },
-                { "id": "skip_step" }
+                { "id": "skip_step" },
+                { "id": "fridge_discount" }
             ]
         }
     }

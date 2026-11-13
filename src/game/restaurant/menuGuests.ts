@@ -54,7 +54,7 @@ import { serviceStockCheck } from "./campaignStock";
 import { guestDemandFor, type GuestDemand } from "./guestDemand";
 import { ticketsFor } from "./serviceTickets";
 import { dishWeight, pickGuestDish } from "./orderPool";
-import { asPlate } from "./prepBatch";
+import { asPlate, atLevel } from "./prepBatch";
 
 /** The guests a service of `level` brings, in order (pure; same every time for the same menu). */
 export function menuGuestQueue(save: SaveData, level: LevelDefinition): RecipeDefinition[] {
@@ -196,7 +196,9 @@ function nextLevelOf(save: SaveData, level: LevelDefinition): LevelDefinition | 
 /** The next level's own tickets: the stock a walk-in must leave alone. */
 export function reservedTicketsFor(save: SaveData, level: LevelDefinition): RecipeDefinition[] {
   const next = nextLevelOf(save, level);
-  return next ? ticketsFor(save.levelProgress, next).tickets : [];
+  // Batched at the next level's own size (prepBatch `atLevel`), whatever level the check that counts them is for.
+  const n = levelNumber(level.id) + 1;
+  return next ? ticketsFor(save.levelProgress, next).tickets.map((r) => atLevel(r, n)) : [];
 }
 
 export type WalkInStock = {

@@ -71,7 +71,7 @@ status line in HANDOFF; this file changes only when a RULE changes.
   level bonus, short by, Second Floor ×2, daily gift; 2026-10-31: welcome back, a few hours of
   earnings after 30+ minutes away, only for the ad; 2026-11-02: Flood after a
   first clear, the Golden Guest ×3, Skip ahead — `restaurant/floorFlood.ts`,
-  `goldenGuest.ts`; 2026-11-10: the Sauce Station's "3 more rounds today", `sauce_rounds`, once a business day, no money so no ledger entry; 2026-11-11: the delivery routine's "skip this step", `skip_step`, 3 a day, done as the Prep Cook does it, no money so no ledger entry), granted only on the `rewarded` state. One placement per spot (`AD_PLACEMENT`). Each says what
+  `goldenGuest.ts`; 2026-11-10: the Sauce Station's "3 more rounds today", `sauce_rounds`, once a business day, no money so no ledger entry; 2026-11-11: the delivery routine's "skip this step", `skip_step`, 3 a day, done as the Prep Cook does it, no money so no ledger entry; 2026-11-13: the Pre-Service Check's bigger fridge at 25 % off, `fridge_discount`, once a day, the discount is the one `rewarded-ad` entry and the fridge is bought at full price in the same save, `restaurant/fridgeUpgradeNeed.ts`), granted only on the `rewarded` state. One placement per spot (`AD_PLACEMENT`). Each says what
   it gives before the ad, is never needed to progress, has a daily cap, and
   pays with one `rewarded-ad` ledger entry.
 - **Level messages:** `level_started/completed/paused/resumed` with
@@ -229,6 +229,8 @@ Release zip: the CONTENTS of `dist/` →
   campaign pay is unchanged). Spec: `docs/planning/SECOND-FLOOR-FINAL-SPEC-2026-11-02.md`.
 - **Prep batch** (developer 2026-11-12, `restaurant/prepBatch.ts`): from Level 3 a level's own orders use 3x (Level 3) to 8x (Level 70) their plate portion of stock; menu guests and walk-ins stay one plate; the
   check, the serve, the Market plan and the goals read ONE function (`orderRequirements(save, recipe, which, level)`). No pay moves. Details: `docs/planning/MINIGAME-TOUGHNESS-AND-PURCHASES-PLAN-2026-11-12.md`.
+- **Health inspector** (developer 2026-11-13, `restaurant/healthInspector.ts`): from Level 13 he visits on the Pre-Service Check (START waits for "Let him in"); he grades the restaurant as it is, with no dice. Grade A pays Hype only; Grade C is a fine of 5 % of the level's pay, one `inspection-fine` entry, nothing when the wallet cannot pay.
+- **Bigger fridge** (developer 2026-11-13, `restaurant/fridgeUpgradeNeed.ts`): when the next two services would not fit, the Pre-Service Check requires the next fridge up, but only while the wallet covers it; otherwise the ad discount or the supplier's cover (no soft-lock).
 - **Menu price cap:** a dish sells for at most 1.5 × its suggested price
   (`menuPriceCap`; old saves read at the cap).
 - **Never negative:** credits, inventory, capacity, menu price, equipment

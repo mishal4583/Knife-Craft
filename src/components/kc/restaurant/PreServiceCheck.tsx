@@ -30,6 +30,10 @@ import { getSupplyItem, packsText, supplyPackPrice } from "@/game/business/busin
 import type { ToolRow, ToolsCheck } from "@/game/restaurant/kitchenTools";
 import { SupplyBottle } from "./SupplyBottle";
 import { CoverActions, type CoverAdOutcome } from "./CoverActions";
+import { FridgeNeedCard } from "./FridgeNeedCard";
+import { HealthInspectorCard } from "./HealthInspectorCard";
+import type { InspectorView } from "@/game/restaurant/healthInspector";
+import type { FridgeNeed } from "@/game/restaurant/fridgeUpgradeNeed";
 import type { CoverOffer, CoverPart } from "@/game/restaurant/serviceCover";
 import type { RestaurantNews } from "@/game/restaurant/restaurantNews";
 import { staffHireFee, type StaffRequirement } from "@/game/restaurant/staffRequirements";
@@ -139,6 +143,12 @@ export function PreServiceCheck({
   adAvailable = false,
   onCoverWithAd = async () => ({ ok: false, reason: "nothingToCover" }),
   onCoverWithCredit = () => {},
+  inspector = null,
+  onLetInspectorIn = () => {},
+  onRestockCleaning = () => {},
+  fridgeNeed = null,
+  onBuyFridge = () => false,
+  onBuyFridgeWithAd = async () => ({ ok: false, reason: "nothingToCover" }),
   owed = 0,
   news = null,
   staff = [],
@@ -197,6 +207,15 @@ export function PreServiceCheck({
   adAvailable?: boolean;
   onCoverWithAd?: (part: CoverPart) => Promise<CoverAdOutcome>;
   onCoverWithCredit?: (part: CoverPart) => void;
+  /** The health inspector at the door or this level's visit (healthInspector.ts); "due" blocks START. */
+  inspector?: InspectorView | null;
+  onLetInspectorIn?: () => void;
+  /** Buy dish soap / cleaning liquid: the Market's Supplies on that line. */
+  onRestockCleaning?: (id: SupplyId) => void;
+  /** The bigger fridge this service asks for (fridgeUpgradeNeed.ts); `required` blocks START. */
+  fridgeNeed?: FridgeNeed | null;
+  onBuyFridge?: () => boolean;
+  onBuyFridgeWithAd?: () => Promise<CoverAdOutcome>;
   /** What the restaurant owes its supplier (supplierCredit.ts), cents. */
   owed?: number;
   /** What's new at this level and what's coming. */
@@ -259,7 +278,9 @@ export function PreServiceCheck({
     (!stock || (stock.ready && !stock.rows.some((r) => r.expired > 0 && r.usable < r.needed))) &&
     (!sup || sup.ready) &&
     (!kit || kit.ready) &&
-    staff.every((r) => r.met);
+    staff.every((r) => r.met) &&
+    !fridgeNeed?.required &&
+    inspector?.status !== "due";
   const staffMissing = staff.filter((r) => !r.met);
   const urgentIngredientRows = stock?.missingRows.length ?? 0;
   const lowForDayRows = dayStock?.rows.length ?? 0;
@@ -471,6 +492,27 @@ export function PreServiceCheck({
               </p>
               <NameChips names={staffMissing.map((r) => r.title)} />
             </div>
+          ) : null}
+          {inspector ? (
+            <HealthInspectorCard
+              view={inspector}
+              onLetIn={onLetInspectorIn}
+              onFix={(id) => {
+                if (id === "cleaning") onOpenCleanliness();
+                else if (id === "expired") onThrowOutExpired();
+                else if (id === "fridge-room") onUpgradeFridge();
+                else onRestockCleaning(id);
+              }}
+            />
+          ) : null}
+          {fridgeNeed ? (
+            <FridgeNeedCard
+              need={fridgeNeed}
+              adAvailable={adAvailable}
+              onBuy={onBuyFridge}
+              onBuyWithAd={onBuyFridgeWithAd}
+              onManage={onUpgradeFridge}
+            />
           ) : null}
           {kit && !kit.ready ? (
             <div
@@ -1184,6 +1226,18 @@ export function PreServiceCheck({
                   >
                     Manage fridge →
                   </KButton>
+                  {/* No bigger fridge within reach (serviceCover fridgeStuckFor): the supplier brings this service's food itself. */}
+                  {cover?.stock && stock.affordable ? (
+                    <div data-testid="psc-fridge-cover">
+                      <CoverActions
+                        offer={cover.stock}
+                        adAvailable={adAvailable}
+                        onWatchAd={() => onCoverWithAd("stock")}
+                        onCredit={() => onCoverWithCredit("stock")}
+                        what="ingredients"
+                      />
+                    </div>
+                  ) : null}
                 </>
               ) : null}
             </div>
@@ -1225,7 +1279,11 @@ export function PreServiceCheck({
                     : "🔥 Start service"
                   : stockOrSuppliesShort
                     ? "🛒 Restock to start"
-                    : "👥 Hire staff to start"}
+                    : staffMissing.length > 0
+                      ? "👥 Hire staff to start"
+                      : fridgeNeed?.required
+                        ? "❄️ Buy the fridge to start"
+                        : "🕵️ Let the inspector in"}
               </KButton>
             </div>
           )}

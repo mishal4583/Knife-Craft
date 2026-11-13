@@ -631,6 +631,8 @@ Date.now = realDateNow;
           AD_PLACEMENT.sauceRounds,
           // Added 2026-11-11 (developer): the delivery routine's "skip this step" (no money).
           AD_PLACEMENT.skipStep,
+          // Added 2026-11-13 (developer): the bigger fridge at 25 % off on the Pre-Service Check.
+          AD_PLACEMENT.fridgeDiscount,
         ]
           .sort()
           .join(),

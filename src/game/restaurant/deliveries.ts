@@ -42,6 +42,7 @@ import { lbPerMarketUnit, marketStep, measureOf } from "../business/measure";
 import { ingredientBulkDiscount, bulkDiscountFor, BULK_MAX_PACKS } from "./bulkBuying";
 import { supplierEffects, supplierPriceFactor } from "./restaurantEconomy";
 import { marketPlanFor } from "./marketPlan";
+import { purchaseParts } from "./purchaseParts";
 import { closeDay, restaurantDayOf } from "./restaurantDay";
 import { servicesForDayAt } from "./restaurantProgression";
 import { TASK_KINDS, TASK_RULES, usesAvailable, usesPerUnit } from "./cleanliness";
@@ -231,19 +232,29 @@ function deliverLine(save: SaveData, line: DeliveryLine): { save: SaveData; cost
   if (line.kind === "ingredient") {
     const id = line.id as IngredientId;
     const measure = measureOf(save);
-    const r = purchaseIngredient(
-      save,
-      id,
-      line.qty,
-      ingredientBulkDiscount(id, line.qty, measure),
-      supplierPriceFactor(save),
-      supplierEffects(save).freshnessBonusDays,
-      lbPerMarketUnit(id, measure),
-      marketStep(id),
-    );
-    if (!r.ok) return null;
-    const recorded = appendLedgerEntry(r.save, "inventory-purchase", -r.totalCost, id);
-    return { save: recordInventoryPurchase(recorded, r.totalCost, 1), cost: r.totalCost };
+    // A Temporary Shortage day sells 10 units a purchase: a bigger line arrives as several purchases (purchaseParts.ts), all or nothing,
+    // each with its own ledger entry. (Deep check 2026-11-12: with the prep batch most lines are over 10, so the whole delivery was skipped.)
+    const parts = purchaseParts(save, id, line.qty);
+    if (parts.length === 0) return null;
+    let next = save;
+    let cost = 0;
+    for (const units of parts) {
+      const r = purchaseIngredient(
+        next,
+        id,
+        units,
+        ingredientBulkDiscount(id, units, measure),
+        supplierPriceFactor(next),
+        supplierEffects(next).freshnessBonusDays,
+        lbPerMarketUnit(id, measure),
+        marketStep(id),
+      );
+      if (!r.ok) return null;
+      const recorded = appendLedgerEntry(r.save, "inventory-purchase", -r.totalCost, id);
+      next = recordInventoryPurchase(recorded, r.totalCost, 1);
+      cost += r.totalCost;
+    }
+    return { save: next, cost };
   }
   const item = getSupplyItem(line.id);
   if (!item) return null;

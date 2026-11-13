@@ -41,6 +41,9 @@ import {
 } from "./menuGuests";
 import { getLevel } from "../levels/LevelManager";
 import { restaurantQuote } from "./restaurantEconomy";
+import { fridgeStuckFor } from "./serviceCover";
+import { fridgeNeedFor, type FridgeNeed } from "./fridgeUpgradeNeed";
+import { inspectorAt, type InspectorView } from "./healthInspector";
 import type { IngredientId } from "../definitions";
 import { serviceShape, staffRequirementsFor, type StaffRequirement } from "./staffRequirements";
 import {
@@ -87,6 +90,12 @@ export type ServicePlan = {
   levelNumber: number;
   tickets: RecipeDefinition[];
   check: ServiceStockCheck;
+  /** The missing stock does not fit the fridge and no bigger fridge is within reach: the cover is offered (serviceCover `fridgeStuckFor`). */
+  fridgeStuck: boolean;
+  /** The bigger fridge this service asks for, before the kitchen gets stuck (fridgeUpgradeNeed.ts); `required` blocks START. */
+  fridgeNeed: FridgeNeed | null;
+  /** The health inspector at the door, or this level's visit (healthInspector.ts); "due" blocks START until he is let in. */
+  inspector: InspectorView | null;
   progress: LevelProgress;
   day: number;
   /** Today's services when this level opens the day; null mid-day. */
@@ -180,18 +189,27 @@ export function guestStockFor(
   return { dishes, rows };
 }
 
-export function servicePlanFor(save: SaveData, level: LevelDefinition): ServicePlan | null {
+export function servicePlanFor(
+  save: SaveData,
+  level: LevelDefinition,
+  /** Today, for the fridge discount ad's daily cap. */
+  now: Date = new Date(),
+): ServicePlan | null {
   if (isCompleted(level.id, save.levelProgress)) return null;
   const n = levelNumber(level.id);
   const { tickets, progress } = ticketsFor(save.levelProgress, level);
   const paid = paidOrdersFor(progress, level.id).length;
   const remaining = tickets.slice(paid);
   const services = remaining.map((r, i) => orderServiceFor(n, paid + i, r));
+  const check = serviceStockCheck(save, n, remaining, { ownOrders: true });
   return {
     level,
     levelNumber: n,
     tickets: remaining,
-    check: serviceStockCheck(save, n, remaining, { ownOrders: true }),
+    check,
+    fridgeStuck: fridgeStuckFor(save, check),
+    fridgeNeed: fridgeNeedFor(save, n, check, now),
+    inspector: inspectorAt(save, level, n),
     progress,
     day: restaurantDayOf(save).day,
     opening: opensNewDay(save) ? todaysServices(save, n) : null,
@@ -240,6 +258,10 @@ export function servicePlanNeedsSheet(plan: ServicePlan | null): boolean {
   // Pass 2 review: the first service on real stock always opens the sheet (never blocking).
   if (plan.firstStockService) return true;
   if (!staffReady(plan)) return true;
+  // The health inspector is at the door (healthInspector.ts).
+  if (plan.inspector?.status === "due") return true;
+  // The bigger fridge (fridgeUpgradeNeed.ts): required, or within reach with the ad's discount.
+  if (plan.fridgeNeed && (plan.fridgeNeed.required || plan.fridgeNeed.adDiscount > 0)) return true;
   if (suppliesNeedAttention(plan.supplies)) return true;
   // Kitchen tools (supplies plan A): Level 10's shopping list, or a tool missing.
   if (plan.firstShoppingList) return true;

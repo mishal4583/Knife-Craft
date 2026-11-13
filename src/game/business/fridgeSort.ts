@@ -197,6 +197,13 @@ export type FridgeSortState = {
 };
 
 export const MAX_CRATE_QUEUE = 24;
+/**
+ * The most baskets ONE waiting delivery makes (deep check 2026-11-12). Since the prep batch a two-day "Buy all" was 60-300 loose pieces: up to 15
+ * baskets, each to be checked AND unpacked before the restaurant may open (about half an hour at Level 50). The baskets are full size (that is
+ * the harder game the players asked for); what is over three of them the delivery driver carries to the fridge (the food itself is in the
+ * fridge from the moment it is bought: the basket is only the game).
+ */
+export const MAX_BASKETS_WAITING = 3;
 /** The most pieces of ONE ingredient that go in the basket at the start (a 10 lb sack of potatoes is not 30 pieces to sort); `piecesCapAt` raises it with the level. */
 export const MAX_PIECES_PER_INGREDIENT = 5;
 /** The cap by level (developer 2026-11-12: the restaurant buys a batch now, so one ingredient can be more pieces): 6 at the first level, 12 at Level 44. */
@@ -290,7 +297,8 @@ export const piecesWaiting = (save: SaveData): number => {
 /**
  * Puts what was just bought in the basket (the ONE place that fills it is the ingredient purchase commit and the morning delivery).
  * `stock` = how much of each ingredient arrived (lb, or pieces): the basket holds that many loose pieces. Only from the game's level;
- * an ingredient already waiting gets more pieces (up to the cap); nothing is lost if more than a basket waits.
+ * an ingredient already waiting gets more pieces (up to the cap); more than a basket waits as the next baskets, up to
+ * MAX_BASKETS_WAITING of them (the driver carries the rest in).
  */
 export function addToCrate(
   save: SaveData,
@@ -300,29 +308,25 @@ export function addToCrate(
 ): SaveData {
   if (!isCrateOpen(reachedLevel)) return save;
   const state = fridgeSortOf(save);
-  const crate = [...(state.crate ?? [])];
+  let crate = [...(state.crate ?? [])];
   const counts = { ...(state.counts ?? {}) };
   const had = crate.length;
-  let changed = false;
+  const before = crateKey(crate, counts);
   for (const raw of new Set(bought)) {
     if (!KNOWN.has(raw)) continue;
     const id = raw as IngredientId;
     const cap = piecesCapAt(reachedLevel);
     const add = piecesFor(id, stock?.[id] ?? 1, cap);
     if (crate.includes(id)) {
-      const now = Math.min(cap, (counts[id] ?? piecesFor(id, 1)) + add);
-      if (now !== (counts[id] ?? piecesFor(id, 1))) {
-        counts[id] = now;
-        changed = true;
-      }
+      counts[id] = Math.min(cap, (counts[id] ?? piecesFor(id, 1)) + add);
       continue;
     }
     if (crate.length >= MAX_CRATE_QUEUE) continue;
     crate.push(id);
     counts[id] = add;
-    changed = true;
   }
-  if (!changed) return save;
+  crate = trimToBaskets(crate, counts, difficultyAt(reachedLevel).maxTokens);
+  if (crateKey(crate, counts) === before) return save;
   // A new basket (the old one was empty) gets a new seed, so its order is new and never repeats by accident.
   return withState(save, {
     ...state,
@@ -330,6 +334,36 @@ export function addToCrate(
     counts,
     seed: had === 0 ? state.seed! + 1 : state.seed!,
   });
+}
+
+const crateKey = (
+  crate: readonly IngredientId[],
+  counts: Partial<Record<IngredientId, number>>,
+): string => crate.map((id) => `${id}:${counts[id] ?? piecesFor(id, 1)}`).join();
+
+/**
+ * Keeps a waiting delivery within MAX_BASKETS_WAITING baskets of `max` pieces: the ingredient with the most pieces loses one at a time (so every
+ * ingredient bought stays in the game); when every ingredient is down to one piece, the last one bought leaves. `counts` is changed in place;
+ * the crate that fits is returned. Deterministic.
+ */
+function trimToBaskets(
+  crate: IngredientId[],
+  counts: Partial<Record<IngredientId, number>>,
+  max: number,
+): IngredientId[] {
+  let rest = crate;
+  for (const id of rest) counts[id] = counts[id] ?? piecesFor(id, 1);
+  while (basketsOf({ counts }, rest, max) > MAX_BASKETS_WAITING) {
+    let big = rest.length - 1;
+    for (let i = rest.length - 1; i >= 0; i--) if (counts[rest[i]!]! > counts[rest[big]!]!) big = i;
+    const id = rest[big]!;
+    if (counts[id]! > 1) counts[id] = counts[id]! - 1;
+    else {
+      delete counts[id];
+      rest = rest.filter((x) => x !== id);
+    }
+  }
+  return rest;
 }
 
 /** Deterministic shuffle (a small seeded generator): the same crate and seed always give the same order. */
@@ -397,8 +431,12 @@ function packBasket(
 export function basketsLeft(save: SaveData, reachedLevel: number): number {
   if (!isCrateOpen(reachedLevel)) return 0;
   const state = fridgeSortOf(save);
-  const max = difficultyAt(reachedLevel).maxTokens;
-  let rest = [...(state.crate ?? [])];
+  return basketsOf(state, state.crate ?? [], difficultyAt(reachedLevel).maxTokens);
+}
+
+/** The baskets `crate` makes when each holds at most `max` pieces (the same packing the rounds use). */
+function basketsOf(state: FridgeSortState, crate: readonly IngredientId[], max: number): number {
+  let rest = [...crate];
   let n = 0;
   while (rest.length > 0) {
     const { ingredients } = packBasket(state, rest, max);
@@ -412,7 +450,7 @@ export function basketsLeft(save: SaveData, reachedLevel: number): number {
 export function basketsFor(save: SaveData, reachedLevel: number, extraPieces: number): number {
   if (!isFridgeSortOpen(reachedLevel)) return 0;
   const total = piecesWaiting(save) + Math.max(0, Math.floor(extraPieces));
-  return Math.ceil(total / difficultyAt(reachedLevel).maxTokens);
+  return Math.min(MAX_BASKETS_WAITING, Math.ceil(total / difficultyAt(reachedLevel).maxTokens));
 }
 
 /** The round the crate offers now, or null when nothing waits or the game is not open yet. */
@@ -544,9 +582,11 @@ export const MAX_FRESH_DAYS_AHEAD = 2;
 
 /**
  * A "big delivery" (developer 2026-11-05: buy for several days, sort it all): when the LAST basket of a delivery of two or more baskets
- * is put away and every basket earned a star, the Second Floor's Hype gets +5 for each basket after the first, at most +20.
+ * is put away and every basket earned a star, the Second Floor's Hype gets +10 for each basket after the first, at most +20.
+ * It was +5 a basket (the +20 needed five baskets); a delivery is at most three baskets since 2026-11-12, so the full bonus is reached with
+ * three (developer 2026-11-13, "do whatever is best for the game": the biggest delivery keeps its biggest reward).
  */
-export const BIG_DELIVERY_HYPE_PER_BASKET = 5;
+export const BIG_DELIVERY_HYPE_PER_BASKET = 10;
 export const BIG_DELIVERY_HYPE_MAX = 20;
 export const bigDeliveryHype = (baskets: number): number =>
   baskets >= 2 ? Math.min(BIG_DELIVERY_HYPE_MAX, BIG_DELIVERY_HYPE_PER_BASKET * (baskets - 1)) : 0;

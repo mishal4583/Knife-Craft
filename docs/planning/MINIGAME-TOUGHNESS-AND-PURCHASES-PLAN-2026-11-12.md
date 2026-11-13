@@ -3,7 +3,7 @@
 Request: "Players said: increase the toughness of the mini-games, like the count of ingredients, and plan it properly. To increase the ingredients in the
 mini-games the restaurant must also purchase a lot more, so raise the basic purchases and the requirement amounts. Plan it in detail and implement it."
 
-BUILT, UNCOMMITTED. Suites: `prep-batch-qa` (new) plus the updated ones listed in section 7.
+BUILT, pushed (a932aad). **Corrected the same day by the deep check (docs/HANDOFF.md, "Deep check 2"):** a shortage day now buys a big row in several purchases (section 4 said the player does it by hand: the plan buttons could not), one delivery is at most 3 baskets (section 4 said "2 baskets"; a two-day plan was up to 15), a walk-in's reserve is batched at the next level, and a full Basic fridge with no fridge money gets the ad / credit cover. Suites: `prep-batch-qa` (new) plus the updated ones listed in section 7.
 
 ## 1. What was wrong (measured on 2026-11-12, empty fridge, every level's own orders)
 

@@ -43,6 +43,8 @@ const memoryStore = new Map<string, string>();
   length: 0,
 } as Storage;
 
+import { runInspectorVisit } from "../src/game/restaurant/healthInspector.ts";
+import { buyNeededFridge } from "../src/game/restaurant/fridgeUpgradeNeed.ts";
 import { getCampaignRecipe } from "../src/game/recipes/campaignRecipes.ts";
 import { dailyPayroll, BUSINESS_STAFF_CATALOG } from "../src/game/business/businessStaff.ts";
 import { SPECIALIST_WAGE_FROM_ROLE } from "../src/game/restaurant/staffRequirements.ts";
@@ -193,6 +195,8 @@ export type SimOptions = {
    * them as soon as they are earned; false = one who never opens the tab.
    */
   collectAchievements?: boolean;
+  /** Deep check 2026-11-12: a player who never buys a bigger fridge (the study of whether the Basic fridge can block a service). */
+  noFridgeUpgrade?: boolean;
 };
 export type Stats = {
   levels: number;
@@ -207,6 +211,11 @@ export type Stats = {
   hires: number;
   specialists: number;
   fridgeUpgrades: number;
+  /** The levels whose check asked for a bigger fridge ("L23:soon!" = required). */
+  fridgeNeedAt: string[];
+  /** The health inspector's visits ("L13:A") and the fines paid. */
+  inspections: string[];
+  inspectionFines: number;
   fridgeOverByGrandma: number;
   guests: number;
   /** Of `guests`, the walk-ins (early game phase 3) and what they paid, in cents. */
@@ -432,6 +441,31 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
     if (d.ok) s = d.save;
     replan();
   }
+  // The bigger fridge the check asks for (fridgeUpgradeNeed.ts, developer 2026-11-13): a required purchase is made, as the game makes the
+  // player do before START. `noFridgeUpgrade` is the study of a wallet that never reaches it.
+  // The health inspector (healthInspector.ts): he is let in as the restaurant is, as START makes the player do.
+  if (plan.inspector?.status === "due") {
+    const visit = runInspectorVisit(s, level, n);
+    if (visit) {
+      s = persist(visit.save, stats, `${where} inspector`);
+      stats.inspections.push(`L${n}:${visit.visit.grade}`);
+      stats.inspectionFines += visit.visit.fine;
+      replan();
+    }
+  }
+  if (plan.fridgeNeed) {
+    stats.fridgeNeedAt.push(
+      `L${n}:${plan.fridgeNeed.reason}${plan.fridgeNeed.required ? "!" : ""}`,
+    );
+    if (plan.fridgeNeed.required && !opts.noFridgeUpgrade) {
+      const up = buyNeededFridge(s, plan.fridgeNeed, null);
+      if (up.ok) {
+        s = persist(up.save, stats, `${where} fridge`);
+        stats.fridgeUpgrades++;
+        replan();
+      }
+    }
+  }
   if (plan.check.applies && !plan.check.ready && profile === "diligent" && n >= MARKET_OPENS) {
     for (const row of plan.check.missingRows) {
       let bought = buyIngredient(s, row.ingredientId, row.buyUnits);
@@ -441,7 +475,7 @@ function playLevel(save: SaveData, n: number, opts: SimOptions, stats: Stats): S
         const next = REFRIGERATOR_CATALOG.filter((f) => getRefrigeratorCapacity(f.id) > cap).sort(
           (a, b) => getRefrigeratorCapacity(a.id) - getRefrigeratorCapacity(b.id),
         )[0];
-        if (next) {
+        if (next && !opts.noFridgeUpgrade) {
           const up = purchaseRefrigerator(s, next.id);
           if (up.ok) {
             s = appendLedgerEntry(up.save, "refrigerator-purchase", -up.price, next.id);
@@ -736,6 +770,9 @@ export function run(
     hires: 0,
     specialists: 0,
     fridgeUpgrades: 0,
+    fridgeNeedAt: [],
+    inspections: [],
+    inspectionFines: 0,
     fridgeOverByGrandma: 0,
     guests: 0,
     walkIns: 0,

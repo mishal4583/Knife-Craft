@@ -544,11 +544,11 @@ console.log("F. Finishing a board");
   }
   assert(
     n === 3 &&
-      last.bigHype === 10 &&
+      last.bigHype === 20 &&
       last.boards === 3 &&
       stockroomSortOf(cur).crate === undefined &&
       stockroomSortOf(cur).chain === undefined,
-    "F7: a 3-board delivery (9 sets at Level 6, 3 a board; Level 19 now holds 5 a board) with a star each pays the big-delivery bonus (+10 Hype) when the last board empties the crate",
+    "F7: a 3-board delivery (9 sets at Level 6, 3 a board; Level 19 now holds 5 a board) with a star each pays the big-delivery bonus (+20 Hype; +10 until the rule changed on 2026-11-13) when the last board empties the crate",
     [n, last],
   );
   const broke = finishRound(sB, { stars: 0, score: 50, stocked: roundFor(sB, 19)!.sets });
