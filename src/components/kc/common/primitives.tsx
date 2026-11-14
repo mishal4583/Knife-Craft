@@ -15,6 +15,8 @@ type BtnProps = {
   disabled?: boolean;
   className?: string;
   "data-testid"?: string;
+  /** The button still acts, but what it stands for is not available yet (the Pre-Service Check's START while something blocks it). */
+  "aria-disabled"?: boolean;
 };
 
 export function KButton({
@@ -26,6 +28,7 @@ export function KButton({
   disabled,
   className,
   "data-testid": testId,
+  "aria-disabled": ariaDisabled,
 }: BtnProps) {
   const base =
     "press relative inline-flex items-center justify-center gap-2 rounded-2xl font-ui font-extrabold tracking-wide select-none";
@@ -48,6 +51,7 @@ export function KButton({
     <button
       type="button"
       data-testid={testId}
+      aria-disabled={ariaDisabled || undefined}
       onClick={
         onClick
           ? () => {

@@ -251,6 +251,34 @@ check(
   { afterWrong, s2, stamps, timerBefore },
 );
 await shot(page, "insp-4-found");
+// I4b (developer 2026-11-13): the found piece keeps its stamp for a moment, then leaves the crate (it no longer covers what lay behind it).
+const goneNow = (id) =>
+  page.evaluate((i) => {
+    const el = document.querySelector(`[data-testid="insp-item"][data-id="${i}"]`);
+    const cs = el ? getComputedStyle(el) : null;
+    return el
+      ? {
+          gone: el.dataset.gone,
+          opacity: cs.opacity,
+          events: cs.pointerEvents,
+          found: el.dataset.found,
+        }
+      : null;
+  }, id);
+const atOnce = await goneNow(defect.id);
+await sleep(1300);
+const later = await goneNow(defect.id);
+check(
+  "I4b a found piece leaves the crate after its stamp: faded out, no longer takes taps, still counted as found",
+  atOnce?.gone === "0" &&
+    later?.gone === "1" &&
+    Number(later.opacity) === 0 &&
+    later.events === "none" &&
+    later.found === "1" &&
+    (await state(page))?.found === 1,
+  { atOnce, later },
+);
+await shot(page, "insp-4b-gone");
 
 // I5: drag aside
 list = await items(page);
@@ -364,6 +392,33 @@ check(
   chipBack && !(skipped?.business?.deliveryInspection?.rounds > 0),
   skipped?.business?.deliveryInspection,
 );
+
+// I9r (developer 2026-11-14: no restart button in the pause card): the same crate again from the top, nothing saved
+await boot(page, saveAt(3));
+await openInventory(page);
+await openGame(page);
+await start(page);
+await tap(page, '[data-testid="insp-pause"]');
+const hasRestartI = await page.evaluate(
+  () => !!document.querySelector('[data-testid="insp-restart"]'),
+);
+await tap(page, '[data-testid="insp-restart"]');
+await sleep(500);
+const afterRi = await page.evaluate(() => ({
+  start: !!document.querySelector('[data-testid="insp-start"]'),
+  paused: !!document.querySelector('[data-testid="insp-paused"]'),
+}));
+const saveRi = await readSave(page);
+check(
+  "I9r Restart in the pause card: the same crate from the top (the Start button is back, the pause card is gone); no round counted",
+  hasRestartI &&
+    afterRi.start &&
+    !afterRi.paused &&
+    !(saveRi?.business?.deliveryInspection?.rounds > 0),
+  { hasRestartI, afterRi },
+);
+await tap(page, '[data-testid="insp-pause"]'); // Back before Start: leave the game for the next block
+await sleep(600);
 
 // I10: 320 x 568
 await page.setViewport({ width: 320, height: 568, deviceScaleFactor: 1 });

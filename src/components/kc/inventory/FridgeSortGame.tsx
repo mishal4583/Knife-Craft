@@ -505,8 +505,9 @@ export function FridgeSortGame({
     if (phaseRef.current === "paused") setPhaseBoth("playing");
   };
 
-  const again = () => {
-    // A practice round on the same crate: scores and shows stars, gives and keeps nothing.
+  // Restart (from the pause card): the same crate again from the top. `asPractice` is true for "Play again" (no reward) and false for a restart in
+  // the round itself, which has taken nothing yet (only the end of a round pays).
+  const restart = (asPractice: boolean) => {
     const r = round;
     if (!r) return;
     dropsRef.current = [];
@@ -525,9 +526,10 @@ export function FridgeSortGame({
     setHover(null);
     setHint(null);
     setPops([]);
-    setPractice(true);
+    if (asPractice) setPractice(true);
     setPhaseBoth("ready");
   };
+  const again = () => restart(true);
   const nextCrate = () => {
     const next = roundFor(save, playerLevel);
     dropsRef.current = [];
@@ -1064,6 +1066,9 @@ export function FridgeSortGame({
             <div className="mt-3 grid gap-2">
               <SortButton onClick={resume} testId="sort-resume">
                 Resume
+              </SortButton>
+              <SortButton quiet testId="sort-restart" onClick={() => restart(false)}>
+                ↻ Restart
               </SortButton>
               <SortButton
                 quiet

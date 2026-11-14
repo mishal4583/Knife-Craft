@@ -125,10 +125,7 @@
   -webkit-mask-image: linear-gradient(to bottom, #000 86%, transparent 100%);
   mask-image: linear-gradient(to bottom, #000 86%, transparent 100%);
 }
-.paige-cutout[data-paige-art="new"] {
-  -webkit-mask-image: none;
-  mask-image: none;
-}
+/* The new cutouts also end at the hips (2026-11-13): off the screen's edge the same fade hides the cut; at the bottom edge the rule below removes it. */
 /* Paige rises from the bottom edge of the screen (developer 2026-11-11: "not from the middle, let her pop up on the bottom"): no fade, the edge cuts her. */
 .paige-stage[data-edge="bottom"] {
   --paige-h: clamp(290px, 56vh, 520px);

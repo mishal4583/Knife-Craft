@@ -308,6 +308,27 @@ export function PreServiceCheck({
     (!!stock && (!stock.ready || stock.rows.some((r) => r.expired > 0 && r.usable < r.needed))) ||
     (!!sup && !sup.ready) ||
     (!!kit && !kit.ready);
+  /**
+   * START is never a dead button (developer 2026-11-13, a player's review): while something blocks it, a tap takes the player to what blocks
+   * it. Missing food the wallet and the fridge can take: the Market's plan. Anything else: its section of this sheet.
+   */
+  const stockBlocks =
+    !!stock && (!stock.ready || stock.rows.some((r) => r.expired > 0 && r.usable < r.needed));
+  const blockedAction: (() => void) | null = canStart
+    ? null
+    : stockBlocks
+      ? canBuy && onBuyAllInMarket && stock && !stock.ready && stock.affordable && !fridgeShort
+        ? onBuyAllInMarket
+        : () => jumpToRoutineSection("psc-ingredients")
+      : sup && !sup.ready
+        ? () => jumpToRoutineSection("psc-supplies")
+        : kit && !kit.ready
+          ? () => jumpToRoutineSection("psc-tools")
+          : fridgeNeed?.required
+            ? () => jumpToRoutineSection("psc-fridge-need")
+            : inspector?.status === "due"
+              ? () => jumpToRoutineSection("psc-inspector")
+              : null;
   return (
     <div
       className="absolute inset-0 z-40 flex items-end justify-center"
@@ -1272,7 +1293,14 @@ export function PreServiceCheck({
                   <PointerHand size={40} />
                 </span>
               ) : null}
-              <KButton full className="min-h-12" disabled={!canStart} onClick={onStart}>
+              <KButton
+                full
+                className="min-h-12"
+                data-testid="psc-start"
+                aria-disabled={!canStart}
+                disabled={!canStart && !blockedAction}
+                onClick={canStart ? onStart : (blockedAction ?? onStart)}
+              >
                 {canStart
                   ? opening
                     ? "🚪 Open restaurant"

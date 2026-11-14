@@ -170,13 +170,13 @@ try {
     () => document.querySelectorAll('[data-testid="stock-slip"] [data-goods-art]').length,
   );
   check(
-    "T2 the game opens with the how-to card, then ready: 3 sets = 9 goods, 5+ cubbies, a slip of 3 products, and the clock waits for the first move",
+    "T2 the game opens with the how-to card, then ready: 3 sets = 9 goods, 5+ cubbies, no delivery slip (removed 2026-11-13: the shelves have its room), and the clock waits for the first move",
     guideShown &&
       s2?.phase === "ready" &&
       s2.sets === 3 &&
       s2.pieces === 9 &&
       s2.cubbies >= 5 &&
-      slip === 3 &&
+      slip === 0 &&
       s2.timer === s2b?.timer,
     { s2, s2b, slip },
   );
@@ -290,6 +290,40 @@ try {
     dragged && startedFrom !== null && endedAt !== startedFrom && s4?.phase === "playing",
     { startedFrom, endedAt, phase: s4?.phase },
   );
+
+  // ---- T7r (developer 2026-11-14: no restart button in the pause card) ----
+  await tap(page, '[data-testid="stock-pause"]');
+  await sleep(300);
+  const hasRestartS = await page.evaluate(
+    () => !!document.querySelector('[data-testid="stock-restart"]'),
+  );
+  await tap(page, '[data-testid="stock-restart"]');
+  await sleep(400);
+  const afterRs = await state(page);
+  const hintBack = await page.evaluate(
+    () => !!document.querySelector('[data-testid="stock-hint"]'),
+  );
+  const saveRs = await readSave(page);
+  check(
+    "T7r Restart in the pause card: the same board from the top (ready, overlay gone); nothing paid, the crate still waits",
+    hasRestartS &&
+      afterRs?.phase === "ready" &&
+      hintBack &&
+      !(await page.evaluate(() => !!document.querySelector('[data-testid="stock-paused"]'))) &&
+      saveRs.business.stockroomSort?.crate?.length === 3 &&
+      !(saveRs.business.secondFloor?.hype > 0),
+    { hasRestartS, phase: afterRs?.phase },
+  );
+  // back to playing for T8 (the move starts the clock again)
+  await tap(page, '[data-testid="stock-hint"]');
+  const hv2 = await page.evaluate(() => {
+    const p = document.querySelector('[data-hinted="1"]');
+    const c = document.querySelector('[data-hint-target="1"]');
+    return p && c
+      ? { piece: `[data-uid="${p.dataset.uid}"]`, cubby: `[data-cubby="${c.dataset.cubby}"]` }
+      : null;
+  });
+  if (hv2) await dragTo(page, hv2.piece, hv2.cubby);
 
   // ---- T8: skip keeps the crate; the Prep Cook clears it ----
   await tap(page, '[data-testid="stock-pause"]');
@@ -499,8 +533,60 @@ try {
       /3 left/.test(t50.undo ?? "") &&
       t80.locked >= 1 &&
       t80.wrapped >= 1 &&
-      t80.cubbies <= 10,
+      t80.cubbies <= 12,
     { t50, t80 },
+  );
+
+  // ---- T13b (developer 2026-11-13: more shelves and products as the levels go up): the biggest board, 12 products at Level 80 ----
+  const TWELVE = ["tongs", "ladles", "whisks", "peelers", "graters", "skimmers"].map((id) => ({
+    id,
+    sets: 2,
+  }));
+  const bigAt = async (w, h) => {
+    // Opened at the test size, then the screen is resized (the chip is found by its place on the normal screen).
+    await page.setViewport({ width: 430, height: 900, deviceScaleFactor: 1 });
+    await boot(page, saveAt(80, {}, { stockroomSort: { crate: TWELVE, seed: 6, rounds: 1 } }));
+    await openSupplies(page);
+    // The chip, or (when the routine card is on top) the routine's own "Stock the shelves" step, as a player taps it.
+    if (
+      !(await page.evaluate(() => !!document.querySelector('[data-testid="stockroom-sort-chip"]')))
+    )
+      await page.evaluate(() =>
+        document.querySelector('[data-testid="flow-step-shelves"]')?.click(),
+      );
+    await sleep(600);
+    await openGame(page);
+    await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
+    await sleep(700);
+    const m = await page.evaluate(() => {
+      const unit = document.querySelector('[data-testid="stock-unit"]');
+      const box = unit?.parentElement;
+      const cub = document.querySelector("[data-cubby]")?.getBoundingClientRect();
+      return {
+        cubbies: document.querySelectorAll("[data-cubby]").length,
+        pieces: document.querySelectorAll("[data-piece]").length,
+        hidden: document.querySelectorAll("[data-hidden-piece]").length,
+        scrolls: box ? box.scrollHeight > box.clientHeight + 2 : null,
+        slot: cub ? Math.round(cub.width / 3) : 0,
+        sideways: document.documentElement.scrollWidth > window.innerWidth + 1,
+      };
+    });
+    await shot(page, `stockroomsort-big-${w}`);
+    return m;
+  };
+  const big390 = await bigAt(390, 844);
+  const big320 = await bigAt(320, 568);
+  await page.setViewport({ width: 430, height: 900, deviceScaleFactor: 1 });
+  check(
+    "T13b Level 80, 12 products: 12 cubbies (six rows), the whole unit fits a 390 x 844 screen without scrolling, and a piece stays at least 44 px wide on 320 x 568 (it scrolls there)",
+    big390.cubbies === 12 &&
+      big390.hidden >= 6 &&
+      big390.scrolls === false &&
+      big320.slot >= 44 &&
+      !big390.sideways &&
+      !big320.sideways &&
+      big390.slot >= 46,
+    { big390, big320 },
   );
 
   // ---- T14: a long delivery is 2 boards, with a bonus for finishing both ----

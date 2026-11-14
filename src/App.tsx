@@ -166,6 +166,9 @@ import {
 } from "@/game/business/deliveryFlow";
 import { newStepSkipRewardId } from "@/game/ads/stepSkipAd";
 import { ServiceGateSheet } from "@/components/kc/business/DeliveryRoutine";
+import { PREP_COOK_STEPS } from "@/game/business/deliveryFlow";
+import { staffHireFrom } from "@/game/restaurant/staffRequirements";
+import { dailyPayroll } from "@/game/business/businessStaff";
 import { featuresOpeningAt } from "@/game/config/featureUnlocks";
 import { chestAt, chestCelebration } from "@/game/restaurant/milestoneChests";
 import { CelebrationCard } from "@/components/kc/common/CelebrationCard";
@@ -271,6 +274,12 @@ import {
   type AssistantBeat,
 } from "@/game/restaurant/assistant";
 import { AssistantHost, type AssistantReplay } from "@/components/kc/assistant/AssistantHost";
+import {
+  PRAISE_STARS,
+  isPraiseId,
+  praiseBeat,
+  type PraiseGame,
+} from "@/game/restaurant/miniGamePraise";
 import { AssistantProvider, type AssistantApi } from "@/components/kc/assistant/AssistantContext";
 import { PaigeNotebook } from "@/components/kc/assistant/PaigeNotebook";
 import { openStaffFor } from "@/components/kc/staffFocus";
@@ -827,6 +836,9 @@ export function App() {
   // A moment worth feeling (game/restaurant/celebrations.ts): the ranking climbed, popularity rose, a spotless run.
   const [celebration, setCelebration] = useState<Celebration | null>(null);
   const [paigeReplay, setPaigeReplay] = useState<AssistantReplay | null>(null);
+  // Paige's praise for a perfect mini-game round (restaurant/miniGamePraise.ts): held until the player is back on a home screen, then said once.
+  const [paigePraise, setPaigePraise] = useState<AssistantBeat | null>(null);
+  const praiseRun = useRef({ streak: 0, given: 0 });
   const businessSessionRef = useRef<ServiceSession | null>(null);
   // One id per play session (level/daily/endless start) + whether it reached a
   // completion — so an interstitial only follows a finished session, never a
@@ -1177,6 +1189,25 @@ export function App() {
   }
 
   /**
+   * A REAL mini-game round finished (practice rounds never reach here): three stars earn Paige's praise on the next home screen
+   * (restaurant/miniGamePraise.ts); anything less ends the run. She only praises when she is hired and her tips are on. No money, no save field.
+   */
+  function notePraise(game: PraiseGame, stars: number) {
+    const run = praiseRun.current;
+    if (stars < PRAISE_STARS) {
+      run.streak = 0;
+      return;
+    }
+    run.streak += 1;
+    const cur = saveRef.current;
+    if (!RESTAURANT_MODE || !cur || !assistantHired(cur) || assistantOf(cur).tipsOff) return;
+    const beat = praiseBeat({ game, stars, streak: run.streak, given: run.given });
+    if (!beat) return;
+    run.given += 1;
+    setPaigePraise(beat);
+  }
+
+  /**
    * Fridge Sort (business/fridgeSort.ts): a round finished, was skipped, or the Prep Cook put the crate away. Applied to the LATEST save so a
    * double tap cannot pay twice. It moves no money and no stock; the only effects are the sort state, stars and Hype.
    */
@@ -1205,6 +1236,7 @@ export function App() {
     const out = finishRound(current, action.outcome);
     // The baskets that left the crate are no longer "checked" (the next basket has to be checked itself).
     persist(shiftInspected(current, out.save, level));
+    notePraise("fridge-sort", action.outcome.stars);
     sendAnalyticsEvent("fridge_sort_finished", {
       level,
       stars: action.outcome.stars,
@@ -1248,6 +1280,7 @@ export function App() {
     }
     const out = finishInspectionRound(current, action.outcome);
     persist(out.save);
+    notePraise("inspection", action.outcome.stars);
     sendAnalyticsEvent("delivery_inspection_finished", {
       level,
       stars: action.outcome.stars,
@@ -1291,6 +1324,7 @@ export function App() {
     }
     const out = finishSauceRound(current, action.outcome);
     persist(out.save);
+    notePraise("sauce", action.outcome.stars);
     sendAnalyticsEvent("sauce_station_finished", {
       level,
       sauce: action.outcome.sauceId,
@@ -1358,6 +1392,7 @@ export function App() {
     }
     const out = finishStockroomRound(current, action.outcome);
     persist(out.save);
+    notePraise("stockroom", action.outcome.stars);
     sendAnalyticsEvent("stockroom_sort_finished", {
       level,
       stars: action.outcome.stars,
@@ -1479,6 +1514,8 @@ export function App() {
     if (result.save !== save) {
       persist(result.save);
       if (result.cleaned.length > 0) AudioManager.playSfx("squeak");
+      if (action.kind === "check" && result.checkEffects)
+        notePraise("fridge-check", action.outcome.stars);
     }
     return result;
   }
@@ -1822,6 +1859,40 @@ export function App() {
    * Skips one step of the delivery routine for a rewarded ad. The step is done exactly as the Prep Cook would (no stars, Hype or pins), only on
    * Bridge's `rewarded` state, against the LATEST save, at most SKIPS_PER_DAY a day. It moves no money, no stock and no ledger entry.
    */
+  /** One step of the delivery routine done as the Prep Cook does it (no stars, Hype or pins; no money, stock or ledger entry). */
+  function routineStepDone(latest: SaveData, stepId: string): SaveData {
+    const level = restaurantLevelOf(latest.levelProgress);
+    if (stepId === "inspect") return autoInspect(latest);
+    if (stepId === "unpack") return shiftInspected(latest, autoPutAway(latest), level);
+    if (stepId === "shelves") return autoStock(latest);
+    if (stepId === "sauce") return coverSauceToday(latest);
+    let next = latest;
+    if (stepId === "fridge-check")
+      for (const kind of ["spoiled-out", "wrap-fridge"] as const) {
+        const r = cleanTask(next, kind);
+        if (r.ok) next = r.save;
+      }
+    return next;
+  }
+
+  /**
+   * "Before you open" → the hired Prep Cook does the next step (developer 2026-11-13: a player who does not want to play a mini-game). The same
+   * as his button inside each game; the Fridge Check is not his (the Cleaner's chore).
+   */
+  function prepCookDoesStep(stepId: string): boolean {
+    const latest = saveRef.current;
+    if (!latest || !latest.business.staff.hiredRoles.includes("prep-cook")) return false;
+    if (!PREP_COOK_STEPS.includes(stepId)) return false;
+    const next = routineStepDone(latest, stepId);
+    if (next === latest) return false;
+    persist(next);
+    sendAnalyticsEvent("routine_step_prep_cook", {
+      step: stepId,
+      level: restaurantLevelOf(latest.levelProgress),
+    });
+    return true;
+  }
+
   async function skipRoutineStep(stepId: string): Promise<"ok" | "no"> {
     if (stepSkipBusyRef.current) return "no";
     const first = saveRef.current;
@@ -1833,18 +1904,7 @@ export function App() {
       if (ad.status !== "rewarded") return "no";
       const latest = saveRef.current;
       if (!latest || skipsLeft(latest) === 0) return "no";
-      const level = restaurantLevelOf(latest.levelProgress);
-      let next: SaveData = latest;
-      if (stepId === "inspect") next = autoInspect(latest);
-      else if (stepId === "unpack") next = shiftInspected(latest, autoPutAway(latest), level);
-      else if (stepId === "shelves") next = autoStock(latest);
-      else if (stepId === "sauce") next = coverSauceToday(latest);
-      else if (stepId === "fridge-check") {
-        for (const kind of ["spoiled-out", "wrap-fridge"] as const) {
-          const r = cleanTask(next, kind);
-          if (r.ok) next = r.save;
-        }
-      }
+      const next = routineStepDone(latest, stepId);
       if (next === latest) return "no";
       persist(withSkipUsed(next));
       return "ok";
@@ -4465,7 +4525,10 @@ export function App() {
   // PAIGE (restaurant/assistant.ts, components/kc/assistant): the tip the rules offer now, shown only at a calm moment on the two home
   // screens, never over the guide card or Grandma's pointer, one per screen visit (the host).
   const paigeCandidate: AssistantBeat | null =
-    RESTAURANT_MODE && save ? assistantBeatFor(save) : null;
+    RESTAURANT_MODE && save
+      ? // Her praise waits for the kitchen home page itself (not the map, where the Fridge Check opens): developer 2026-11-14.
+        ((screen === "kitchen" ? paigePraise : null) ?? assistantBeatFor(save))
+      : null;
   const paigeCalm =
     RESTAURANT_MODE &&
     !!save &&
@@ -4483,6 +4546,15 @@ export function App() {
   const paigeSeen = (id: string) => {
     const cur = saveRef.current;
     if (!cur) return;
+    // Her praise is said once and never goes in the notebook or the saved list of tips.
+    if (isPraiseId(id)) {
+      setPaigePraise(null);
+      sendAnalyticsEvent("assistant_praise_shown", {
+        game: id.split(":")[1] ?? "",
+        level: restaurantLevelOf(cur.levelProgress),
+      });
+      return;
+    }
     const next = markAssistantSeen(cur, id);
     if (next === cur) return;
     persist(next);
@@ -4954,6 +5026,14 @@ export function App() {
         <ServiceGateSheet
           gate={serviceGate(save, restaurantLevelOf(save.levelProgress))}
           hasPrepCook={save.business.staff?.hiredRoles?.includes("prep-cook") ?? false}
+          canHirePrepCook={
+            restaurantLevelOf(save.levelProgress) >= staffHireFrom("prep-cook") &&
+            !save.business.staff?.hiredRoles?.includes("prep-cook")
+          }
+          prepCookWage={dailyPayroll(["prep-cook"])}
+          prepCookSteps={PREP_COOK_STEPS}
+          onHirePrepCook={() => hireStaff("prep-cook").ok}
+          onPrepCookStep={prepCookDoesStep}
           skipsLeft={adBonusApi.skipStepsLeft()}
           onSkip={adBonusApi.skipStep}
           go={(to) => {

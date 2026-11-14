@@ -79,11 +79,14 @@ export function FridgeCheckGame(props: {
 }) {
   // "Play again" replays the same night with no reward: a new round with its own state.
   const [attempt, setAttempt] = useState(0);
+  /** Restart from the pause card: the same night's deck from the top (no new attempt, so the same cards). */
+  const [restarts, setRestarts] = useState(0);
   const [practice, setPractice] = useState(props.initialPractice ?? false);
   return (
     <Round
-      key={`${props.stage}-${attempt}`}
+      key={`${props.stage}-${attempt}-${restarts}`}
       attempt={attempt}
+      onRestart={() => setRestarts((n) => n + 1)}
       {...props}
       practice={practice}
       onGuideSeen={() => props.onGuideSeen(props.stage)}
@@ -107,6 +110,7 @@ function Round({
   onClose,
   onNext,
   onAgain,
+  onRestart,
   onGuideSeen,
 }: {
   /** 0 for the night's own deck; a later "Play again" deals a new one. */
@@ -121,6 +125,7 @@ function Round({
   onClose: () => void;
   onNext: (stage: CheckStage) => void;
   onAgain: () => void;
+  onRestart: () => void;
   onGuideSeen: () => void;
 }) {
   const tier = checkTierAt(level);
@@ -802,6 +807,9 @@ function Round({
             <div className="mt-3 grid gap-2">
               <SortButton onClick={resume} testId="fc-resume">
                 Resume
+              </SortButton>
+              <SortButton quiet testId="fc-restart" onClick={onRestart}>
+                ↻ Restart
               </SortButton>
               <SortButton
                 quiet

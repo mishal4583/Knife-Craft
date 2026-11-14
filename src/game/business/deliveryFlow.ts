@@ -125,6 +125,9 @@ export function serviceGate(save: SaveData, level: number): ServiceGate {
 // ── The rewarded skip (developer 2026-11-11: "if the player does not want to play them, let them skip by watching an ad") ──
 
 /** Steps a rewarded ad may skip in one business day. */
+/** The steps a hired Prep Cook does for the player (the Fridge Check is the Cleaner's chore). */
+export const PREP_COOK_STEPS: readonly string[] = ["inspect", "unpack", "shelves", "sauce"];
+
 export const SKIPS_PER_DAY = 3;
 
 /** How many skips are left today. */

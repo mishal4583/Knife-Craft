@@ -61,10 +61,11 @@ console.log("1. The restroom picture stays still");
   const src = read("src/components/kc/business/AreaCleaningPrototype.tsx");
   assert(
     /data-testid="cleaning-hint-slot"/.test(src) &&
-      /mb-1 h-8/.test(src) &&
+      // Changed 2026-11-13 (developer: less empty area, a bigger room): the hint no longer has its own 32 px row; it shares the status line's fixed slot.
+      !/mb-1 h-8/.test(src) &&
       /mt-1 flex h-5 items-center justify-center overflow-hidden whitespace-nowrap/.test(src) &&
       !/min-h-6 items-center justify-center gap-1/.test(src),
-    "1a: the tool hint has a fixed 32 px slot and the status line a fixed single line, so the footer never changes height and the room never resizes",
+    "1a: the tool hint and the status share ONE fixed single line, so the footer never changes height and the room never resizes",
   );
 }
 

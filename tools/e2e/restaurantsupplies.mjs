@@ -118,7 +118,9 @@ const sheet = () =>
         status: r.getAttribute("data-bottle-status"),
         text: r.innerText.replace(/\s+/g, " "),
       })),
-      startDisabled: start ? start.disabled : null,
+      startDisabled: start
+        ? start.disabled || start.getAttribute("aria-disabled") === "true"
+        : null,
       text: el.innerText.replace(/\s+/g, " "),
     };
   });

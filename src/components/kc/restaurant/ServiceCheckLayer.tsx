@@ -12,6 +12,8 @@ import { SinkWash } from "./SinkWash";
 import type { SaveData } from "@/game/SaveManager";
 import { pendingCashTotal } from "@/game/economy/pendingCash";
 import { openStaffFor } from "../staffFocus";
+import { lockedScreenHint } from "@/game/restaurant/firstLevels";
+import { teamOffers } from "@/game/restaurant/diningHire";
 import type { ScreenId } from "@/components/kc/data";
 import { getLevel } from "@/game/levels/LevelManager";
 import { dayStockFor, servicePlanFor } from "@/game/restaurant/preServiceCheck";
@@ -215,12 +217,17 @@ export function ServiceCheckLayer({
       dayStock={dayStockFor(save, plan.level)}
       onRestockDay={(id, units) => openMarketIngredients(go, id, units)}
       staff={plan.staff}
-      onHireStaff={() =>
-        openStaffFor(
-          go,
-          plan.staff.filter((r) => !r.met).map((r) => r.id),
-        )
-      }
+      onHireStaff={() => {
+        // The Server or the Cashier put off in the first service, while the Staff screen is still locked (it answered "opens in 3
+        // services", a dead end at Level 2): the Market's "Hire your team" card hires them (TeamHireCard, from Level 2).
+        if (lockedScreenHint("business-staff", n) && teamOffers(save, n).length > 0)
+          go("shop-ingredients");
+        else
+          openStaffFor(
+            go,
+            plan.staff.filter((r) => !r.met).map((r) => r.id),
+          );
+      }}
       fridge={isSystemLive("fridge-freshness", n) ? fridgeUsage(save) : null}
       measure={measureOf(save)}
       onRestockFridge={(id, units) => openMarketIngredients(go, id, units)}

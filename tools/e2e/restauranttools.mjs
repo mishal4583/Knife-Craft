@@ -106,7 +106,9 @@ const sheet = () =>
         // textContent: the ready tools fold under "✓ N tools ready" since 2026-10-23.
         el.querySelector('[data-testid="psc-tools-ready"]')?.textContent.replace(/\s+/g, " ") ?? "",
       startText: start?.textContent.trim() ?? null,
-      startDisabled: start ? start.disabled : null,
+      startDisabled: start
+        ? start.disabled || start.getAttribute("aria-disabled") === "true"
+        : null,
     };
   });
 // A row's Buy (its ⓘ, since the 2026-10-16 copy sweep, is the row's first button).

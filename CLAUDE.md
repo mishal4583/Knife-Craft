@@ -274,6 +274,7 @@ Release zip: the CONTENTS of `dist/` →
 - Use the existing primitives and look: warm painted kitchens, wood and
   paper, Fraunces / Nunito / Caveat bundled locally.
 - Touch targets ≥ 48 px.
+- **A new mini-game** (developer 2026-11-14, `docs/planning/MINIGAME-PRODUCTION-RULES-2026-11-14.md`): the core action with plain art first; no art prompts, rewards or ads until the developer has played it on a real phone and it feels good; every level solvable by construction (QA proves it); a mistake never ends the round and "Try again" is one tap; store text and screenshots updated in the same release.
 - **Short game copy** (developer 2026-10-16): a few words, icons and numbers
   (`StatChip`, `Points`). Any longer explanation goes behind an ⓘ
   (`InfoTip`, `kc/common/InfoTip.tsx`); `ui-copy-qa` guards it.

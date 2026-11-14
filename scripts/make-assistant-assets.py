@@ -40,7 +40,9 @@ PORTRAITS = os.path.join(ROOT, "public", "business", "staff-portraits")
 
 LO, HI = 200, 250  # solid pieces: the glow (alpha < LO) goes, the piece (alpha > HI) is fully opaque
 
-POSE_SCALE = 0.52  # one scale for every pose, so she keeps her size from pose to pose
+# One scale for every pose, so she keeps her size from pose to pose. 0.52 = the small FALLBACK poses (252 x 324): since 2026-11-13 the game draws the large
+# `cutout-<pose>.webp` files (scripts/make-paige-cutouts.py) and falls back to these only when a cutout cannot load, so they stay small.
+POSE_SCALE = 0.52
 
 POSES_1 = ["wave", "explain", "point", "tip", "cheer", "thumbs"]
 POSES_2 = ["oops", "surprised", "think", "sorry", "clap", "clipboard"]

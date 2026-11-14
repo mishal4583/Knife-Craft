@@ -228,6 +228,25 @@ check(
 await openGame(page);
 await start(page);
 
+// S2c (developer 2026-11-14: no restart button in the pause card): the same sauce again from the top, no round counted
+await tap(page, '[data-testid="sauce-pause"]');
+await sleep(300);
+const hasRestartSa = await page.evaluate(
+  () => !!document.querySelector('[data-testid="sauce-restart"]'),
+);
+await tap(page, '[data-testid="sauce-restart"]');
+await sleep(600);
+const afterRsa = await root(page);
+const savedRsa = await readSave(page);
+check(
+  "S2c Restart in the pause card: the same sauce from the top (ready, Start is back); no round counted",
+  hasRestartSa &&
+    afterRsa?.phase === "ready" &&
+    (savedRsa?.business?.sauceStation?.rounds ?? 0) === 0,
+  { hasRestartSa, phase: afterRsa?.phase },
+);
+await start(page);
+
 // S3: the mixing stage
 const s1 = await root(page);
 const tiles = s1?.recipe?.split(",").map((p) => p.split(":")[0]) ?? [];
@@ -253,6 +272,21 @@ check(
   { phase: s1?.phase, tiles: s1?.tiles, haveAll },
 );
 await shot(page, "sauce-3-mix");
+// S3b (developer 2026-11-13): confused for a few seconds, the game lights up WHAT to pour: one recipe item glows with a pointing hand.
+const hintBefore = await page.evaluate(() => document.querySelectorAll('[data-hint="1"]').length);
+await sleep(4800);
+const hintOn = await page.evaluate(() => ({
+  ids: [...document.querySelectorAll('[data-testid^="sauce-pantry-"][data-hint="1"]')].map((e) =>
+    e.dataset.testid.replace("sauce-pantry-", ""),
+  ),
+  hand: !!document.querySelector('[data-testid="sauce-hint-hand"]'),
+}));
+await shot(page, "sauce-3b-hint");
+check(
+  "S3b nothing done for 4 s: exactly one wanted ingredient glows with the pointing hand (none before)",
+  hintBefore === 0 && hintOn.ids.length === 1 && tiles.includes(hintOn.ids[0]) && hintOn.hand,
+  { hintBefore, hintOn, tiles },
+);
 
 // S4: scoops, undo, cap
 const first = tiles[0];

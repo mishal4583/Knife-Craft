@@ -322,6 +322,39 @@ try {
     { bought, fs: afterBuy.business.fridgeSort, chipInMarket },
   );
 
+  // ---- S9r (developer 2026-11-14: no restart button in the pause card) ----
+  await boot(page, saveAt(20));
+  await openInventory(page);
+  await openGame(page);
+  const timer0 = await page.evaluate(
+    () => document.querySelector('[data-testid="sort-timer"]')?.textContent,
+  );
+  await tap(page, '[data-testid="sort-token-tomato"]');
+  await tap(page, `[data-testid="sort-target-${WHERE.tomato}"]`);
+  await sleep(1300);
+  await tap(page, '[data-testid="sort-pause"]');
+  await sleep(300);
+  const hasRestart = await page.evaluate(
+    () => !!document.querySelector('[data-testid="sort-restart"]'),
+  );
+  await tap(page, '[data-testid="sort-restart"]');
+  await sleep(400);
+  const afterR = await state(page);
+  const timerR = await page.evaluate(
+    () => document.querySelector('[data-testid="sort-timer"]')?.textContent,
+  );
+  const saveR = await readSave(page);
+  check(
+    "S9r Restart in the pause card: the same crate from the top (ready, full clock, tomato back in the tray); nothing paid, nothing lost",
+    hasRestart &&
+      afterR?.phase === "ready" &&
+      timerR === timer0 &&
+      (await page.evaluate(() => !!document.querySelector('[data-testid="sort-token-tomato"]'))) &&
+      saveR.business.fridgeSort?.crate?.length === 6 &&
+      !(saveR.business.secondFloor?.hype > 0),
+    { hasRestart, phase: afterR?.phase, timer0, timerR },
+  );
+
   // ---- S9: skip keeps the crate; the Prep Cook clears it ----
   await boot(page, saveAt(20));
   await openInventory(page);

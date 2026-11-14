@@ -3607,7 +3607,7 @@ export class PreparationScene extends Phaser.Scene {
         const r = wipeDebris(c.last.u, c.last.v, uv.u, uv.v);
         c.lastRubAt = now;
         this.debrisDirty = true;
-        if (r.touched > 0 || moved > 0.01) AudioManager.playScrub("wet");
+        // No scrub noise per stroke (developer 2026-11-13: "tak tak tak", like knocking on the board); the glint and its chime stay.
         // A patch of the film wiped clean: a little glint where it was.
         if (r.patches > 0) {
           this.spawnSparkle(c.x + Phaser.Math.Between(-20, 20), c.y + Phaser.Math.Between(-6, 6));

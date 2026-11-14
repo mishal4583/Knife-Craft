@@ -54,6 +54,9 @@ const HINT_AFTER_MS = 12_000;
 
 type Note = { text: string; tone: "good" | "bad" | "info" };
 
+/** How long a found piece keeps its NOT FRESH stamp before it is taken out of the crate. */
+const FOUND_LEAVES_MS = 650;
+
 /** How much duller and browner a spoiled ingredient looks all over: a big defect a lot, a tiny one not at all. */
 const DULL: Record<string, number> = { big: 0.5, medium: 0.36, small: 0.2, tiny: 0 };
 function dullness(it: CrateItem): string | undefined {
@@ -77,13 +80,16 @@ export function DeliveryInspectionGame(props: {
 }) {
   // "Play again" and "Next inspection" start a new round with its own state.
   const [attempt, setAttempt] = useState(0);
+  /** Restart from the pause card: the same crate from the top (no new attempt, so the same items). */
+  const [restarts, setRestarts] = useState(0);
   const [practice, setPractice] = useState(false);
   return (
     <Round
-      key={attempt}
+      key={`${attempt}-${restarts}`}
       {...props}
       attempt={attempt}
       forcePractice={practice}
+      onRestart={() => setRestarts((n) => n + 1)}
       onAgain={() => {
         setPractice(true);
         setAttempt((n) => n + 1);
@@ -107,6 +113,7 @@ function Round({
   attempt,
   forcePractice,
   onAgain,
+  onRestart,
   onNext,
 }: {
   save: SaveData;
@@ -119,6 +126,7 @@ function Round({
   attempt: number;
   forcePractice: boolean;
   onAgain: () => void;
+  onRestart: () => void;
   onNext: () => void;
 }) {
   const tier = tierAt(level);
@@ -140,6 +148,8 @@ function Round({
   const [lift, setLift] = useState<Record<number, number>>({});
   const [found, setFound] = useState<ReadonlySet<number>>(new Set());
   const [cleared, setCleared] = useState<ReadonlySet<number>>(new Set());
+  /** Found bad food that has left the crate (developer 2026-11-13): the stamp shows for a moment, then the piece is taken out, so what lay behind it is in view. */
+  const [gone, setGone] = useState<ReadonlySet<number>>(new Set());
   const [shake, setShake] = useState<number | null>(null);
   const [note, setNote] = useState<Note | null>(null);
   const [phase, setPhase] = useState<Phase>("ready");
@@ -269,6 +279,7 @@ function Round({
       const nextFound = new Set(foundRef.current).add(id);
       foundRef.current = nextFound;
       setFound(nextFound);
+      window.setTimeout(() => setGone((g) => new Set(g).add(id)), FOUND_LEAVES_MS);
       setLive((s) => s + pts);
       lastFind.current = 0;
       setHint(null);
@@ -360,6 +371,7 @@ function Round({
 
   const itemView = (it: CrateItem, lens: boolean) => {
     const isFound = found.has(it.id);
+    const isGone = gone.has(it.id);
     const missed = reveal && isDefective(it) && !isFound;
     const tiny = it.mark?.type === "defect" && it.mark.size === "tiny";
     return (
@@ -370,6 +382,7 @@ function Round({
         data-ingredient={it.ingredient}
         data-defect={isDefective(it) ? "1" : "0"}
         data-found={isFound ? "1" : "0"}
+        data-gone={isGone ? "1" : "0"}
         data-hidden={it.hidden ? "1" : "0"}
         {...(lens
           ? {}
@@ -395,8 +408,10 @@ function Round({
           width: `${it.size}%`,
           aspectRatio: "1",
           zIndex: zOf(it),
-          transform: `rotate(${it.tilt}deg)`,
-          pointerEvents: lens ? "none" : "auto",
+          transform: `rotate(${it.tilt}deg)${isGone ? " scale(0.6)" : ""}`,
+          opacity: isGone ? 0 : 1,
+          transition: reducedMotion ? undefined : "opacity 260ms ease-in, transform 260ms ease-in",
+          pointerEvents: lens || isGone ? "none" : "auto",
         }}
         {...(lens
           ? {}
@@ -815,6 +830,9 @@ function Round({
             <div className="mt-3 grid gap-2">
               <SortButton onClick={resume} testId="insp-resume">
                 Resume
+              </SortButton>
+              <SortButton quiet testId="insp-restart" onClick={onRestart}>
+                ↻ Restart
               </SortButton>
               <SortButton
                 quiet

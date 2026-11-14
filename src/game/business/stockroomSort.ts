@@ -55,7 +55,7 @@ export type Tier = {
 export const TIERS: readonly Tier[] = [
   {
     from: STOCKROOM_FIRST_LEVEL,
-    maxSets: 3,
+    maxSets: 4,
     spare: 2,
     depth: 0,
     locks: 0,
@@ -65,7 +65,7 @@ export const TIERS: readonly Tier[] = [
   },
   {
     from: 19,
-    maxSets: 5,
+    maxSets: 6,
     spare: 2,
     depth: 0,
     locks: 0,
@@ -75,7 +75,7 @@ export const TIERS: readonly Tier[] = [
   },
   {
     from: 31,
-    maxSets: 7,
+    maxSets: 8,
     spare: 1,
     depth: 0,
     locks: 0,
@@ -85,9 +85,9 @@ export const TIERS: readonly Tier[] = [
   },
   {
     from: 44,
-    maxSets: 9,
+    maxSets: 10,
     spare: 1,
-    depth: 2,
+    depth: 1,
     locks: 0,
     mystery: 0,
     timeFactor: 1.1,
@@ -95,7 +95,7 @@ export const TIERS: readonly Tier[] = [
   },
   {
     from: 74,
-    maxSets: 9,
+    maxSets: 12,
     spare: 1,
     depth: 2,
     locks: 1,
@@ -113,8 +113,12 @@ export function tierAt(level: number): Tier {
 }
 
 export const SLOTS = 3;
-/** A board never has more cubbies than this (two to a row on a phone, five rows). */
-export const MAX_CUBBIES = 10;
+/**
+ * A board never has more cubbies than this: two to a row on a phone, SIX rows (developer 2026-11-13, "add more shelves as the levels
+ * pass"; it was five rows until the delivery slip left the screen and the helper buttons shrank, which gave the shelves the height for a
+ * sixth row at a piece size of about 47 px). Boards hold 4 / 6 / 8 / 10 / 12 sets (were 3 / 5 / 7 / 9 / 9): 6, 8, 9, 10 and 12 cubbies.
+ */
+export const MAX_CUBBIES = 12;
 
 // ── State ────────────────────────────────────────────────────────────────────
 

@@ -165,11 +165,6 @@ function toolRadius(tool: CleaningToolId): number {
   if (tool === "scraper" || tool === "toilet-brush") return BRUSH_RADIUS * 0.85;
   return BRUSH_RADIUS;
 }
-function toolTexture(tool: CleaningToolId): "wet" | "dry" | "brush" {
-  if (tool === "broom") return "dry";
-  if (tool === "scraper" || tool === "toilet-brush") return "brush";
-  return "wet";
-}
 
 function distanceToSegmentSquared(point: Point, start: Point, end: Point) {
   const dx = end.x - start.x;
@@ -514,7 +509,7 @@ export function AreaCleaningPrototype({
         if (play.pointsLeft[index]! <= 0) clearStain(index);
       }
       requestDraw();
-      AudioManager.playScrub(toolTexture(activeTool));
+      // No scrub noise per stroke (developer 2026-11-13: it sounded like something knocking, "tak tak tak"): the sparkle of a cleaned stain stays.
       fxRef.current?.scrub(
         activeTool,
         current.x,
@@ -607,9 +602,9 @@ export function AreaCleaningPrototype({
         data-testid={`${area}-cleaning-prototype`}
       >
         {/* Header: what this cleaning is, and the way out. */}
-        <header className="relative z-20 flex shrink-0 items-center gap-2.5 border-b border-[#dfc79e]/70 bg-[linear-gradient(135deg,rgba(255,249,233,.97),rgba(240,215,169,.94))] px-3 py-2 shadow-sm land:col-start-2 land:row-start-1 land:gap-2 land:border-l land:px-2.5">
+        <header className="relative z-20 flex shrink-0 items-center gap-2.5 border-b border-[#dfc79e]/70 bg-[linear-gradient(135deg,rgba(255,249,233,.97),rgba(240,215,169,.94))] px-2.5 py-1 shadow-sm land:col-start-2 land:row-start-1 land:gap-2 land:border-l land:px-2.5">
           <span
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#6b3d20] text-[24px] text-[#fff2d6] shadow land:hidden"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#6b3d20] text-[20px] text-[#fff2d6] shadow land:hidden"
             aria-hidden
           >
             {area === "kitchen" ? "🍳" : area === "dining" ? "🍽️" : "🚻"}
@@ -617,11 +612,12 @@ export function AreaCleaningPrototype({
           <div className="min-w-0 flex-1">
             <h2
               id={`clean-title-${area}`}
-              className="font-display text-[18px] font-black leading-tight text-walnut-dark land:text-[16px]"
+              className="line-clamp-2 font-display text-[16px] font-black leading-[1.15] text-walnut-dark"
             >
               {roomWide ? roomTest?.title : (copy?.title ?? `Clean the ${roomTitle.toLowerCase()}`)}
             </h2>
-            <p className="mt-0.5 truncate font-ui text-[12px] font-semibold text-walnut/75">
+            {/* The instruction is the status line under the room in portrait (one place, so the room gets the height); the side column has room for it. */}
+            <p className="mt-0.5 hidden truncate font-ui text-[12px] font-semibold text-walnut/75 land:block">
               {roomWide
                 ? roomTest?.subtitle
                 : (copy?.instruction ?? `Scrub the dirt in the ${roomTitle.toLowerCase()}.`)}
@@ -770,7 +766,7 @@ export function AreaCleaningPrototype({
         </div>
 
         {/* Tools and progress, below the room. */}
-        <div className="relative z-20 shrink-0 border-t border-[#dfc79e]/80 bg-[linear-gradient(0deg,rgba(255,243,217,1),rgba(255,247,230,.98))] px-2.5 pb-[max(.5rem,env(safe-area-inset-bottom))] pt-2 land:col-start-2 land:row-start-2 land:flex land:min-h-0 land:flex-col land:justify-end land:overflow-y-auto land:border-l land:border-t-0">
+        <div className="relative z-20 shrink-0 border-t border-[#dfc79e]/80 bg-[linear-gradient(0deg,rgba(255,243,217,1),rgba(255,247,230,.98))] px-2.5 pb-[max(.375rem,env(safe-area-inset-bottom))] pt-1.5 land:col-start-2 land:row-start-2 land:flex land:min-h-0 land:flex-col land:justify-end land:overflow-y-auto land:border-l land:border-t-0">
           {availableTools.length > 1 ? (
             <div
               className="mb-1.5 flex justify-center gap-1.5"
@@ -800,20 +796,6 @@ export function AreaCleaningPrototype({
               ))}
             </div>
           ) : null}
-          {/* A fixed slot: the "use the other tool" hint and the status line below never change the footer's height, so the room
-              above never resizes or shifts when wiping starts (developer 2026-11-08: "the restroom image still shakes"). */}
-          <div className="mb-1 h-8" data-testid="cleaning-hint-slot">
-            {toolHint ? (
-              <p
-                className="flex h-8 items-center justify-center gap-1 overflow-hidden rounded-lg border border-[#d89d52]/60 bg-[#fff9e8] px-2 text-center font-ui text-[12px] font-extrabold text-[#8e5423]"
-                role="status"
-                aria-live="polite"
-              >
-                {suggest ? <CleaningToolIcon tool={suggest} size={18} /> : null}
-                <span className="truncate">{toolHint}</span>
-              </p>
-            ) : null}
-          </div>
           <div className="mb-1 flex items-center justify-between font-ui text-[12px] font-extrabold text-walnut-dark">
             <span data-testid="cleaning-stains-left">
               {stainsLeft > 0
@@ -843,14 +825,28 @@ export function AreaCleaningPrototype({
               {progress}%
             </span>
           </div>
-          <p className="mt-1 flex h-5 items-center justify-center overflow-hidden whitespace-nowrap text-center font-hand text-[14px] leading-tight text-walnut/70">
-            {phase !== "play"
-              ? "✨ Sparkling!"
-              : scrubbing
-                ? "Keep scrubbing · tough stains take a few rubs"
-                : progress === 0
-                  ? `Drag the ${cleaningTool.name.toLowerCase()} over the dirt`
-                  : `${cleaningTool.name} · ${cleaningTool.use}`}
+          {/* ONE fixed line for the status and for the "use the other tool" hint (developer 2026-11-13: the hint had its own empty 32 px row, which
+              took height from the room). Its height never changes, so the room above never resizes or shifts when wiping starts
+              (developer 2026-11-08: "the restroom image still shakes"). */}
+          <p
+            className="mt-1 flex h-5 items-center justify-center overflow-hidden whitespace-nowrap text-center font-hand text-[14px] leading-tight text-walnut/70"
+            data-testid="cleaning-hint-slot"
+            {...(toolHint ? { role: "status", "aria-live": "polite" as const } : {})}
+          >
+            {toolHint ? (
+              <span className="flex min-w-0 items-center gap-1 font-ui text-[12.5px] font-extrabold text-[#8e5423]">
+                {suggest ? <CleaningToolIcon tool={suggest} size={16} /> : null}
+                <span className="truncate">{toolHint}</span>
+              </span>
+            ) : phase !== "play" ? (
+              "✨ Sparkling!"
+            ) : scrubbing ? (
+              "Keep scrubbing · tough stains take a few rubs"
+            ) : progress === 0 ? (
+              `Drag the ${cleaningTool.name.toLowerCase()} over the dirt`
+            ) : (
+              `${cleaningTool.name} · ${cleaningTool.use}`
+            )}
           </p>
         </div>
       </section>

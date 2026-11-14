@@ -552,9 +552,46 @@ const hired = (s: SaveData) => A.hireAssistant(s);
   );
   const bytes = files.reduce((n, f) => n + fs.statSync(path.join(dir, f)).size, 0);
   check(
-    `H3 the whole set stays small (${Math.round(bytes / 1024)} KB, at most 600 KB)`,
-    bytes > 0 && bytes <= 600_000,
+    // Changed 2026-11-13 (developer: Paige's images were low quality): the 12 large cutouts (about 800 x 1090, 85-110 KB each, scripts/make-paige-cutouts.py) sit
+    // beside the small fallback poses: the set is about 1.5 MB, at most 1.8 MB.
+    `H3 the whole set stays small (${Math.round(bytes / 1024)} KB, at most 1800 KB)`,
+    bytes > 0 && bytes <= 1_800_000,
   );
+  // H3b (developer 2026-11-13, "integrate the new Paige assets properly"): all twelve large cutouts exist, share ONE canvas (so she never jumps between
+  // poses), stand on the same hip line, stay under 140 KB each, and the game prefers them over the small fallback poses.
+  {
+    const poses = [
+      "wave",
+      "explain",
+      "point",
+      "tip",
+      "cheer",
+      "thumbs",
+      "oops",
+      "surprised",
+      "think",
+      "sorry",
+      "clap",
+      "clipboard",
+    ];
+    const sizes = poses.map((p) => {
+      const f = path.join(dir, `cutout-${p}.webp`);
+      if (!fs.existsSync(f)) return null;
+      const b = fs.readFileSync(f);
+      // WebP VP8X / VP8 / VP8L: read the canvas from the header the way image tools do (width/height at fixed offsets for VP8X).
+      const w = b.readUIntLE(24, 3) + 1;
+      const h = b.readUIntLE(27, 3) + 1;
+      return { p, w, h, kb: b.length / 1024 };
+    });
+    check(
+      "H3b all 12 cutouts exist on ONE canvas, each under 140 KB, and the old poses are the small fallback",
+      sizes.every((x) => !!x) &&
+        new Set(sizes.map((x) => `${x!.w}x${x!.h}`)).size === 1 &&
+        sizes.every((x) => x!.kb <= 140 && x!.h >= 1000) &&
+        fs.statSync(path.join(dir, "pose-wave.webp")).size < 25_000,
+      sizes,
+    );
+  }
   const portrait = path.join(ROOT, "public/business/staff-portraits/assistant.webp");
   check(
     "H4 her staff-card portrait exists",

@@ -1,5 +1,67 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Paige praises a perfect mini-game round (developer 2026-11-14, UNCOMMITTED)
+
+- Finishing a REAL round of Fridge Sort, Stock the shelves, Delivery Inspection, Sauce Station or the Fridge Check with 3 stars makes Paige cheer or clap in her big bubble (green leaf, "Got it") the next time the player is on the **kitchen home page** (not the map, where the Fridge Check opens). Rules: `restaurant/miniGamePraise.ts` (pure: 4 lines per game, a second perfect round in a row says "another three stars", three or more "on fire"; the line rotates with how many she has said, no clock or random); App `notePraise` (called from the four finish handlers and `cleanlinessAction` for the check).
+- Only a hired Paige with tips ON says it; a practice round earns none (it never reaches the app); a round under 3 stars ends the run. It waits behind the "Next step" guide card and any other calm blocker, is said once, and is NEVER written to her saved tips or the notebook (the id starts `praise:`). No money, no save field. Analytics `assistant_praise_shown { game, level }`.
+- Tests: `scripts/mini-game-praise-qa.mts` (new, A1-A6, B1-B6, W1-W5), e2e `fridgecheck` T20 (Paige hired, tips on: 3-star check, back on the kitchen, bubble `praise:fridge-check:0`, tone success, not in the saved tips). The other four mini-games use the same call; only the Fridge Check is driven in the browser. Not verified: a real phone; the wording (the developer may want more or different lines: one table, `PRAISE_LINES`).
+- Harness note: `shot()` writes screenshots to a stray `Knife%20Craft/tools/e2e/out` folder beside the repo (the space in the path is URL-encoded by `OUT`); not fixed.
+
+## Restart in the pause card of the five mini-games (developer 2026-11-14, UNCOMMITTED)
+
+- Fridge Sort, Stock the shelves, Delivery Inspection, Sauce Station and the Fridge Check had only Resume and Leave on the pause card. Each now has **↻ Restart** (`*-restart`): the SAME board / crate / sauce / night again from the top, in the Ready state (clock full; Start or the first touch starts it). Cutting and Prep Rush already had a restart; the cleaning game has no pause.
+- A restart inside a round takes nothing: only the end of a round pays or counts, so no money, stars, Hype or ledger entry move, and the practice flag is kept. ("Play again" after a result is unchanged: same board, practice, no reward.)
+- How: Fridge Sort `restart(asPractice)` ("Play again" = `restart(true)`), Stock the shelves `resetFor(round)`; the other three wrappers keep a `restarts` counter in the `Round` key (not `attempt`, so the same cards / items / sauce are dealt).
+- Tests: e2e `fridgesort` S9r, `stockroomsort` T7r, `deliveryinspection` I9r, `saucestation` S2c, `fridgecheck` T5b (all pass). The other suites were not run (no rule changed).
+
+## Prep Cook on the "Before you open" sheet, a better Sauce Station (developer 2026-11-13, three requests, UNCOMMITTED)
+
+- **Prep Cook on the sheet** (`DeliveryRoutine.tsx` `ServiceGateSheet`, App `prepCookDoesStep`, `routineStepDone`): from Level 30 (`staffHireFrom("prep-cook")`) a player who has not hired him sees "Hire a Prep Cook · $X a day" (hiring is free, he is paid by the hour at closing: no money, no ledger entry); once hired, the button "Prep Cook does <next step>" does it right there (check the delivery, unpack, stock the shelves, the sauce; not the Fridge Check, the Cleaner's chore): no stars, Hype or pins, the same as his button inside each game (`PREP_COOK_STEPS`). The mini-games stay mandatory in the sense of the routine: the step is done, not removed. Analytics `routine_step_prep_cook`. e2e `deliveryflow.mjs` F6b-F6d.
+- **Sauce whisk follows the finger** (`SauceParts.tsx` `ToolInBowl`): it is positioned on every animation frame from a ref (no React render per pointer move, no CSS easing; it trailed the finger before) and circles by itself while Auto whisks (it stood still). The angle maths in `SauceStationGame` is unchanged.
+- **More time** (`SAUCE_TIERS.timeMs`): 90 / 82 / 74 / 66 s (were 65 / 62 / 58 / 54); colour tolerance unchanged.
+- **Idle hint** (`IDLE_HINT_MS` 4 s): nothing done while mixing lights up the one next thing: the next recipe ingredient (glow + pointing hand), else the whisk (ring on the bowl + Auto glows), else Bottle it. Any action clears it; Reduced Motion: no animation. (Tiers that hide the recipe get the whisk / Bottle hints only.)
+- **Why not 3 stars** (`sauceStation.lostStarReasons`, shown as "Why not 3 stars" on the result): at most three plain lines (bottling skipped = 2 stars at most, it split, not whisked smooth, colour match %, too thin / thick, spilled, pours off the line). Built from the same results as the stars, so it cannot disagree; `MixResult` gained `blended`, `split`, `thickSide`.
+- Tests: `sauce-station-qa` N1-N9 (new), e2e `saucestation.mjs` S3b.
+- **Product pictures for the pantry are IN (developer 2026-11-14, "sauce station assets are generated"):** the 43 Codex pictures (`Sauce Product Assets/<id>.png`, 1254 x 1254) are built by `scripts/make-sauce-products.py` into `public/business/sauce/products/<id>.webp` (192 x 192, 376 KB in all; bottles / cartons tallest, then jars, then bowls and produce). `PantryTile` draws each as a standing object with a wooden name tag, no card (the old card stays as the fallback). The tile height scales with the screen (`clamp(56px, 9vh, 84px)`); up to 10 items use 5 columns, a longer shelf uses as many 48 px columns as fit (7 at 390 px, so the bowl keeps about 205 px). **Known:** on a 320 x 568 phone with a long late shelf (13 items) the bowl area is small (3 rows); a smaller top card on tiny phones would give it back. Checked: `saucestation.mjs`, `saucevisual.mjs`, `sauce-station-qa`. Prompts: docs/planning/SAUCE-PRODUCTS-CODEX-PROMPTS-2026-11-13.md (delivered).
+- **Not verified:** the whisk's feel on a real phone (I checked the code path and the browser tests, not a finger); the pointing hand can sit half under the "Circle to blend" caption on the bottom row.
+
+## Second Floor: a purchase shows on the map (developer 2026-11-13, UNCOMMITTED)
+
+- Buying a machine, a table, a polish step or a tier lights up that machine for two seconds (`SecondFloorView.tsx` `showFx`, styles `floor-buy-fx*` in `RestaurantMap.css`): a gold glow over its room, sparkles, and a label with what was bought and what it adds ("Polish 7/10 · +$5.09/h"). A new table lights up the seating area too; the income pill at the top bumps; a coin sound plays (a milestone keeps its own fanfare). While the machine's card is open (it covers most of the map) the card's edge glows and the same pill shows beside its title. Display only: no rule, money or save changes. Reduced Motion: shown without movement. e2e `floorpurchase.mjs` F3b.
+
+## Stock the shelves: more products and shelves, a leaner screen (developer 2026-11-13, two requests, UNCOMMITTED)
+
+- **Rules** (`stockroomSort.TIERS`): a board holds **4 / 6 / 8 / 10 / 12 sets** (Level 6 / 19 / 31 / 44 / 74, growing smoothly in between; were 3 / 5 / 7 / 9 / 9) on **6 / 8 / 9 / 10 / 12 shelves** (`MAX_CUBBIES` 12 = six rows, was 10). Level 44 has one deep cubby (was two) so its 10 products stand on 10 shelves; the last tier keeps two. A long delivery is fewer, fuller boards. Every board is still solvable (`stockroom-sort-qa` C9).
+- **Screen** (`StockroomSortGame.tsx`): the "Delivery" slip row is removed (the shelves show the products); "+N more shelves" is a small chip in the status line; Undo / Hint are 48 px (were 56) and sit beside the star bar at the top: the strip under the shelves is gone (developer 2026-11-13, third request). The shelf unit fits the height it has (its width follows the room, never under 290 px so a piece stays about 47 px wide; a very small phone scrolls). Six rows fit 360 x 640 and larger without scrolling (a piece 47-52 px wide); 320 x 568 scrolls 57 px.
+- Tests changed to the rule: `stockroom-sort-qa` A4, A6, J3; e2e `stockroomsort.mjs` T2 (no slip), T13, new T13b (12 products at Level 80).
+
+## No knocking sound while wiping (developer 2026-11-13, UNCOMMITTED)
+
+- The per-stroke scrub noise (`AudioManager.playScrub`, a short burst every 85 ms: "tak tak tak") is no longer played while cleaning a room (`AreaCleaningPrototype.tsx`) or wiping the cutting board with the cloth (`PreparationScene`). The sparkle of a cleaned stain, the combo chimes and the spotless fanfare stay. The dishwashing sink still uses it (not asked).
+
+## Cleaning screen: less empty area, a bigger room (developer 2026-11-13, UNCOMMITTED)
+
+- `AreaCleaningPrototype.tsx`: the "use the other tool" hint no longer has its own (mostly empty) 32 px row; it shares the status line's ONE fixed slot (`cleaning-hint-slot`), so the footer still never changes height. The header is one compact row (36 px icon, 16 px title, the instruction line only in landscape: in portrait the status line under the room says it). About 60 px more height for the room. `bug-batch-qa` 1a changed to the rule; e2e `bugbatch.mjs` B1 (the room never moves) and `cleaningfeel.mjs` pass.
+
+## Delivery Inspection: found bad food leaves the crate (developer 2026-11-13, UNCOMMITTED)
+
+- A piece flagged NOT FRESH keeps its stamp for 0.65 s (`FOUND_LEAVES_MS`), then fades out and takes no more taps (`gone`, `data-gone`), so what lay behind it is in view and can be tapped. Scoring, the count and the rules are unchanged (display only, `DeliveryInspectionGame.tsx`). Reduced Motion: it goes without the fade. e2e `deliveryinspection.mjs` I4b.
+
+## Paige: the new cutouts are integrated (developer 2026-11-13/14, UNCOMMITTED)
+
+- The 12 Codex cutouts (`cutout-<pose>.webp`, 802 x 1088, 85-110 KB each, built by `scripts/make-paige-cutouts.py`) are in and used everywhere she speaks (`PaigeCutout`: tips, the guide card, the Congratulations card). All twelve share ONE canvas with the hips on the same line (hip x 400-402), so she never jumps between poses.
+- The old `pose-*.webp` are the small FALLBACK again (252 x 324, 190 KB in all; `POSE_SCALE` 0.52), used only when a cutout cannot load. (Earlier the same day they were exported at full sheet size as a stop-gap; that is no longer needed.)
+- Fix: off the screen's edge (Paige pointing at something) the new cutouts get the hip fade again (their rule had switched it off for every placement; the hard straight cut showed). At the bottom edge the screen hides the cut as before.
+- Tests: `assistant-qa` H3 (set at most 1.8 MB), H3b (12 cutouts, one canvas, under 140 KB each); e2e `paige.mjs` passes. Prompts for the art stay in docs/planning/PAIGE-CUTOUT-CODEX-PROMPTS-2026-11-11.md (delivered).
+
+## A player's review: the Level 2 dead end, START is never a dead button (developer 2026-11-13, UNCOMMITTED)
+
+Played from a new save in a phone-sized browser (Levels 1-3 for real, the rest from the level data and the mini-games' screenshots).
+- **Dead end at Level 2, fixed:** a player who tapped "Back to Kitchen" right after hiring the Server (the guest still eating) was never offered the Cashier; Level 2's check needs one and its "Hire Cashier" button answered "Business opens in 3 services". The check's hire buttons now open the Market's "Hire your team" card while the Staff screen is locked (`ServiceCheckLayer` `onHireStaff`: `lockedScreenHint("business-staff")` + `teamOffers`). The card was always there from Level 2; nothing pointed to it.
+- **START is never a dead button** (developer "okay"): while something blocks it, the Pre-Service Check's start button stays tappable (`aria-disabled`, `data-testid="psc-start"`) and takes the player to what blocks it: the Market's plan for missing food the wallet and the fridge can take, otherwise that section of the sheet (ingredients, supplies, tools, the fridge card, the inspector). `KButton` forwards `aria-disabled`. Browser tests that read "START is blocked" read `disabled || aria-disabled` now (`restaurantcover`, `restaurantgrandmasfridge`, `restaurantsupplies`, `restauranttools`, `precheckvisits`).
+- **Decided by the developer, do not reopen:** the mini-games stay MANDATORY (the plain cut-serve-earn loop had very low retention and under 5 minutes of play; the mini-games are there for play time and engagement), and nothing of the restaurant sim is hidden early (it is a restaurant sim, not only a cutting game).
+- Tests: e2e `level2hire.mjs` (new, D1-D4, R1-R2), `precheckvisits`, `firstrun`, `openservice`, `shortagebuy`.
+
 ## The bigger fridge before the kitchen is stuck, the health inspector's visit, the basket bonus (developer 2026-11-13, UNCOMMITTED)
 
 - **The bigger fridge is asked for BEFORE the kitchen is stuck** (`restaurant/fridgeUpgradeNeed.ts`, card `FridgeNeedCard.tsx` on the Pre-Service Check). The check projects the shelf two services ahead (what is on it, plus today's purchases, minus what is used): "full" = today's food does not fit, "soon" = a service within two levels would not fit. The simulated player who never buys is asked at Level 44 and was stopped at 46.

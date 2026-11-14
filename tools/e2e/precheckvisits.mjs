@@ -80,7 +80,7 @@ const inspector = (page) =>
         (r) => `${r.getAttribute("data-check")}:${r.getAttribute("data-verdict")}`,
       ),
       text: (el.textContent ?? "").replace(/\s+/g, " ").trim(),
-      startDisabled: !!start?.disabled,
+      startDisabled: !!start && (start.disabled || start.getAttribute("aria-disabled") === "true"),
       startText: (start?.textContent ?? "").trim(),
     };
   });
@@ -248,7 +248,10 @@ const start1 = await page.evaluate(() => {
   const b = [...document.querySelectorAll('[data-testid="pre-service-check"] button')].find((x) =>
     /Start service|Open restaurant|to start/.test(x.textContent ?? ""),
   );
-  return { disabled: !!b?.disabled, text: (b?.textContent ?? "").trim() };
+  return {
+    disabled: !!b && (b.disabled || b.getAttribute("aria-disabled") === "true"),
+    text: (b?.textContent ?? "").trim(),
+  };
 });
 check(
   "F1 the wallet covers it: 'Bigger fridge needed', Buy · $2,000.00, START waits",

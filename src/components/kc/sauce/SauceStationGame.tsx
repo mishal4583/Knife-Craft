@@ -9,6 +9,7 @@ import {
   PANTRY_BY_ID,
   WHISK_ZONE,
   bottleScore,
+  lostStarReasons,
   bottleStars,
   blendStep,
   gradeMix,
@@ -75,6 +76,8 @@ type Phase = "ready" | "mix" | "bottle" | "paused" | "done";
 const TICK_MS = 50;
 const HOLD_REPEAT_MS = 280;
 const TASTE_SHOW_MS = 5000;
+/** Nothing done for this long while mixing: the next thing to do lights up. */
+const IDLE_HINT_MS = 4000;
 const MAX_FILL = 1.12;
 const BOTTLE_PAUSE_MS = 700;
 
@@ -92,16 +95,19 @@ export function SauceStationGame(props: {
   onExit: () => void;
 }) {
   const [attempt, setAttempt] = useState(0);
+  /** Restart from the pause card: the same sauce, the same pantry, from the top (no new attempt, so nothing is dealt again). */
+  const [restarts, setRestarts] = useState(0);
   const [practice, setPractice] = useState(false);
   // "Play again" makes the SAME sauce again (developer 2026-11-11: it dealt a different one); "Next round" deals the day's next sauce.
   const [again, setAgain] = useState<string | null>(null);
   return (
     <Round
-      key={attempt}
+      key={`${attempt}-${restarts}`}
       {...props}
       attempt={attempt}
       forcePractice={practice}
       sameSauceId={again}
+      onRestart={() => setRestarts((n) => n + 1)}
       onAgain={(sauceId) => {
         setPractice(true);
         setAgain(sauceId);
@@ -129,6 +135,7 @@ function Round({
   forcePractice,
   sameSauceId,
   onAgain,
+  onRestart,
   onNext,
 }: {
   save: SaveData;
@@ -144,6 +151,7 @@ function Round({
   /** "Play again": the sauce just made (null for a new round). */
   sameSauceId: string | null;
   onAgain: (sauceId: string) => void;
+  onRestart: () => void;
   onNext: () => void;
 }) {
   const tier = tierAt(level);
@@ -184,7 +192,29 @@ function Round({
   const [taste, setTaste] = useState<{ match: number; hint: ReturnType<typeof colorHint> } | null>(
     null,
   );
-  const [toolAt, setToolAt] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  // The finger over the bowl, read by the whisk on every frame (no render per pointer move: the whisk follows the finger at once).
+  const toolPos = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
+  // THE IDLE HINT (developer 2026-11-13: "if the player is confused for a few seconds, glow which ingredient to pour"): nothing done for
+  // IDLE_HINT_MS while mixing lights up the ONE thing to do next (an ingredient, the whisk, or Bottle it). Any action clears it.
+  const lastAct = useRef(performance.now());
+  const [idle, setIdle] = useState(false);
+  const acted = () => {
+    lastAct.current = performance.now();
+    setIdle((v) => (v ? false : v));
+  };
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      if (phaseRef.current !== "mix") {
+        lastAct.current = performance.now();
+        setIdle((v) => (v ? false : v));
+        return;
+      }
+      const quiet =
+        !autoRef.current && !dragging.current && performance.now() - lastAct.current > IDLE_HINT_MS;
+      setIdle((v) => (v === quiet ? v : quiet));
+    }, 400);
+    return () => window.clearInterval(t);
+  }, []);
   // bottling
   const [bIndex, setBIndex] = useState(0);
   const [fill, setFill] = useState(0);
@@ -198,6 +228,8 @@ function Round({
     bottleStars: 0 | 1 | 2 | 3 | null;
     timedOut: boolean;
     effects: RoundEffects;
+    /** Why it is not three stars (sauceStation lostStarReasons); empty for three. */
+    reasons: string[];
   } | null>(null);
 
   // Everything the interval and the pointer handlers read lives in refs: their closures are made once and must never see an old render.
@@ -312,6 +344,8 @@ function Round({
   const addScoop = useCallback(
     (item: PantryItem) => {
       if (phaseRef.current !== "mix") return;
+      lastAct.current = performance.now();
+      setIdle(false);
       const cur = scoopsRef.current;
       if (volumeOf(cur) + item.scoop > cap + 1e-9) {
         say("The bowl is full! Undo something.", "bad");
@@ -383,7 +417,8 @@ function Round({
     // you SEE is what counts (it used to be a different centre and a stretched axis).
     const dx = ((e.clientX - r.left) / r.width - TOOL_BOWL.cx) / TOOL_BOWL.rx;
     const dy = ((e.clientY - r.top) / r.height - TOOL_BOWL.cy) / TOOL_BOWL.ry;
-    setToolAt({ x: e.clientX - r.left, y: e.clientY - r.top, w: r.width, h: r.height });
+    toolPos.current = { x: e.clientX - r.left, y: e.clientY - r.top, w: r.width, h: r.height };
+    lastAct.current = performance.now();
     if (Math.hypot(dx, dy) < 0.12) return;
     const ang = Math.atan2(dy, dx);
     const now = performance.now();
@@ -404,17 +439,20 @@ function Round({
     dragging.current = true;
     lastAng.current = null;
     lastMove.current = performance.now();
+    acted();
     onToolMove(e);
   };
   const onToolUp = () => {
     dragging.current = false;
     lastAng.current = null;
-    setToolAt(null);
+    toolPos.current = null;
+    lastAct.current = performance.now();
   };
   const toggleAuto = () => {
     const on = !autoRef.current;
     autoRef.current = on;
     setAuto(on);
+    acted();
     AudioManager.playSfx("tap");
   };
 
@@ -452,14 +490,10 @@ function Round({
       doneRef.current = true;
       const m = mixRef.current!;
       const scores = bottleScores.current;
-      const bs = skippedBottling
+      const bottled = skippedBottling
         ? null
-        : bottleStars({
-            scores,
-            spill: spillSum.current,
-            bottles,
-            filled: filledCount.current,
-          });
+        : { scores, spill: spillSum.current, bottles, filled: filledCount.current };
+      const bs = bottled ? bottleStars(bottled) : null;
       const stars = overallStars(m.mix.stars, bs);
       const avg = scores.length ? scores.reduce((s, v) => s + v, 0) / bottles : 0;
       const score = roundScore(m.mix.de, m.secs, avg);
@@ -484,6 +518,7 @@ function Round({
         bottleStars: bs,
         timedOut: msRef.current <= 0,
         effects,
+        reasons: lostStarReasons(m.mix, bottled, stars),
       });
       window.setTimeout(() => setPhaseBoth("done"), reducedMotion ? 150 : 500);
     },
@@ -595,6 +630,24 @@ function Round({
             : volume > 0
               ? { n: 1, text: `Match the colour, then circle the ${toolName}` }
               : { n: 1, text: "Tap the ingredients to pour them in" };
+  // What the idle hint lights up: the next ingredient (only while the tier shows the recipe), else the whisk, else Bottle it.
+  const hintAt: string | null =
+    !idle || phase !== "mix"
+      ? null
+      : step.n === 1 && toAdd.length > 0
+        ? `item:${toAdd[0]!.id}`
+        : step.n === 2
+          ? "whisk"
+          : step.n === 3
+            ? "bottle"
+            : null;
+  // Standing products (see PantryTile) are drawn without cards: up to 10 items use 5 columns; a longer shelf packs as many 48 px columns as fit (7 on a
+  // 390 px phone, 5 on a 320 px one), so the bowl keeps its height and every tile stays a full touch target.
+  const productsOn = useSauceArt(`products/${items[0]?.id ?? "mayo"}`);
+  const pantryCols =
+    !productsOn || items.length <= 10
+      ? "repeat(5, minmax(0, 1fr))"
+      : "repeat(auto-fill, minmax(48px, 1fr))";
   const showBackdrop = phase === "bottle" ? artBottle : art;
   const backdrop = phase === "bottle" ? "bottle-backdrop" : "mix-backdrop";
 
@@ -812,11 +865,25 @@ function Round({
               {/* the tool: in the hand while dragging (handle up, head in the bowl), standing in the bowl otherwise */}
               <ToolInBowl
                 name={toolName}
-                at={toolAt}
+                posRef={toolPos}
+                auto={auto && phase === "mix" && volume > 0}
                 stirring={omega > 0.3 || auto}
                 reducedMotion={reducedMotion}
                 hasLiquid={volume > 0}
               />
+              {hintAt === "whisk" && !reducedMotion ? (
+                <span
+                  aria-hidden
+                  data-testid="sauce-hint-whisk"
+                  className="sauce-hint-ring pointer-events-none absolute z-[8] rounded-[50%] border-4 border-[#ffd25a]"
+                  style={{
+                    left: `${(TOOL_BOWL.cx - TOOL_BOWL.rx) * 100}%`,
+                    top: `${(TOOL_BOWL.cy - TOOL_BOWL.ry) * 100}%`,
+                    width: `${TOOL_BOWL.rx * 200}%`,
+                    height: `${TOOL_BOWL.ry * 200}%`,
+                  }}
+                />
+              ) : null}
               {phase === "mix" && volume > 0 && omega < 0.1 && !auto ? (
                 <span className="pointer-events-none absolute inset-x-0 bottom-1 text-center font-ui text-[12px] font-extrabold text-white [text-shadow:0_1px_3px_rgba(0,0,0,.8)]">
                   Circle the {toolName} in the bowl
@@ -852,6 +919,7 @@ function Round({
               onClick={toggleAuto}
               className={cn(
                 "press h-12 min-w-[58px] rounded-2xl border px-2 font-ui text-[12px] font-extrabold leading-tight",
+                hintAt === "whisk" && !reducedMotion && "sauce-hint",
                 auto
                   ? "border-[#2f6b1f] bg-[#cde9b8] text-[#1f4a14]"
                   : "border-walnut/30 bg-ivory/85 text-walnut",
@@ -872,13 +940,18 @@ function Round({
           </div>
 
           {/* the pantry */}
-          <div className="mx-3 mt-1.5 grid grid-cols-5 gap-1" data-testid="sauce-pantry">
+          <div
+            className="mx-3 mt-1.5 grid gap-1"
+            style={{ gridTemplateColumns: pantryCols }}
+            data-testid="sauce-pantry"
+          >
             {items.map((it) => (
               <PantryTile
                 key={it.id}
                 item={it}
                 count={scoops[it.id] ?? 0}
                 need={showsRecipe ? (needLeft[it.id] ?? null) : null}
+                hint={hintAt === `item:${it.id}` && !reducedMotion}
                 disabled={phase !== "mix"}
                 onDown={() => holdStart(it)}
                 onUp={holdStop}
@@ -902,9 +975,14 @@ function Round({
               )}
               {Number.isFinite(tastesLeft) ? `Taste · ${tastesLeft}` : "Taste"}
             </button>
-            <SortButton onClick={() => endMix(false)} testId="sauce-bottle-it">
-              Bottle it →
-            </SortButton>
+            <div
+              className={cn("rounded-2xl", hintAt === "bottle" && !reducedMotion && "sauce-hint")}
+              data-hint={hintAt === "bottle" ? "1" : undefined}
+            >
+              <SortButton onClick={() => endMix(false)} testId="sauce-bottle-it">
+                Bottle it →
+              </SortButton>
+            </div>
           </div>
         </>
       )}
@@ -975,6 +1053,9 @@ function Round({
               <SortButton onClick={resume} testId="sauce-resume">
                 Resume
               </SortButton>
+              <SortButton quiet testId="sauce-restart" onClick={onRestart}>
+                ↻ Restart
+              </SortButton>
               <SortButton
                 quiet
                 testId="sauce-skip"
@@ -1036,11 +1117,14 @@ function PantryTile({
   item,
   count,
   need,
+  hint = false,
   disabled,
   onDown,
   onUp,
 }: {
   item: PantryItem;
+  /** The idle hint points at this tile: pour this one next. */
+  hint?: boolean;
   count: number;
   /** Scoops of this item the recipe still wants (null = not in the recipe, or the tier does not show the recipe). */
   need: number | null;
@@ -1050,11 +1134,98 @@ function PantryTile({
 }) {
   const art = item.art;
   const idx = art.cell;
+  // PRODUCT ART (developer 2026-11-13: "a jar with a mayonnaise label standing on the desk, not just buttons"): when the product's own picture exists
+  // (public/business/sauce/products/<id>.webp, scripts/make-sauce-products.py) it STANDS on the counter with a small wooden name tag, no card; the
+  // recipe glow, the "+N" / tick badge and the count stay. Without the file the card with the sheet's small picture is drawn as before.
+  const product = useSauceArt(`products/${item.id}`);
+  if (product)
+    return (
+      <button
+        type="button"
+        data-testid={`sauce-pantry-${item.id}`}
+        data-need={need === null ? undefined : need}
+        data-hint={hint ? "1" : undefined}
+        data-product="1"
+        disabled={disabled}
+        aria-label={`Add ${item.name}`}
+        onPointerDown={(e) => {
+          e.preventDefault();
+          onDown();
+        }}
+        onPointerUp={onUp}
+        onPointerLeave={onUp}
+        onPointerCancel={onUp}
+        onContextMenu={(e) => e.preventDefault()}
+        className={cn(
+          "press relative flex h-[clamp(56px,9vh,84px)] flex-col items-center justify-end rounded-xl px-0 pb-0 pt-1",
+          disabled && "opacity-60",
+          hint && "sauce-hint",
+        )}
+      >
+        {need !== null && need > 0 ? (
+          <span
+            aria-hidden
+            className="absolute inset-x-1 bottom-3 top-1 rounded-2xl bg-[radial-gradient(ellipse_at_center,rgba(255,214,102,0.55),rgba(255,214,102,0)_70%)] ring-2 ring-[#ffd25a]/90"
+          />
+        ) : null}
+        {hint ? (
+          <span
+            aria-hidden
+            data-testid="sauce-hint-hand"
+            className="sauce-hint-hand pointer-events-none absolute -top-4 left-1/2 z-10 -ml-2.5 text-[20px] leading-none"
+          >
+            👇
+          </span>
+        ) : null}
+        <img
+          src={sauceUrl(`products/${item.id}`)}
+          alt=""
+          draggable={false}
+          className="pointer-events-none relative z-[1] min-h-0 flex-1 select-none object-contain drop-shadow-[0_4px_3px_rgba(40,20,5,0.5)]"
+          style={{ maxHeight: "calc(clamp(56px, 9vh, 84px) - 20px)" }}
+        />
+        <span
+          className={cn(
+            "relative z-[2] -mt-0.5 w-full truncate rounded-md border px-0.5 text-center font-ui text-[10px] font-extrabold leading-[14px] text-walnut-dark shadow-[0_2px_0_rgba(60,30,10,0.45)]",
+            need === 0
+              ? "border-[#5a9a3f] bg-[#cfe6b8]"
+              : "border-[#a9743a] bg-[linear-gradient(180deg,#f3dcaa,#e2bd7a)]",
+          )}
+        >
+          {item.name}
+        </span>
+        {need !== null && need > 0 ? (
+          <span
+            aria-hidden
+            data-testid={`sauce-want-${item.id}`}
+            className="absolute left-0.5 top-0.5 z-[3] rounded-full bg-[#e0a21c] px-1 font-ui text-[9.5px] font-black leading-[14px] text-walnut-dark"
+          >
+            {need < 1 ? "pinch" : `+${need}`}
+          </span>
+        ) : need === 0 ? (
+          <span
+            aria-hidden
+            className="absolute left-0.5 top-0.5 z-[3] grid h-[15px] w-[15px] place-items-center rounded-full bg-[#5a9a3f] font-ui text-[10px] font-black leading-none text-white"
+          >
+            ✓
+          </span>
+        ) : null}
+        {count > 0 ? (
+          <span
+            className="absolute right-0.5 top-0.5 z-[3] grid h-[17px] min-w-[17px] place-items-center rounded-full bg-[#d23b2a] px-1 font-ui text-[10px] font-black leading-none text-white"
+            data-testid={`sauce-count-${item.id}`}
+          >
+            {Number.isInteger(count) ? count : count.toFixed(2).replace(/0$/, "")}
+          </span>
+        ) : null}
+      </button>
+    );
   return (
     <button
       type="button"
       data-testid={`sauce-pantry-${item.id}`}
       data-need={need === null ? undefined : need}
+      data-hint={hint ? "1" : undefined}
       disabled={disabled}
       aria-label={`Add ${item.name}`}
       onPointerDown={(e) => {
@@ -1074,8 +1245,18 @@ function PantryTile({
         need !== null && need > 0 && "border-[#e0a21c] ring-2 ring-[#ffd25a] ring-offset-0",
         need === 0 && "border-[#5a9a3f] bg-[#e1f1cf]/95",
         disabled && "opacity-60",
+        hint && "sauce-hint !overflow-visible",
       )}
     >
+      {hint ? (
+        <span
+          aria-hidden
+          data-testid="sauce-hint-hand"
+          className="sauce-hint-hand pointer-events-none absolute -top-5 left-1/2 z-10 -ml-2.5 text-[20px] leading-none"
+        >
+          👇
+        </span>
+      ) : null}
       <span className="flex min-h-0 flex-1 items-end justify-center">
         <Sprite
           sheet={art.sheet}
@@ -1376,6 +1557,7 @@ function ResultPanel({
     bottleStars: 0 | 1 | 2 | 3 | null;
     timedOut: boolean;
     effects: RoundEffects;
+    reasons: string[];
   };
   sauce: SauceDef;
   practice: boolean;
@@ -1435,6 +1617,21 @@ function ResultPanel({
           {sauce.name} · {matchPct}% match
           {result.bottleStars === null ? " · not bottled" : ""}
         </p>
+        {result.reasons.length > 0 ? (
+          <div
+            className="relative mx-auto mt-1.5 w-fit max-w-full rounded-xl bg-[#7a2a1d]/10 px-2.5 py-1.5 text-left"
+            data-testid="sauce-why"
+          >
+            <p className="font-ui text-[11px] font-black uppercase tracking-wide text-[#8a3a22]">
+              Why not 3 stars
+            </p>
+            {result.reasons.map((r) => (
+              <p key={r} className="font-ui text-[12.5px] font-bold leading-snug text-walnut-dark">
+                {r}
+              </p>
+            ))}
+          </div>
+        ) : null}
         {practice ? (
           <p className="relative mt-1 font-ui text-[12.5px] font-bold text-walnut/65">
             Extra round: no reward

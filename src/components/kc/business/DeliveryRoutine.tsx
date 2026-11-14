@@ -4,6 +4,7 @@ import { useAdBonus } from "@/components/kc/ads/adBonusApi";
 import { InfoTip } from "@/components/kc/common/InfoTip";
 import { KButton } from "@/components/kc/common/primitives";
 import type { FlowStep, ServiceGate } from "@/game/business/deliveryFlow";
+import { formatUsd } from "@/game/money";
 
 /**
  * THE DELIVERY ROUTINE on screen (developer 2026-11-11: check the delivery, unpack, stock the shelves, Fridge Check, the day's sauce; each one mandatory, in order;
@@ -159,6 +160,11 @@ export function DeliveryRoutineCard({
 export function ServiceGateSheet({
   gate,
   hasPrepCook,
+  canHirePrepCook = false,
+  prepCookWage = 0,
+  prepCookSteps = [],
+  onHirePrepCook,
+  onPrepCookStep,
   go,
   onClose,
   skipsLeft = 0,
@@ -166,6 +172,15 @@ export function ServiceGateSheet({
 }: {
   gate: ServiceGate;
   hasPrepCook: boolean;
+  /** The Prep Cook can be hired now (his level is reached and he is not on the team). */
+  canHirePrepCook?: boolean;
+  /** His wage for a day, cents (he is paid by the hour at closing; hiring is free). */
+  prepCookWage?: number;
+  /** The steps he does (deliveryFlow PREP_COOK_STEPS). */
+  prepCookSteps?: readonly string[];
+  onHirePrepCook?: () => boolean;
+  /** He does the next step, as his button inside the game does (no stars, no reward). */
+  onPrepCookStep?: (stepId: string) => boolean;
   go: (to: string) => void;
   onClose: () => void;
   /** Rewarded skips left today (0 = none on offer) and the skip itself. */
@@ -205,10 +220,48 @@ export function ServiceGateSheet({
             <StepRow key={s.id} step={s} active={s.id === gate.next?.id} onGo={go} />
           ))}
         </div>
-        {hasPrepCook ? (
-          <p className="mt-2 font-ui text-[12.5px] font-bold text-walnut/70">
-            🧑‍🍳 Your Prep Cook can do a step for you inside each game.
-          </p>
+        {/* Not in the mood to play (developer 2026-11-13): the hired Prep Cook does the next step from here; when he can be hired and is
+            not on the team, the sheet offers him. */}
+        {hasPrepCook && gate.next && onPrepCookStep && prepCookSteps.includes(gate.next.id) ? (
+          <div className="mt-2">
+            <KButton
+              full
+              variant="sage"
+              className="h-auto min-h-12 px-2 py-1.5 text-[13px] leading-tight"
+              data-testid="gate-prep-cook"
+              onClick={() => onPrepCookStep(gate.next!.id)}
+            >
+              🧑‍🍳 Prep Cook does “{gate.next.label}”
+            </KButton>
+            <p className="mt-1 flex items-center gap-1.5 font-ui text-[12px] font-bold text-walnut/70">
+              No stars, no reward
+              <InfoTip label="About the Prep Cook">
+                He does the step for you, here or from inside each game. You earn stars, Hype and
+                pins only when you play it yourself.
+              </InfoTip>
+            </p>
+          </div>
+        ) : null}
+        {!hasPrepCook && canHirePrepCook && onHirePrepCook ? (
+          <div className="mt-2" data-testid="gate-hire-prep-cook-box">
+            <KButton
+              full
+              variant="copper"
+              className="h-auto min-h-12 px-2 py-1.5 text-[13px] leading-tight"
+              data-testid="gate-hire-prep-cook"
+              onClick={() => onHirePrepCook()}
+            >
+              🧑‍🍳 Hire a Prep Cook · {formatUsd(prepCookWage)} a day
+            </KButton>
+            <p className="mt-1 flex items-center gap-1.5 font-ui text-[12px] font-bold text-walnut/70">
+              He can do these steps for you
+              <InfoTip label="About the Prep Cook">
+                Hiring is free; he is paid {formatUsd(prepCookWage)} at each closing. He checks the
+                delivery, unpacks it, stocks the shelves and makes the sauce when you ask him. You
+                earn stars and Hype only when you play a step yourself.
+              </InfoTip>
+            </p>
+          </div>
         ) : null}
         {gate.next && onSkip ? (
           <SkipButton step={gate.next} left={skipsLeft} onSkip={onSkip} />

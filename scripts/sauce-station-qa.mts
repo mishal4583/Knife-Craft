@@ -815,6 +815,101 @@ console.log("M. 2026-11-11: the pot's liquid, Play again, the Pour button");
   );
 }
 
+console.log("N. Why not three stars, and the clocks (developer 2026-11-13)");
+{
+  const { lostStarReasons } = await import("../src/game/business/sauceStation.ts");
+  const sauce = SAUCES.find((x) => x.id === "lemon-dressing")!;
+  const tier = SAUCE_TIERS[0]!;
+  const good = gradeMix(recipeScoops(sauce), sauce, 1, 0, tier);
+  const fine = { scores: [1, 1, 1], spill: 0, bottles: 3, filled: 3 };
+  assert(
+    good.stars === 3 &&
+      lostStarReasons(good, fine, overallStars(good.stars, bottleStars(fine))).length === 0,
+    "N1: three stars has no 'why' line",
+  );
+  const skipped = lostStarReasons(good, null, overallStars(good.stars, null));
+  assert(
+    overallStars(good.stars, null) === 2 &&
+      skipped.length === 1 &&
+      /Bottling skipped/.test(skipped[0]!),
+    "N2: a perfect mix with the bottling skipped: 2 stars, and the line says the bottling was skipped (the screenshot's case)",
+    skipped,
+  );
+  const lumpy = gradeMix(recipeScoops(sauce), sauce, 0.6, 0, tier);
+  const split = gradeMix(recipeScoops(sauce), sauce, 1, 1, tier);
+  assert(
+    lostStarReasons(lumpy, fine, overallStars(lumpy.stars, 3)).some((r) =>
+      /Not whisked smooth/.test(r),
+    ) && lostStarReasons(split, fine, overallStars(split.stars, 3)).some((r) => /split/.test(r)),
+    "N3: an unblended sauce says 'not whisked smooth'; a split one says it split",
+  );
+  // A colour that is clearly off: a single ingredient that is not the recipe's mix (the first one that really costs the colour star).
+  const offMix = PANTRY.map((it) => gradeMix({ [it.id]: 3 }, sauce, 1, 0, tier)).find(
+    (m) => m.colorStars < 3,
+  );
+  assert(
+    !!offMix &&
+      lostStarReasons(offMix, fine, overallStars(offMix.stars, 3)).some((r) =>
+        /Colour \d+%/.test(r),
+      ),
+    "N4: a colour that is off says so, with its match",
+    offMix,
+  );
+  const messy = { scores: [0.2, 0.9, 0.4], spill: 0.3, bottles: 3, filled: 3 };
+  const low = { scores: [0.7, 0.7, 0.7], spill: 0, bottles: 3, filled: 3 };
+  assert(
+    lostStarReasons(good, messy, overallStars(good.stars, bottleStars(messy))).some((r) =>
+      /spilled/.test(r),
+    ) &&
+      (overallStars(good.stars, bottleStars(low)) === 3 ||
+        lostStarReasons(good, low, overallStars(good.stars, bottleStars(low))).some((r) =>
+          /dashed line/.test(r),
+        )),
+    "N5: a spill says so; pours off the line say so whenever they cost a star",
+  );
+  let silent = 0;
+  for (const st of [0, 1, 2] as const)
+    for (const blend of [0.2, 0.6, 1])
+      for (const sp of [0, 1])
+        for (const b of [null, fine, messy, low]) {
+          const m = gradeMix(recipeScoops(sauce), sauce, blend, sp, tier);
+          const stars = overallStars(m.stars, b ? bottleStars(b) : null);
+          if (stars < 3 && lostStarReasons(m, b, stars).length === 0) silent++;
+          void st;
+        }
+  assert(
+    silent === 0,
+    "N6: every round under three stars has at least one reason (never a silent lost star)",
+    { silent },
+  );
+  assert(
+    SAUCE_TIERS.map((t) => t.timeMs).join() === "90000,82000,74000,66000",
+    "N7: the clocks are 90 / 82 / 74 / 66 s (65 / 62 / 58 / 54 until 2026-11-13: 'not enough time to finish the sauce')",
+  );
+  const parts = fs.readFileSync(
+    new URL("../src/components/kc/sauce/SauceParts.tsx", import.meta.url),
+    "utf8",
+  );
+  const game = fs.readFileSync(
+    new URL("../src/components/kc/sauce/SauceStationGame.tsx", import.meta.url),
+    "utf8",
+  );
+  assert(
+    parts.includes("requestAnimationFrame(frame)") &&
+      parts.includes("posRef.current") &&
+      !/left 45ms linear/.test(parts) &&
+      !game.includes("setToolAt("),
+    "N8: the whisk follows the finger on every frame, with no CSS easing and no game render per pointer move; Auto moves it round the bowl",
+  );
+  assert(
+    game.includes("IDLE_HINT_MS = 4000") &&
+      game.includes('data-testid="sauce-hint-hand"') &&
+      game.includes('data-testid="sauce-hint-whisk"') &&
+      game.includes('data-testid="sauce-why"'),
+    "N9: nothing done for 4 s lights up the next ingredient, the whisk or Bottle it; the result shows 'Why not 3 stars'",
+  );
+}
+
 console.log(
   failures ? `\nSAUCE STATION QA: ${failures} FAILURE(S)` : "\nSAUCE STATION QA: ALL PASS",
 );

@@ -84,7 +84,9 @@ const sheet = () =>
       })),
       fridgeCard: !!el.querySelector('[data-testid="psc-grandmas-fridge"]'),
       text: el.innerText.replace(/\s+/g, " "),
-      startDisabled: start ? start.disabled : null,
+      startDisabled: start
+        ? start.disabled || start.getAttribute("aria-disabled") === "true"
+        : null,
     };
   });
 async function prepareToday() {

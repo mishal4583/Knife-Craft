@@ -780,78 +780,131 @@ export function toolPose(at: { x: number; y: number; w: number; h: number }): {
   return { x, y, tilt: Math.max(-24, Math.min(24, tilt)) };
 }
 
-/** The whisk or spoon over the bowl: in the hand while dragging, standing in the bowl against its right wall otherwise. */
+/**
+ * The whisk or spoon over the bowl: in the hand while dragging, circling by itself while Auto whisks, standing against the bowl's right wall
+ * otherwise.
+ *
+ * It follows the finger DIRECTLY (developer 2026-11-13: "the whisk is not moving properly according to the cursor"): the finger's place is
+ * read from `posRef` on every animation frame and written straight to the picture's style, with no React render and no CSS easing in between
+ * (it used to be a state update of the whole game per pointer move plus a 45-60 ms transition, so it trailed the finger). While Auto whisks
+ * the same loop moves it round the bowl, so the whisking can be SEEN (it used to stand still).
+ */
 export function ToolInBowl({
   name,
-  at,
+  posRef,
+  auto,
   stirring,
   reducedMotion,
   hasLiquid,
 }: {
   name: "whisk" | "spoon";
-  at: { x: number; y: number; w: number; h: number } | null;
+  /** The finger over the bowl while dragging ({x, y} in the stage, with the stage's size), or null. */
+  posRef: { current: { x: number; y: number; w: number; h: number } | null };
+  /** Auto whisk is on: the tool circles by itself. */
+  auto: boolean;
   stirring: boolean;
   reducedMotion: boolean;
   hasLiquid: boolean;
 }) {
   const art = useSauceArt(name);
-  const pose = at ? toolPose(at) : null;
-  // The head tip is the top-centre of the picture; turned over, the picture hangs UP from the tip.
-  const origin = "50% 4%";
-  const style: CSSProperties = pose
-    ? {
-        left: pose.x,
-        top: pose.y,
-        transform: `translate(-50%, -4%) rotate(${(180 - pose.tilt).toFixed(1)}deg)`,
-        transformOrigin: origin,
-        transition: reducedMotion
-          ? "none"
-          : "transform 60ms linear, left 45ms linear, top 45ms linear",
+  const toolEl = useRef<HTMLElement | null>(null);
+  const rippleEl = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    let raf = 0;
+    let last = performance.now();
+    let angle = -Math.PI / 2;
+    const frame = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      const el = toolEl.current;
+      const box = el?.parentElement?.getBoundingClientRect();
+      if (el && box && box.width > 0) {
+        let at = posRef.current;
+        const held = !!at;
+        if (!at && auto && !reducedMotion) {
+          // About one and a half turns a second, a little inside the rim.
+          angle += dt * Math.PI * 3;
+          at = {
+            x: (TOOL_BOWL.cx + Math.cos(angle) * TOOL_BOWL.rx * 0.6) * box.width,
+            y: (TOOL_BOWL.cy + Math.sin(angle) * TOOL_BOWL.ry * 0.6) * box.height,
+            w: box.width,
+            h: box.height,
+          };
+        }
+        const ripple = rippleEl.current;
+        if (at) {
+          const pose = toolPose(at);
+          el.style.left = `${pose.x}px`;
+          el.style.top = `${pose.y}px`;
+          el.style.transform = `translate(-50%, -4%) rotate(${(180 - pose.tilt).toFixed(1)}deg)`;
+          el.dataset["held"] = held ? "1" : "0";
+          el.dataset["moving"] = "1";
+          el.dataset["tilt"] = pose.tilt.toFixed(1);
+          if (ripple) {
+            ripple.style.display = hasLiquid ? "block" : "none";
+            ripple.style.left = `${pose.x}px`;
+            ripple.style.top = `${pose.y + 2}px`;
+          }
+        } else {
+          el.style.left = `${(TOOL_BOWL.cx + TOOL_BOWL.rx * 0.78) * 100}%`;
+          el.style.top = `${(TOOL_BOWL.cy + 0.02) * 100}%`;
+          el.style.transform = "translate(-50%, -4%) rotate(206deg)";
+          el.dataset["held"] = "0";
+          el.dataset["moving"] = "0";
+          el.dataset["tilt"] = "0";
+          if (ripple) ripple.style.display = "none";
+        }
       }
-    : {
-        left: `${(TOOL_BOWL.cx + TOOL_BOWL.rx * 0.78) * 100}%`,
-        top: `${(TOOL_BOWL.cy + 0.02) * 100}%`,
-        transform: "translate(-50%, -4%) rotate(206deg)",
-        transformOrigin: origin,
-        opacity: 0.97,
-      };
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [posRef, auto, reducedMotion, hasLiquid, art]);
+  // The head tip is the top-centre of the picture; turned over, the picture hangs UP from the tip.
+  const rest: CSSProperties = {
+    left: `${(TOOL_BOWL.cx + TOOL_BOWL.rx * 0.78) * 100}%`,
+    top: `${(TOOL_BOWL.cy + 0.02) * 100}%`,
+    transform: "translate(-50%, -4%) rotate(206deg)",
+    transformOrigin: "50% 4%",
+  };
   return (
     <>
-      {pose && hasLiquid ? (
-        <span
-          aria-hidden
-          data-testid="sauce-ripple"
-          className={cn(
-            "pointer-events-none absolute z-[9] h-[7%] w-[16%] rounded-[50%] border-2 border-white/55",
-            stirring && !reducedMotion && "sauce-ripple",
-          )}
-          style={{ left: pose.x, top: pose.y + 2, transform: "translate(-50%, -50%)" }}
-        />
-      ) : null}
+      <span
+        ref={rippleEl}
+        aria-hidden
+        data-testid="sauce-ripple"
+        className={cn(
+          "pointer-events-none absolute z-[9] h-[7%] w-[16%] rounded-[50%] border-2 border-white/55",
+          stirring && !reducedMotion && "sauce-ripple",
+        )}
+        style={{ display: "none", transform: "translate(-50%, -50%)" }}
+      />
       {art ? (
         <img
+          ref={(el) => {
+            toolEl.current = el;
+          }}
           src={sauceUrl(name)}
           alt=""
           draggable={false}
           data-testid="sauce-tool"
-          data-held={pose ? "1" : "0"}
-          data-tilt={pose ? pose.tilt.toFixed(1) : "0"}
+          data-held="0"
+          data-tilt="0"
           className="pointer-events-none absolute z-10 w-auto select-none"
-          style={{ height: "74%", ...style }}
+          style={{ height: "74%", ...rest }}
         />
       ) : (
         <span
+          ref={(el) => {
+            toolEl.current = el;
+          }}
           aria-hidden
           data-testid="sauce-tool"
-          data-held={pose ? "1" : "0"}
+          data-held="0"
           className="pointer-events-none absolute z-10 grid place-items-center text-[44px]"
-          style={{
-            left: pose ? pose.x : "70%",
-            top: pose ? pose.y : "50%",
-            transform: "translate(-50%, -100%)",
-          }}
+          style={rest}
         >
-          {name === "whisk" ? "🥄" : "🥄"}
+          🥄
         </span>
       )}
     </>
@@ -874,7 +927,13 @@ export function SauceStyles() {
       .sauce-pour-idle{animation:sauce-pour-idle 1.8s ease-in-out infinite}
       @keyframes sauce-pour-go{0%,100%{scale:1}50%{scale:1.035}}
       .sauce-pour-go{animation:sauce-pour-go .32s ease-in-out infinite}
-      @media (prefers-reduced-motion: reduce){.sauce-swirl,.sauce-chunk,.sauce-ripple,.sauce-pour-idle,.sauce-pour-go{animation:none}}
+      @keyframes sauce-hint{0%,100%{scale:1;box-shadow:0 0 0 0 rgba(255,210,90,0)}50%{scale:1.09;box-shadow:0 0 0 5px rgba(255,210,90,.95),0 0 18px 6px rgba(255,190,60,.75)}}
+      .sauce-hint{animation:sauce-hint .9s ease-in-out infinite;z-index:5}
+      @keyframes sauce-hint-hand{0%,100%{translate:0 0}50%{translate:0 -7px}}
+      .sauce-hint-hand{animation:sauce-hint-hand .9s ease-in-out infinite}
+      @keyframes sauce-hint-ring{0%{opacity:.95;scale:.55}100%{opacity:0;scale:1.15}}
+      .sauce-hint-ring{animation:sauce-hint-ring 1.2s ease-out infinite}
+      @media (prefers-reduced-motion: reduce){.sauce-swirl,.sauce-chunk,.sauce-ripple,.sauce-pour-idle,.sauce-pour-go{animation:none}.sauce-hint,.sauce-hint-hand,.sauce-hint-ring{animation:none}}
     `}</style>
   );
 }

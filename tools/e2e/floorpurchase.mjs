@@ -168,7 +168,25 @@ await sleep(300);
 // F3: buy a polish step
 const before = await readSave(page);
 await page.evaluate(() => document.querySelector('[data-testid="buy-polish"]')?.click());
-await sleep(900);
+await sleep(450);
+// F3b (developer 2026-11-13): the purchase lights up its own machine on the map, with what was bought and what it adds.
+const fx = await page.evaluate(() => {
+  const el = document.querySelector('[data-testid="floor-buy-fx"]');
+  const zone = el?.parentElement?.getBoundingClientRect();
+  const glow = el?.querySelector(".floor-buy-fx__glow")?.getBoundingClientRect();
+  return el
+    ? {
+        zone: el.getAttribute("data-zone"),
+        text: (el.querySelector(".floor-buy-fx__label")?.textContent ?? "")
+          .replace(/\s+/g, " ")
+          .trim(),
+        covers: !!zone && !!glow && glow.width >= zone.width * 0.95,
+        bump: !!document.querySelector('[data-testid="floor-rate"].floor-rate-bump'),
+      }
+    : null;
+});
+await shot(page, "floorbuy-3b-glow");
+await sleep(450);
 const after = await readSave(page);
 const note = await page.evaluate(
   () =>
@@ -186,6 +204,19 @@ check(
     /polished \(7\/10\)/.test(note) &&
     /an hour/.test(note),
   { note, polish: after.business.secondFloor.stations.coffee.polish },
+);
+check(
+  "F3b the Coffee machine glows on the map with 'Polish 7/10' and the income it adds, the income pill bumps, and the effect is gone after 2 s",
+  fx?.zone === "coffee" &&
+    /Polish 7\/10/.test(fx.text) &&
+    /\+\$[\d.,]+\/h/.test(fx.text) &&
+    fx.covers &&
+    fx.bump &&
+    (await (async () => {
+      await sleep(2300);
+      return page.evaluate(() => !document.querySelector('[data-testid="floor-buy-fx"]'));
+    })()),
+  fx,
 );
 
 // F5: small phone

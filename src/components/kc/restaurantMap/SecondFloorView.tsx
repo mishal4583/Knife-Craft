@@ -265,6 +265,29 @@ export function SecondFloorView({
     },
     [],
   );
+  /**
+   * WHAT JUST HAPPENED, ON THE MAP (developer 2026-11-13: "when polishing a table let the corresponding table glow... let the players know
+   * what is happening"): a purchase lights up its own machine for two seconds (a gold glow, sparkles, a rising label with what was bought and
+   * what it adds an hour); a new table lights up the seating area too, and the income pill at the top bumps. Display only.
+   */
+  const [fx, setFx] = useState<{
+    zones: ZoneId[];
+    title: string;
+    gain: string | null;
+    key: number;
+  } | null>(null);
+  const fxTimer = useRef<number | null>(null);
+  const showFx = (zones: ZoneId[], title: string, gain: string | null) => {
+    setFx({ zones, title, gain, key: Date.now() });
+    if (fxTimer.current) window.clearTimeout(fxTimer.current);
+    fxTimer.current = window.setTimeout(() => setFx(null), 2200);
+  };
+  useEffect(
+    () => () => {
+      if (fxTimer.current) window.clearTimeout(fxTimer.current);
+    },
+    [],
+  );
   const milestoneOf = (action: SecondFloorAction, after: SaveData) => {
     const f = secondFloorOf(after);
     if (action.kind === "buy") {
@@ -298,6 +321,28 @@ export function SecondFloorView({
     if (r.ok) {
       const m = milestoneOf(action, r.save);
       if (m) celebrate(m.title, m.line);
+      if (
+        action.kind === "table" ||
+        action.kind === "polish" ||
+        action.kind === "upgrade" ||
+        action.kind === "buy"
+      ) {
+        const st = secondFloorOf(r.save).stations[action.id];
+        const gain = floorPerHour(r.save) - floorPerHour(save);
+        showFx(
+          action.kind === "table" ? [action.id, "seating"] : [action.id],
+          action.kind === "table"
+            ? `🪑 Table #${st?.tables ?? 1}`
+            : action.kind === "polish"
+              ? `✨ Polish ${st?.polish ?? 1}/${MAX_POLISH}`
+              : action.kind === "upgrade"
+                ? `⬆ Tier ${st?.level ?? 2}`
+                : "🎉 Open!",
+          gain > 0 ? `+${formatUsd(gain)}/h` : null,
+        );
+        // A milestone has its own fanfare; an ordinary purchase gets a coin.
+        if (!m) AudioManager.playSfx("coin");
+      }
       // Every purchase says WHAT was bought and what it added (developer 2026-11-11), with the real numbers.
       const bought = (kind: "machine" | "table" | "polish" | "tier", id: StationId) =>
         boughtText(kind, id, save, r.save, formatUsd);
@@ -734,7 +779,11 @@ export function SecondFloorView({
           <span className="legend-pill level-pill">
             <span className="pill-dot" /> 2nd floor
           </span>
-          <span className="legend-pill hub-pill">
+          <span
+            key={fx ? `rate-${fx.key}` : "rate"}
+            className={`legend-pill hub-pill ${fx?.gain ? "floor-rate-bump" : ""}`}
+            data-testid="floor-rate"
+          >
             {rushOn ? `⚡ ${formatUsd(perHour * RUSH_SPEED)}` : formatUsd(perHour)}/h
           </span>
           {SECOND_FLOOR_TEST_UNLOCK ? <span className="legend-pill">Test: floor open</span> : null}
@@ -860,6 +909,26 @@ export function SecondFloorView({
                     ) : null}
                   </div>
                   <span className="hotspot-tap-ripple" aria-hidden="true" />
+                  {fx && fx.zones.includes(z.id) ? (
+                    <span
+                      key={fx.key}
+                      className="floor-buy-fx"
+                      data-testid="floor-buy-fx"
+                      data-zone={z.id}
+                      aria-hidden="true"
+                    >
+                      <span className="floor-buy-fx__glow" />
+                      {[0, 1, 2, 3, 4, 5].map((i) => (
+                        <span key={i} className={`floor-buy-fx__spark floor-buy-fx__spark--${i}`}>
+                          ✦
+                        </span>
+                      ))}
+                      <span className="floor-buy-fx__label">
+                        <b>{z.id === "seating" ? "🪑 New table" : fx.title}</b>
+                        {fx.gain && z.id !== "seating" ? <i>{fx.gain}</i> : null}
+                      </span>
+                    </span>
+                  ) : null}
                 </div>
               );
             })}
@@ -1006,7 +1075,19 @@ export function SecondFloorView({
       ) : null}
 
       {open && open !== "stairs" ? (
-        <aside className="map-zone-detail-card" role="dialog" aria-label={zoneLabel(open).name}>
+        <aside
+          key={fx && fx.zones[0] === open ? `card-${fx.key}` : "card"}
+          className={`map-zone-detail-card ${fx && fx.zones[0] === open ? "floor-card-glow" : ""}`}
+          role="dialog"
+          aria-label={zoneLabel(open).name}
+        >
+          {/* The open card covers most of the map: the same news shows on the card itself. */}
+          {fx && fx.zones[0] === open ? (
+            <span className="floor-card-fx" data-testid="floor-card-fx" aria-hidden="true">
+              <b>{fx.title}</b>
+              {fx.gain ? <i>{fx.gain}</i> : null}
+            </span>
+          ) : null}
           <div className="card-header">
             <span className="card-icon" aria-hidden="true">
               {zoneLabel(open).icon}

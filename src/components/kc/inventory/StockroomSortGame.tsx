@@ -665,8 +665,6 @@ export function StockroomSortGame({
       </div>
     );
   };
-
-  const distinct = [...new Set(round.sets)];
   return (
     <div
       ref={rootRef}
@@ -715,7 +713,43 @@ export function StockroomSortGame({
         </Plaque>
       </div>
       <div className="px-4 pt-2">
-        <StarBar progress={progress} marks={STAR_AT} />
+        {/* The star bar shares its row with Undo and Hint (developer 2026-11-13: the buttons had their own strip under the shelves, which
+            took height from them). Undo is always free; Hint fades out with the level. */}
+        <div className="flex items-center gap-1.5">
+          <div className="min-w-0 flex-1">
+            <StarBar progress={progress} marks={STAR_AT} />
+          </div>
+          <button
+            type="button"
+            data-testid="stock-undo"
+            onClick={undo}
+            disabled={historyRef.current.length === 0 || undosLeft <= 0 || phase === "done"}
+            aria-label={limitedUndo ? `Undo (${undosLeft} left)` : "Undo"}
+            className="press relative grid h-12 w-12 place-items-center disabled:opacity-40"
+          >
+            <SrArt name="boost-undo" className="h-full w-full object-contain" />
+            {limitedUndo ? (
+              <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-walnut-dark px-1 font-ui text-[11px] font-black text-ivory">
+                {undosLeft}
+              </span>
+            ) : null}
+          </button>
+          {hintMode !== "never" ? (
+            <button
+              type="button"
+              data-testid="stock-hint"
+              onClick={showHint}
+              disabled={!hintOn || phase === "done"}
+              aria-label="Hint"
+              className={cn(
+                "press grid h-12 w-12 place-items-center disabled:opacity-40",
+                hintOn && idle && !reducedMotion && "animate-pulse",
+              )}
+            >
+              <SrArt name="boost-hint" className="h-full w-full object-contain" />
+            </button>
+          ) : null}
+        </div>
         <div className="mt-1 flex min-h-[34px] items-center gap-2 font-ui">
           <p
             className={cn(
@@ -739,6 +773,17 @@ export function StockroomSortGame({
                     ? "Extra round · no reward"
                     : `${sets - stockedN} set${sets - stockedN === 1 ? "" : "s"} left to stock`}
           </p>
+          {/* More boards of this delivery wait (the delivery slip that listed the products was removed, developer 2026-11-13: the shelves
+              show them, and the room goes to the shelves). */}
+          {boards > 1 ? (
+            <span
+              className="shrink-0 rounded-full bg-[#3b2a1d]/80 px-2 py-1 font-ui text-[11px] font-extrabold text-ivory/90"
+              data-testid="stock-more-boards"
+              title="Finish them all for a bonus"
+            >
+              🗄️ +{boards - 1} more shelf{boards - 1 === 1 ? "" : "ves"} ⚡
+            </span>
+          ) : null}
           <span data-testid="stock-combo" className="text-[12px] font-bold text-ivory/80">
             {streak >= 2
               ? `🔥 ×${comboMultiplier(streak)
@@ -758,77 +803,29 @@ export function StockroomSortGame({
         </div>
       </div>
 
-      {/* the delivery slip: what was bought; each product is a set of 3 pieces */}
-      <div
-        className="mx-3 mt-1 flex items-center gap-1.5 overflow-x-auto rounded-xl bg-[#3b2a1d]/75 px-2 py-1"
-        data-testid="stock-slip"
-      >
-        <span className="shrink-0 font-ui text-[11px] font-extrabold text-ivory/80">
-          🧾 Delivery
-        </span>
-        {distinct.map((id) => (
-          <span
-            key={id}
-            className="flex shrink-0 items-center gap-0.5 rounded-full bg-[#fff7e6]/90 px-1.5 py-0.5 font-ui text-[11px] font-black text-walnut-dark"
-          >
-            <Goods id={id} className="h-[1.7em] w-[1.7em]" />×
-            {round.sets.filter((x) => x === id).length * 3}
-          </span>
-        ))}
-        {boards > 1 ? (
-          <span
-            className="shrink-0 font-ui text-[11px] font-bold text-ivory/80"
-            data-testid="stock-more-boards"
-          >
-            🗄️ +{boards - 1} more shelf{boards - 1 === 1 ? "" : "ves"} · ⚡ bonus for all
-          </span>
-        ) : null}
-      </div>
-
       {/* the shelf unit */}
-      <div className="mx-auto mt-2 min-h-0 w-full max-w-[460px] flex-1 overflow-y-auto px-3 no-scrollbar">
-        <SrArt name="unit-top" className="mx-auto block w-full" />
+      <div
+        className="mx-auto mt-1 min-h-0 w-full max-w-[460px] flex-1 overflow-y-auto px-3 pb-1 no-scrollbar"
+        style={{ containerType: "size" }}
+      >
+        {/* The whole unit fits the height it has (developer 2026-11-13: boards grew to six rows): its width follows the room, so a tall
+            board gets a little narrower instead of scrolling, but never under 290 px (a piece stays about 47 px wide: a very small phone scrolls). The unit is its top (0.12 of its width), the rows (0.23 each) and the plinth (0.1). */}
         <div
-          className={cn("grid grid-cols-2 gap-x-1.5", dense ? "gap-y-0" : "gap-y-1")}
-          data-testid="stock-shelf"
+          className="mx-auto"
+          style={{
+            width: `min(100%, max(290px, calc((100cqh - 12px) / ${(0.22 + 0.232 * Math.ceil(board.cubbies.length / 2)).toFixed(3)})))`,
+          }}
+          data-testid="stock-unit"
         >
-          {board.cubbies.map((_, c) => cubbyBox(c))}
-        </div>
-        <SrArt name="unit-plinth" className="mx-auto mb-2 block w-full" />
-      </div>
-
-      {/* helpers: Undo is always free; Hint fades out with the level */}
-      <div className="flex items-center justify-center gap-3 px-3 pb-3 pt-1">
-        <button
-          type="button"
-          data-testid="stock-undo"
-          onClick={undo}
-          disabled={historyRef.current.length === 0 || undosLeft <= 0 || phase === "done"}
-          aria-label={limitedUndo ? `Undo (${undosLeft} left)` : "Undo"}
-          className="press relative grid h-14 w-14 place-items-center disabled:opacity-40"
-        >
-          <SrArt name="boost-undo" className="h-full w-full object-contain" />
-          {limitedUndo ? (
-            <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-walnut-dark px-1 font-ui text-[11px] font-black text-ivory">
-              {undosLeft}
-            </span>
-          ) : null}
-        </button>
-        {hintMode !== "never" ? (
-          <button
-            type="button"
-            data-testid="stock-hint"
-            onClick={showHint}
-            disabled={!hintOn || phase === "done"}
-            aria-label="Hint"
-            className={cn(
-              "press grid h-14 w-14 place-items-center disabled:opacity-40",
-              hintOn && idle && !reducedMotion && "animate-pulse",
-            )}
+          <SrArt name="unit-top" className="mx-auto block w-full" />
+          <div
+            className={cn("grid grid-cols-2 gap-x-1.5", dense ? "gap-y-0" : "gap-y-1")}
+            data-testid="stock-shelf"
           >
-            <SrArt name="boost-hint" className="h-full w-full object-contain" />
-          </button>
-        ) : null}
+            {board.cubbies.map((_, c) => cubbyBox(c))}
+          </div>
+          <SrArt name="unit-plinth" className="mx-auto mb-2 block w-full" />
+        </div>
       </div>
 
       {/* a ribbon of praise for a run of fast sets */}
@@ -912,6 +909,9 @@ export function StockroomSortGame({
             <div className="mt-3 grid gap-2">
               <SortButton onClick={resume} testId="stock-resume">
                 Resume
+              </SortButton>
+              <SortButton quiet testId="stock-restart" onClick={() => resetFor(round)}>
+                ↻ Restart
               </SortButton>
               <SortButton
                 quiet

@@ -98,10 +98,11 @@ console.log("A. When it opens");
   );
   assert(
     TIERS.map((t) => t.from).join() === "6,19,31,44,74" &&
-      TIERS.map((t) => t.maxSets).join() === "3,5,7,9,9" &&
+      // Changed 2026-11-13 (developer: "increase the count of shelves and products as they level up"): 4 / 6 / 8 / 10 / 12, were 3 / 5 / 7 / 9 / 9.
+      TIERS.map((t) => t.maxSets).join() === "4,6,8,10,12" &&
       TIERS.map((t) => t.timeFactor).join() === "2,1.6,1.3,1.1,1" &&
       TIERS.map((t) => t.hint).join() === "always,always,after-miss,never,never",
-    "A4: five tiers: 3 / 5 / 7 / 9 / 9 sets (2 / 4 / 6 / 8 / 8 until 2026-11-12), clock x2 / 1.6 / 1.3 / 1.1 / 1, hints fade out",
+    "A4: five tiers: 4 / 6 / 8 / 10 / 12 sets (3 / 5 / 7 / 9 / 9 until 2026-11-13), clock x2 / 1.6 / 1.3 / 1.1 / 1, hints fade out",
   );
   assert(
     tierAt(6).from === 6 &&
@@ -112,7 +113,10 @@ console.log("A. When it opens");
     "A5: tierAt picks the last tier reached",
   );
   assert(
-    TIERS[3]!.depth === 2 &&
+    // Changed 2026-11-13 (developer: "add more shelves as the levels pass"): one deep cubby at Level 44 (was two), so its 10 products stand on
+    // 10 shelves instead of 9; the last tier keeps two.
+    TIERS[3]!.depth === 1 &&
+      TIERS[4]!.depth === 2 &&
       TIERS[2]!.depth === 0 &&
       TIERS[4]!.locks === 1 &&
       TIERS[4]!.mystery === 2,
@@ -696,17 +700,18 @@ console.log("J. Wiring");
     "J2: Level 6's Pre-Service Check shows a Stockroom Sort line (Level 3 shows Delivery Inspection, Level 4 Fridge Sort)",
   );
   assert(
-    [
-      "stock-guide",
-      "stock-help",
-      "stock-slip",
-      "stock-big-delivery",
-      "stock-chain",
-      "stock-more-boards",
-      "stock-undo",
-      "stock-hint",
-    ].every((t) => game.includes(t)),
-    "J3: the screen has the how-to card, the ? button, the delivery slip, Undo, Hint, and the run and bonus lines",
+    !game.includes("stock-slip") &&
+      [
+        "stock-guide",
+        "stock-help",
+        "stock-big-delivery",
+        "stock-chain",
+        "stock-more-boards",
+        "stock-undo",
+        "stock-hint",
+      ].every((t) => game.includes(t)),
+    // Changed 2026-11-13 (developer: "remove the unnecessary things that take space"): the delivery slip is gone, the shelves have its room.
+    "J3: the screen has the how-to card, the ? button, Undo, Hint, and the run and bonus lines (no delivery slip)",
   );
   const art = path.join(ROOT, "public/business/stockroom");
   const need = [

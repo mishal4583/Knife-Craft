@@ -14,6 +14,7 @@ import {
   launch,
   boot,
   seedSave,
+  readSave,
   sleep,
   openShortcut,
   shot,
@@ -178,6 +179,50 @@ await sleep(900);
 check(
   "F6 with nothing waiting the sheet never shows",
   !(await has(page, '[data-testid="service-gate"]')),
+);
+
+// F6b-F6d (developer 2026-11-13): the Prep Cook on the sheet, for a player who does not want to play a step.
+await boot(page, saveAt(20, waiting));
+await openKitchenAndOpenService(page);
+await sleep(700);
+check(
+  "F6b before the Prep Cook's level (30) the sheet offers no hire button",
+  (await has(page, '[data-testid="service-gate"]')) &&
+    !(await has(page, '[data-testid="gate-hire-prep-cook"]')) &&
+    !(await has(page, '[data-testid="gate-prep-cook"]')),
+);
+await boot(page, saveAt(32, waiting));
+await openKitchenAndOpenService(page);
+await sleep(700);
+const hireText = await text(page, '[data-testid="gate-hire-prep-cook"]');
+const beforeHire = await readSave(page);
+await shot(page, "flow-6c-hire-prep-cook");
+await tap(page, '[data-testid="gate-hire-prep-cook"]');
+const afterHire = await readSave(page);
+check(
+  "F6c from Level 30 the sheet offers 'Hire a Prep Cook' with his day wage; hiring is free (no money, no ledger entry) and he joins the team",
+  /Hire a Prep Cook · \$[\d.,]+ a day/.test(hireText ?? "") &&
+    afterHire.business.staff.hiredRoles.includes("prep-cook") &&
+    afterHire.credits === beforeHire.credits &&
+    afterHire.economyLedger.length === beforeHire.economyLedger.length,
+  { hireText, roles: afterHire.business.staff.hiredRoles },
+);
+const cookText = await text(page, '[data-testid="gate-prep-cook"]');
+await shot(page, "flow-6d-prep-cook-does-it");
+await tap(page, '[data-testid="gate-prep-cook"]');
+const afterCheck = await readSave(page);
+const stepsLeft = await page.evaluate(() =>
+  [...document.querySelectorAll('[data-testid="service-gate"] [data-testid^="flow-step-"]')].map(
+    (e) => e.dataset.testid.replace("flow-step-", ""),
+  ),
+);
+check(
+  "F6d hired: 'Prep Cook does “Check the delivery”' does that step from the sheet (no money moved); the next step is offered",
+  /Prep Cook does/.test(cookText ?? "") &&
+    /Check the delivery/.test(cookText ?? "") &&
+    !stepsLeft.includes("inspect") &&
+    afterCheck.credits === afterHire.credits,
+  { cookText, stepsLeft },
 );
 
 // F7: small phone

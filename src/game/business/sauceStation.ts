@@ -555,12 +555,13 @@ export type SauceTier = {
 /**
  * Tighter clocks and colour tolerance (developer 2026-11-12, player reviews: "increase the toughness of the mini games"): the first tier is 65 s at x1.3 (was 75 s at
  * x1.5), then 62 / 58 / 54 s (was 70 / 65 / 60); the tiers still only get harder (sauce-station-qa D19).
+ * Clocks again (developer 2026-11-13: "there is not enough time to finish the sauce"): 90 / 82 / 74 / 66 s. The colour tolerance is unchanged.
  */
 export const SAUCE_TIERS: readonly SauceTier[] = [
   {
     from: SAUCE_FIRST_LEVEL,
     cap: 9,
-    timeMs: 65_000,
+    timeMs: 90_000,
     help: "pips",
     tastes: Infinity,
     tolerance: 1.3,
@@ -571,7 +572,7 @@ export const SAUCE_TIERS: readonly SauceTier[] = [
   {
     from: 40,
     cap: 10,
-    timeMs: 62_000,
+    timeMs: 82_000,
     help: "list",
     tastes: 5,
     tolerance: 1.1,
@@ -582,7 +583,7 @@ export const SAUCE_TIERS: readonly SauceTier[] = [
   {
     from: 55,
     cap: 12,
-    timeMs: 58_000,
+    timeMs: 74_000,
     help: "color",
     tastes: 3,
     tolerance: 1,
@@ -593,7 +594,7 @@ export const SAUCE_TIERS: readonly SauceTier[] = [
   {
     from: 75,
     cap: 12,
-    timeMs: 54_000,
+    timeMs: 66_000,
     help: "swatch",
     tastes: 2,
     tolerance: 1,
@@ -663,6 +664,10 @@ export type MixResult = {
   colorStars: 0 | 1 | 2 | 3;
   thick: ThickState;
   stars: 0 | 1 | 2 | 3;
+  /** Whisked smooth (the blend reached BLENDED), whether it split, and which side the thickness missed on: for the result's "why". */
+  blended?: boolean;
+  split?: boolean;
+  thickSide?: "thin" | "thick" | null;
 };
 
 export function gradeMix(
@@ -677,14 +682,24 @@ export function gradeMix(
   const de = deltaE(m.color, t.color);
   const k = tier.tolerance;
   const colorStars = de <= 6 * k ? 3 : de <= 12 * k ? 2 : de <= 20 * k ? 1 : 0;
-  const th = thickState(thickOf(scoops, sauce, blend), t.band);
+  const thickNow = thickOf(scoops, sauce, blend);
+  const th = thickState(thickNow, t.band);
   const blended = blend >= BLENDED;
   let stars: 0 | 1 | 2 | 3 = 0;
   if (colorStars >= 1 && blend >= 0.5) stars = 1;
   if (colorStars >= 2 && th !== "out" && blended) stars = 2;
   if (colorStars === 3 && th === "in" && blended && splitCount === 0) stars = 3;
   if (splitCount > 0 && stars === 3) stars = 2;
-  return { de, match: matchPercent(de), colorStars, thick: th, stars };
+  return {
+    de,
+    match: matchPercent(de),
+    colorStars,
+    thick: th,
+    stars,
+    blended,
+    split: splitCount > 0,
+    thickSide: th === "in" ? null : thickNow < t.band[0] ? "thin" : "thick",
+  };
 }
 
 // ── Bottling ─────────────────────────────────────────────────────────────────
@@ -724,6 +739,35 @@ export function overallStars(mix: 0 | 1 | 2 | 3, bottling: 0 | 1 | 2 | 3 | null)
   if (mix === 3 && bottling >= 2) return 3;
   return Math.min(2, Math.round((mix + bottling) / 2)) as 0 | 1 | 2;
 }
+/**
+ * WHY NOT THREE STARS (developer 2026-11-13: "not understanding why I lost a star"): what cost the round its stars, in plain words, the biggest
+ * reason first, at most three. Empty for three stars. It only reads the results the stars were made from, so it can never disagree with them.
+ */
+export function lostStarReasons(
+  mix: MixResult,
+  bottling: BottleRound | null,
+  stars: 0 | 1 | 2 | 3,
+): string[] {
+  if (stars >= 3) return [];
+  const out: string[] = [];
+  if (bottling === null) out.push("🍾 Bottling skipped: 2 stars at most");
+  if (mix.split) out.push("💧 It split: pour the oil slowly");
+  if (mix.blended === false) out.push("🌀 Not whisked smooth: fill the blend bar");
+  if (mix.colorStars < 3) out.push(`🎨 Colour ${mix.match}%: follow the recipe`);
+  if (mix.thick !== "in")
+    out.push(
+      mix.thickSide === "thin" ? "🥄 Too thin: whisk more" : "🥄 Too thick: add a little liquid",
+    );
+  if (bottling) {
+    const avg =
+      bottling.bottles > 0 ? bottling.scores.reduce((t, v) => t + v, 0) / bottling.bottles : 0;
+    if (bottling.spill > 0.05) out.push("🍾 Sauce spilled: let go at the line");
+    else if (bottling.filled < bottling.bottles) out.push("🍾 A bottle missed the line");
+    else if (avg < 0.85) out.push("🍾 Pours off the dashed line");
+  }
+  return out.slice(0, 3);
+}
+
 export const SCORE_PER_STAR_POINT = 100;
 export const roundScore = (de: number, mixSeconds: number, bottleAvg: number): number =>
   Math.round(Math.max(0, 600 - de * 15) + Math.max(0, 300 - mixSeconds * 4) + bottleAvg * 400);

@@ -67,7 +67,7 @@ const tasks = [
   { kind: "wipe-boards", count: 1, since: 1 },
 ];
 // With campaignVersion 3 the seed's level number IS the game level (restaurantLevelOf).
-const saveAt = (n, { lines = NIGHT, reducedMotion = false, staff } = {}) =>
+const saveAt = (n, { lines = NIGHT, reducedMotion = false, staff, paige = false } = {}) =>
   seedSave({
     credits: 50_000,
     business: {
@@ -75,6 +75,8 @@ const saveAt = (n, { lines = NIGHT, reducedMotion = false, staff } = {}) =>
       calendar: { businessDay: DAY },
       inventory: inventoryOf(lines),
       ...(staff ? { staff: { hiredRoles: staff } } : {}),
+      // Paige hired with her tips ON (the other tests keep her quiet): the praise test below
+      ...(paige ? { assistant: { hired: true, seen: [] } } : {}),
       cleanliness: {
         tasks,
         open: {},
@@ -276,6 +278,17 @@ try {
     "T5 swiping a card right answers Keep (the stamp fades in on the way, the note says right or wrong)",
     answered === 1 && keepStamp > 0.3 && noteTone === (verdict === "keep" ? "good" : "bad"),
     { answered, keepStamp, verdict, noteTone },
+  );
+
+  // ---- T5b (developer 2026-11-14: no restart button in the pause card) ----
+  await click('[data-testid="fc-pause"]');
+  const restartShown = await q('[data-testid="fc-restart"]');
+  await click('[data-testid="fc-restart"]', 400);
+  const afterRestart = Number(await attr('[data-testid="fridge-check"]', "data-answered"));
+  check(
+    "T5b the pause card has Restart: the same night starts again from the top (no card answered, the pause card is gone)",
+    restartShown && afterRestart === 0 && !(await q('[data-testid="fc-paused"]')),
+    { restartShown, afterRestart },
   );
 
   // ---- T6: skip ----
@@ -603,6 +616,48 @@ try {
     "T18 at Level 50 the days are hidden on the cards, so the tour says to trust the picture and lists the shelf lives",
     /Later nights hide the days/.test(hid?.text ?? "") && /vegetables 7/.test(hid?.text ?? ""),
     hid?.text.slice(0, 220),
+  );
+
+  // ---- T20 (developer 2026-11-14): Paige praises a perfect round when the player is back on the kitchen home page ----
+  await boot(page, saveAt(40, { paige: true }));
+  await openCleanliness();
+  await tapChore("spoiled-out");
+  await click('[data-testid="fc-guide-skip"]');
+  await answerAll();
+  await sleep(500);
+  const praiseStars = Number(await attr('[data-testid="fc-result"]', "data-stars"));
+  await click('[data-testid="fc-done"]', 600);
+  await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
+  await sleep(1200);
+  // Her "Next step" guide card has the kitchen first (the praise never shows over it): send it away, then the praise comes.
+  await page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid="guide-card"] button')]
+      .find((b) => /Later/.test(b.textContent ?? ""))
+      ?.click(),
+  );
+  await sleep(1800);
+  const praise = await page.evaluate(() => {
+    const h = document.querySelector('[data-testid="assistant-host"]');
+    return h
+      ? {
+          beat: h.getAttribute("data-beat"),
+          tone: h.querySelector('[data-testid="assistant-bubble"]')?.getAttribute("data-tone"),
+          text: h.querySelector('[data-testid="assistant-text"]')?.textContent ?? "",
+        }
+      : null;
+  });
+  await shot(page, "fridgecheck-praise");
+  await sleep(1200);
+  const praiseSave = await readSave(page);
+  check(
+    "T20 a 3-star Fridge Check: back on the kitchen home page Paige praises it in a green celebration bubble; the praise is not saved as a tip",
+    praiseStars === 3 &&
+      /^praise:fridge-check:/.test(praise?.beat ?? "") &&
+      praise?.tone === "success" &&
+      praise.text.length > 0 &&
+      praise.text.length <= 90 &&
+      !(praiseSave.business.assistant?.seen ?? []).some((id) => id.startsWith("praise:")),
+    { praiseStars, praise, seen: praiseSave.business.assistant?.seen },
   );
 
   // ---- T19: no console errors ----
