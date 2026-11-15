@@ -633,6 +633,8 @@ Date.now = realDateNow;
           AD_PLACEMENT.skipStep,
           // Added 2026-11-13 (developer): the bigger fridge at 25 % off on the Pre-Service Check.
           AD_PLACEMENT.fridgeDiscount,
+          // Added 2026-11-15 (developer): the Car Park's second tow (no money).
+          AD_PLACEMENT.carParkTow,
         ]
           .sort()
           .join(),

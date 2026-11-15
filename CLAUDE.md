@@ -71,7 +71,7 @@ status line in HANDOFF; this file changes only when a RULE changes.
   level bonus, short by, Second Floor ×2, daily gift; 2026-10-31: welcome back, a few hours of
   earnings after 30+ minutes away, only for the ad; 2026-11-02: Flood after a
   first clear, the Golden Guest ×3, Skip ahead — `restaurant/floorFlood.ts`,
-  `goldenGuest.ts`; 2026-11-10: the Sauce Station's "3 more rounds today", `sauce_rounds`, once a business day, no money so no ledger entry; 2026-11-11: the delivery routine's "skip this step", `skip_step`, 3 a day, done as the Prep Cook does it, no money so no ledger entry; 2026-11-13: the Pre-Service Check's bigger fridge at 25 % off, `fridge_discount`, once a day, the discount is the one `rewarded-ad` entry and the fridge is bought at full price in the same save, `restaurant/fridgeUpgradeNeed.ts`), granted only on the `rewarded` state. One placement per spot (`AD_PLACEMENT`). Each says what
+  `goldenGuest.ts`; 2026-11-10: the Sauce Station's "3 more rounds today", `sauce_rounds`, once a business day, no money so no ledger entry; 2026-11-11: the delivery routine's "skip this step", `skip_step`, 3 a day, done as the Prep Cook does it, no money so no ledger entry; 2026-11-15: the Car Park's second tow, `car_park_tow`, once a business day, no money so no ledger entry; 2026-11-13: the Pre-Service Check's bigger fridge at 25 % off, `fridge_discount`, once a day, the discount is the one `rewarded-ad` entry and the fridge is bought at full price in the same save, `restaurant/fridgeUpgradeNeed.ts`), granted only on the `rewarded` state. One placement per spot (`AD_PLACEMENT`). Each says what
   it gives before the ad, is never needed to progress, has a daily cap, and
   pays with one `rewarded-ad` ledger entry.
 - **Level messages:** `level_started/completed/paused/resumed` with
@@ -274,7 +274,7 @@ Release zip: the CONTENTS of `dist/` →
 - Use the existing primitives and look: warm painted kitchens, wood and
   paper, Fraunces / Nunito / Caveat bundled locally.
 - Touch targets ≥ 48 px.
-- **A new mini-game** (developer 2026-11-14, `docs/planning/MINIGAME-PRODUCTION-RULES-2026-11-14.md`): the core action with plain art first; no art prompts, rewards or ads until the developer has played it on a real phone and it feels good; every level solvable by construction (QA proves it); a mistake never ends the round and "Try again" is one tap; store text and screenshots updated in the same release.
+- **A new mini-game** (developer 2026-11-14, `docs/planning/MINIGAME-PRODUCTION-RULES-2026-11-14.md`): the core action with plain art first; no art prompts, rewards or ads until the developer has played it on a real phone and it feels good; every level solvable by construction (QA proves it); a mistake never blocks progress and a restart is one tap (Car Park, 2026-11-15: three honks end the round, "Try again" is the same lot); store text and screenshots updated in the same release.
 - **Short game copy** (developer 2026-10-16): a few words, icons and numbers
   (`StatChip`, `Points`). Any longer explanation goes behind an ⓘ
   (`InfoTip`, `kc/common/InfoTip.tsx`); `ui-copy-qa` guards it.

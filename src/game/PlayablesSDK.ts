@@ -108,6 +108,8 @@ export const AD_PLACEMENT = {
   skipStep: "skip_step",
   /** Rewarded: the Pre-Service Check's bigger fridge at 25 % off (developer 2026-11-13): never needed, once a day, one "rewarded-ad" entry. */
   fridgeDiscount: "fridge_discount",
+  /** Rewarded: one optional second Car Park tow per business day. */
+  carParkTow: "car_park_tow",
 } as const;
 export type InterstitialPlacement =
   typeof AD_PLACEMENT.levelCompleted | typeof AD_PLACEMENT.businessDayEnd;
@@ -130,7 +132,8 @@ export type RewardedPlacement =
   | typeof AD_PLACEMENT.rushHour
   | typeof AD_PLACEMENT.sauceRounds
   | typeof AD_PLACEMENT.skipStep
-  | typeof AD_PLACEMENT.fridgeDiscount;
+  | typeof AD_PLACEMENT.fridgeDiscount
+  | typeof AD_PLACEMENT.carParkTow;
 /** The defaults (also the config's placementFallback values). */
 export const INTERSTITIAL_PLACEMENT: InterstitialPlacement = AD_PLACEMENT.levelCompleted;
 export const REWARDED_PLACEMENT: RewardedPlacement = AD_PLACEMENT.replayBonus;

@@ -1025,7 +1025,8 @@ export type SfxName =
   | "sortPlace"
   | "sortWrong"
   | "sortCombo"
-  | "sortTick";
+  | "sortTick"
+  | "carHorn";
 
 type SfxNote = {
   freq: number;
@@ -1089,6 +1090,10 @@ export const SFX: Record<SfxName, readonly SfxNote[]> = {
     { freq: 1319, dur: 0.22, gain: 0.045, at: 0.14, wave: "triangle" },
   ],
   sortTick: [{ freq: 0, dur: 0.03, gain: 0.03, noise: true, filter: 2200, attack: 0.002 }],
+  carHorn: [
+    { freq: 392, to: 350, dur: 0.16, gain: 0.055, wave: "square", filter: 900 },
+    { freq: 311, to: 280, dur: 0.19, gain: 0.05, at: 0.19, wave: "square", filter: 850 },
+  ],
 };
 const SFX_MIN_GAP_MS = 60;
 

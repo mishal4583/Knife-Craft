@@ -13,6 +13,7 @@ export { default as RestaurantMap } from "./restaurantMap/RestaurantMapView";
 export { default as SecondFloorView } from "./restaurantMap/SecondFloorView";
 export { FridgeSortGame } from "./inventory/FridgeSortGame";
 export { StockroomSortGame } from "./inventory/StockroomSortGame";
+export { CarParkGame } from "./inventory/CarParkGame";
 export { DeliveryInspectionGame } from "./inventory/DeliveryInspectionGame";
 export { SauceStationGame } from "./sauce/SauceStationGame";
 export { SauceShelf } from "./sauce/SauceShelf";

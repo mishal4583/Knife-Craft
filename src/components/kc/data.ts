@@ -52,6 +52,8 @@ export type ScreenId =
   | "sauce-shelf"
   /** Stockroom Sort: match 3 and stock the supplies you bought (business/stockroomSort.ts). Optional, from Level 10. */
   | "stockroom-sort"
+  /** Car Park shared-lot jam puzzle, the last daily opening step from level 15. */
+  | "car-park"
   /** Fridge Check practice: the closing-night inspection on the real stock, free play with no reward (restaurant/fridgeCheck.ts). */
   | "fridge-check"
   | "gameplay"

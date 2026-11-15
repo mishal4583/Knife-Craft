@@ -91,6 +91,12 @@ import type {
   DeliveryInspectionResult,
 } from "@/game/business/deliveryInspection";
 import type { StockroomSortAction, StockroomSortResult } from "@/game/business/stockroomSort";
+import {
+  carParkDebugLevel,
+  carParkTowAdAvailable,
+  type CarParkAction,
+  type CarParkActionResult,
+} from "@/game/business/carPark";
 import type { SauceStationAction, SauceStationResult } from "@/game/business/sauceStation";
 
 // The Restaurant screens load as their own chunk the first time one opens (task #24).
@@ -116,6 +122,7 @@ const FridgeSortGame = lazy(() =>
 const StockroomSortGame = lazy(() =>
   loadRestaurantScreens().then((m) => ({ default: m.StockroomSortGame })),
 );
+const CarParkGame = lazy(() => loadRestaurantScreens().then((m) => ({ default: m.CarParkGame })));
 const DeliveryInspectionGame = lazy(() =>
   loadRestaurantScreens().then((m) => ({ default: m.DeliveryInspectionGame })),
 );
@@ -207,6 +214,8 @@ export function ScreensRouter({
   sauceStationAction,
   sauceRoundsAd,
   stockroomSortAction,
+  carParkAction,
+  carParkTowAd,
   cleanerCleans,
   collectAchievement,
 }: {
@@ -297,6 +306,9 @@ export function ScreensRouter({
   sauceRoundsAd: () => Promise<"ok" | "no">;
   /** Stockroom Sort: a board ended / was skipped (App applies it to the latest save). */
   stockroomSortAction: (action: StockroomSortAction) => StockroomSortResult;
+  /** Car Park: a round ended, failed, or was handled by the Prep Cook. */
+  carParkAction: (action: CarParkAction) => CarParkActionResult;
+  carParkTowAd: () => Promise<"ok" | "no">;
   /** The map's Cleaner finished a real restroom job (App: cleanTask by the Cleaner). */
   cleanerCleans: (job: TaskKind) => void;
   /** Achievements: collect one earned reward (progression/achievements.ts). */
@@ -526,6 +538,22 @@ export function ScreensRouter({
                       hasPrepCook={save.business.staff?.hiredRoles?.includes("prep-cook") ?? false}
                       onAction={stockroomSortAction}
                       onExit={() => routeGo("inventory-supplies")}
+                    />
+                  </div>
+                </Suspense>
+              ) : null}
+              {screen === "car-park" ? (
+                <Suspense fallback={<RestaurantLoading go={routeGo} active="restaurant-map" />}>
+                  <div className="relative h-full w-full overflow-hidden">
+                    <CarParkGame
+                      save={save}
+                      playerLevel={carParkDebugLevel(restaurantLevelOf(save.levelProgress))}
+                      reducedMotion={save.settings.reducedMotion}
+                      hasPrepCook={save.business.staff?.hiredRoles?.includes("prep-cook") ?? false}
+                      onAction={carParkAction}
+                      towAdAvailable={carParkTowAdAvailable(save) && rushAdAvailable}
+                      onTowAd={carParkTowAd}
+                      onExit={() => routeGo("restaurant-map")}
                     />
                   </div>
                 </Suspense>

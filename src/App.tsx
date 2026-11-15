@@ -478,6 +478,15 @@ import {
   type StockroomSortAction,
   type StockroomSortResult,
 } from "@/game/business/stockroomSort";
+import {
+  autoCarPark,
+  canPrepCookClearCarPark,
+  finishCarPark,
+  carParkTowAdAvailable,
+  type CarParkAction,
+  type CarParkActionResult,
+} from "@/game/business/carPark";
+import { newCarParkTowRewardId } from "@/game/ads/carParkTowAd";
 
 // Split away from the initial bundle — Preparation (and the Phaser it
 // pulls in) is needed immediately since Prep is the first screen, but
@@ -830,6 +839,7 @@ export function App() {
   /** A day-Cleaner ad is in flight (hireDayCleanerWithAd). */
   const dayCleanerAdBusyRef = useRef(false);
   const sauceAdBusyRef = useRef(false);
+  const carParkAdBusyRef = useRef(false);
   const stepSkipBusyRef = useRef(false);
   // Paige's notebook sheet and a tip she is asked to say again (components/kc/assistant).
   const [paigeNotebook, setPaigeNotebook] = useState(false);
@@ -911,6 +921,9 @@ export function App() {
       // order's ingredients with their own money before cutting anything.
       setScreen("kitchen");
       setActiveLevelId(loaded.levelProgress.currentLevelId);
+      // Test hook, as the other mini-games have: ?carPark opens the Car Park straight away.
+      if (typeof location !== "undefined" && /[?&]carPark\b/.test(location.search))
+        setScreen("car-park");
       // Economy V2.5 — kitchen tiers are bought (Restaurant Development);
       // this only keeps the kitchen on the highest tier owned. Saves from
       // before V2.5 already got their level-earned tiers in
@@ -1403,6 +1416,76 @@ export function App() {
     return { ok: true, effects: out.effects };
   }
 
+  /** Car Park is a daily routine game only: its result awards stars/Hype, never money or stock. */
+  function carParkAction(action: CarParkAction): CarParkActionResult {
+    const current = saveRef.current;
+    if (!current) return { ok: false };
+    const level = restaurantLevelOf(current.levelProgress);
+    if (action.kind === "start") {
+      sendAnalyticsEvent("car_park_started", { level });
+      return { ok: true };
+    }
+    if (action.kind === "skip") {
+      sendAnalyticsEvent("car_park_skipped", { level });
+      return { ok: true };
+    }
+    if (action.kind === "failed") {
+      sendAnalyticsEvent("car_park_failed", { level, honks: action.honks });
+      return { ok: true };
+    }
+    if (action.kind === "howto") {
+      const old = current.business.carPark ?? {};
+      persist({ ...current, business: { ...current.business, carPark: { ...old, howto: true } } });
+      return { ok: true };
+    }
+    if (action.kind === "auto") {
+      if (!canPrepCookClearCarPark(current, level)) return { ok: false };
+      persist(autoCarPark(current));
+      sendAnalyticsEvent("car_park_auto", { level });
+      return { ok: true };
+    }
+    const next = finishCarPark(current, level, action.honks, action.towUsed, action.stars);
+    persist(next);
+    notePraise("car-park", action.stars);
+    sendAnalyticsEvent("car_park_finished", {
+      level,
+      stars: action.stars,
+      honks: action.honks,
+      tow: action.towUsed,
+    });
+    return { ok: true };
+  }
+
+  async function watchCarParkTowAd(): Promise<"ok" | "no"> {
+    if (carParkAdBusyRef.current) return "no";
+    const first = saveRef.current;
+    if (!first || !carParkTowAdAvailable(first)) return "no";
+    carParkAdBusyRef.current = true;
+    try {
+      const ad = await requestRewardedAd(newCarParkTowRewardId(), AD_PLACEMENT.carParkTow);
+      sendAnalyticsEvent("car_park_tow_ad", {
+        level: restaurantLevelOf(first.levelProgress),
+        status: ad.status,
+      });
+      if (ad.status !== "rewarded") return "no";
+      const latest = saveRef.current;
+      if (!latest || !carParkTowAdAvailable(latest)) return "no";
+      persist({
+        ...latest,
+        business: {
+          ...latest.business,
+          carPark: {
+            ...(latest.business.carPark ?? {}),
+            towAdDay: latest.business.calendar.businessDay,
+          },
+        },
+      });
+      return "ok";
+    } finally {
+      carParkAdBusyRef.current = false;
+    }
+  }
+
   /**
    * The Cleaner on the Restaurant map finished a restroom job (developer
    * 2026-10-16: "make sure he is cleaning and not mock"): the job is really
@@ -1866,6 +1949,7 @@ export function App() {
     if (stepId === "unpack") return shiftInspected(latest, autoPutAway(latest), level);
     if (stepId === "shelves") return autoStock(latest);
     if (stepId === "sauce") return coverSauceToday(latest);
+    if (stepId === "carpark") return autoCarPark(latest);
     let next = latest;
     if (stepId === "fridge-check")
       for (const kind of ["spoiled-out", "wrap-fridge"] as const) {
@@ -1883,6 +1967,11 @@ export function App() {
     const latest = saveRef.current;
     if (!latest || !latest.business.staff.hiredRoles.includes("prep-cook")) return false;
     if (!PREP_COOK_STEPS.includes(stepId)) return false;
+    if (
+      stepId === "carpark" &&
+      !canPrepCookClearCarPark(latest, restaurantLevelOf(latest.levelProgress))
+    )
+      return false;
     const next = routineStepDone(latest, stepId);
     if (next === latest) return false;
     persist(next);
@@ -1907,6 +1996,10 @@ export function App() {
       const next = routineStepDone(latest, stepId);
       if (next === latest) return "no";
       persist(withSkipUsed(next));
+      if (stepId === "carpark")
+        sendAnalyticsEvent("car_park_skipped", {
+          level: restaurantLevelOf(latest.levelProgress),
+        });
       return "ok";
     } finally {
       stepSkipBusyRef.current = false;
@@ -4901,6 +4994,8 @@ export function App() {
                   sauceStationAction={sauceStationAction}
                   sauceRoundsAd={watchSauceRoundsAd}
                   stockroomSortAction={stockroomSortAction}
+                  carParkAction={carParkAction}
+                  carParkTowAd={watchCarParkTowAd}
                   cleanerCleans={cleanerCleans}
                   rushAdAvailable={rewardedAdsAvailable()}
                   setMenuPrice={setMenuPrice}
@@ -5031,7 +5126,9 @@ export function App() {
             !save.business.staff?.hiredRoles?.includes("prep-cook")
           }
           prepCookWage={dailyPayroll(["prep-cook"])}
-          prepCookSteps={PREP_COOK_STEPS}
+          prepCookSteps={PREP_COOK_STEPS.filter(
+            (step) => step !== "carpark" || restaurantLevelOf(save.levelProgress) >= 30,
+          )}
           onHirePrepCook={() => hireStaff("prep-cook").ok}
           onPrepCookStep={prepCookDoesStep}
           skipsLeft={adBonusApi.skipStepsLeft()}

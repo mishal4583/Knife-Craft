@@ -39,8 +39,8 @@ const GAMES = Object.keys(PRAISE_LINES) as PraiseGame[];
 console.log("A. The rule");
 {
   assert(
-    GAMES.join() === "fridge-sort,stockroom,inspection,sauce,fridge-check",
-    "A1: the five mini-games have praise",
+    GAMES.join() === "fridge-sort,stockroom,inspection,sauce,fridge-check,car-park",
+    "A1: the six mini-games have praise (the Car Park joined on 2026-11-15)",
     GAMES,
   );
   assert(
@@ -131,11 +131,11 @@ console.log("W. Wiring");
   );
   const n = (app.match(/notePraise\(/g) ?? []).length;
   assert(
-    n === 6 &&
-      ["fridge-sort", "inspection", "sauce", "stockroom", "fridge-check"].every((g) =>
+    n === 7 &&
+      ["fridge-sort", "inspection", "sauce", "stockroom", "fridge-check", "car-park"].every((g) =>
         app.includes(`notePraise("${g}"`),
       ),
-    "W2: App praises each of the five mini-games when a round finishes (the function plus five calls)",
+    "W2: App praises each of the six mini-games when a round finishes (the function plus six calls)",
     { n },
   );
   assert(

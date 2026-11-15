@@ -14,6 +14,7 @@ import type { StockroomSortState } from "./stockroomSort";
 import type { FridgeCheckState } from "../restaurant/fridgeCheck";
 import type { DeliveryInspectionState } from "./deliveryInspection";
 import type { SauceStationState } from "./sauceStation";
+import type { CarParkState } from "./carPark";
 import type { HealthInspectorState } from "../restaurant/healthInspector";
 import type { AssistantState } from "../restaurant/assistant";
 import type { EndlessStarsState } from "../restaurant/restaurantStanding";
@@ -222,6 +223,8 @@ export type BusinessState = {
    * Absent = nothing done yet. Never holds money or stock.
    */
   sauceStation?: SauceStationState;
+  /** Car Park's daily patience-puzzle progress (business/carPark.ts). */
+  carPark?: CarParkState;
   /**
    * The health inspector's visits during the campaign (restaurant/healthInspector.ts): the level of his next visit, the Grade A streak and
    * the last visit's result. Absent = he has not come yet. Never holds money or stock.

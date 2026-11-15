@@ -22,12 +22,13 @@ import { roundFor as stockroomRound } from "./stockroomSort";
 import { cleanlinessOf } from "../restaurant/cleanliness";
 import { CHECK_TASK, isFridgeCheckOpen } from "../restaurant/fridgeCheck";
 import { sauceDue } from "./sauceStation";
+import { carParkDue } from "./carPark";
 
-export type FlowStepId = "inspect" | "unpack" | "shelves" | "fridge-check" | "sauce";
+export type FlowStepId = "inspect" | "unpack" | "shelves" | "fridge-check" | "sauce" | "carpark";
 
 export type FlowStep = {
   id: FlowStepId;
-  /** 1-5: the number shown beside it. */
+  /** Its position in the opening routine. */
   n: number;
   icon: string;
   /** The action, short ("Check the delivery"). */
@@ -102,6 +103,16 @@ export function flowSteps(save: SaveData, level: number): FlowStep[] {
       to: "sauce-station",
       lockedBy: null,
     });
+  if (carParkDue(save, level))
+    out.push({
+      id: "carpark",
+      n: 6,
+      icon: "🚗",
+      label: "Clear the car park",
+      detail: "make room for guests",
+      to: "car-park",
+      lockedBy: null,
+    });
   return out;
 }
 
@@ -126,7 +137,13 @@ export function serviceGate(save: SaveData, level: number): ServiceGate {
 
 /** Steps a rewarded ad may skip in one business day. */
 /** The steps a hired Prep Cook does for the player (the Fridge Check is the Cleaner's chore). */
-export const PREP_COOK_STEPS: readonly string[] = ["inspect", "unpack", "shelves", "sauce"];
+export const PREP_COOK_STEPS: readonly string[] = [
+  "inspect",
+  "unpack",
+  "shelves",
+  "sauce",
+  "carpark",
+];
 
 export const SKIPS_PER_DAY = 3;
 

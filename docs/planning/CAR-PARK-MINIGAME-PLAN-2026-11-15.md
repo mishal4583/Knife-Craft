@@ -1,5 +1,10 @@
 # Car Park: the shared-lot jam mini-game (plan v2, developer 2026-11-15)
 
+> **Status 2026-11-15: BUILT (plain rules + painted art), not yet played on a real phone.** See the top of `docs/HANDOFF.md`. What changed from this plan while building it:
+> the lot generator is "drop vehicles in one at a time, keep each only while the lot stays solvable, then flip directions toward the tier's difficulty" (not backwards from a leave order);
+> the lot is 5 x 5 to 6 x 9 cells of 2/3/4-cell vehicles on a stage that is 78 % lot and 11 % building on each side; the Car Park is a daily step from Level 15 (Prep Cook from Level 30).
+> Not built yet: the "lanes" rule for the neighbour's vehicles, the bakery / bank / dentist / gym neighbours (Batch G art), the guests who walk to our door.
+
 Developer's brief: the vehicles come to our restaurant; the car park is **shared with the neighbour's building**; when vehicles park they get stuck and we release them
 **without making mistakes**, like in the real game. This replaces the "Loading Dock / delivery carts" idea (section A of
 `JAM-BELT-SORT-MINIGAMES-PLAN-2026-11-14.md`); the Plating Belt and Drink Bar stay as written there.

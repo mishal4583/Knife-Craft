@@ -6,7 +6,7 @@ car that leaves collects the waiting passengers of its colour; cars that do not 
 showed (arrow / jam puzzles, conveyor-flow, sort). Nothing is built yet; this is the plan to approve.
 
 The building rules are `docs/planning/MINIGAME-PRODUCTION-RULES-2026-11-14.md` (plain art first, a phone feel check before rewards or art, every level
-solvable by construction, a mistake never ends the round, one-tap retry, store text in the same release). Mini-games stay MANDATORY (never optional); the
+solvable by construction, a mistake never blocks progress and a restart is one tap, one-tap retry, store text in the same release). Mini-games stay MANDATORY (never optional); the
 hired Prep Cook can do a step with no stars, as for the others.
 
 > **2026-11-15:** section A (Loading Dock, delivery carts) is replaced by the developer's own version, **Car Park** (guests' cars and a neighbour's in a shared lot):

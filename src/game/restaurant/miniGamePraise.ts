@@ -9,7 +9,8 @@
  */
 import type { AssistantBeat, PaigePose } from "./assistant";
 
-export type PraiseGame = "fridge-sort" | "stockroom" | "inspection" | "sauce" | "fridge-check";
+export type PraiseGame =
+  "fridge-sort" | "stockroom" | "inspection" | "sauce" | "fridge-check" | "car-park";
 
 export const PRAISE_STARS = 3;
 
@@ -46,6 +47,12 @@ export const PRAISE_LINES: Record<PraiseGame, readonly string[]> = {
     "A perfect Fridge Check. Nothing old stays on your shelf!",
     "Spot on, every card. The kitchen is in good hands!",
     "Spotless judgement! I'd trust you with my own lunch.",
+  ],
+  "car-park": [
+    "Not one honk! The neighbour is happy.",
+    "The whole lot cleared perfectly. Lovely driving!",
+    "Every car found its way out. What a smooth run!",
+    "Three stars and a smiling neighbour. Perfect!",
   ],
 };
 

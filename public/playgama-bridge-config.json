@@ -29,7 +29,8 @@
                 { "id": "rush_hour" },
                 { "id": "sauce_rounds" },
                 { "id": "skip_step" },
-                { "id": "fridge_discount" }
+                { "id": "fridge_discount" },
+                { "id": "car_park_tow" }
             ]
         }
     }
