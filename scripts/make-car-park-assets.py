@@ -18,7 +18,8 @@ ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "Car Park Assets"
 OUTPUT = ROOT / "public" / "business" / "carpark"
 
-BACKDROP = "car-park-backdrop"
+BACKDROP_SOURCE = "car-park-backdrop-v2"
+BACKDROP_OUTPUT = "car-park-backdrop"
 VEHICLES: dict[str, tuple[int, int]] = {
     **{f"car-{color}": (160, 320) for color in ("red", "blue", "yellow", "green", "orange", "purple", "white", "grey")},
     **{f"van-{color}": (160, 480) for color in ("red", "blue", "yellow", "green", "orange", "purple", "white", "grey")},
@@ -84,9 +85,9 @@ def main() -> int:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     built = 0
 
-    backdrop_path = SOURCE / f"{BACKDROP}.png"
+    backdrop_path = SOURCE / f"{BACKDROP_SOURCE}.png"
     backdrop = Image.open(backdrop_path).convert("RGB").resize(BACKDROP_SIZE, Image.Resampling.LANCZOS)
-    save_webp(backdrop, OUTPUT / f"{BACKDROP}.webp", BACKDROP_MAX_BYTES)
+    save_webp(backdrop, OUTPUT / f"{BACKDROP_OUTPUT}.webp", BACKDROP_MAX_BYTES)
     built += 1
 
     for name, size in VEHICLES.items():

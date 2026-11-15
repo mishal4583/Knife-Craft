@@ -119,7 +119,7 @@ export function CarParkGame({
   const [leaving, setLeaving] = useState<CarParkVehicle[]>([]);
   const [honkId, setHonkId] = useState<string | null>(null);
   const stage = useRef<HTMLElement | null>(null);
-  /** The size of one square cell, in pixels: the biggest the lot can be inside the stage (78 % of its width, the rest is the two buildings). */
+  /** The size of one square cell, fitted into 86 % of the stage width to match the open-road play area. */
   const [cell, setCell] = useState(0);
   const idleTimer = useRef<number | null>(null);
   const sentResult = useRef(false);
@@ -135,7 +135,7 @@ export function CarParkGame({
     const el = stage.current;
     if (!el) return;
     const measure = () => {
-      const w = el.clientWidth * 0.78;
+      const w = el.clientWidth * 0.86;
       const h = el.clientHeight;
       setCell(Math.max(0, Math.floor(Math.min(w / initial.cols, h / initial.rows))));
     };
@@ -258,10 +258,12 @@ export function CarParkGame({
         </button>
       </header>
 
-      <div className="relative z-10 mx-auto mt-2 flex w-[78%] items-center justify-between rounded-2xl border border-[#e4c683] bg-[#fff5df]/95 px-2 py-1 shadow-lg">
+      <div className="relative z-10 mx-auto mt-2 flex w-[86%] items-center justify-between rounded-2xl border border-[#e4c683] bg-[#fff5df]/95 px-2 py-1 shadow-lg">
         <div className="flex items-center gap-2">
           <img
-            src={art(`neighbour-${honks === 0 ? "happy" : honks === 1 ? "worried" : "annoyed"}`)}
+            src={art(
+              `neighbour-${honks === 0 ? "happy" : honks === 1 ? "worried" : honks >= CAR_PARK_STRIKES ? "angry" : "annoyed"}`,
+            )}
             alt="Neighbour"
             className="h-10 w-10 rounded-full"
           />
@@ -277,12 +279,12 @@ export function CarParkGame({
 
       <section
         ref={stage}
-        className="relative z-10 min-h-0 flex-1"
+        className="relative z-10 min-h-0 flex-1 overflow-hidden"
         aria-label="Shared car park puzzle"
       >
         {cell > 0 ? (
           <div
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border-2 border-[#d7b674]/80 bg-[#5d554a]/55 shadow-[0_12px_35px_rgba(0,0,0,.45)]"
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
             style={{ width: cell * lot.cols, height: cell * lot.rows }}
           >
             {lot.vehicles.map((v) => {
@@ -318,6 +320,9 @@ export function CarParkGame({
             {leaving.map((v) => (
               <div
                 key={`leaving-${v.id}`}
+                data-testid="carpark-departing"
+                data-axis={v.axis}
+                data-direction={v.dir}
                 aria-hidden="true"
                 className="pointer-events-none absolute z-0"
                 style={{
@@ -329,6 +334,29 @@ export function CarParkGame({
                 }}
               >
                 <Oriented v={v} cell={cell} />
+                <img
+                  src={art("puff")}
+                  alt=""
+                  draggable={false}
+                  className="pointer-events-none absolute"
+                  style={{
+                    left:
+                      v.axis === "h"
+                        ? v.dir > 0
+                          ? -cell * 0.3
+                          : v.length * cell - cell * 0.7
+                        : cell / 2 - cell * 0.35,
+                    top:
+                      v.axis === "v"
+                        ? v.dir > 0
+                          ? -cell * 0.3
+                          : v.length * cell - cell * 0.7
+                        : cell / 2 - cell * 0.35,
+                    width: cell * 0.7,
+                    height: cell * 0.7,
+                    animation: "carparkPuff .38s ease-out forwards",
+                  }}
+                />
               </div>
             ))}
             {hintId && phase === "playing" ? (
@@ -345,6 +373,7 @@ export function CarParkGame({
       <footer className="relative z-10 mx-3 mb-[max(12px,env(safe-area-inset-bottom))] rounded-2xl border border-[#dfbe7e] bg-[#fff2d7]/95 p-2 shadow-xl">
         <div className="flex items-center justify-between gap-2">
           <button
+            data-testid="carpark-tow"
             onClick={async () => {
               touchActivity();
               if (canTow) {
@@ -365,14 +394,16 @@ export function CarParkGame({
             }
             className={`min-h-12 rounded-xl border px-3 py-2 text-xs font-black shadow ${towMode ? "border-red-700 bg-red-700 text-white" : "border-[#b67d3c] bg-[#f4d49a]"}`}
           >
-            🚚{" "}
-            {towMode
-              ? "Choose a vehicle"
-              : canTow
-                ? `${freeTowUsed ? "Bonus tow" : "Tow"} · costs 1★`
-                : towAdAvailable && carParkTowAdAvailable(save)
-                  ? "Watch for extra tow"
-                  : "Tow used today"}
+            <span className="flex items-center gap-1.5">
+              <img src={art("tow-truck")} alt="" className="h-8 w-4 object-contain" />
+              {towMode
+                ? "Choose a vehicle"
+                : canTow
+                  ? `${freeTowUsed ? "Bonus tow" : "Tow"} · costs 1★`
+                  : towAdAvailable && carParkTowAdAvailable(save)
+                    ? "Watch for extra tow"
+                    : "Tow used today"}
+            </span>
           </button>
           <span className="rounded-xl border border-[#c49a61]/50 px-3 py-2 text-xs font-bold">
             {honks === 0 ? "✨ Clean run" : `${honks}/3 honks`}

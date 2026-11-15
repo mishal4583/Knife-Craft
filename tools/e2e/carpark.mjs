@@ -199,7 +199,7 @@ await open(22);
 {
   await open(22);
   const before = (await vehicles()).length;
-  await clickText(/^🚚.*Tow/);
+  await page.click('[data-testid="carpark-tow"]');
   await sleep(200);
   const idx = await find((x) => !x.movable);
   await clickVehicle(idx);
@@ -255,6 +255,43 @@ await open(22);
     "P8 no sideways scroll at 320; a 6-column vehicle is >= 40 px at 320 and >= 48 px at 390",
     sw <= 320 && minW320 >= 40 && minW390 >= 48,
     { sw, minW320, minW390 },
+  );
+}
+// P12: a vehicle's departure remains on its row or column, so it cannot cut diagonally through corner scenery.
+{
+  await open(22);
+  const routes = [];
+  for (let guard = 0; guard < 10; guard++) {
+    const idx = await find((x) => x.movable);
+    if (idx < 0) break;
+    await clickVehicle(idx);
+    await page.waitForSelector('[data-testid="carpark-departing"]', { timeout: 1500 });
+    routes.push(
+      await page.$eval('[data-testid="carpark-departing"]', (el) => {
+        const style = getComputedStyle(el);
+        return {
+          axis: el.dataset.axis,
+          direction: Number(el.dataset.direction),
+          dx: parseFloat(style.getPropertyValue("--dx")) || 0,
+          dy: parseFloat(style.getPropertyValue("--dy")) || 0,
+        };
+      }),
+    );
+    await sleep(500);
+    if (/The lot is clear/.test(await text())) break;
+  }
+  const straightExits =
+    routes.length > 0 &&
+    routes.every((r) => {
+      const horizontal = r.axis === "h";
+      const active = horizontal ? r.dx : r.dy;
+      const inactive = horizontal ? r.dy : r.dx;
+      return active !== 0 && inactive === 0 && Math.sign(active) === r.direction;
+    });
+  check(
+    "P12 departures stay in one row or column and exit in the arrow direction (no corner cuts)",
+    straightExits,
+    routes,
   );
 }
 // P10: the routine. From Level 15 the "Before you open" sheet lists the Car Park as the LAST step; at Level 14 it does not.

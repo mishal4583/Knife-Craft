@@ -48,6 +48,34 @@ LAYOUT (percentages of the width; the picture will be cropped to these exact pro
 Overall mood: inviting, a little humorous, the two buildings clearly different neighbours sharing one car park.
 ```
 
+## BATCH A2: the new backdrop, roads all round (developer 2026-11-15, REPLACES batch A)
+
+**Why:** in play (real phone) a sideways car drove into the cafe or the neighbour's wall, because batch A has a building down each side and a road only at the top and bottom. Every
+edge a car can leave by must be open road. The restaurant and the neighbour stay in the picture only as small CORNER pieces that no car ever drives toward.
+
+```
+Make ONE portrait image of an empty car park seen from straight above (a bird's-eye, orthographic overhead view, like a game board), saved as car-park-backdrop-v2.png, 1080 x 1920 px,
+NOT transparent (a full opaque scene). Warm golden-hour evening light, the same painted look as the attached restaurant map and as the first backdrop.
+
+THE ONE RULE: a car must be able to drive straight off ANY of the four edges of the car park, so ALL FOUR SIDES of the asphalt are OPEN ROAD. No building, wall, fence, hedge, tree
+or kerb blocks the middle of any side.
+
+LAYOUT (percentages of the picture; keep each zone inside its band):
+- THE CAR PARK FLOOR: a big rectangle from 7 % to 93 % of the width and 9 % to 91 % of the height: dark warm-grey asphalt, soft painterly texture, fine cracks, a few oil stains,
+  faint tyre marks, lighter in the centre so coloured vehicles stand out, a little darker at the edges. NO painted parking lines, NO bays, NO arrows, NO cars, NO people, NO text.
+- ALL FOUR SIDES are a STREET running past the car park, continuing off the picture: a low, dropped kerb (flat, no wall) between the asphalt and the street, then a road with a
+  faint dashed centre line. The side streets are the LEFT 7 % and the RIGHT 7 % of the width; the TOP 9 % and BOTTOM 9 % of the height are the top and bottom streets, with a zebra
+  crossing near the middle of each. The four streets join at the corners.
+- ONLY THE FOUR CORNERS may hold scenery, and each piece stays inside its corner square (no more than 22 % of the width and 12 % of the height, tucked against the corner, never
+  in the middle of a side): TOP-LEFT a slice of OUR CAFE (dark timber frame, scalloped cream-and-green awning, glowing lantern, window boxes of flowers, a cobbled corner) seen from
+  above; BOTTOM-RIGHT a slice of the NEIGHBOUR'S building (pale brick and glass, a blue canopy, neat green hedges, a bench, a street lamp), cooler colours than the cafe; TOP-RIGHT
+  and BOTTOM-LEFT: flower beds, a couple of small trees and bushes, a lamp post, a bin. Nothing else.
+Overall mood: inviting, a little humorous, a car park with a street on every side.
+```
+
+After it arrives: I put it at `Car Park Assets/car-park-backdrop-v2.png`, build it into `public/business/carpark/car-park-backdrop.webp` (crop 720 x 1280), widen the lot in
+`CarParkGame.tsx` from 78 % to about 86 % of the stage width, let a car drive off the edge it faces, and re-run `tools/e2e/carpark.mjs` (with a new check: no car crosses a corner piece).
+
 ## BATCH B: cars (8 files, 1024 x 2048, transparent)
 
 ```

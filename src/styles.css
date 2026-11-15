@@ -1613,6 +1613,17 @@ html.kc-reduced-motion .kc-clean-sheen {
   }
 }
 
+@keyframes carparkPuff {
+  0% {
+    opacity: 0.8;
+    transform: scale(0.45);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+
 @keyframes carparkBump {
   0%,
   100% {

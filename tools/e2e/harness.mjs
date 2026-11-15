@@ -7,8 +7,10 @@
 // gives a brand-new player, and seeding/reading goes through window.bridge.
 import puppeteer from "puppeteer-core";
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-export const OUT = new URL(".", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1");
+export const OUT = path.dirname(fileURLToPath(import.meta.url)) + path.sep;
 export const GAME_URL = process.env.KC_URL || "http://localhost:4173/";
 export const SAVE_KEY = "knifecraft_save";
 
