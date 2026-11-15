@@ -123,6 +123,16 @@ const StockroomSortGame = lazy(() =>
   loadRestaurantScreens().then((m) => ({ default: m.StockroomSortGame })),
 );
 const CarParkGame = lazy(() => loadRestaurantScreens().then((m) => ({ default: m.CarParkGame })));
+const PlatingBeltGame = lazy(() =>
+  loadRestaurantScreens().then((m) => ({ default: m.PlatingBeltGame })),
+);
+
+/** Developer preview (?platingBelt=<level>): the level whose plate to show, never below the first Plating Belt level. */
+function platingBeltPreviewLevel(): number {
+  if (typeof location === "undefined") return 18;
+  const asked = Number(new URLSearchParams(location.search).get("platingBelt"));
+  return Number.isFinite(asked) && asked >= 18 ? Math.floor(asked) : 18;
+}
 const DeliveryInspectionGame = lazy(() =>
   loadRestaurantScreens().then((m) => ({ default: m.DeliveryInspectionGame })),
 );
@@ -553,6 +563,17 @@ export function ScreensRouter({
                       onAction={carParkAction}
                       towAdAvailable={carParkTowAdAvailable(save) && rushAdAvailable}
                       onTowAd={carParkTowAd}
+                      onExit={() => routeGo("restaurant-map")}
+                    />
+                  </div>
+                </Suspense>
+              ) : null}
+              {screen === "plating-belt" ? (
+                <Suspense fallback={<RestaurantLoading go={routeGo} active="restaurant-map" />}>
+                  <div className="relative h-full w-full overflow-hidden">
+                    <PlatingBeltGame
+                      save={save}
+                      level={platingBeltPreviewLevel()}
                       onExit={() => routeGo("restaurant-map")}
                     />
                   </div>

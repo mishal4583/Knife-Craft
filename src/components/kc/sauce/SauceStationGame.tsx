@@ -8,6 +8,8 @@ import {
   NO_EFFECTS,
   PANTRY_BY_ID,
   WHISK_ZONE,
+  OMEGA_WINDOW_MS,
+  ZONE_GRACE_MS,
   bottleScore,
   lostStarReasons,
   bottleStars,
@@ -74,6 +76,8 @@ import {
 
 type Phase = "ready" | "mix" | "bottle" | "paused" | "done";
 const TICK_MS = 50;
+/** A tier that does not list the recipe counts Pour as done once the colour is this close (or the blend has started). */
+const POURED_MATCH = 70;
 const HOLD_REPEAT_MS = 280;
 const TASTE_SHOW_MS = 5000;
 /** Nothing done for this long while mixing: the next thing to do lights up. */
@@ -243,6 +247,11 @@ function Round({
   const autoRef = useRef(false);
   const lastMove = useRef(0);
   const lastAng = useRef<number | null>(null);
+  /** The whisk's unwrapped angle and its recent samples: the speed is the net turn over `OMEGA_WINDOW_MS`. */
+  const cumAng = useRef(0);
+  const angLog = useRef<{ t: number; a: number }[]>([]);
+  /** Until when a brief wobble out of the green zone still counts as in it. */
+  const zoneHoldUntil = useRef(0);
   const dragging = useRef(false);
   const doneRef = useRef(false);
   const mixRef = useRef<{ mix: MixResult; secs: number } | null>(null);
@@ -284,6 +293,10 @@ function Round({
         else if (!dragging.current || performance.now() - lastMove.current > 160) w *= 0.55;
         if (w < 0.02) w = 0;
         omegaRef.current = w;
+        // A short grace: a wobble just outside the green zone, soon after being in it, still blends (the player's hand is not a metronome).
+        const now = performance.now();
+        if (w >= lo && w <= hi) zoneHoldUntil.current = now + ZONE_GRACE_MS;
+        else if (now < zoneHoldUntil.current && w >= lo * 0.75 && w <= hi * 1.2) w = (lo + hi) / 2;
         const hasAny = volumeOf(scoopsRef.current) > 0;
         const nb = hasAny ? blendStep(blendRef.current, sauce.tool, w, TICK_MS / 1000) : 0;
         blendRef.current = nb;
@@ -426,9 +439,16 @@ function Round({
       let d = ang - lastAng.current;
       if (d > Math.PI) d -= 2 * Math.PI;
       if (d < -Math.PI) d += 2 * Math.PI;
-      const dt = Math.max(8, now - lastMove.current) / 1000;
-      const turns = Math.min(7, Math.abs(d) / (2 * Math.PI) / dt);
-      omegaRef.current = omegaRef.current * 0.65 + turns * 0.35;
+      // The speed is the net turn over the last 280 ms, not one event's angle over its few milliseconds (that flickered in and out of the band).
+      cumAng.current += d;
+      const log = angLog.current;
+      log.push({ t: now, a: cumAng.current });
+      while (log.length > 2 && now - log[0]!.t > OMEGA_WINDOW_MS) log.shift();
+      const span = (now - log[0]!.t) / 1000;
+      if (span >= 0.06) {
+        const turns = Math.min(7, Math.abs(cumAng.current - log[0]!.a) / (2 * Math.PI) / span);
+        omegaRef.current = omegaRef.current * 0.5 + turns * 0.5;
+      }
     }
     lastAng.current = ang;
     lastMove.current = now;
@@ -438,6 +458,8 @@ function Round({
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     dragging.current = true;
     lastAng.current = null;
+    angLog.current = [];
+    cumAng.current = 0;
     lastMove.current = performance.now();
     acted();
     onToolMove(e);
@@ -610,26 +632,28 @@ function Round({
     ? { n: 2, text: `Split! Circle the ${toolName} slowly to smooth it` }
     : blend >= 0.9 && volume > 0 && toAdd.length === 0
       ? { n: 3, text: "Looks good! Tap Bottle it" }
-      : volume > 0 && toAdd.length === 0
-        ? {
-            n: 2,
-            text: sauce.chunks
-              ? `Stir the ${toolName} gently, keep the pieces`
-              : `Now circle the ${toolName} in the green zone`,
-          }
-        : showsRecipe && toAdd.length > 0
+      : !showsRecipe && volume > 0 && match < POURED_MATCH && blend < 0.5
+        ? { n: 1, text: `Match the colour, then circle the ${toolName}` }
+        : volume > 0 && toAdd.length === 0
           ? {
-              n: 1,
-              text: `Pour: ${toAdd
-                .slice(0, 3)
-                .map((x) => `${x.name} ${x.left < 1 ? "a pinch" : `×${x.left}`}`)
-                .join(" · ")}${toAdd.length > 3 ? " …" : ""}`,
+              n: 2,
+              text: sauce.chunks
+                ? `Stir the ${toolName} gently, keep the pieces`
+                : `Now circle the ${toolName} in the green zone`,
             }
-          : volume > 0 && blend >= 0.9
-            ? { n: 3, text: "Match the colour, then tap Bottle it" }
-            : volume > 0
-              ? { n: 1, text: `Match the colour, then circle the ${toolName}` }
-              : { n: 1, text: "Tap the ingredients to pour them in" };
+          : showsRecipe && toAdd.length > 0
+            ? {
+                n: 1,
+                text: `Pour: ${toAdd
+                  .slice(0, 3)
+                  .map((x) => `${x.name} ${x.left < 1 ? "a pinch" : `×${x.left}`}`)
+                  .join(" · ")}${toAdd.length > 3 ? " …" : ""}`,
+              }
+            : volume > 0 && blend >= 0.9
+              ? { n: 3, text: "Match the colour, then tap Bottle it" }
+              : volume > 0
+                ? { n: 1, text: `Match the colour, then circle the ${toolName}` }
+                : { n: 1, text: "Tap the ingredients to pour them in" };
   // What the idle hint lights up: the next ingredient (only while the tier shows the recipe), else the whisk, else Bottle it.
   const hintAt: string | null =
     !idle || phase !== "mix"
@@ -789,6 +813,45 @@ function Round({
         </div>
         <ThicknessGauge thick={thick} band={target.band} className="h-[74px] shrink-0" />
       </div>
+
+      {/* the steps of the sauce, always in view (developer 2026-11-16: "the sauce station is not showing any steps to do the preparation"):
+          what is done is ticked, the current one is lit, and the line below says what to do now (the recipe list stays a tier's choice) */}
+      {phase === "mix" ? (
+        <ol
+          className="mx-3 mt-1.5 flex items-center justify-center gap-1.5 font-ui text-[12px] font-extrabold"
+          aria-label="Steps"
+          data-testid="sauce-steps"
+          data-now={step.n}
+        >
+          {(
+            [
+              [1, "Pour"],
+              [2, "Blend"],
+              [3, "Bottle"],
+            ] as const
+          ).map(([n, label], i) => {
+            const state = n < step.n ? "done" : n === step.n ? "now" : "next";
+            return (
+              <li key={n} className="flex items-center gap-1.5" data-step-n={n} data-state={state}>
+                {i > 0 ? <span aria-hidden className="h-px w-3 bg-ivory/50" /> : null}
+                <span
+                  className={cn(
+                    "flex items-center gap-1 rounded-full px-2 py-0.5",
+                    state === "now" && "bg-gold text-walnut-dark shadow-soft",
+                    state === "done" && "bg-[#cde9b8] text-[#2f6b1f]",
+                    state === "next" && "bg-[#2f2118]/70 text-ivory/80",
+                  )}
+                >
+                  <span aria-hidden className="tabular-nums">
+                    {state === "done" ? "✓" : n}
+                  </span>
+                  {label}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      ) : null}
 
       {note ? (
         <p

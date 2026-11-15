@@ -1571,6 +1571,15 @@ html.kc-reduced-motion .kc-clean-sheen {
     transform: translateY(-26px);
   }
 }
+/* Plating Belt: the waiter's marker walks one clockwise lap, from the bottom middle. Reduced Motion never starts it. */
+@keyframes beltLap {
+  from {
+    transform: rotate(180deg);
+  }
+  to {
+    transform: rotate(540deg);
+  }
+}
 @keyframes sortShake {
   0%,
   100% {

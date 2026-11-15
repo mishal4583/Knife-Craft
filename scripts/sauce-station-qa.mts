@@ -757,6 +757,16 @@ console.log("L. What you see: the guidance, the whisk, the pour (developer 2026-
       /Tap Bottle it/.test(game),
     "L7: the mix screen always says the next step: pour, circle, bottle",
   );
+  // The steps are always in view (developer 2026-11-16): a ladder Pour, Blend, Bottle with the current one lit and finished ones ticked, on every tier.
+  assert(
+    /data-testid="sauce-steps"/.test(game) &&
+      /\[1, "Pour"\]/.test(game) &&
+      /\[2, "Blend"\]/.test(game) &&
+      /\[3, "Bottle"\]/.test(game) &&
+      /n < step\.n \? "done"/.test(game) &&
+      /phase === "mix" \? \(\s*<ol/.test(game),
+    "L7b: the three steps (Pour, Blend, Bottle) are shown through the whole mixing stage, whatever the tier, the current one lit and the done ones ticked",
+  );
   assert(
     /data-need=\{need === null \? undefined : need\}/.test(game) &&
       /data-testid=\{`sauce-want-\$\{item\.id\}`\}/.test(game) &&

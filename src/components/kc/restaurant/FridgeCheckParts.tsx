@@ -48,7 +48,7 @@ export const hashOf = (s: string): number => {
 };
 
 /**
- * The ingredient's picture, made to LOOK its state: fresh and aging are clean, near-expiry is dull with a touch of wilt, expired is greyed with
+ * The ingredient's picture, made to LOOK its state: fresh and aging are clean, near-expiry is browned and bruised, expired is greyed with
  * mold or rot on it and a fly or two (the painted overlays of the kit; each ingredient always gets the same ones).
  */
 export function FoodPicture({ card, className }: { card: CheckCard; className?: string }) {
@@ -63,7 +63,7 @@ export function FoodPicture({ card, className }: { card: CheckCard; className?: 
     card.state === "EXPIRED"
       ? "[filter:saturate(0.55)_brightness(0.86)_contrast(0.95)]"
       : card.state === "NEAR_EXPIRY"
-        ? "[filter:saturate(0.82)_sepia(0.18)]"
+        ? "[filter:saturate(0.6)_sepia(0.5)_brightness(0.94)_contrast(1.04)]"
         : card.state === "AGING"
           ? "[filter:saturate(0.94)]"
           : "";
@@ -110,10 +110,28 @@ export function FoodPicture({ card, className }: { card: CheckCard; className?: 
           <FcArt name="wisp-tall" className="absolute left-[8%] top-[0%] w-[14%] opacity-80" />
         </>
       ) : card.state === "NEAR_EXPIRY" ? (
-        <FcArt
-          name="ov-08"
-          className="absolute left-[28%] top-[30%] w-[38%] opacity-45 mix-blend-multiply"
-        />
+        // "Use next" (developer 2026-11-16: "some are a little difficult to identify"): clearly bruised, not just a little dull.
+        // Brown bruise patches (the kit's rot overlay, the mild kind: no mold, no flies) where each ingredient always gets the same ones.
+        <>
+          <FcArt
+            name="ov-05"
+            className="absolute w-[30%] opacity-80 mix-blend-multiply"
+            style={{
+              left: `${20 + (h % 30)}%`,
+              top: `${24 + ((h >> 3) % 24)}%`,
+              transform: `rotate(${(h % 70) - 35}deg)`,
+            }}
+          />
+          <FcArt
+            name="ov-05"
+            className="absolute w-[19%] opacity-70 mix-blend-multiply"
+            style={{
+              left: `${46 + ((h >> 5) % 28)}%`,
+              top: `${40 + ((h >> 7) % 24)}%`,
+              transform: `rotate(${((h >> 2) % 90) - 45}deg)`,
+            }}
+          />
+        </>
       ) : null}
     </span>
   );

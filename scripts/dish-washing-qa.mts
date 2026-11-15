@@ -396,13 +396,15 @@ console.log("W. Wiring");
   const game = read("src/components/kc/restaurant/WashUpSink.tsx");
   assert(
     /dishStains\(/.test(game) &&
-      /playScrub\("wet"\)/.test(game) &&
+      /washStroke\(\s*"scrub"/.test(game) &&
+      /washStroke\(\s*"rinse"/.test(game) &&
+      !/playScrub\(/.test(game) &&
       /playSparkle\(/.test(game) &&
       /playSpotless\(/.test(game) &&
       /new CleaningFx|CleaningFx\(/.test(game) &&
       /reducedMotionOn\(\)/.test(game) &&
       !/Math\.random\(/.test(game + read("src/game/restaurant/dishDirt.ts")),
-    "R7: the sink uses the rooms' feel engine (wet scrub sound, sparkles, suds, spotless chime; reduced motion honoured), seeded",
+    "R7: the sink uses the rooms' feel engine (a smooth wash sound, not the per-stroke tick, sparkles, suds, spotless chime; reduced motion honoured), seeded",
   );
 }
 

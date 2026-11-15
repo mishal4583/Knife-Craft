@@ -612,11 +612,19 @@ export const tierNumberAt = (level: number): number => SAUCE_TIERS.indexOf(tierA
 
 // ── Blending (the whisk and the spoon) ───────────────────────────────────────
 
-/** Turns per second that are in the green zone. */
+/**
+ * Turns per second that are in the green zone. Widened (developer 2026-11-16: "while whisking manually it is hard to maintain in the green
+ * portion"): the whisk was 1.3 to 2.6 and the spoon 0.6 to 1.6, a band a thumb could not hold; the speed is also read over a short sweep now
+ * (`OMEGA_WINDOW_MS` in the game), with a grace of `ZONE_GRACE_MS` for a brief wobble out of the band.
+ */
 export const WHISK_ZONE: Readonly<Record<Tool, readonly [number, number]>> = {
-  whisk: [1.3, 2.6],
-  stir: [0.6, 1.6],
+  whisk: [1.0, 3.2],
+  stir: [0.45, 1.9],
 };
+/** The speed of the whisk is the net turn over this many ms (a noisy per-event reading used to flicker it out of the zone). */
+export const OMEGA_WINDOW_MS = 280;
+/** A brief wobble out of the green zone (this long, and not far out of it) still counts as in it. */
+export const ZONE_GRACE_MS = 260;
 export const BLEND_RATE = 0.35;
 export const FAST_LOSS = 0.2;
 export const BLENDED = 0.9;

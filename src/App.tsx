@@ -924,6 +924,11 @@ export function App() {
       // Test hook, as the other mini-games have: ?carPark opens the Car Park straight away.
       if (typeof location !== "undefined" && /[?&]carPark\b/.test(location.search))
         setScreen("car-park");
+      // Plating Belt stays isolated behind a developer preview until its
+      // real-phone gameplay gate is approved: ?platingBelt=18.
+      const platingBeltPreview =
+        typeof location !== "undefined" && /[?&]platingBelt(?:=|&|$)/.test(location.search);
+      if (platingBeltPreview) setScreen("plating-belt");
       // Economy V2.5 — kitchen tiers are bought (Restaurant Development);
       // this only keeps the kitchen on the highest tier owned. Saves from
       // before V2.5 already got their level-earned tiers in
@@ -941,7 +946,7 @@ export function App() {
       // completion) surface their real accumulated progress instead —
       // that catch-up IS the source's own documented forward-only
       // behavior, not a special case invented here.
-      if (shouldRunIntro(synced)) {
+      if (!platingBeltPreview && shouldRunIntro(synced)) {
         if (isFreshSave) setShowIntro(true);
         else synced = markIntroDone(synced);
       }

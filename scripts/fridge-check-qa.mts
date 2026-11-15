@@ -800,6 +800,20 @@ console.log("J. Rules file, wiring and art");
   );
   const bytes = files.reduce((n, f) => n + fs.statSync(path.join(dir, f)).size, 0);
   assert(bytes > 0 && bytes <= 700_000, `J6: the kit stays small (${Math.round(bytes / 1024)} KB)`);
+  // "Use next" must be easy to tell from fresh food (developer 2026-11-16): the going-off picture is browned AND carries two painted bruise patches,
+  // never the old 18 % sepia and a faint 45 % shadow. Fresh and aging food stay clean; the cards print no text cue at the later tiers.
+  const parts = fs.readFileSync(
+    path.join(ROOT, "src/components/kc/restaurant/FridgeCheckParts.tsx"),
+    "utf8",
+  );
+  const near = parts.slice(parts.indexOf('card.state === "NEAR_EXPIRY" ? ('));
+  assert(
+    (near.slice(0, 900).match(/name="ov-05"/g) ?? []).length === 2 &&
+      /sepia\(0\.5\)/.test(parts) &&
+      !/sepia\(0\.18\)/.test(parts) &&
+      !/ov-08/.test(parts),
+    "J7: a Use next card is browned and shows two bruise patches, so it reads at a glance",
+  );
 }
 
 if (failures) {

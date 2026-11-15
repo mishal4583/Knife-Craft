@@ -752,6 +752,104 @@ class AudioManagerImpl {
   private lastScrubAt = -Infinity;
 
   /**
+   * Dishwashing (developer 2026-11-16: the "tak tak" of `playScrub` is replaced by a smooth wipe). While the sponge moves, ONE
+   * continuous voice runs: soft filtered noise whose loudness and wah follow the stroke's speed, with a little bubble now and then.
+   * Call it on every pointer move; it fades out by itself 170 ms after the last call, so there is no tick and no stop to wire.
+   * `kind` "scrub" is the close, soapy rub; "rinse" is brighter, running water. `speed` is 0..1. Gated on the Sound setting.
+   */
+  washStroke(kind: "scrub" | "rinse", speed: number): void {
+    if (!this.enabled) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const level = Math.max(0, Math.min(1, speed));
+    let voice = this.washVoice;
+    if (!voice || voice.kind !== kind) {
+      this.stopWashVoice(true);
+      const src = this.noiseSource(ctx);
+      src.loop = true;
+      const hp = ctx.createBiquadFilter();
+      hp.type = "highpass";
+      hp.frequency.value = kind === "scrub" ? 380 : 900;
+      const bp = ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.Q.value = 0.65;
+      const centre = kind === "scrub" ? 1500 : 2700;
+      bp.frequency.value = centre;
+      const gain = ctx.createGain();
+      gain.gain.value = 0.0001;
+      // A slow wobble on the filter: the swish rises and falls with the hand, like a sponge on wet glass.
+      const lfo = ctx.createOscillator();
+      lfo.type = "sine";
+      lfo.frequency.value = 3;
+      const lfoDepth = ctx.createGain();
+      lfoDepth.gain.value = centre * 0.28;
+      lfo.connect(lfoDepth).connect(bp.frequency);
+      src.connect(hp).connect(bp).connect(gain).connect(this.sfxOut(ctx));
+      src.start(now);
+      lfo.start(now);
+      voice = { kind, src, lfo, gain, lastBubble: 0, timer: 0 };
+      this.washVoice = voice;
+    }
+    const peak = kind === "scrub" ? 0.05 : 0.04;
+    voice.gain.gain.setTargetAtTime(0.008 + peak * level, now, 0.045);
+    voice.lfo.frequency.setTargetAtTime(2.2 + level * 4.5, now, 0.1);
+    // A soft bubble, sometimes, on a lively stroke (a glassy sine that climbs a little and dies fast).
+    const nowMs = typeof performance !== "undefined" ? performance.now() : Date.now();
+    if (level > 0.3 && nowMs - voice.lastBubble > 130 + Math.random() * 170) {
+      voice.lastBubble = nowMs;
+      const f0 = (kind === "scrub" ? 520 : 760) + Math.random() * 700;
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(f0, now);
+      osc.frequency.exponentialRampToValueAtTime(f0 * 1.45, now + 0.05);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(0.014 + 0.012 * level, now + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
+      osc.connect(g).connect(this.sfxOut(ctx));
+      osc.start(now);
+      osc.stop(now + 0.11);
+    }
+    if (voice.timer) clearTimeout(voice.timer);
+    voice.timer = setTimeout(() => this.stopWashVoice(false), 170) as unknown as number;
+  }
+
+  /** Fade the wash voice out (or cut it at once when another kind takes over) and release its nodes. */
+  private stopWashVoice(now: boolean): void {
+    const voice = this.washVoice;
+    if (!voice) return;
+    this.washVoice = null;
+    if (voice.timer) clearTimeout(voice.timer);
+    const ctx = this.ctx;
+    const end = () => {
+      try {
+        voice.src.stop();
+        voice.lfo.stop();
+        voice.src.disconnect();
+        voice.gain.disconnect();
+      } catch {
+        /* already stopped */
+      }
+    };
+    if (!ctx || now) {
+      end();
+      return;
+    }
+    voice.gain.gain.cancelScheduledValues(ctx.currentTime);
+    voice.gain.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.05);
+    setTimeout(end, 320);
+  }
+  private washVoice: {
+    kind: "scrub" | "rinse";
+    src: AudioBufferSourceNode;
+    lfo: OscillatorNode;
+    gain: GainNode;
+    lastBubble: number;
+    timer: number;
+  } | null = null;
+
+  /**
    * Cleaning: a stain wiped away — a glassy ping that climbs a pentatonic
    * scale with the streak (`step` 1, 2, 3…), so a run of clears rises. Gated
    * on the Sound setting.

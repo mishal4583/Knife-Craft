@@ -555,7 +555,7 @@ function Cap({ shape }: { shape: number }) {
 // ── Gauges ───────────────────────────────────────────────────────────────────
 
 /** The whisk-speed dial: the painted face and needle (turns per second on a 240-degree sweep) with the green zone drawn over it. */
-export const DIAL_MAX = 3.6;
+export const DIAL_MAX = 4.4;
 const dialDeg = (turns: number) => -120 + Math.min(1, Math.max(0, turns / DIAL_MAX)) * 240;
 export function DialGauge({
   omega,

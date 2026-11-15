@@ -10,7 +10,7 @@ solvable by construction, a mistake never blocks progress and a restart is one t
 hired Prep Cook can do a step with no stars, as for the others.
 
 > **2026-11-15:** section A (Loading Dock, delivery carts) is replaced by the developer's own version, **Car Park** (guests' cars and a neighbour's in a shared lot):
-> `docs/planning/CAR-PARK-MINIGAME-PLAN-2026-11-15.md`. Sections B and C below stand.
+> `docs/planning/CAR-PARK-MINIGAME-PLAN-2026-11-15.md`. Section C below stands. **Section B (Plating Belt) is replaced by the developer's Banquet Waiters version:** `docs/planning/PLATING-BELT-PLAN-2026-11-15.md` (the real game CLEARS a finished picture; the rules were chosen with a prototype), art prompts in `PLATING-BELT-CODEX-PROMPTS-2026-11-15.md`.
 
 ## 1. What makes each one work (the core loop)
 

@@ -403,7 +403,7 @@ console.log("S  streak and milestones");
 console.log("A  audio");
 {
   const audio = read("src/game/AudioManager.ts");
-  const gated = ["playScrub", "playSparkle", "playSpotless"].every((fn) => {
+  const gated = ["playScrub", "washStroke", "playSparkle", "playSpotless"].every((fn) => {
     const at = audio.indexOf(`  ${fn}(`);
     return at >= 0 && audio.slice(at, at + 200).includes("if (!this.enabled) return;");
   });

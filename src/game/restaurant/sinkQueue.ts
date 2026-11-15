@@ -71,8 +71,10 @@ export const SINK_LAYOUT = {
   strip: { top: 98 / 960, height: 86 / 960 },
   status: { top: 614 / 960, height: 44 / 960 },
   progress: { top: 662 / 960, height: 28 / 960 },
-  rack: { left: 30 / 540, width: 480 / 540, top: 700 / 960, height: 201 / 960 },
-  footer: { top: 906 / 960, height: 54 / 960 },
+  // The footer holds the 48 px Done button: it was 54 / 960 (39 px on a 390 px phone) and the button hung out of the frame, so the rack is
+  // a little shorter and the footer 70 / 960 (50 px) - developer 2026-11-16, "let the Done button be properly placed".
+  rack: { left: 30 / 540, width: 480 / 540, top: 692 / 960, height: 195 / 960 },
+  footer: { top: 890 / 960, height: 70 / 960 },
 } as const;
 
 /** The scale of the scene (drawn in 360 x 280 units) inside a box: it fits without cropping. */

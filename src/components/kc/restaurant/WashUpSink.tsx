@@ -185,12 +185,23 @@ type Piece = {
   marks: DirtMark[];
   wear: Float64Array;
   pointsLeft: number[];
+  /** How many wear points each stain started with (its lightness follows pointsLeft / pointsTotal). */
+  pointsTotal: number[];
   cleared: Uint8Array;
   alpha: Float64Array;
   fading: Map<number, number>;
   sprites: HTMLCanvasElement[];
   done: boolean;
 };
+
+/** A stain never looks lighter than this share of itself because of wear alone; the clear fade does the rest. */
+const WEAR_FLOOR = 0.25;
+/** A cleared stain melts away over this long (it used to take 240 ms and looked like it vanished). */
+const CLEAR_FADE_MS = 700;
+/** The sponge's speed for the wash sound: a stroke of this many scene units per pointer move is full speed. */
+function strokeSpeed(stroke: number | null): number {
+  return stroke === null ? 0.35 : Math.min(1, stroke / 18);
+}
 
 function buzz(ms: number) {
   try {
@@ -364,6 +375,7 @@ export function WashUpSink({
       marks,
       wear: new Float64Array(marks.length),
       pointsLeft: stains.map((s) => marks.filter((m) => m.stain === s.id).length),
+      pointsTotal: stains.map((s) => marks.filter((m) => m.stain === s.id).length),
       cleared: new Uint8Array(stains.length),
       alpha: new Float64Array(stains.length).fill(1),
       fading: new Map(),
@@ -407,7 +419,9 @@ export function WashUpSink({
       const a = pc.alpha[i]!;
       if (!sprite || a <= 0) return;
       const reach = stainReach(s);
-      ctx.globalAlpha = a * strengthOpacity(s.strength);
+      // Lighter as more of it is worn (never below a quarter until it is cleared, then the clear fade takes it from there).
+      const worn = pc.pointsTotal[i] ? pc.pointsLeft[i]! / pc.pointsTotal[i]! : 1;
+      ctx.globalAlpha = a * strengthOpacity(s.strength) * (WEAR_FLOOR + (1 - WEAR_FLOOR) * worn);
       ctx.drawImage(sprite, s.x - reach, s.y - reach);
     });
     ctx.restore();
@@ -422,8 +436,8 @@ export function WashUpSink({
       const pc = pieceRef.current;
       if (pc)
         for (const [i, start] of pc.fading) {
-          const a = 1 - (t - start) / 240;
-          pc.alpha[i] = Math.max(0, a);
+          const a = 1 - (t - start) / CLEAR_FADE_MS;
+          pc.alpha[i] = Math.max(0, a) ** 1.6;
           if (a <= 0) pc.fading.delete(i);
         }
       draw();
@@ -443,17 +457,25 @@ export function WashUpSink({
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalCompositeOperation = "destination-out";
-    ctx.globalAlpha = Math.min(1, strength * 0.9);
-    ctx.lineCap = "round";
-    ctx.lineWidth = radius * 1.5;
-    ctx.beginPath();
-    if (from.x === to.x && from.y === to.y) {
-      ctx.arc(to.x - ox, to.y - oy, radius * 0.75, 0, Math.PI * 2);
+    // Soft, round dabs along the stroke: the edge of the wiped path blends into the dirt instead of cutting it.
+    const length = Math.hypot(to.x - from.x, to.y - from.y);
+    const spacing = Math.max(2, radius * 0.5);
+    const dabs = Math.max(1, Math.ceil(length / spacing));
+    const overlap = 3;
+    const perDab = 1 - (1 - Math.min(0.95, strength * 0.9)) ** (1 / overlap);
+    const r = radius * 0.95;
+    for (let k = 0; k < dabs; k += 1) {
+      const t = dabs === 1 ? 1 : (k + 1) / dabs;
+      const cx = from.x + (to.x - from.x) * t - ox;
+      const cy = from.y + (to.y - from.y) * t - oy;
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, `rgba(0,0,0,${perDab})`);
+      g.addColorStop(0.5, `rgba(0,0,0,${perDab * 0.65})`);
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.fill();
-    } else {
-      ctx.moveTo(from.x - ox, from.y - oy);
-      ctx.lineTo(to.x - ox, to.y - oy);
-      ctx.stroke();
     }
     ctx.restore();
   }
@@ -493,7 +515,7 @@ export function WashUpSink({
     setWashedPieces((p) => p + 1);
     setCleanedCount(index + 1);
     const left = pc.stains.filter((s) => !pc.cleared[s.id]);
-    const step = reduced ? 0 : 45;
+    const step = reduced ? 0 : 70;
     left.forEach((s, k) => later(() => clearStain(s.id, true), step * (k + 1)));
     later(
       () => {
@@ -603,7 +625,7 @@ export function WashUpSink({
   function startRinse() {
     const pc = pieceRef.current;
     if (!pc || pc.done || rinseRef.current) return;
-    const step = reduced ? 0 : 45;
+    const step = reduced ? 0 : 70;
     pc.stains
       .filter((s) => !pc.cleared[s.id])
       .forEach((s, k) => later(() => clearStain(s.id, true), step * (k + 1)));
@@ -650,10 +672,11 @@ export function WashUpSink({
       foam.stroke();
       foam.restore();
     }
-    if (touched) {
-      AudioManager.playScrub("wet");
-      fxRef.current?.scrub("mop", end.x, end.y, 1);
-    }
+    AudioManager.washStroke(
+      "rinse",
+      strokeSpeed(first ? null : Math.hypot(end.x - start.x, end.y - start.y)),
+    );
+    if (touched) fxRef.current?.scrub("mop", end.x, end.y, 1);
     const share = 1 - rn.left / Math.max(1, rn.points.length);
     setProgress((p) => {
       const next = Math.min(99, Math.round(share * 100));
@@ -694,8 +717,10 @@ export function WashUpSink({
         if (pc.pointsLeft[index]! <= 0) clearStain(index);
       }
       requestDraw();
-      AudioManager.playScrub("wet");
     }
+    // One smooth swish that follows the sponge, on the dirt or on the soapy piece (no per-stroke tick).
+    if (touched.size || inDishSurface(end.x, end.y, shape))
+      AudioManager.washStroke("scrub", strokeSpeed(stroke));
     // Suds wherever the sponge works the piece (more on the dirt).
     if (touched.size || inDishSurface(end.x, end.y, shape))
       fxRef.current?.scrub(
@@ -1857,15 +1882,15 @@ export function WashUpSink({
         </div>
         {summary ? (
           <p
-            className="absolute inset-x-3 z-20 text-center font-ui text-[12.5px] font-extrabold text-ivory"
-            style={{ top: pct(L.footer.top - 0.02) }}
+            className="absolute inset-x-3 z-20 grid place-items-center text-center font-ui text-[13px] font-extrabold text-ivory"
+            style={{ top: pct(L.progress.top), height: pct(L.progress.height) }}
             data-testid="wash-up-summary"
           >
             {summary.best >= 2 ? `🔥 Best combo ×${summary.best} · ` : ""}⏱ {summary.secs}s
           </p>
         ) : null}
         <div
-          className="absolute inset-x-3 z-20 flex items-center justify-end gap-2"
+          className="absolute inset-x-6 z-20 flex items-center justify-center gap-2"
           style={{ top: pct(L.footer.top), height: pct(L.footer.height) }}
         >
           {noSoap && onBuySoap ? (
@@ -1874,7 +1899,13 @@ export function WashUpSink({
             </KButton>
           ) : null}
           {complete || noSoap ? (
-            <KButton size="sm" variant="sage" className="min-h-12" onClick={onClose}>
+            <KButton
+              size="sm"
+              variant="sage"
+              className="min-h-12 min-w-[44%]"
+              data-testid="wash-up-done"
+              onClick={onClose}
+            >
               ✓ Done
             </KButton>
           ) : (
