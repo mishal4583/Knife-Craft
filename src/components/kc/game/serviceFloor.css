@@ -5,6 +5,20 @@
   container-type: size;
   display: grid;
   place-items: center;
+  overflow: hidden;
+}
+
+/* The view's own crop, scaled to COVER the stage and blurred, behind the view (no empty bands on a tall phone). */
+.sf .sf-backdrop {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100cqw, calc(100cqh * 0.8333));
+  aspect-ratio: 518 / 622;
+  transform: translate(-50%, -50%);
+  overflow: hidden;
+  filter: blur(12px) brightness(0.62);
+  pointer-events: none;
 }
 
 /* The view box keeps the crop's own shape (60 % × 48 % of a 2:3 painting). */
@@ -13,6 +27,20 @@
   width: min(100cqw, calc(100cqh * 0.8333));
   aspect-ratio: 518 / 622;
   overflow: hidden;
+}
+
+/* Only when the stage is taller than the view (a tall phone): the view's top and bottom edges melt into the blurred backdrop instead of cutting it. */
+@container (max-aspect-ratio: 0.8) {
+  .sf .sf-view {
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0,
+      #000 7%,
+      #000 93%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(to bottom, transparent 0, #000 7%, #000 93%, transparent 100%);
+  }
 }
 
 /* The painting, placed so the view shows map x 20–80 %, y 48–96 %. */

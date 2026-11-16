@@ -19,6 +19,15 @@ const LOGICAL_H = 960;
 const MIN_LAYOUT_W = 320;
 
 /**
+ * A phone held upright fills the WHOLE screen (developer 2026-11-16: "make it full screen without leaving any space"): below this window width, and
+ * no wider than FILL_MAX_ASPECT, the frame is the viewport itself instead of the largest 540:960 box that fits, so a tall phone (9:20, 9:21) gets
+ * no bars above and below. The screens lay out in real pixels, so they simply receive the extra height; the painted scenes cover it (SceneFill).
+ * Wider windows (tablets, desktop) keep the framed 540:960 game.
+ */
+const FILL_MAX_W = 640;
+const FILL_MAX_ASPECT = 0.75;
+
+/**
  * Contain-fit sizing — the same `scale = min(availW/W, availH/H)`
  * computation the YouTube Playables reference's own resize() example
  * uses, driven by `ResizeObserver` on the ACTUAL available box rather
@@ -71,6 +80,10 @@ function useContainFit(logicalW: number, logicalH: number) {
       const land = isPhoneLandscape(window.innerWidth, window.innerHeight);
       setLandscape(land);
       if (land) {
+        setSize({ width: w, height: h });
+        return;
+      }
+      if (window.innerWidth < FILL_MAX_W && w / h <= FILL_MAX_ASPECT) {
         setSize({ width: w, height: h });
         return;
       }
@@ -160,7 +173,7 @@ export function GameShell({ children, aside }: { children: ReactNode; aside?: Re
           className={
             landscape
               ? "flex h-full w-full items-stretch justify-center pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
-              : "flex h-full w-full items-center justify-center gap-6 p-0 sm:p-4"
+              : "flex h-full w-full items-center justify-center gap-6 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pt-[env(safe-area-inset-top)] sm:p-4"
           }
         >
           {landscape ? null : aside}

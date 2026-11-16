@@ -740,13 +740,21 @@ function Round({
       {/* the order: the target swatch, the live swatch, the thickness */}
       <div className="mx-3 mt-2 flex items-stretch gap-2 rounded-2xl bg-[#f7edd7]/92 p-1.5 shadow-soft">
         <div className="flex flex-col items-center">
-          <Swatch color={target.hex} testId="sauce-target" className="h-[58px] w-[58px]" />
+          <Swatch
+            color={target.hex}
+            testId="sauce-target"
+            className="h-[58px] w-[58px] [@media(max-height:620px)]:h-10 [@media(max-height:620px)]:w-10"
+          />
           <span className="font-ui text-[10px] font-extrabold uppercase tracking-wide text-walnut/70">
             Match
           </span>
         </div>
         <div className="flex flex-col items-center">
-          <Swatch color={mix.hex} testId="sauce-live" className="h-[58px] w-[58px]" />
+          <Swatch
+            color={mix.hex}
+            testId="sauce-live"
+            className="h-[58px] w-[58px] [@media(max-height:620px)]:h-10 [@media(max-height:620px)]:w-10"
+          />
           <span
             className="font-ui text-[12px] font-black tabular-nums text-walnut-dark"
             data-testid="sauce-match"
@@ -811,7 +819,11 @@ function Round({
             </InfoTip>
           </div>
         </div>
-        <ThicknessGauge thick={thick} band={target.band} className="h-[74px] shrink-0" />
+        <ThicknessGauge
+          thick={thick}
+          band={target.band}
+          className="h-[74px] shrink-0 [@media(max-height:620px)]:h-[56px]"
+        />
       </div>
 
       {/* the steps of the sauce, always in view (developer 2026-11-16: "the sauce station is not showing any steps to do the preparation"):
@@ -1220,7 +1232,7 @@ function PantryTile({
         onPointerCancel={onUp}
         onContextMenu={(e) => e.preventDefault()}
         className={cn(
-          "press relative flex h-[clamp(56px,9vh,84px)] flex-col items-center justify-end rounded-xl px-0 pb-0 pt-1",
+          "press relative flex h-[clamp(48px,9vh,84px)] flex-col items-center justify-end rounded-xl px-0 pb-0 pt-1",
           disabled && "opacity-60",
           hint && "sauce-hint",
         )}

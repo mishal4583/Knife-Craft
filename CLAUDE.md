@@ -34,7 +34,8 @@ status line in HANDOFF; this file changes only when a RULE changes.
 
 - **Stack:** React 19 + Vite + TypeScript + Tailwind v4; Phaser 3.90 for
   the cutting (the lazy `Preparation` chunk).
-- **Screen:** portrait first, logical 540×960, `GameShell` contain-fits.
+- **Screen:** portrait first, logical 540×960. An upright phone (window under 640 px wide, no wider than 3:4) gets the WHOLE screen, no bars
+  (developer 2026-11-16; `GameShell` `FILL_MAX_W`); wider windows keep the contain-fit 9:16 frame.
 - **Content:** 91 campaign levels in 13 chapters (148 until the developer's campaign plan of 2026-11-07: fewer, richer levels, chicken
   at Level 6, steak 15, salmon 16; data in `levels/campaignPlan.ts`, numbering in `levels/campaignSelection.ts`), Market, Inventory,
   Restaurant (Economy V3), Achievements, story. Every one of the 221 dishes stays in the Menu.

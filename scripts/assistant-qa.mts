@@ -519,6 +519,16 @@ const hired = (s: SaveData) => A.hireAssistant(s);
       /setActive\(\{ beat: candidate, replay: false \}\)/.test(host) &&
       /\.kc-reduced-motion \.paige-in/.test(read("src/components/kc/assistant/assistant.css")),
   );
+  const appSource = read("src/App.tsx");
+  check(
+    "G7 (developer 2026-11-16: one tip showed three times) a tip something covers, once it has counted as seen, is finished and never comes back (her introduction and 'Show again' stay), and the daily gift and welcome back wait while a tip is on screen",
+    /if \(calm \|\| !active \|\| active\.replay \|\| active\.beat\.hire\) return;\s*if \(countedRef\.current !== active\.beat\.id\) return;\s*setActive\(null\);/.test(
+      host,
+    ) &&
+      /onOpen\?\.\(open\)/.test(host) &&
+      /if \(!homeCalm \|\| paigeOpen \|\|/.test(appSource) &&
+      /onOpen=\{setPaigeOpen\}/.test(appSource),
+  );
 }
 
 // ── H. The art ─────────────────────────────────────────────────────────

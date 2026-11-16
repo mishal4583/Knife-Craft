@@ -10,6 +10,7 @@
 //   I9 a hired Prep Cook: the chip stays and his button inspects for you; Back before Start; Skip (Pause) leaves the delivery waiting and no stars are saved
 //   I10 at 320 x 568 nothing scrolls sideways and every ingredient is at least 40 px wide
 //   I11 Level 30 (tier 3): the magnifier button shows and the lens appears; a little dirt (decoy) exists and a tap on it is a wrong flag
+//   I11c (2026-11-16) a wrong tap on a harmless mark names it; I13 the guide is a chart of the real marks (NOT FRESH kinds, harmless ones)
 //   I12 no console errors
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -478,6 +479,53 @@ check(
   decoyOk && (await items(page)).find((i) => i.id === decoyAt)?.defect === false,
   { decoyAt },
 );
+
+// I11c (developer 2026-11-16: "can't identify which is dirt and which is fungus"): a wrong tap on a harmless mark NAMES it, on the pill and on the item
+await tap(page, '[data-testid="insp-lens-btn"]'); // lens off
+await sleep(200);
+let fineLabel = null;
+if (decoyOk) {
+  await tapItem(page, decoyAt);
+  fineLabel = await page.evaluate((i) => {
+    const el = document.querySelector(`[data-testid="insp-item"][data-id="${i}"]`);
+    return {
+      label: el?.querySelector('[data-testid="insp-fine-label"]')?.textContent ?? null,
+      note: document.querySelector('[data-testid="insp-note"]')?.textContent ?? null,
+    };
+  }, decoyAt);
+}
+check(
+  "I11c a wrong tap on a harmless mark names it ('Dirt: fine', 'Just dirt: it's fine!'), never just 'wrong'",
+  !!fineLabel &&
+    /: fine$/.test(fineLabel.label ?? "") &&
+    /^Just .+: it's fine! −4 s$/.test(fineLabel.note ?? ""),
+  fineLabel,
+);
+
+// I13: the guide is a chart of the real marks: every NOT FRESH kind of the tier, and from tier 3 the harmless ones beside them
+await boot(page, saveAt(30));
+await openInventory(page);
+await tap(page, '[data-testid="delivery-inspection-chip"]');
+await sleep(900);
+const chart = await page.evaluate(() => ({
+  bad: [...document.querySelectorAll('[data-testid^="insp-guide-defect-"]')].map((e) =>
+    e.dataset.testid.replace("insp-guide-defect-", ""),
+  ),
+  fine: [...document.querySelectorAll('[data-testid^="insp-guide-decoy-"]')].map((e) =>
+    e.dataset.testid.replace("insp-guide-decoy-", ""),
+  ),
+  text: document.querySelector('[data-testid="insp-guide"]')?.innerText ?? "",
+}));
+check(
+  "I13 tier 3 guide: the five NOT FRESH kinds and the six harmless marks side by side, with names",
+  chart.bad.length === 5 &&
+    ["mold", "rot", "wilt", "bruise", "slime"].every((k) => chart.bad.includes(k)) &&
+    chart.fine.length === 6 &&
+    /Dirt/.test(chart.text) &&
+    /Moldy/.test(chart.text),
+  chart,
+);
+await tap(page, '[data-testid="insp-guide-ok"]');
 
 check(
   "I12 no console errors",

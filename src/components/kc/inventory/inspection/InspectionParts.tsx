@@ -125,6 +125,22 @@ export function BlendedMark({
   );
 }
 
+/**
+ * What makes a NOT FRESH mark read as spoiled and a harmless one read as dirt (developer 2026-11-16): a spoiled mark has a dark rim and a little
+ * more punch, so fuzzy white mold shows on a pale broccoli or onion; a harmless mark is drawn plainly, with no rim, a touch softer.
+ */
+const DEFECT_RIM: Record<string, string> = {
+  mold: "drop-shadow(0 0 1.2px rgba(38,52,26,0.95)) drop-shadow(0 0 0.6px rgba(38,52,26,0.8))",
+  rot: "drop-shadow(0 0 1px rgba(30,14,6,0.85))",
+  slime: "drop-shadow(0 0 1.2px rgba(70,84,20,0.9))",
+};
+const DEFECT_RIM_DEFAULT = "drop-shadow(0 0 1px rgba(40,22,8,0.8))";
+function markFilter(mark: Mark): string {
+  return mark.type === "defect"
+    ? `saturate(1.18) contrast(1.08) ${DEFECT_RIM[mark.kind] ?? DEFECT_RIM_DEFAULT}`
+    : "saturate(0.9)";
+}
+
 /** One mark (a defect or a harmless look-alike), drawn over an ingredient: `scale` is its share of the picture's box. */
 export function MarkArt({
   mark,
@@ -144,6 +160,7 @@ export function MarkArt({
     top: `${(0.5 + mark.dy - scale / 2) * 100}%`,
     width: `${scale * 100}%`,
     height: `${scale * 100}%`,
+    filter: markFilter(mark),
     ...style,
   };
   if (painted) {

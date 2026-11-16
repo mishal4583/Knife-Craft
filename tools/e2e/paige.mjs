@@ -359,6 +359,58 @@ try {
     fits,
   );
 
+  // ---- P9 (developer 2026-11-16): a tip shows ONCE; the day's gift waits for her and the tip never comes back over it ----
+  await page.setViewport({ width: 430, height: 900, deviceScaleFactor: 1 });
+  const saveGift = seedSave({
+    credits: 5000,
+    economyLedger: [], // today's gift is not taken: its sheet is due from Level 3
+    levelProgress: {
+      currentLevelId: "level-3",
+      highestUnlockedLevelId: "level-3",
+      completedLevelIds: ["level-1", "level-2"],
+      campaignVersion: 4,
+    },
+    business: {
+      ...MOVED_IN_BUSINESS,
+      assistant: { hired: true, seen: [] },
+      sectionsSeen: ["shop", "inventory", "rack", "business", "staff", "equipment"],
+    },
+    story: { introDone: true, milestoneMask: 0xffff, finaleSeen: true },
+  });
+  await boot(page, saveGift);
+  const seen = await page.evaluate(async () => {
+    const log = [];
+    let prev = "";
+    let closedTip = false;
+    let closedGift = false;
+    for (let i = 0; i < 120; i += 1) {
+      const tip = !!document.querySelector('[data-testid="assistant-host"]');
+      const gift = !!document.querySelector('[data-testid="ad-bonus-sheet"]');
+      const now = `${tip ? "tip" : ""}${gift ? "gift" : ""}` || "none";
+      if (now !== prev) log.push(now);
+      prev = now;
+      // Read her tip for 2.5 s, close it by tapping the dark; later close the gift ("Later") and watch for 3 s.
+      if (tip && !closedTip && i >= 25) {
+        closedTip = true;
+        document.querySelector('[data-testid="assistant-scrim"]')?.click();
+      }
+      if (gift && !closedGift) {
+        closedGift = true;
+        [...document.querySelectorAll("button")]
+          .find((b) => /^Later$/.test(b.textContent.trim()))
+          ?.click();
+      }
+      if (closedGift && i > 90) break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    return log;
+  });
+  check(
+    "P9 the tip shows once and is read first; the gift opens only after she is closed; the tip does not come back over it",
+    seen.join(",") === "tip,none,gift,none",
+    seen,
+  );
+
   const bad = logs.filter(
     (l) => !/favicon|bridge|playgama|Failed to load resource.*(404|net::)/i.test(l),
   );

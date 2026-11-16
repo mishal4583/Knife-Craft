@@ -2,7 +2,8 @@
 // landscape images … integrate"), restaurant build, in a real browser:
 //   1. At 568×320, 640×360, 740×360, 844×390 and 932×430 (a phone on its side) the game fills
 //      the screen (no shrunken 9:16 frame): <html data-orient="landscape">, the frame is the
-//      whole viewport; at 390×844 and 1024×768 (portrait, a tablet) it is not landscape.
+//      whole viewport; at 390×844 (an upright phone) the frame is the whole viewport too (2026-11-16); at 1024×768 (a tablet) it is not
+//      landscape and keeps the 9:16 frame.
 //   2. The bottom bar is a rail on the left; the Kitchen, Market, Restaurant map, Business and
 //      Inventory are reachable from it and their content starts after it (no button under the
 //      rail), no sideways scroll, no button outside the screen, rail buttons ≥ 48 px.
@@ -180,11 +181,17 @@ for (const [w, h] of [
   sizeRows.push({ w, h, orient: l.orient, frame: l.frame });
 }
 check(
-  "1 a phone on its side fills the screen (landscape); portrait phones and tablets keep the 9:16 frame",
+  // Rule changed (developer 2026-11-16, "make it full screen without leaving any space"): an upright phone fills the screen too; only a wide window
+  // (a tablet, a desktop) keeps the 9:16 frame.
+  "1 a phone on its side fills the screen (landscape); an upright phone fills it too; a tablet keeps the 9:16 frame",
   sizeRows.every((r) =>
     r.w > r.h && r.h < 640
       ? r.orient === "landscape" && Math.abs(r.frame.w - r.w) <= 2 && Math.abs(r.frame.h - r.h) <= 2
-      : r.orient === "portrait" && Math.abs(r.frame.w / r.frame.h - 540 / 960) < 0.01,
+      : r.w < 640
+        ? r.orient === "portrait" &&
+          Math.abs(r.frame.w - r.w) <= 2 &&
+          Math.abs(r.frame.h - r.h) <= 2
+        : r.orient === "portrait" && Math.abs(r.frame.w / r.frame.h - 540 / 960) < 0.01,
   ),
   sizeRows,
 );

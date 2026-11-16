@@ -14,7 +14,9 @@ import {
   CRATE_W,
   PILE_BOTTOM,
   WALL_TOP,
+  DECOY_LABEL,
   DEFECT_LABEL,
+  INSPECTION_TIERS,
   MARK_SCALE,
   STAR_MARKS,
   WRONG_PENALTY_MS,
@@ -32,6 +34,8 @@ import {
   tierAt,
   NO_EFFECTS,
   type CrateItem,
+  type DecoyKind,
+  type DefectKind,
   type DeliveryInspectionAction,
   type DeliveryInspectionResult,
   type RoundEffects,
@@ -303,7 +307,7 @@ function Round({
         tone: "bad",
         text:
           it.mark?.type === "decoy"
-            ? "Just a little dirt: it's fine! −4 s"
+            ? `Just ${DECOY_LABEL[it.mark.kind].toLowerCase()}: it's fine! −4 s`
             : "This one is fine! −4 s",
       });
       AudioManager.playSfx("sortWrong");
@@ -453,7 +457,9 @@ function Round({
             {markersArt ? <MarkerArt cell={isFound ? 0 : 2} /> : null}
             {isFound ? (
               <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 -rotate-6 whitespace-nowrap rounded bg-[#d23b2a] px-1 font-ui text-[11px] font-black leading-[14px] text-white">
-                NOT FRESH
+                {it.mark?.type === "defect"
+                  ? DEFECT_LABEL[it.mark.kind].toUpperCase()
+                  : "NOT FRESH"}
               </span>
             ) : null}
           </span>
@@ -467,6 +473,16 @@ function Round({
                 ✓
               </span>
             )}
+          </span>
+        ) : null}
+        {/* The wrong tap names what the mark was (developer 2026-11-16: "can't identify which is dirt and which is fungus"). */}
+        {!lens && cleared.has(it.id) && it.mark?.type === "decoy" ? (
+          <span
+            aria-hidden
+            data-testid="insp-fine-label"
+            className="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-[#3f7d2c] px-1.5 font-ui text-[11px] font-black leading-[14px] text-white"
+          >
+            {DECOY_LABEL[it.mark.kind]}: fine
           </span>
         ) : null}
         {!lens && hint === it.id && !reducedMotion ? (
@@ -949,97 +965,122 @@ function Round({
   );
 }
 
-/** The how-to card: what the game is, the three kinds of bad, what is fine, and how to move things. */
+/** The picture each kind is shown on in the guide. */
+const GUIDE_ON: Record<DefectKind | DecoyKind, string> = {
+  mold: "tomato",
+  rot: "tomato",
+  bruise: "potato",
+  wilt: "lettuce",
+  slime: "cucumber",
+  pests: "lettuce",
+  shrivel: "carrot",
+  soil: "carrot",
+  drop: "apple",
+  scuff: "pepper",
+  freckles: "pear",
+  sun: "lemon",
+  speck: "potato",
+};
+const GUIDE_DECOYS: readonly DecoyKind[] = ["soil", "drop", "scuff", "freckles", "sun", "speck"];
+
+/** One example: the ingredient with the mark on it, and its name under it. */
+function GuideChip({
+  ing,
+  mark,
+  label,
+  good,
+}: {
+  ing: string;
+  mark: NonNullable<CrateItem["mark"]>;
+  label: string;
+  good?: boolean;
+}) {
+  return (
+    <li
+      className="flex min-w-0 flex-col items-center gap-0.5"
+      data-testid={`insp-guide-${mark.type}-${mark.kind}`}
+    >
+      <span className="relative h-11 w-11 shrink-0">
+        <IngredientIcon
+          id={ing}
+          fallback={<span>🥬</span>}
+          className="!h-full !w-full object-contain"
+        />
+        <MarkArt
+          mark={{ ...mark, size: "big", dx: 0.04, dy: 0.04 }}
+          scale={mark.type === "decoy" ? 0.95 : 0.78}
+        />
+      </span>
+      <span
+        className={cn(
+          "text-center font-ui text-[11px] font-extrabold leading-[1.1]",
+          good ? "text-[#2f6b1f]" : "text-[#a3281b]",
+        )}
+      >
+        {label}
+      </span>
+    </li>
+  );
+}
+
+/**
+ * The how-to card (developer 2026-11-16: "can't identify which is dirt and which is fungus"): a chart of every kind of NOT FRESH this tier can show,
+ * and, from the third tier, every harmless mark next to it. They are the real marks, drawn the way the crate draws them.
+ */
 function HowTo({ tierNumber, onDone }: { tierNumber: number; onDone: () => void }) {
-  const rows: {
-    kind: "mold" | "wilt" | "bruise";
-    ing: "tomato" | "lettuce" | "potato";
-    name: string;
-    line: string;
-  }[] = [
-    { kind: "mold", ing: "tomato", name: "Moldy / Rotten", line: "fuzzy patches, dark soft spots" },
-    { kind: "wilt", ing: "lettuce", name: "Wilted / Spoiled", line: "limp, yellow-brown edges" },
-    {
-      kind: "bruise",
-      ing: "potato",
-      name: "Bruised / Bad spots",
-      line: "dented, dark or speckled",
-    },
-  ];
+  const tier = INSPECTION_TIERS[Math.max(0, Math.min(INSPECTION_TIERS.length, tierNumber) - 1)]!;
+  const bad = tier.kinds;
+  const decoys = tier.decoys > 0 ? GUIDE_DECOYS : [];
+  const cols = bad.length >= 4 ? "grid-cols-4" : "grid-cols-3";
   return (
     <div
-      className="absolute inset-0 z-50 grid place-items-center bg-black/75 p-4"
+      className="absolute inset-0 z-50 grid place-items-center bg-black/75 p-3"
       data-testid="insp-guide"
     >
-      <div className="w-full max-w-[340px] rounded-3xl border-2 border-[#e6b866] bg-[#f7edd7] p-4">
+      <div className="max-h-full w-full max-w-[340px] overflow-y-auto rounded-3xl border-2 border-[#e6b866] bg-[#f7edd7] p-3">
         <p className="text-center font-display text-[20px] font-extrabold text-walnut-dark">
           Inspection Guide
         </p>
-        <p className="mt-1 text-center font-ui text-[13px] font-bold text-walnut/80">
-          Some of this delivery is <b className="text-tomato">NOT FRESH</b>. Find it before time
-          runs out.
+        <p className="mt-0.5 text-center font-ui text-[13px] font-bold text-walnut/80">
+          Find what is <b className="text-tomato">NOT FRESH</b> before time runs out.
         </p>
-        <ul className="mt-2 space-y-1.5">
-          {rows.map((r) => (
-            <li key={r.kind} className="flex items-center gap-2 rounded-2xl bg-white/60 p-1.5">
-              <span className="relative h-11 w-11 shrink-0">
-                <IngredientIcon
-                  id={r.ing}
-                  fallback={<span>🥬</span>}
-                  className="!h-full !w-full object-contain"
+        <div className="mt-2 rounded-2xl bg-white/60 p-2">
+          <p className="font-ui text-[12px] font-black uppercase tracking-wide text-[#a3281b]">
+            ✕ Not fresh · tap it
+          </p>
+          <ul className={cn("mt-1 grid gap-1", cols)}>
+            {bad.map((k) => (
+              <GuideChip
+                key={k}
+                ing={GUIDE_ON[k]}
+                mark={{ type: "defect", kind: k, variant: 0, size: "big", dx: 0, dy: 0 }}
+                label={DEFECT_LABEL[k]}
+              />
+            ))}
+          </ul>
+        </div>
+        {decoys.length > 0 ? (
+          <div className="mt-1.5 rounded-2xl bg-[#e4f1d6]/80 p-2">
+            <p className="font-ui text-[12px] font-black uppercase tracking-wide text-[#2f6b1f]">
+              ✓ Fine · leave it
+            </p>
+            <ul className="mt-1 grid grid-cols-3 gap-1">
+              {decoys.map((k) => (
+                <GuideChip
+                  key={k}
+                  good
+                  ing={GUIDE_ON[k]}
+                  mark={{ type: "decoy", kind: k, variant: 0, size: "big", dx: 0, dy: 0 }}
+                  label={DECOY_LABEL[k]}
                 />
-                <MarkArt
-                  mark={{
-                    type: "defect",
-                    kind: r.kind,
-                    variant: 0,
-                    size: "big",
-                    dx: 0.05,
-                    dy: 0.05,
-                  }}
-                  scale={0.7}
-                />
-              </span>
-              <span className="min-w-0">
-                <span className="block font-ui text-[14px] font-extrabold text-walnut-dark">
-                  {r.name}
-                </span>
-                <span className="block font-ui text-[12px] text-walnut/70">{r.line}</span>
-              </span>
-            </li>
-          ))}
-          {tierNumber >= 3 ? (
-            <li className="flex items-center gap-2 rounded-2xl bg-[#e4f1d6]/80 p-1.5">
-              <span className="relative h-11 w-11 shrink-0">
-                <IngredientIcon
-                  id="carrot"
-                  fallback={<span>🥕</span>}
-                  className="!h-full !w-full object-contain"
-                />
-                <MarkArt
-                  mark={{
-                    type: "decoy",
-                    kind: "soil",
-                    variant: 0,
-                    size: "small",
-                    dx: 0.05,
-                    dy: 0.05,
-                  }}
-                  scale={0.5}
-                />
-              </span>
-              <span className="min-w-0">
-                <span className="block font-ui text-[14px] font-extrabold text-[#2f6b1f]">
-                  A little dirt is fine
-                </span>
-                <span className="block font-ui text-[12px] text-walnut/70">
-                  soil, water drops, scuffs
-                </span>
-              </span>
-            </li>
-          ) : null}
-        </ul>
-        <div className="relative mt-2 flex items-center gap-3 rounded-2xl bg-white/60 p-2 font-ui text-[12.5px] font-bold text-walnut-dark">
+              ))}
+            </ul>
+            <p className="mt-1 font-ui text-[12px] font-bold text-walnut-dark">
+              Fuzzy, wet or dark means bad. Dry crumbs are just dirt.
+            </p>
+          </div>
+        ) : null}
+        <div className="relative mt-1.5 flex items-center gap-3 rounded-2xl bg-white/60 p-2 font-ui text-[12.5px] font-bold text-walnut-dark">
           <span aria-hidden className="text-[22px]">
             👆
           </span>
@@ -1050,10 +1091,11 @@ function HowTo({ tierNumber, onDone }: { tierNumber: number; onDone: () => void 
             <PointerHand size={34} />
           </span>
         </div>
-        <p className="mt-1.5 text-center font-ui text-[12px] font-bold text-walnut/65">
-          A wrong tap costs 4 seconds.
-        </p>
-        <div className="mt-3">
+        {/* Pinned to the bottom of the card, so a small phone (320 x 568) never has to scroll to reach it. */}
+        <div className="sticky bottom-0 -mx-3 -mb-3 mt-1 rounded-b-3xl bg-[#f7edd7] px-3 pb-3 pt-1">
+          <p className="mb-1 text-center font-ui text-[12px] font-bold text-walnut/65">
+            A wrong tap costs 4 seconds.
+          </p>
           <SortButton onClick={onDone} testId="insp-guide-ok">
             Got it
           </SortButton>

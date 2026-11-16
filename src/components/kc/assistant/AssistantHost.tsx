@@ -25,6 +25,7 @@ export function AssistantHost({
   onHire,
   onSeen,
   onGo,
+  onOpen,
 }: {
   /** The tip the rules offer now (assistantBeatFor), or null. */
   candidate: AssistantBeat | null;
@@ -37,6 +38,8 @@ export function AssistantHost({
   onHire: () => void;
   onSeen: (id: string) => void;
   onGo: (go: string) => void;
+  /** True while a tip is on screen, so the app can hold its own offers until she is done. */
+  onOpen?: (open: boolean) => void;
 }) {
   const [active, setActive] = useState<{ beat: AssistantBeat; replay: boolean } | null>(null);
   const [line, setLine] = useState(0);
@@ -70,12 +73,31 @@ export function AssistantHost({
     setLine(0);
   }, [replay]);
 
+  // A tip that something else covers is finished (developer 2026-11-16): it used to come back each time a card closed, so one tip showed
+  // three times when the daily gift and the welcome-back sheet opened over it. Her introduction (it must be answered) and a "Show again" stay.
+  // Only once it has been on screen long enough to count as seen: the screen's calm can flicker off for a moment while it loads.
+  const countedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (calm || !active || active.replay || active.beat.hire) return;
+    if (countedRef.current !== active.beat.id) return;
+    setActive(null);
+  }, [calm, active]);
+
+  // The app holds its own offers (the daily gift, welcome back) while she is on screen, so nothing opens over her.
+  const open = !!active && (calm || active.replay);
+  useEffect(() => {
+    onOpen?.(open);
+  }, [open, onOpen]);
+
   // A given tip counts as seen once it has been on screen for a moment (the introduction is seen when she is hired).
   const beatId = active?.beat.id ?? null;
   const counts = !!active && !active.replay && !active.beat.hire;
   useEffect(() => {
     if (!beatId || !counts || !calm) return;
-    const t = window.setTimeout(() => seenRef.current(beatId), 900);
+    const t = window.setTimeout(() => {
+      countedRef.current = beatId;
+      seenRef.current(beatId);
+    }, 900);
     return () => window.clearTimeout(t);
   }, [beatId, counts, calm]);
 

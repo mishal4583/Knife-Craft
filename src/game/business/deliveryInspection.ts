@@ -56,12 +56,21 @@ export const DEFECT_LABEL: Readonly<Record<DefectKind, string>> = {
   pests: "Pests",
   shrivel: "Shriveled",
 };
-/** How big the mark is next to the ingredient picture. */
+/** What a harmless look-alike is called when a wrong tap lands on it (developer 2026-11-16: "can't identify which is dirt and which is fungus"). */
+export const DECOY_LABEL: Readonly<Record<DecoyKind, string>> = {
+  soil: "Dirt",
+  drop: "Water drop",
+  scuff: "Scuff",
+  freckles: "Freckles",
+  sun: "Sun spot",
+  speck: "Leaf bit",
+};
+/** How big the mark is next to the ingredient picture (developer 2026-11-16: the small ones were hard to make out on a 65 px ingredient, so they are a little larger). */
 export const MARK_SCALE: Readonly<Record<MarkSize, number>> = {
   big: 0.92,
-  medium: 0.7,
-  small: 0.52,
-  tiny: 0.36,
+  medium: 0.72,
+  small: 0.58,
+  tiny: 0.44,
 };
 
 export type Mark =

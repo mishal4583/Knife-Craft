@@ -16,6 +16,8 @@ import {
   MAX_PINS,
   MAX_ROUNDS_PER_DAY,
   MARK_SCALE,
+  DECOY_LABEL,
+  DEFECT_LABEL,
   WRONG_PENALTY_MS,
   buildCrate,
   crateIngredients,
@@ -256,6 +258,47 @@ console.log("B. The crate");
       MARK_SCALE.small > MARK_SCALE.tiny,
     "B9: marks shrink big to tiny",
   );
+  // developer 2026-11-16: "can't identify which is dirt and which is fungus": every kind has a plain name, the small marks are not tinier than 0.4
+  // of the picture, and the guide and the taps show those names.
+  assert(
+    (["soil", "drop", "scuff", "freckles", "sun", "speck"] as const).every(
+      (k) => (DECOY_LABEL[k] ?? "").length >= 3,
+    ) &&
+      (["mold", "rot", "bruise", "wilt", "slime", "pests", "shrivel"] as const).every(
+        (k) => (DEFECT_LABEL[k] ?? "").length >= 3,
+      ) &&
+      DECOY_LABEL.soil === "Dirt" &&
+      MARK_SCALE.tiny >= 0.4 &&
+      MARK_SCALE.small >= 0.55,
+    "B10: every harmless and every spoiled kind has a name; the small marks are not too tiny to see (>= 0.4 and 0.55)",
+  );
+  {
+    const game = fs.readFileSync(
+      path.join(process.cwd(), "src/components/kc/inventory/DeliveryInspectionGame.tsx"),
+      "utf8",
+    );
+    const parts = fs.readFileSync(
+      path.join(process.cwd(), "src/components/kc/inventory/inspection/InspectionParts.tsx"),
+      "utf8",
+    );
+    assert(
+      /insp-fine-label/.test(game) &&
+        /Just \$\{DECOY_LABEL\[it\.mark\.kind\]\.toLowerCase\(\)\}/.test(game) &&
+        /DEFECT_LABEL\[it\.mark\.kind\]\.toUpperCase\(\)/.test(game) &&
+        /insp-guide-\$\{mark\.type\}-\$\{mark\.kind\}/.test(game) &&
+        /Not fresh · tap it/.test(game) &&
+        /Fine · leave it/.test(game),
+      "B11: a wrong tap names the harmless mark, a right tap names the spoiled kind, and the guide is a chart of both",
+    );
+    assert(
+      /function markFilter\(mark: Mark\)/.test(parts) &&
+        /const DEFECT_RIM[\s\S]{0,400}drop-shadow/.test(parts) &&
+        /mark\.type === "defect"[\s\S]{0,120}DEFECT_RIM/.test(parts) &&
+        /: "saturate\(0\.9\)"/.test(parts) &&
+        /filter: markFilter\(mark\)/.test(parts),
+      "B12: a spoiled mark has a dark rim, a harmless one has none",
+    );
+  }
 }
 
 console.log("C. Fairness (400 crates per tier)");

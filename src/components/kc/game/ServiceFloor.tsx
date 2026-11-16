@@ -262,6 +262,11 @@ export function ServiceFloor({
     >
       <style>{keyframes}</style>
       <div className="sf-stage relative min-h-0 flex-1">
+        {/* The same crop of the painting, enlarged, blurred and darkened, fills what the view does not cover (a tall or a wide phone): no empty bands
+            (developer 2026-11-16). A still layer behind the view; no one is drawn on it. */}
+        <div className="sf-backdrop" aria-hidden="true">
+          <img className="sf-map" src={mapUrl} alt="" draggable={false} />
+        </div>
         <div className="sf-view" aria-hidden="true">
           <img className="sf-map" src={mapUrl} alt="" draggable={false} />
           <div className="sf-dim" />

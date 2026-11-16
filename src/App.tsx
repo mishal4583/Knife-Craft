@@ -846,6 +846,8 @@ export function App() {
   // A moment worth feeling (game/restaurant/celebrations.ts): the ranking climbed, popularity rose, a spotless run.
   const [celebration, setCelebration] = useState<Celebration | null>(null);
   const [paigeReplay, setPaigeReplay] = useState<AssistantReplay | null>(null);
+  // A tip is on screen: the daily gift and welcome back wait for it (developer 2026-11-16: they used to open over it and make it show again).
+  const [paigeOpen, setPaigeOpen] = useState(false);
   // Paige's praise for a perfect mini-game round (restaurant/miniGamePraise.ts): held until the player is back on a home screen, then said once.
   const [paigePraise, setPaigePraise] = useState<AssistantBeat | null>(null);
   const praiseRun = useRef({ streak: 0, given: 0 });
@@ -4197,7 +4199,8 @@ export function App() {
     awayMsRef.current = awayMsSince(save, Date.now());
   }, [save]);
   useEffect(() => {
-    if (!homeCalm || (dailyGiftOfferedRef.current && welcomeBackTriedRef.current)) return;
+    if (!homeCalm || paigeOpen || (dailyGiftOfferedRef.current && welcomeBackTriedRef.current))
+      return;
     const t = window.setTimeout(() => {
       if (!dailyGiftOfferedRef.current && openDailyGift()) {
         dailyGiftOfferedRef.current = true;
@@ -4210,7 +4213,7 @@ export function App() {
     }, 1200);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- openDailyGift / openWelcomeBack read saveRef
-  }, [homeCalm]);
+  }, [homeCalm, paigeOpen]);
 
   // Phase 2 (developer 2026-10-30, restaurant/serviceFlow.ts): a campaign service's customers arrive
   // on a clock and wait at the door. The clock runs only while the service is on screen with no card
@@ -5373,6 +5376,7 @@ export function App() {
           onHire={hirePaige}
           onSeen={paigeSeen}
           onGo={paigeGo}
+          onOpen={setPaigeOpen}
         />
       ) : null}
       {RESTAURANT_MODE && save && paigeNotebook ? (

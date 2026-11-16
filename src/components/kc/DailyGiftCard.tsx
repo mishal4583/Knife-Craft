@@ -95,7 +95,11 @@ export function DailyGiftCard({
             : formatUsd(dailyGiftAmount(levelNumber))}
       </span>
       {/* The streak's week: days done, today, and the two rewards. */}
-      <span className="mt-1.5 flex items-center gap-[3px]" aria-hidden="true">
+      {/* Hidden on a short screen (320 x 568): the line below still says which day it is. */}
+      <span
+        className="mt-1.5 flex items-center gap-[3px] [@media(max-height:600px)]:hidden"
+        aria-hidden="true"
+      >
         {Array.from({ length: GIFT_STREAK.CYCLE }, (_, i) => {
           const day = i + 1;
           const done = day <= s.done;

@@ -233,9 +233,11 @@ export function Kitchen({
       <DustMotes count={18} />
 
       {/* Top HUD */}
-      <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between p-3">
+      {/* Portrait (developer 2026-11-16, "optimize for all screen sizes"): the wallet row is on top and the rank, gift and kitchen cards sit under it, as wide as
+          the shortcut column on the right allows; beside the wallet they were squeezed to ~40 px at 320 wide. Landscape keeps its one row. */}
+      <div className="absolute inset-x-0 top-0 z-20 flex flex-col-reverse items-start gap-2 p-3 [@media(max-height:600px)]:gap-1 [@media(max-height:600px)]:p-2 land:flex-row land:justify-between">
         {/* Phase 5 (B3): the daily gift sits under the rank, on the Kitchen's free wall. */}
-        <div className="mr-2 flex min-w-0 max-w-[60%] shrink flex-col items-start gap-2 land:max-w-[64%] land:flex-row">
+        <div className="mr-2 flex min-w-0 max-w-[calc(100%-84px)] shrink flex-col items-start gap-2 [@media(max-height:600px)]:gap-1 land:max-w-[64%] land:flex-row">
           <button
             type="button"
             onClick={() => {
@@ -301,7 +303,7 @@ export function Kitchen({
             </button>
           ) : null}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2 self-end land:self-auto">
           <AskPaigeButton />
           <Coin n={save.credits} />
           {/* Settings — Phase 15 dissolved the Journal hub, so this is the
@@ -1303,7 +1305,8 @@ function CityRankBadge({ save }: { save: SaveData }) {
       <p className="truncate whitespace-nowrap font-display text-[15.5px] font-black leading-tight text-ivory">
         🏆 #{c.rank} <span className="text-ivory/70">of {c.total}</span>
       </p>
-      <span className="mt-1.5 block h-[4px] w-24 overflow-hidden rounded-full bg-ivory/25">
+      {/* On a short screen (320 x 568) the decorative bar goes, so the three cards fit above the order card. */}
+      <span className="mt-1.5 block h-[4px] w-24 overflow-hidden rounded-full bg-ivory/25 [@media(max-height:600px)]:hidden">
         <span
           className="block h-full rounded-full"
           style={{

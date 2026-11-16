@@ -196,8 +196,8 @@ type Piece = {
 
 /** A stain never looks lighter than this share of itself because of wear alone; the clear fade does the rest. */
 const WEAR_FLOOR = 0.25;
-/** A cleared stain melts away over this long (it used to take 240 ms and looked like it vanished). */
-const CLEAR_FADE_MS = 700;
+/** A cleared stain melts away over this long (developer 2026-11-16: 14 s; it used to take 240 ms and looked like it vanished). */
+const CLEAR_FADE_MS = 14000;
 /** The sponge's speed for the wash sound: a stroke of this many scene units per pointer move is full speed. */
 function strokeSpeed(stroke: number | null): number {
   return stroke === null ? 0.35 : Math.min(1, stroke / 18);

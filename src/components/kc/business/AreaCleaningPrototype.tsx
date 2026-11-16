@@ -648,6 +648,18 @@ export function AreaCleaningPrototype({
           className="relative grid min-h-0 flex-1 place-items-center bg-[#2a1b12] land:col-start-1 land:row-span-2 land:row-start-1"
           style={{ containerType: "size" }}
         >
+          {/* Whatever the room does not cover (a tall or a short phone) is the same painting, enlarged, blurred and darkened, so the screen
+              is full with no empty bars (developer 2026-11-16). It is a still layer BEHIND the room: nothing filters the room itself. */}
+          <img
+            src={roomImage}
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute inset-0 h-full w-full scale-110 select-none object-cover"
+            style={{ filter: "blur(14px) brightness(0.7) saturate(0.9)" }}
+            decoding="async"
+            draggable={false}
+            data-testid="cleaning-backdrop"
+          />
           {/* Centred by layout, on its own still layer, with no filter or blur over the painting: on an iPhone a
               half-pixel transform and a live filter made the room shiver while the guide pulsed (developer 2026-11-06). */}
           <div

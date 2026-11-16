@@ -81,7 +81,7 @@ create a second engine, and do not duplicate existing systems.
 
 - React 19 + Vite + TypeScript + Tailwind v4, Phaser 3.90 for the cutting
   gameplay (lazy-loaded `Preparation` chunk).
-- Portrait-first (9:16 logical 540×960, `GameShell` contain-fits it).
+- Portrait-first (9:16 logical 540×960). Since 2026-11-16 an upright phone (window < 640 px wide, aspect ≤ 3:4) is given the WHOLE viewport by `GameShell` (no bars on tall 9:20 phones; safe-area padding for the notch); tablets and desktop keep the contain-fit 9:16 frame. Fixed-shape painted scenes (the cleaning room, the service floor) fill the rest with their own painting, blurred and BEHIND them. Suites: `scripts/full-screen-qa.mts`, `tools/e2e/fullscreen.mjs`.
 - 91 campaign levels (13 chapters; the campaign plan of 2026-11-07, below), Market (knives, boards, suppliers,
   ingredients, Blacksmith, supplies), Restaurant Progress, Business Mode
   (Economy V3), opening story + milestones + finale.
