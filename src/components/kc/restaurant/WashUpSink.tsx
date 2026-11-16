@@ -189,15 +189,20 @@ type Piece = {
   pointsTotal: number[];
   cleared: Uint8Array;
   alpha: Float64Array;
-  fading: Map<number, number>;
   sprites: HTMLCanvasElement[];
   done: boolean;
 };
 
-/** A stain never looks lighter than this share of itself because of wear alone; the clear fade does the rest. */
-const WEAR_FLOOR = 0.25;
-/** A cleared stain melts away over this long (developer 2026-11-16: 14 s; it used to take 240 ms and looked like it vanished). */
-const CLEAR_FADE_MS = 14000;
+/**
+ * The dirt follows the SCRUBBING, not a clock (developer 2026-11-16, twice: first "let the dirt fade gradually", then "it only fades by time, not by scrubbing
+ * or rinsing; when I finish it waits for the time"): a stain's lightness is the share of its wear points still left, all the way to nothing, so the last
+ * stroke that wears it out leaves nothing to fade. WEAR_FLOOR is 0 for that reason (it was 0.25 plus a 14 s timer).
+ */
+const WEAR_FLOOR = 0;
+/**
+ * There is NO timed fade (developer 2026-11-16, third time: "make sure every dirt disappears when I finish scrubbing"): a stain you scrub away is at zero
+ * when it is cleared, and the moment the piece counts as scrubbed clean (startRinse) every speck still left is cleared at once.
+ */
 /** The sponge's speed for the wash sound: a stroke of this many scene units per pointer move is full speed. */
 function strokeSpeed(stroke: number | null): number {
   return stroke === null ? 0.35 : Math.min(1, stroke / 18);
@@ -378,7 +383,6 @@ export function WashUpSink({
       pointsTotal: stains.map((s) => marks.filter((m) => m.stain === s.id).length),
       cleared: new Uint8Array(stains.length),
       alpha: new Float64Array(stains.length).fill(1),
-      fading: new Map(),
       sprites: stains.map(paintStain),
       done: false,
     };
@@ -419,7 +423,7 @@ export function WashUpSink({
       const a = pc.alpha[i]!;
       if (!sprite || a <= 0) return;
       const reach = stainReach(s);
-      // Lighter as more of it is worn (never below a quarter until it is cleared, then the clear fade takes it from there).
+      // Lighter as more of it is worn, down to nothing: what you scrub away is gone when you finish scrubbing it.
       const worn = pc.pointsTotal[i] ? pc.pointsLeft[i]! / pc.pointsTotal[i]! : 1;
       ctx.globalAlpha = a * strengthOpacity(s.strength) * (WEAR_FLOOR + (1 - WEAR_FLOOR) * worn);
       ctx.drawImage(sprite, s.x - reach, s.y - reach);
@@ -431,17 +435,9 @@ export function WashUpSink({
 
   function requestDraw() {
     if (rafRef.current) return;
-    rafRef.current = requestAnimationFrame(function frame(t) {
+    rafRef.current = requestAnimationFrame(() => {
       rafRef.current = 0;
-      const pc = pieceRef.current;
-      if (pc)
-        for (const [i, start] of pc.fading) {
-          const a = 1 - (t - start) / CLEAR_FADE_MS;
-          pc.alpha[i] = Math.max(0, a) ** 1.6;
-          if (a <= 0) pc.fading.delete(i);
-        }
       draw();
-      if (pc?.fading.size) rafRef.current = requestAnimationFrame(frame);
     });
   }
 
@@ -480,14 +476,13 @@ export function WashUpSink({
     ctx.restore();
   }
 
-  /** A stain is gone: it fades, sparkles and pings (rising with the combo), a tiny buzz. */
+  /** A stain is gone, at once: it sparkles and pings (rising with the combo), a tiny buzz. */
   function clearStain(index: number, quiet = false) {
     const pc = pieceRef.current;
     if (!pc || pc.cleared[index]) return;
     pc.cleared[index] = 1;
     const t = performance.now();
-    if (reduced) pc.alpha[index] = 0;
-    else pc.fading.set(index, t);
+    pc.alpha[index] = 0;
     const s = pc.stains[index]!;
     if (!quiet) {
       streakRef.current = nextStreak(streakRef.current, t);
@@ -514,25 +509,21 @@ export function WashUpSink({
     }
     setWashedPieces((p) => p + 1);
     setCleanedCount(index + 1);
-    const left = pc.stains.filter((s) => !pc.cleared[s.id]);
+    for (const s of pc.stains) clearStain(s.id, true);
     const step = reduced ? 0 : 70;
-    left.forEach((s, k) => later(() => clearStain(s.id, true), step * (k + 1)));
-    later(
-      () => {
-        setProgress(100);
-        setPhase("shine");
-        AudioManager.playSfx("squeak");
-        if (!reduced) buzz(24);
-        const cx = WIDTH / 2;
-        const cy = HEIGHT * 0.58;
-        fxRef.current?.sparkle(cx, cy, 8);
-        fxRef.current?.scrub("mop", cx, cy, 5);
-        const key = performance.now();
-        setToast({ text: `✨ ${cheerFor(shape)}`, key });
-        later(() => setToast((t) => (t?.key === key ? null : t)), 1000);
-      },
-      step * (left.length + 1),
-    );
+    later(() => {
+      setProgress(100);
+      setPhase("shine");
+      AudioManager.playSfx("squeak");
+      if (!reduced) buzz(24);
+      const cx = WIDTH / 2;
+      const cy = HEIGHT * 0.58;
+      fxRef.current?.sparkle(cx, cy, 8);
+      fxRef.current?.scrub("mop", cx, cy, 5);
+      const key = performance.now();
+      setToast({ text: `✨ ${cheerFor(shape)}`, key });
+      later(() => setToast((t) => (t?.key === key ? null : t)), 1000);
+    }, step);
     later(
       () => {
         if (index >= queue.length - 1) {
@@ -567,7 +558,7 @@ export function WashUpSink({
           reduced ? 0 : SLIDE_MS,
         );
       },
-      step * (left.length + 1) + (reduced ? 200 : SHINE_MS),
+      step + (reduced ? 200 : SHINE_MS),
     );
   }
 
@@ -621,14 +612,11 @@ export function WashUpSink({
     ctx.restore();
   }
 
-  /** The piece is scrubbed clean: the last specks wipe themselves, then it is covered in suds to rinse off. */
+  /** The piece is scrubbed clean: every speck still left goes at once, then it is covered in suds to rinse off. */
   function startRinse() {
     const pc = pieceRef.current;
     if (!pc || pc.done || rinseRef.current) return;
-    const step = reduced ? 0 : 70;
-    pc.stains
-      .filter((s) => !pc.cleared[s.id])
-      .forEach((s, k) => later(() => clearStain(s.id, true), step * (k + 1)));
+    for (const s of pc.stains) clearStain(s.id, true);
     const points = dishRinsePoints(shape);
     rinseRef.current = { points, dose: new Float64Array(points.length), left: points.length };
     paintFoam(dishSeed(seed + activeItemIndex * 13, activeItem.id));

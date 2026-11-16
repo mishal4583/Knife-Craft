@@ -406,6 +406,19 @@ console.log("W. Wiring");
       !/Math\.random\(/.test(game + read("src/game/restaurant/dishDirt.ts")),
     "R7: the sink uses the rooms' feel engine (a smooth wash sound, not the per-stroke tick, sparkles, suds, spotless chime; reduced motion honoured), seeded",
   );
+  // developer 2026-11-16 (twice): the dirt follows the SCRUBBING, never a clock. A stain's lightness is its wear all the way to nothing, and only the
+  // specks the game wipes by itself melt out, quickly.
+  assert(
+    /const WEAR_FLOOR = 0;/.test(game) &&
+      !/CLEAR_FADE_MS/.test(game) &&
+      !/\bfading\b/.test(game) &&
+      /WEAR_FLOOR \+ \(1 - WEAR_FLOOR\) \* worn/.test(game) &&
+      /function startRinse\(\) \{[\s\S]{0,200}for \(const s of pc\.stains\) clearStain\(s\.id, true\);/.test(
+        game,
+      ) &&
+      /pc\.alpha\[index\] = 0;/.test(game),
+    "R8: the dirt lightens with the wear down to nothing, there is no timed fade at all, and every speck left goes at once when the piece is scrubbed clean",
+  );
 }
 
 // ---------- N. Every piece the orders used is washed, slowly (developer 2026-11-07) ----------
