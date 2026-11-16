@@ -65,7 +65,23 @@ try {
     per.forEach((n, k) => assert.ok(n >= 4, `${id}: colour ${d.keys[k]} has only ${n} cubes`));
     d.keys.forEach((key: string) => assert.ok(key in RUN_PALETTE, `${id}: unknown colour ${key}`));
     assert.equal(new Set(d.keys).size, d.keys.length, `${id}: a colour is listed twice`);
-    assert.ok(d.keys.length >= 6 && d.keys.length <= 9, `${id}: 6 to 9 colours`);
+    assert.ok(d.keys.length >= 5 && d.keys.length <= 9, `${id}: 5 to 9 colour groups`);
+    // each group can hold several tones of one hue (drawn), while a waiter fetches the whole group
+    assert.equal(d.toneNames.length, d.keys.length, `${id}: a tone list for every group`);
+    d.toneNames.forEach((tones: string[], k: number) => {
+      assert.ok(tones.length >= 1 && tones.length <= 4, `${id}: group ${k} has 1 to 4 tones`);
+      tones.forEach((t) => assert.ok(t in RUN_PALETTE, `${id}: unknown tone ${t}`));
+      assert.ok(tones.includes(d.keys[k]), `${id}: the waiter colour is one of its group's tones`);
+    });
+    const toneGrid: Uint8Array = d.tones();
+    assert.equal(toneGrid.length, GRID * GRID);
+    grid.forEach((v, i) => {
+      if (v >= 0)
+        assert.ok(
+          toneGrid[i] < d.toneNames[v].length,
+          `${id}: cell ${i} has a tone outside its group`,
+        );
+    });
     assert.equal(d.keys[0], "outline", `${id}: colour 0 is the dark outline`);
     // nothing sits in a corner: the dessert is a round plate
     for (const c of [0, GRID - 1, (GRID - 1) * GRID, GRID * GRID - 1])
@@ -86,7 +102,7 @@ try {
         `${id} is not harder than tier ${tier.id}`,
       );
   console.log(
-    "PASS B gallery: 4 pixel-art desserts, 6 to 9 colours each, outline first, cube counts",
+    "PASS B gallery: 4 pixel-art desserts, 5 to 9 colour groups each (several tones inside a group), outline first, cube counts",
     JSON.stringify(cubes),
   );
 

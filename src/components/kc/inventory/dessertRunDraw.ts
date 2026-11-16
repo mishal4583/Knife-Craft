@@ -11,6 +11,7 @@ import {
   SPOT_W,
   STAGE,
   TABLES,
+  cellHex,
   isExposed,
   isWaiting,
   spotCenter,
@@ -84,6 +85,49 @@ function cubeSprite(hex: string): HTMLCanvasElement {
   g.arc(12, 12, 3, 0, 7);
   g.fill();
   cubeCache.set(hex, c);
+  return c;
+}
+
+const tileCache = new Map<string, HTMLCanvasElement>();
+/**
+ * One mosaic tile at its exact size in DEVICE pixels, with the edge treatment of the developer's reference tiles
+ * (2026-11-17): a bright edge along the top, a soft fade from the light top to a deeper bottom, a thin shaded edge
+ * at the bottom and right, and a small glint at the top left. It fills its whole box, so neighbouring tiles meet
+ * edge to edge with nothing showing between them (no gap, no rounded corner); and it is blitted 1:1 (never scaled),
+ * so no edge is ever blurred into a hairline.
+ */
+function tileSprite(hex: string, w: number, h: number): HTMLCanvasElement {
+  const key = `${hex}|${w}|${h}`;
+  let c = tileCache.get(key);
+  if (c) return c;
+  c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const g = c.getContext("2d")!;
+  const face = g.createLinearGradient(0, 0, 0, h);
+  face.addColorStop(0, shade(hex, 0.2));
+  face.addColorStop(0.42, hex);
+  face.addColorStop(1, shade(hex, -0.17));
+  g.fillStyle = face;
+  g.fillRect(0, 0, w, h);
+  const t = Math.max(1, Math.round(h * 0.07));
+  const l = Math.max(1, Math.round(w * 0.05));
+  g.fillStyle = "rgba(255,255,255,.5)";
+  g.fillRect(0, 0, w, t);
+  g.fillStyle = "rgba(255,255,255,.2)";
+  g.fillRect(0, 0, l, h);
+  g.fillStyle = "rgba(0,0,0,.18)";
+  g.fillRect(0, h - t, w, t);
+  g.fillStyle = "rgba(0,0,0,.1)";
+  g.fillRect(w - l, 0, l, h);
+  g.fillStyle = "rgba(255,255,255,.7)";
+  g.fillRect(
+    Math.round(w * 0.16),
+    Math.round(h * 0.2),
+    Math.max(2, Math.round(w * 0.22)),
+    Math.max(1, Math.round(h * 0.09)),
+  );
+  tileCache.set(key, c);
   return c;
 }
 
@@ -392,17 +436,14 @@ export function drawRun(ctx: CanvasRenderingContext2D, state: RunState, view: Dr
     const y2 = Math.floor((ORIGIN.y + (row + 1) * CELL) * dprK) / dprK;
     const match = view.peek != null && k === view.peek && isExposed(state.ext, i);
     ctx.globalAlpha = dim && k !== view.peek ? 0.32 : 1;
-    // Plain filled rectangles, no scaled picture: nothing can blur an edge or leave a hairline between tiles.
-    const w = x2 - x;
-    const h = y2 - y;
-    ctx.fillStyle = hexOfK(k);
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = "rgba(255,255,255,.5)";
-    ctx.fillRect(
-      x + w * 0.2,
-      y + h * 0.2,
-      Math.max(2 / dprK, w * 0.14),
-      Math.max(2 / dprK, h * 0.14),
+    // The tile's box is whole device pixels; its sprite is blitted 1:1, so the right edge of one tile is the left
+    // edge of the next and nothing can show or blur between them.
+    ctx.drawImage(
+      tileSprite(cellHex(state, i), Math.round((x2 - x) * dprK), Math.round((y2 - y) * dprK)),
+      x,
+      y,
+      x2 - x,
+      y2 - y,
     );
     if (match) {
       ctx.globalAlpha = 0.6 + 0.4 * Math.sin(now / 130);

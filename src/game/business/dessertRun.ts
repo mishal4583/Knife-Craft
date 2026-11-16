@@ -60,10 +60,10 @@ export type RunTier = {
 };
 
 export const RUN_TIERS: readonly RunTier[] = [
-  { id: 1, fromLevel: 18, lanes: 3, min: 8, spread: 14, narrow: 0.4 },
-  { id: 2, fromLevel: 28, lanes: 3, min: 6, spread: 14, narrow: 0.5 },
-  { id: 3, fromLevel: 45, lanes: 4, min: 5, spread: 14, narrow: 0.65 },
-  { id: 4, fromLevel: 65, lanes: 5, min: 4, spread: 14, narrow: 0.9 },
+  { id: 1, fromLevel: 18, lanes: 3, min: 8, spread: 14, narrow: 0.5 },
+  { id: 2, fromLevel: 28, lanes: 3, min: 6, spread: 14, narrow: 0.75 },
+  { id: 3, fromLevel: 45, lanes: 4, min: 4, spread: 10, narrow: 0.9 },
+  { id: 4, fromLevel: 65, lanes: 5, min: 3, spread: 7, narrow: 1 },
 ];
 
 export function runTierForLevel(level: number): RunTier {
@@ -95,6 +95,8 @@ export type Flight = { guest: number; k: number; t: number };
 export type RunState = {
   dessert: Dessert;
   grid: Int8Array;
+  /** The tone drawn for every cell inside its group (see dessertGallery); never changes. */
+  tones: Uint8Array;
   /** Empty cells joined to the outside of the grid. */
   ext: Uint8Array;
   /** Cells a runner is already on its way to. */
@@ -118,6 +120,12 @@ export type RunState = {
 
 export function hexOf(state: RunState, k: number): string {
   return RUN_PALETTE[state.dessert.keys[k]!];
+}
+
+/** The colour a cell is drawn in: its group's tone (the waiter's colour is the group's own). */
+export function cellHex(state: RunState, i: number): string {
+  const k = state.grid[i]!;
+  return RUN_PALETTE[state.dessert.toneNames[k]![state.tones[i]!]!];
 }
 
 /* ---------- the grid: what a waiter can reach ---------- */
@@ -297,6 +305,7 @@ export function makeRun(dessertId: DessertId, seed: number, tier: RunTier): RunS
   return {
     dessert,
     grid,
+    tones: dessert.tones(),
     ext: computeExt(grid),
     reserved: new Uint8Array(GRID * GRID),
     lanes,

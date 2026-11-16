@@ -31,7 +31,7 @@ with the fewest reachable cubes with chance `narrow`, otherwise by what is left)
 shuffled pattern that keeps every lane in deck order. Sending waiters in deck order usually wins, but the live rules
 pick the nearest reachable cube at run time, so 5 to 10 % of seeds did not win on replay with the 7 to 8 colour
 pictures. The seed generator keeps only seeds that win on time and with taps up to 4 s late, and `dessert-run-qa`
-replays all 420 shipped plates. Careless play wins 70 / 65 / 30 / 10 % by tier.
+replays all 420 shipped plates. Careless play wins 80 / 75 / 57 / 30 % by tier.
 
 ## Gallery
 
@@ -41,10 +41,12 @@ like the developer's Colony Flow lily-pad reference, after three rejected tries 
 flat dessert alone on a bare plate). The rules of the look, from the developer's notes and the reference:
 - the board is FULL: a two-tone background (light field, darker under a wavy line) with white splash bars, and the
   dessert sits on it with a navy outline one cube thick; the background and the outline are layers to peel;
-- 5 to 9 colours, vivid; each shape a base plus a darker shade, and a one-cube light edge on the upper left;
+- the picture is rich (35 tones: pale highlight, 3 to 4 tones of each hue by the light, a gradient sky with white clouds, a warm outline) but a waiter fetches a GROUP of tones, so the game has only 5 to 6 waiter colours;
 - clusters only: sprinkles in pairs, glints in bars, never a lone cube;
-- tiles have NO gap at all (developer 2026-11-17: "absolute zero gaps"): sharp-cornered squares snapped to whole
-  device pixels, no edge lines, one small glint each (a hairline gap and a bevel were tried first and rejected).
+- tiles have NO gap at all (developer 2026-11-17: "absolute zero gaps"): sharp-cornered, edge to edge, blitted 1:1 at
+  exact device pixels; each has the reference's edge (bright top, soft fade, shaded bottom, a glint). Flat tiles
+  with no edge were tried and lost the picture's definition.
+- the outline is one unbroken run of cubes: corner-only contacts get a joining cube on the dessert's side.
 `dessertGallery.ts` paints regions in order; the outline and the edges are worked out. The plan wants about twelve
 desserts (chocolate cake, cheesecake, fruit pie, sundae, waffle, macarons, lemon tart next). Every new one needs a
 painter function, a place in `DESSERTS_BY_TIER`, new seeds (`scripts/make-dessert-seeds.mts`) and a QA run (the QA
