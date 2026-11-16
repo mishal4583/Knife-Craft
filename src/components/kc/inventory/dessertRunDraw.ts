@@ -62,6 +62,55 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
   else ctx.rect(x, y, w, h);
 }
 
+const cubeCache = new Map<string, HTMLCanvasElement>();
+/** One glossy cube, drawn once per colour at 3x: a thick rounded block, a bevel lit from the top left, a glint. */
+function cubeSprite(hex: string): HTMLCanvasElement {
+  let c = cubeCache.get(hex);
+  if (c) return c;
+  const S = 48;
+  c = document.createElement("canvas");
+  c.width = S;
+  c.height = S;
+  const g = c.getContext("2d")!;
+  // the block's thickness (its lower edge)
+  g.fillStyle = shade(hex, -0.45);
+  rr(g, 1, 6, S - 2, S - 7, 12);
+  g.fill();
+  // the face
+  const face = g.createLinearGradient(0, 0, 0, S - 8);
+  face.addColorStop(0, shade(hex, 0.3));
+  face.addColorStop(0.5, hex);
+  face.addColorStop(1, shade(hex, -0.14));
+  g.fillStyle = face;
+  rr(g, 1, 1, S - 2, S - 9, 12);
+  g.fill();
+  // a lit bevel on the top and left, a shaded one on the bottom and right
+  g.lineWidth = 2.4;
+  g.strokeStyle = "rgba(255,255,255,.38)";
+  g.beginPath();
+  g.moveTo(5, S - 16);
+  g.lineTo(5, 12);
+  g.quadraticCurveTo(5, 5, 12, 5);
+  g.lineTo(S - 14, 5);
+  g.stroke();
+  g.strokeStyle = "rgba(0,0,0,.16)";
+  g.beginPath();
+  g.moveTo(S - 5, 14);
+  g.lineTo(S - 5, S - 18);
+  g.quadraticCurveTo(S - 5, S - 11, S - 12, S - 11);
+  g.lineTo(14, S - 11);
+  g.stroke();
+  // the glint
+  g.fillStyle = "rgba(255,255,255,.62)";
+  rr(g, 9, 8, 15, 6, 3);
+  g.fill();
+  g.fillStyle = "rgba(255,255,255,.4)";
+  rr(g, 9, 16, 5, 5, 2.5);
+  g.fill();
+  cubeCache.set(hex, c);
+  return c;
+}
+
 export function drawCube(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -69,15 +118,7 @@ export function drawCube(
   s: number,
   hex: string,
 ) {
-  ctx.fillStyle = shade(hex, -0.3);
-  rr(ctx, x, y, s - 0.6, s - 0.6, s * 0.22);
-  ctx.fill();
-  ctx.fillStyle = hex;
-  rr(ctx, x, y, s - s * 0.16, s - s * 0.16, s * 0.2);
-  ctx.fill();
-  ctx.fillStyle = shade(hex, 0.5);
-  rr(ctx, x + s * 0.14, y + s * 0.12, s * 0.38, s * 0.15, s * 0.07);
-  ctx.fill();
+  ctx.drawImage(cubeSprite(hex), x, y, s, s);
 }
 
 function drawPlainPlate(ctx: CanvasRenderingContext2D, cx: number, cy: number, R: number) {
@@ -282,14 +323,6 @@ export function drawRun(ctx: CanvasRenderingContext2D, state: RunState, view: Dr
     const p = Math.min(1, state.served[j]!.length / Math.max(1, state.need[j]!));
     return { p, row: p >= 1 ? 2 : p > 0.4 ? 1 : 0 };
   };
-  GUESTS.forEach((g, j) => {
-    const { p, row } = mood(j);
-    if (img?.guests) {
-      const cell = img.guests.naturalWidth / 4;
-      const size = 105;
-      ctx.drawImage(img.guests, j * cell, row * cell, cell, cell, g.x - size / 2, 478, size, size);
-    } else drawPlainGuest(ctx, g.x, g.y, p, j);
-  });
   TABLES.forEach((t) => {
     if (img?.table) ctx.drawImage(img.table, t.x, t.y, t.w, t.h);
     else {
@@ -298,6 +331,31 @@ export function drawRun(ctx: CanvasRenderingContext2D, state: RunState, view: Dr
       ctx.fill();
     }
   });
+  GUESTS.forEach((g, j) => {
+    const { p, row } = mood(j);
+    if (img?.guests) {
+      const cell = img.guests.naturalWidth / 4;
+      const size = 105;
+      ctx.drawImage(img.guests, j * cell, row * cell, cell, cell, g.x - size / 2, 474, size, size);
+    } else drawPlainGuest(ctx, g.x, g.y, p, j);
+  });
+  // the table's front (cloth and legs) over the guests, so they sit IN their chairs, behind the table top
+  if (img?.table)
+    for (const t of TABLES) {
+      const k = img.table.naturalHeight / 320;
+      const cut = 72;
+      ctx.drawImage(
+        img.table,
+        0,
+        cut * k,
+        img.table.naturalWidth,
+        img.table.naturalHeight - cut * k,
+        t.x,
+        t.y + (cut / 320) * t.h,
+        t.w,
+        t.h - (cut / 320) * t.h,
+      );
+    }
   GUESTS.forEach((g, j) => {
     const { p } = mood(j);
     if (img?.["guest-plate"])

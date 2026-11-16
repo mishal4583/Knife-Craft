@@ -22,7 +22,7 @@ try {
   );
   const { RUN_TIERS, STEP } = run;
   const { DESSERTS, DESSERTS_BY_TIER, RUN_PALETTE, GRID } = gallery;
-  type Id = "cookie" | "donut" | "tart" | "pancake";
+  type Id = "cookie" | "donut" | "cupcake" | "tart";
 
   // ---- A. Tiers ----------------------------------------------------------------------------------
   assert.equal(RUN_TIERS.length, 4);
@@ -41,7 +41,17 @@ try {
 
   // ---- B. The gallery ----------------------------------------------------------------------------
   assert.equal(GRID, 24);
-  assert.equal(Object.keys(RUN_PALETTE).length, 10, "ten cube colours");
+  const paletteHexes = Object.values(RUN_PALETTE) as string[];
+  assert.ok(
+    paletteHexes.length >= 20,
+    "a palette of at least twenty cube colours (tones of each hue)",
+  );
+  assert.equal(
+    new Set(paletteHexes).size,
+    paletteHexes.length,
+    "no two palette names share a colour",
+  );
+  paletteHexes.forEach((h) => assert.match(h, /^#[0-9A-F]{6}$/));
   const cubes: Record<string, number> = {};
   for (const id of Object.keys(DESSERTS) as Id[]) {
     const d = DESSERTS[id];
@@ -55,14 +65,15 @@ try {
     per.forEach((n, k) => assert.ok(n >= 4, `${id}: colour ${d.keys[k]} has only ${n} cubes`));
     d.keys.forEach((key: string) => assert.ok(key in RUN_PALETTE, `${id}: unknown colour ${key}`));
     assert.equal(new Set(d.keys).size, d.keys.length, `${id}: a colour is listed twice`);
-    assert.ok(d.keys.length >= 3 && d.keys.length <= 6, `${id}: 3 to 6 colours`);
+    assert.ok(d.keys.length >= 6 && d.keys.length <= 9, `${id}: 6 to 9 colours`);
+    assert.equal(d.keys[0], "outline", `${id}: colour 0 is the dark outline`);
     // nothing sits in a corner: the dessert is a round plate
     for (const c of [0, GRID - 1, (GRID - 1) * GRID, GRID * GRID - 1])
       assert.equal(grid[c], -1, `${id}: corner ${c} must be empty`);
     cubes[id] = per.reduce((a: number, b: number) => a + b, 0);
     assert.deepEqual(d.build(), grid, `${id}: the build is the same every time`);
   }
-  assert.deepEqual(cubes, { cookie: 345, donut: 336, tart: 392, pancake: 384 });
+  assert.deepEqual(cubes, { cookie: 355, donut: 337, cupcake: 282, tart: 379 });
   for (const tier of RUN_TIERS)
     for (const id of DESSERTS_BY_TIER[tier.id])
       assert.equal(
@@ -70,7 +81,10 @@ try {
         true,
         `${id} is not harder than tier ${tier.id}`,
       );
-  console.log("PASS B gallery: 4 desserts, 10 palette colours, cube counts", JSON.stringify(cubes));
+  console.log(
+    "PASS B gallery: 4 pixel-art desserts, 6 to 9 colours each, outline first, cube counts",
+    JSON.stringify(cubes),
+  );
 
   // ---- C. Source guard: the plate must be the same on every browser -------------------------------
   for (const file of [
@@ -131,40 +145,47 @@ try {
       "PASS D2 taps: sent to a free spot; a full row or an empty lane refuses and changes nothing",
     );
   }
-  // D3 a waiter with nothing reachable waits, and goes on by itself
+  // D3 a waiter with nothing reachable waits, and goes on by itself. A hand-built board: one cube of colour 1
+  // sealed inside a ring of colour 0.
+  const sealed = (tier: (typeof RUN_TIERS)[number]) => {
+    const s = run.makeRun("cookie", 1, tier);
+    s.grid.fill(-1);
+    for (let y = 11; y <= 13; y++) for (let x = 11; x <= 13; x++) s.grid[y * GRID + x] = 0;
+    s.grid[12 * GRID + 12] = 1;
+    s.ext.set(run.computeExt(s.grid));
+    s.total = 9;
+    s.need = [2, 2, 2, 3];
+    return s;
+  };
   {
     const tier = RUN_TIERS[0];
-    const s = run.makeRun("donut", 1, tier);
+    const s = sealed(tier);
     const hex = (k: number) => RUN_PALETTE[s.dessert.keys[k]];
-    assert.equal(run.reachableCells(s, 1).length, 0, "the donut's glaze starts under the dough");
-    assert.ok(run.reachableCells(s, 0).length > 0, "the dough is on the outside");
-    s.lanes = [[{ k: 1, n: 1, hex: hex(1) }], [{ k: 0, n: 60, hex: hex(0) }], []];
+    assert.equal(run.reachableCells(s, 1).length, 0, "the sealed cube is out of reach");
+    assert.equal(run.reachableCells(s, 0).length, 8, "the ring is on the outside");
+    s.lanes = [[{ k: 1, n: 1, hex: hex(1) }], [{ k: 0, n: 8, hex: hex(0) }], []];
     run.tapLane(s, 0);
     for (let i = 0; i < 120; i++) run.stepRun(s, STEP, 1);
-    assert.equal(
-      run.isWaiting(s, s.spots[0]),
-      true,
-      "a glaze waiter waits while the dough covers it",
-    );
+    assert.equal(run.isWaiting(s, s.spots[0]), true, "the waiter waits while the cube is sealed");
     assert.equal(s.phase, "play", "one waiting waiter with a free spot is not a jam");
     run.tapLane(s, 1);
     let guard = 0;
-    while (s.spots[0] && guard++ < 30_000) run.stepRun(s, STEP, 1);
+    while (s.phase === "play" && guard++ < 30_000) run.stepRun(s, STEP, 1);
     assert.equal(
-      s.spots[0],
-      null,
-      "the waiting waiter went on by itself once the way opened, and left",
+      s.phase,
+      "won",
+      "once the ring is gone the waiting waiter went on by itself and the board is won",
     );
-    assert.ok(s.delivered >= 1);
+    assert.equal(s.delivered, 9);
     console.log(
-      "PASS D3 waiting: a buried colour waits, then resumes by itself when the way opens",
+      "PASS D3 waiting: a sealed colour waits, then resumes by itself when the way opens",
     );
   }
   // D4 a jam: every spot waiting
   {
-    const s = run.makeRun("donut", 1, RUN_TIERS[0]);
-    const glaze = { k: 1, n: 1, hex: RUN_PALETTE[s.dessert.keys[1]] };
-    s.lanes = [[{ ...glaze }, { ...glaze }, { ...glaze }], [{ ...glaze }, { ...glaze }], []];
+    const s = sealed(RUN_TIERS[0]);
+    const one = { k: 1, n: 1, hex: RUN_PALETTE[s.dessert.keys[1]] };
+    s.lanes = [[{ ...one }, { ...one }, { ...one }], [{ ...one }, { ...one }], []];
     for (let i = 0; i < 5; i++) run.tapLane(s, i % 2);
     for (let i = 0; i < 400 && s.phase === "play"; i++) run.stepRun(s, STEP, 1);
     assert.equal(s.phase, "jam", "five waiters, none reachable: the kitchen is jammed");

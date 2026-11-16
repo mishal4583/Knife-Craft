@@ -24,21 +24,23 @@ The playable demo and the plan were shown as a private artifact (https://claude.
 - Tiers from Level 18 / 28 / 45 / 65: lanes 3 / 3 / 4 / 5, smaller waiters and longer chains higher up
   (`RUN_TIERS`: `min`, `spread`, `narrow`).
 
-## Solvable by construction
+## Solvable: proved by replay
 
 The deck is built by taking the dessert apart in a sequence that can always continue (the next colour is the one
 with the fewest reachable cubes with chance `narrow`, otherwise by what is left). It is dealt into lanes in a
-shuffled pattern that keeps every lane in deck order, so sending waiters in deck order always wins, while the
-lane fronts can be far ahead of it. `dessert-run-qa` replays all 420 shipped plates in deck order, on time and with
-taps up to 4 s late, on the real rules. A first version dealt round-robin and careless play won 95 % of every tier;
-the shuffled deal and the `narrow` chains moved it to 100 / 65 / 38 / 25 % by tier.
+shuffled pattern that keeps every lane in deck order. Sending waiters in deck order usually wins, but the live rules
+pick the nearest reachable cube at run time, so 5 to 10 % of seeds did not win on replay with the 7 to 8 colour
+pictures. The seed generator keeps only seeds that win on time and with taps up to 4 s late, and `dessert-run-qa`
+replays all 420 shipped plates. Careless play wins 93 / 73 / 35 / 20 % by tier.
 
 ## Gallery
 
-Four desserts are built: cookie (tier 1), donut (1, 2), strawberry tart (2, 3), pancakes (3, 4). The plan wants
-about twelve (chocolate cake, cheesecake, fruit pie, sundae, waffle, macarons, cupcake, lemon tart next). Every
-new dessert needs a build in `dessertGallery.ts`, a place in `DESSERTS_BY_TIER`, new seeds
-(`scripts/make-dessert-seeds.mts`) and a QA run.
+Four pixel-art desserts: cookie (tier 1), donut (1, 2), cherry cupcake (2, 3), strawberry tart (3, 4). The developer's
+references (Colony Flow, 2026-11-16) set the look: a dark outline, two or three tones of each hue lit from the top
+left, white glints, glossy cubes with thickness. The first procedural blobs were rejected ("not a real dish", "not
+cute"). Each dessert is drawn in code by a small painter (`dessertGallery.ts`: domes, outline, bands). The plan
+wants about twelve (chocolate cake, cheesecake, fruit pie, sundae, waffle, macarons, lemon tart next). Every new
+dessert needs a build, a place in `DESSERTS_BY_TIER`, new seeds (`scripts/make-dessert-seeds.mts`) and a QA run.
 
 ## Art
 

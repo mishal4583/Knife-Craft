@@ -36,12 +36,12 @@ export const TABLES = [
   { x: 312, y: 520, w: 220, h: 110 },
 ] as const;
 export const GUESTS = [
-  { x: 56, y: 560 },
-  { x: 180, y: 560 },
-  { x: 360, y: 560 },
-  { x: 484, y: 560 },
+  { x: 66, y: 560 },
+  { x: 170, y: 560 },
+  { x: 370, y: 560 },
+  { x: 474, y: 560 },
 ] as const;
-export const GUEST_PLATE_Y = 574;
+export const GUEST_PLATE_Y = 565;
 export const QUEUE = { rows: 3, tileH: 52, gap: 8, x: 16, y: 770 } as const;
 /** Pixels a runner covers in a second at speed x1. */
 const RUN_SPEED = 700;
@@ -60,10 +60,10 @@ export type RunTier = {
 };
 
 export const RUN_TIERS: readonly RunTier[] = [
-  { id: 1, fromLevel: 18, lanes: 3, min: 8, spread: 14, narrow: 0.6 },
-  { id: 2, fromLevel: 28, lanes: 3, min: 6, spread: 14, narrow: 0.7 },
-  { id: 3, fromLevel: 45, lanes: 4, min: 5, spread: 14, narrow: 0.8 },
-  { id: 4, fromLevel: 65, lanes: 5, min: 4, spread: 14, narrow: 0.9 },
+  { id: 1, fromLevel: 18, lanes: 3, min: 8, spread: 14, narrow: 0.4 },
+  { id: 2, fromLevel: 28, lanes: 3, min: 6, spread: 14, narrow: 0.5 },
+  { id: 3, fromLevel: 45, lanes: 4, min: 5, spread: 14, narrow: 0.6 },
+  { id: 4, fromLevel: 65, lanes: 5, min: 4, spread: 14, narrow: 0.7 },
 ];
 
 export function runTierForLevel(level: number): RunTier {
@@ -304,7 +304,8 @@ export function makeRun(dessertId: DessertId, seed: number, tier: RunTier): RunS
     spots: new Array<Spot | null>(SPOT_COUNT).fill(null),
     total,
     delivered: 0,
-    need: [0, 1, 2, 3].map((j) => Math.round((total * (j + 1)) / 4) - Math.round((total * j) / 4)),
+    // the same split `guestOf` deals by: guest j takes the deliveries whose floor(4 d / total) is j
+    need: [0, 1, 2, 3].map((j) => Math.ceil((total * (j + 1)) / 4) - Math.ceil((total * j) / 4)),
     served: [[], [], [], []],
     flights: [],
     peakSpots: 0,
