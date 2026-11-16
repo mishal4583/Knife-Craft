@@ -1,3 +1,5 @@
+> **SUPERSEDED 2026-11-16 by `DESSERT-RUN-PLAN-2026-11-16.md` (the game is now Dessert Run). Kept for history; do not build from it.**
+
 # Plating Belt (Banquet Waiters): the mosaic conveyor mini-game (plan, developer 2026-11-15)
 
 Developer's brief: build the mosaic-conveyor game (coloured pieces ride a belt around a picture and take away the cells of their own colour, five waiting places, "finish without getting

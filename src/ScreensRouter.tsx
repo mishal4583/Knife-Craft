@@ -123,14 +123,14 @@ const StockroomSortGame = lazy(() =>
   loadRestaurantScreens().then((m) => ({ default: m.StockroomSortGame })),
 );
 const CarParkGame = lazy(() => loadRestaurantScreens().then((m) => ({ default: m.CarParkGame })));
-const PlatingBeltGame = lazy(() =>
-  loadRestaurantScreens().then((m) => ({ default: m.PlatingBeltGame })),
+const DessertRunGame = lazy(() =>
+  loadRestaurantScreens().then((m) => ({ default: m.DessertRunGame })),
 );
 
-/** Developer preview (?platingBelt=<level>): the level whose plate to show, never below the first Plating Belt level. */
-function platingBeltPreviewLevel(): number {
+/** Developer preview (?dessertRun=<level>): the level whose plate to show, never below the first Dessert Run level. */
+function dessertRunPreviewLevel(): number {
   if (typeof location === "undefined") return 18;
-  const asked = Number(new URLSearchParams(location.search).get("platingBelt"));
+  const asked = Number(new URLSearchParams(location.search).get("dessertRun"));
   return Number.isFinite(asked) && asked >= 18 ? Math.floor(asked) : 18;
 }
 const DeliveryInspectionGame = lazy(() =>
@@ -568,12 +568,12 @@ export function ScreensRouter({
                   </div>
                 </Suspense>
               ) : null}
-              {screen === "plating-belt" ? (
+              {screen === "dessert-run" ? (
                 <Suspense fallback={<RestaurantLoading go={routeGo} active="restaurant-map" />}>
                   <div className="relative h-full w-full overflow-hidden">
-                    <PlatingBeltGame
+                    <DessertRunGame
                       save={save}
-                      level={platingBeltPreviewLevel()}
+                      level={dessertRunPreviewLevel()}
                       onExit={() => routeGo("restaurant-map")}
                     />
                   </div>

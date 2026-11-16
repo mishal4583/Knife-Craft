@@ -4,7 +4,7 @@
 //   F2 the Kitchen's cards (rank, daily gift, kitchen strip) are not squeezed by the wallet row: each is wide enough to read (>= 150 px) and clear of the shortcut column
 //   F3 the bottom bar sits on the bottom edge of the screen and nothing scrolls sideways
 //   F4 a tablet (768 x 1024) keeps the framed 9:16 game
-//   F5 the Plating Belt (?platingBelt=18) fills a tall phone: its brown panel ends at the bottom edge
+//   F5 Dessert Run (?dessertRun=18) fills a tall phone: its root reaches the top, bottom and side edges
 //   F6 no console errors
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import { MOVED_IN_BUSINESS, launch, boot, seedSave, sleep } from "./harness.mjs";
@@ -138,23 +138,23 @@ check(
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
 await page.goto("about:blank");
 await boot(page, save);
-await page.goto((process.env.KC_URL || "http://localhost:4173/") + "?platingBelt=18", {
+await page.goto((process.env.KC_URL || "http://localhost:4173/") + "?dessertRun=18", {
   waitUntil: "networkidle0",
 });
 await sleep(1500);
+// Dessert Run (2026-11-16): its root fills the whole screen, with the 9:16 stage centred inside it.
+await page.waitForSelector('[data-testid="dessert-run-game"]', { timeout: 20000 });
 const belt = await page.evaluate(() => {
-  const panels = [...document.querySelectorAll("*")].filter((e) => {
-    const r = e.getBoundingClientRect();
-    return (
-      r.width >= innerWidth - 2 &&
-      r.bottom >= innerHeight - 2 &&
-      r.height > 150 &&
-      r.height < innerHeight
-    );
-  });
-  return { reachesBottom: panels.length > 0, ih: innerHeight };
+  const root = document.querySelector('[data-testid="dessert-run-game"]').getBoundingClientRect();
+  return {
+    reachesBottom: root.bottom >= innerHeight - 2 && root.top <= 2,
+    fullWidth: root.width >= innerWidth - 2,
+    ih: innerHeight,
+    root: [root.top, root.bottom, root.width],
+  };
 });
-check("F5 the Plating Belt fills a tall phone to the bottom edge", belt.reachesBottom, belt);
+belt.reachesBottom = belt.reachesBottom && belt.fullWidth;
+check("F5 Dessert Run fills a tall phone to the bottom edge", belt.reachesBottom, belt);
 
 const bad = logs.filter(
   (l) => !/favicon|bridge|playgama|Failed to load resource.*(404|net::)/i.test(l),

@@ -1,3 +1,5 @@
+> **SUPERSEDED 2026-11-16 by `DESSERT-RUN-PLAN-2026-11-16.md` (the game is now Dessert Run). Kept for history; do not build from it.**
+
 # Plating Belt (Banquet Waiters): Codex prompts for the art (developer 2026-11-15)
 
 The game: `PLATING-BELT-PLAN-2026-11-15.md`. A portrait mini-game: a **buffet platter** drawn as a mosaic of food cubes, a **round conveyor belt** around it, a team of coloured

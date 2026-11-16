@@ -47,7 +47,7 @@ assert(
     (router.match(/lazy\(\(\) =>\s*loadRestaurantScreens\(\)/g) ?? []).length === 12 &&
     (router.match(/<Suspense fallback=\{<RestaurantLoading/g) ?? []).length === 12 &&
     /Opening the restaurant…/.test(router),
-  "L1: the twelve Restaurant screens (both map floors, Fridge Sort, Stockroom Sort, Delivery Inspection, Sauce Station, Sauce Shelf, the Car Park and the Plating Belt included) are lazy from one module, each in Suspense with a loading state",
+  "L1: the twelve Restaurant screens (both map floors, Fridge Sort, Stockroom Sort, Delivery Inspection, Sauce Station, Sauce Shelf, the Car Park and Dessert Run included) are lazy from one module, each in Suspense with a loading state",
 );
 
 function walk(dir: string, out: string[] = []): string[] {

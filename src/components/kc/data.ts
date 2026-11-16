@@ -54,8 +54,8 @@ export type ScreenId =
   | "stockroom-sort"
   /** Car Park shared-lot jam puzzle, the last daily opening step from level 15. */
   | "car-park"
-  /** Plating Belt phone-feel preview; not yet connected to the daily routine. */
-  | "plating-belt"
+  /** Dessert Run phone-feel preview; not yet connected to the daily routine. */
+  | "dessert-run"
   /** Fridge Check practice: the closing-night inspection on the real stock, free play with no reward (restaurant/fridgeCheck.ts). */
   | "fridge-check"
   | "gameplay"
