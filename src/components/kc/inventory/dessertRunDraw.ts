@@ -64,44 +64,24 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
 
 const cubeCache = new Map<string, HTMLCanvasElement>();
 /**
- * One toy-block tile, drawn once per colour at 3x. Like the developer's reference mosaics (Colony Flow): almost
- * square, packed tight with a hairline gap, a cushioned face (a lit edge on the top and left, a shaded edge on the
- * bottom and right) and one small glint at the top left. Never bulbous, never loose.
+ * One toy-block tile, drawn once per colour at 3x. Like the developer's reference mosaics (Colony Flow) but with NO
+ * gap at all (developer 2026-11-17: "absolute zero gaps"): the tile is a full-bleed square with sharp corners, so
+ * neighbours meet edge to edge and nothing of the plate shows between them. Only a very soft cushion (a faint lit
+ * edge at the top and left, a faint shaded edge at the bottom and right) and one small glint keep each tile readable.
  */
 function cubeSprite(hex: string): HTMLCanvasElement {
   let c = cubeCache.get(hex);
   if (c) return c;
   const S = 48;
-  const pad = 0.7;
   c = document.createElement("canvas");
   c.width = S;
   c.height = S;
   const g = c.getContext("2d")!;
-  const w = S - pad * 2;
-  g.save();
-  rr(g, pad, pad, w, w, 4);
-  g.clip();
-  // the face
   g.fillStyle = hex;
   g.fillRect(0, 0, S, S);
-  // the lit edge (top and left) and the shaded edge (bottom and right): the cushion
-  g.fillStyle = shade(hex, 0.32);
-  g.fillRect(0, 0, S, 5);
-  g.fillRect(0, 0, 4, S);
-  g.fillStyle = shade(hex, -0.24);
-  g.fillRect(0, S - 5, S, 5);
-  g.fillRect(S - 4, 0, 4, S);
-  // the face inside the rim, a touch lighter at the top
-  const face = g.createLinearGradient(0, 5, 0, S - 5);
-  face.addColorStop(0, shade(hex, 0.07));
-  face.addColorStop(1, shade(hex, -0.04));
-  g.fillStyle = face;
-  g.fillRect(4, 5, S - 8, S - 10);
-  g.restore();
-  // the glint
-  g.fillStyle = "rgba(255,255,255,.6)";
+  g.fillStyle = "rgba(255,255,255,.5)";
   g.beginPath();
-  g.arc(13, 13, 3.4, 0, 7);
+  g.arc(12, 12, 3, 0, 7);
   g.fill();
   cubeCache.set(hex, c);
   return c;
@@ -399,14 +379,31 @@ export function drawRun(ctx: CanvasRenderingContext2D, state: RunState, view: Dr
 
   // ---- the dessert
   const dim = view.peek != null;
+  const dprK = ctx.getTransform().a || 1;
   for (let i = 0; i < state.grid.length; i++) {
     const k = state.grid[i]!;
     if (k < 0) continue;
-    const x = ORIGIN.x + (i % GRID) * CELL;
-    const y = ORIGIN.y + ((i / GRID) | 0) * CELL;
+    const col = i % GRID;
+    const row = (i / GRID) | 0;
+    // Tile edges sit on whole device pixels: the right edge of one tile is the left edge of the next, never a gap.
+    const x = Math.floor((ORIGIN.x + col * CELL) * dprK) / dprK;
+    const y = Math.floor((ORIGIN.y + row * CELL) * dprK) / dprK;
+    const x2 = Math.floor((ORIGIN.x + (col + 1) * CELL) * dprK) / dprK;
+    const y2 = Math.floor((ORIGIN.y + (row + 1) * CELL) * dprK) / dprK;
     const match = view.peek != null && k === view.peek && isExposed(state.ext, i);
     ctx.globalAlpha = dim && k !== view.peek ? 0.32 : 1;
-    drawCube(ctx, x, y, CELL, hexOfK(k));
+    // Plain filled rectangles, no scaled picture: nothing can blur an edge or leave a hairline between tiles.
+    const w = x2 - x;
+    const h = y2 - y;
+    ctx.fillStyle = hexOfK(k);
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = "rgba(255,255,255,.5)";
+    ctx.fillRect(
+      x + w * 0.2,
+      y + h * 0.2,
+      Math.max(2 / dprK, w * 0.14),
+      Math.max(2 / dprK, h * 0.14),
+    );
     if (match) {
       ctx.globalAlpha = 0.6 + 0.4 * Math.sin(now / 130);
       ctx.strokeStyle = "#fff";

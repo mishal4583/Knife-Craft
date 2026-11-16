@@ -43,8 +43,8 @@ flat dessert alone on a bare plate). The rules of the look, from the developer's
   dessert sits on it with a navy outline one cube thick; the background and the outline are layers to peel;
 - 5 to 9 colours, vivid; each shape a base plus a darker shade, and a one-cube light edge on the upper left;
 - clusters only: sprinkles in pairs, glints in bars, never a lone cube;
-- tiles are almost square, packed with a hairline gap, with a cushioned bevel (lit top-left, shaded bottom-right)
-  and one small glint.
+- tiles have NO gap at all (developer 2026-11-17: "absolute zero gaps"): sharp-cornered squares snapped to whole
+  device pixels, no edge lines, one small glint each (a hairline gap and a bevel were tried first and rejected).
 `dessertGallery.ts` paints regions in order; the outline and the edges are worked out. The plan wants about twelve
 desserts (chocolate cake, cheesecake, fruit pie, sundae, waffle, macarons, lemon tart next). Every new one needs a
 painter function, a place in `DESSERTS_BY_TIER`, new seeds (`scripts/make-dessert-seeds.mts`) and a QA run (the QA
