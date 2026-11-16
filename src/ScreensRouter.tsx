@@ -133,6 +133,16 @@ function dessertRunPreviewLevel(): number {
   const asked = Number(new URLSearchParams(location.search).get("dessertRun"));
   return Number.isFinite(asked) && asked >= 18 ? Math.floor(asked) : 18;
 }
+const KitchenDispatchGame = lazy(() =>
+  loadRestaurantScreens().then((m) => ({ default: m.KitchenDispatchGame })),
+);
+
+/** Developer preview (?kitchenDispatch=<level>): the level whose counter to show, never below the first Kitchen Dispatch level. */
+function kitchenDispatchPreviewLevel(): number {
+  if (typeof location === "undefined") return 18;
+  const asked = Number(new URLSearchParams(location.search).get("kitchenDispatch"));
+  return Number.isFinite(asked) && asked >= 18 ? Math.floor(asked) : 18;
+}
 const DeliveryInspectionGame = lazy(() =>
   loadRestaurantScreens().then((m) => ({ default: m.DeliveryInspectionGame })),
 );
@@ -574,6 +584,17 @@ export function ScreensRouter({
                     <DessertRunGame
                       save={save}
                       level={dessertRunPreviewLevel()}
+                      onExit={() => routeGo("restaurant-map")}
+                    />
+                  </div>
+                </Suspense>
+              ) : null}
+              {screen === "kitchen-dispatch" ? (
+                <Suspense fallback={<RestaurantLoading go={routeGo} active="restaurant-map" />}>
+                  <div className="relative h-full w-full overflow-hidden">
+                    <KitchenDispatchGame
+                      save={save}
+                      level={kitchenDispatchPreviewLevel()}
                       onExit={() => routeGo("restaurant-map")}
                     />
                   </div>

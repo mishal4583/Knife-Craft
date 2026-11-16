@@ -15,6 +15,7 @@ export { FridgeSortGame } from "./inventory/FridgeSortGame";
 export { StockroomSortGame } from "./inventory/StockroomSortGame";
 export { CarParkGame } from "./inventory/CarParkGame";
 export { DessertRunGame } from "./inventory/DessertRunGame";
+export { KitchenDispatchGame } from "./inventory/KitchenDispatchGame";
 export { DeliveryInspectionGame } from "./inventory/DeliveryInspectionGame";
 export { SauceStationGame } from "./sauce/SauceStationGame";
 export { SauceShelf } from "./sauce/SauceShelf";

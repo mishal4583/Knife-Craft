@@ -931,6 +931,10 @@ export function App() {
       const dessertRunPreview =
         typeof location !== "undefined" && /[?&]dessertRun(?:=|&|$)/.test(location.search);
       if (dessertRunPreview) setScreen("dessert-run");
+      // Kitchen Dispatch (sliding ingredient crates), the same kind of preview: ?kitchenDispatch=18.
+      const kitchenDispatchPreview =
+        typeof location !== "undefined" && /[?&]kitchenDispatch(?:=|&|$)/.test(location.search);
+      if (kitchenDispatchPreview) setScreen("kitchen-dispatch");
       // Economy V2.5 — kitchen tiers are bought (Restaurant Development);
       // this only keeps the kitchen on the highest tier owned. Saves from
       // before V2.5 already got their level-earned tiers in
@@ -948,7 +952,7 @@ export function App() {
       // completion) surface their real accumulated progress instead —
       // that catch-up IS the source's own documented forward-only
       // behavior, not a special case invented here.
-      if (!dessertRunPreview && shouldRunIntro(synced)) {
+      if (!dessertRunPreview && !kitchenDispatchPreview && shouldRunIntro(synced)) {
         if (isFreshSave) setShowIntro(true);
         else synced = markIntroDone(synced);
       }

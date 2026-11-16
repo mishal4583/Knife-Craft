@@ -227,8 +227,7 @@ const CLIMB_STEPS = 500;
  * difficulty (few vehicles free at the start, a long chain of "this one waits for that one") and a flip is kept only while the lot stays
  * solvable. Same level and seed, same lot. The best lot found is returned if no attempt hits the targets exactly (the QA proves it does).
  */
-export function generateLot(level: number, seed: number): CarParkLot {
-  const tier = tierAt(level);
+export function generateLotFor(tier: CarParkTier, level: number, seed: number): CarParkLot {
   let best: { lot: CarParkLot; score: number } | null = null;
   for (let attempt = 0; attempt < GENERATE_ATTEMPTS; attempt++) {
     const rng = rngFor(seed * 7919 + attempt * 104729 + level);
@@ -282,7 +281,12 @@ export function generateLot(level: number, seed: number): CarParkLot {
       best = { lot: { ...lot, vehicles: lot.vehicles.map((v) => ({ ...v })) }, score };
     if (score === 0) break;
   }
-  const lot = best!.lot;
+  return best!.lot;
+}
+
+/** The Car Park's own lot: the placed vehicles, then their colours (some belong to the neighbour). */
+export function generateLot(level: number, seed: number): CarParkLot {
+  const lot = generateLotFor(tierAt(level), level, seed);
   // Some vehicles belong to the neighbour (grey and white, tidy); the guests are the colours.
   const neighbours = Math.max(1, Math.round(lot.vehicles.length / 4));
   const rng = rngFor(seed + 17);
