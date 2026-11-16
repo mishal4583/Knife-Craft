@@ -31,19 +31,24 @@ with the fewest reachable cubes with chance `narrow`, otherwise by what is left)
 shuffled pattern that keeps every lane in deck order. Sending waiters in deck order usually wins, but the live rules
 pick the nearest reachable cube at run time, so 5 to 10 % of seeds did not win on replay with the 7 to 8 colour
 pictures. The seed generator keeps only seeds that win on time and with taps up to 4 s late, and `dessert-run-qa`
-replays all 420 shipped plates. Careless play wins 80 / 70 / 57 / 30 % by tier.
+replays all 420 shipped plates. Careless play wins 70 / 65 / 30 / 10 % by tier.
 
 ## Gallery
 
-Four pixel-art desserts on a 28 x 28 grid: cookie (tier 1), donut (1, 2), cherry cupcake (2, 3), strawberry tart
-(3, 4). The look is the developer's Colony Flow reference (2026-11-16), reached on the third try. What mattered:
-flat, tightly packed square tiles with a soft fade and one small glint (not fat glossy buttons); big flat fields of
-ONE colour; a plum outline one tile thick; a one-tile cream edge on the lit side and a one-tile darker edge on the
-other; hand-placed details (chips, sprinkles, berries' leaf caps) and no random speckle; smooth silhouettes from
-28 tiles across. `dessertGallery.ts` paints regions in order and works out the outline and the two edges, so every
-dessert shades the same way. The plan wants about twelve (chocolate cake, cheesecake, fruit pie, sundae, waffle,
-macarons, lemon tart next). Every new dessert needs a painter function, a place in `DESSERTS_BY_TIER`, new seeds
-(`scripts/make-dessert-seeds.mts`) and a QA run (the QA also checks the mosaic stays inside the plate's well).
+Four mosaic pictures on a 28 x 28 grid, 500 cubes each (the whole plate disc): cookie on cyan and blue (tier 1),
+donut on mint (1, 2), cherry cupcake on butter yellow (2, 3), strawberry ice-cream cone on lilac (3, 4). Built
+like the developer's Colony Flow lily-pad reference, after three rejected tries (blobs; glossy "button" cubes; a
+flat dessert alone on a bare plate). The rules of the look, from the developer's notes and the reference:
+- the board is FULL: a two-tone background (light field, darker under a wavy line) with white splash bars, and the
+  dessert sits on it with a navy outline one cube thick; the background and the outline are layers to peel;
+- 5 to 9 colours, vivid; each shape a base plus a darker shade, and a one-cube light edge on the upper left;
+- clusters only: sprinkles in pairs, glints in bars, never a lone cube;
+- tiles are almost square, packed with a hairline gap, with a cushioned bevel (lit top-left, shaded bottom-right)
+  and one small glint.
+`dessertGallery.ts` paints regions in order; the outline and the edges are worked out. The plan wants about twelve
+desserts (chocolate cake, cheesecake, fruit pie, sundae, waffle, macarons, lemon tart next). Every new one needs a
+painter function, a place in `DESSERTS_BY_TIER`, new seeds (`scripts/make-dessert-seeds.mts`) and a QA run (the QA
+also checks the picture stays inside the plate's well).
 
 ## Art
 

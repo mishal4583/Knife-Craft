@@ -22,7 +22,7 @@ try {
   );
   const { RUN_TIERS, STEP } = run;
   const { DESSERTS, DESSERTS_BY_TIER, RUN_PALETTE, GRID } = gallery;
-  type Id = "cookie" | "donut" | "cupcake" | "tart";
+  type Id = "cookie" | "donut" | "cupcake" | "cone";
 
   // ---- A. Tiers ----------------------------------------------------------------------------------
   assert.equal(RUN_TIERS.length, 4);
@@ -73,7 +73,11 @@ try {
     cubes[id] = per.reduce((a: number, b: number) => a + b, 0);
     assert.deepEqual(d.build(), grid, `${id}: the build is the same every time`);
   }
-  assert.deepEqual(cubes, { cookie: 448, donut: 448, cupcake: 316, tart: 488 });
+  assert.deepEqual(
+    cubes,
+    { cookie: 500, donut: 500, cupcake: 500, cone: 500 },
+    "every picture fills the whole plate disc",
+  );
   for (const tier of RUN_TIERS)
     for (const id of DESSERTS_BY_TIER[tier.id])
       assert.equal(
@@ -101,26 +105,32 @@ try {
   console.log("PASS C source: no Math.random, Date.now or performance.now in the rules");
 
   // ---- D. Rules ----------------------------------------------------------------------------------
-  // D1 reachable = touches the outside; a donut's hole counts only once it is opened
+  // D1 reach = touches the outside; cubes sealed inside the donut's ring are out of reach until a corridor opens
   {
-    const donut = DESSERTS.donut.build();
-    const ext = run.computeExt(donut);
+    const donut: Int8Array = DESSERTS.donut.build();
     const mid = Math.floor(GRID / 2);
-    const hole = donut.findIndex((v: number, i: number) => v === -1 && i === mid * GRID + mid);
-    assert.ok(hole >= 0 && ext[hole] === 0, "the donut's hole starts closed");
-    // a cube touching only the hole (and other cubes) is not reachable
-    let sealed = -1;
-    for (let i = 0; i < donut.length && sealed < 0; i++)
-      if (donut[i] >= 0 && !run.isExposed(ext, i)) sealed = i;
-    assert.ok(sealed >= 0, "some donut cubes start out of reach");
-    // open a corridor along the middle row from the right edge in to the hole
+    const centre = mid * GRID + mid;
     const g = donut.slice();
     const e = run.computeExt(g);
-    for (let x = GRID - 1; x >= mid; x--)
+    assert.ok(g[centre] >= 0, "the donut's hole holds background cubes");
+    assert.equal(
+      run.isExposed(e, centre),
+      false,
+      "a cube in the middle of the hole starts out of reach",
+    );
+    let sealed = 0;
+    for (let i = 0; i < g.length; i++) if (g[i] >= 0 && !run.isExposed(e, i)) sealed += 1;
+    assert.ok(sealed > 100, "most of the picture starts buried under the board and the outline");
+    // open a corridor along the middle row from the right edge in to the hole
+    for (let x = GRID - 1; x > mid; x--)
       if (g[mid * GRID + x] >= 0) run.removeCell(g, e, mid * GRID + x);
-    assert.equal(e[hole], 1, "opening a corridor to the hole makes the hole outside");
+    assert.equal(
+      run.isExposed(e, centre),
+      true,
+      "opening a corridor to the hole makes its cubes reachable",
+    );
     console.log(
-      "PASS D1 reach: the cubes behind the hole are out of reach until a corridor opens it",
+      "PASS D1 reach: the cubes inside the ring are out of reach until a corridor opens them",
     );
   }
   // D2 taps
@@ -203,7 +213,7 @@ try {
   // D5 a win, and the guests
   {
     const tier = RUN_TIERS[1];
-    const s = run.makeRun("tart", 7, tier);
+    const s = run.makeRun("cone", 7, tier);
     const result = run.playDeckOrder(s, tier);
     assert.equal(result.won, true);
     assert.equal(s.delivered, s.total);

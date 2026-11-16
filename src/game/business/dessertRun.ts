@@ -62,8 +62,8 @@ export type RunTier = {
 export const RUN_TIERS: readonly RunTier[] = [
   { id: 1, fromLevel: 18, lanes: 3, min: 8, spread: 14, narrow: 0.4 },
   { id: 2, fromLevel: 28, lanes: 3, min: 6, spread: 14, narrow: 0.5 },
-  { id: 3, fromLevel: 45, lanes: 4, min: 5, spread: 14, narrow: 0.5 },
-  { id: 4, fromLevel: 65, lanes: 5, min: 4, spread: 14, narrow: 0.4 },
+  { id: 3, fromLevel: 45, lanes: 4, min: 5, spread: 14, narrow: 0.65 },
+  { id: 4, fromLevel: 65, lanes: 5, min: 4, spread: 14, narrow: 0.9 },
 ];
 
 export function runTierForLevel(level: number): RunTier {
