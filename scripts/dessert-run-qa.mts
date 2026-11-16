@@ -40,11 +40,11 @@ try {
   console.log("PASS A tiers: Levels 18 / 28 / 45 / 65, lanes 3 / 3 / 4 / 5");
 
   // ---- B. The gallery ----------------------------------------------------------------------------
-  assert.equal(GRID, 24);
+  assert.equal(GRID, 28, "a 28 x 28 grid: smooth silhouettes, like the developer's reference");
   const paletteHexes = Object.values(RUN_PALETTE) as string[];
   assert.ok(
-    paletteHexes.length >= 20,
-    "a palette of at least twenty cube colours (tones of each hue)",
+    paletteHexes.length >= 15,
+    "a palette of at least fifteen cube colours (flat tiles: a few tones of each hue)",
   );
   assert.equal(
     new Set(paletteHexes).size,
@@ -73,7 +73,7 @@ try {
     cubes[id] = per.reduce((a: number, b: number) => a + b, 0);
     assert.deepEqual(d.build(), grid, `${id}: the build is the same every time`);
   }
-  assert.deepEqual(cubes, { cookie: 355, donut: 337, cupcake: 282, tart: 379 });
+  assert.deepEqual(cubes, { cookie: 448, donut: 448, cupcake: 316, tart: 488 });
   for (const tier of RUN_TIERS)
     for (const id of DESSERTS_BY_TIER[tier.id])
       assert.equal(
@@ -105,18 +105,19 @@ try {
   {
     const donut = DESSERTS.donut.build();
     const ext = run.computeExt(donut);
-    const hole = donut.findIndex((v: number, i: number) => v === -1 && i === 12 * GRID + 12);
+    const mid = Math.floor(GRID / 2);
+    const hole = donut.findIndex((v: number, i: number) => v === -1 && i === mid * GRID + mid);
     assert.ok(hole >= 0 && ext[hole] === 0, "the donut's hole starts closed");
     // a cube touching only the hole (and other cubes) is not reachable
     let sealed = -1;
     for (let i = 0; i < donut.length && sealed < 0; i++)
       if (donut[i] >= 0 && !run.isExposed(ext, i)) sealed = i;
     assert.ok(sealed >= 0, "some donut cubes start out of reach");
-    // open a corridor along row 12 from the right edge in to the hole
+    // open a corridor along the middle row from the right edge in to the hole
     const g = donut.slice();
     const e = run.computeExt(g);
-    for (let x = GRID - 1; x >= 12; x--)
-      if (g[12 * GRID + x] >= 0) run.removeCell(g, e, 12 * GRID + x);
+    for (let x = GRID - 1; x >= mid; x--)
+      if (g[mid * GRID + x] >= 0) run.removeCell(g, e, mid * GRID + x);
     assert.equal(e[hole], 1, "opening a corridor to the hole makes the hole outside");
     console.log(
       "PASS D1 reach: the cubes behind the hole are out of reach until a corridor opens it",
@@ -332,6 +333,29 @@ try {
     );
     assert.ok(run.PLATE.y - run.PLATE.r >= 80, "the plate clears the header buttons");
     assert.ok(run.ORIGIN.y + GRID * run.CELL <= run.ENTRY.y, "the dessert ends above the aisle");
+    assert.equal(
+      run.ORIGIN.x + (GRID * run.CELL) / 2,
+      run.PLATE.x,
+      "the grid is centred on the plate",
+    );
+    assert.equal(
+      run.ORIGIN.y + (GRID * run.CELL) / 2,
+      run.PLATE.y,
+      "the grid is centred on the plate",
+    );
+    for (const id of Object.keys(DESSERTS) as Id[]) {
+      const grid: Int8Array = DESSERTS[id].build();
+      let far = 0;
+      grid.forEach((v, i) => {
+        if (v < 0) return;
+        const c = run.cellCenter(i);
+        far = Math.max(far, Math.hypot(c.x - run.PLATE.x, c.y - run.PLATE.y) + run.CELL / 2);
+      });
+      assert.ok(
+        far <= run.PLATE.r * 0.83,
+        `${id}: the mosaic reaches ${far.toFixed(0)} px, inside the plate's well (${(run.PLATE.r * 0.83).toFixed(0)})`,
+      );
+    }
     for (const tier of RUN_TIERS) {
       for (let lane = 0; lane < tier.lanes; lane++) {
         const box = draw.laneBox(lane, tier.lanes);

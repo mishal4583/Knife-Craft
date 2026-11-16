@@ -20,9 +20,9 @@ import {
 
 /** The stage is 540 x 960 logical pixels, the size every other screen and all the art are made for. */
 export const STAGE = { w: 540, h: 960 } as const;
-export const CELL = 16;
-export const ORIGIN = { x: 78, y: 116 } as const;
-export const PLATE = { x: 270, y: 308, r: 214 } as const;
+export const CELL = 13.5;
+export const ORIGIN = { x: 81, y: 119 } as const;
+export const PLATE = { x: 270, y: 308, r: 218 } as const;
 export const ENTRY = { x: 270, y: 514 } as const;
 export const CART = { x: 270, y: 596 } as const;
 export const AISLE = { x: 235, y: 500, w: 70, h: 170 } as const;
@@ -62,8 +62,8 @@ export type RunTier = {
 export const RUN_TIERS: readonly RunTier[] = [
   { id: 1, fromLevel: 18, lanes: 3, min: 8, spread: 14, narrow: 0.4 },
   { id: 2, fromLevel: 28, lanes: 3, min: 6, spread: 14, narrow: 0.5 },
-  { id: 3, fromLevel: 45, lanes: 4, min: 5, spread: 14, narrow: 0.6 },
-  { id: 4, fromLevel: 65, lanes: 5, min: 4, spread: 14, narrow: 0.7 },
+  { id: 3, fromLevel: 45, lanes: 4, min: 5, spread: 14, narrow: 0.5 },
+  { id: 4, fromLevel: 65, lanes: 5, min: 4, spread: 14, narrow: 0.4 },
 ];
 
 export function runTierForLevel(level: number): RunTier {
@@ -198,7 +198,7 @@ function pickNearest(
   let bestDist = Infinity;
   for (let i = 0; i < grid.length; i++) {
     if (grid[i] !== k || reserved?.[i] || !isExposed(ext, i)) continue;
-    const d = ((i % GRID) + 0.5 - 12) ** 2 + (((i / GRID) | 0) + 0.5 - 25) ** 2;
+    const d = ((i % GRID) + 0.5 - GRID / 2) ** 2 + (((i / GRID) | 0) + 0.5 - (GRID + 1)) ** 2;
     if (d < bestDist) {
       bestDist = d;
       best = i;

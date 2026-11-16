@@ -31,16 +31,19 @@ with the fewest reachable cubes with chance `narrow`, otherwise by what is left)
 shuffled pattern that keeps every lane in deck order. Sending waiters in deck order usually wins, but the live rules
 pick the nearest reachable cube at run time, so 5 to 10 % of seeds did not win on replay with the 7 to 8 colour
 pictures. The seed generator keeps only seeds that win on time and with taps up to 4 s late, and `dessert-run-qa`
-replays all 420 shipped plates. Careless play wins 93 / 73 / 35 / 20 % by tier.
+replays all 420 shipped plates. Careless play wins 80 / 70 / 57 / 30 % by tier.
 
 ## Gallery
 
-Four pixel-art desserts: cookie (tier 1), donut (1, 2), cherry cupcake (2, 3), strawberry tart (3, 4). The developer's
-references (Colony Flow, 2026-11-16) set the look: a dark outline, two or three tones of each hue lit from the top
-left, white glints, glossy cubes with thickness. The first procedural blobs were rejected ("not a real dish", "not
-cute"). Each dessert is drawn in code by a small painter (`dessertGallery.ts`: domes, outline, bands). The plan
-wants about twelve (chocolate cake, cheesecake, fruit pie, sundae, waffle, macarons, lemon tart next). Every new
-dessert needs a build, a place in `DESSERTS_BY_TIER`, new seeds (`scripts/make-dessert-seeds.mts`) and a QA run.
+Four pixel-art desserts on a 28 x 28 grid: cookie (tier 1), donut (1, 2), cherry cupcake (2, 3), strawberry tart
+(3, 4). The look is the developer's Colony Flow reference (2026-11-16), reached on the third try. What mattered:
+flat, tightly packed square tiles with a soft fade and one small glint (not fat glossy buttons); big flat fields of
+ONE colour; a plum outline one tile thick; a one-tile cream edge on the lit side and a one-tile darker edge on the
+other; hand-placed details (chips, sprinkles, berries' leaf caps) and no random speckle; smooth silhouettes from
+28 tiles across. `dessertGallery.ts` paints regions in order and works out the outline and the two edges, so every
+dessert shades the same way. The plan wants about twelve (chocolate cake, cheesecake, fruit pie, sundae, waffle,
+macarons, lemon tart next). Every new dessert needs a painter function, a place in `DESSERTS_BY_TIER`, new seeds
+(`scripts/make-dessert-seeds.mts`) and a QA run (the QA also checks the mosaic stays inside the plate's well).
 
 ## Art
 

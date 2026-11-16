@@ -63,49 +63,39 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
 }
 
 const cubeCache = new Map<string, HTMLCanvasElement>();
-/** One glossy cube, drawn once per colour at 3x: a thick rounded block, a bevel lit from the top left, a glint. */
+/**
+ * One tile, drawn once per colour at 3x. Like the developer's reference (Colony Flow): a flat, nearly square tile
+ * with a thin gap, a soft light-to-dark fade, a darker lower edge and one small glint. Never bulbous.
+ */
 function cubeSprite(hex: string): HTMLCanvasElement {
   let c = cubeCache.get(hex);
   if (c) return c;
   const S = 48;
+  const pad = 1.6;
   c = document.createElement("canvas");
   c.width = S;
   c.height = S;
   const g = c.getContext("2d")!;
-  // the block's thickness (its lower edge)
-  g.fillStyle = shade(hex, -0.45);
-  rr(g, 1, 6, S - 2, S - 7, 12);
-  g.fill();
-  // the face
-  const face = g.createLinearGradient(0, 0, 0, S - 8);
-  face.addColorStop(0, shade(hex, 0.3));
-  face.addColorStop(0.5, hex);
-  face.addColorStop(1, shade(hex, -0.14));
+  const w = S - pad * 2;
+  // the tile
+  const face = g.createLinearGradient(0, pad, 0, S - pad);
+  face.addColorStop(0, shade(hex, 0.1));
+  face.addColorStop(0.55, hex);
+  face.addColorStop(1, shade(hex, -0.12));
   g.fillStyle = face;
-  rr(g, 1, 1, S - 2, S - 9, 12);
+  rr(g, pad, pad, w, w, 6.5);
   g.fill();
-  // a lit bevel on the top and left, a shaded one on the bottom and right
-  g.lineWidth = 2.4;
-  g.strokeStyle = "rgba(255,255,255,.38)";
-  g.beginPath();
-  g.moveTo(5, S - 16);
-  g.lineTo(5, 12);
-  g.quadraticCurveTo(5, 5, 12, 5);
-  g.lineTo(S - 14, 5);
-  g.stroke();
-  g.strokeStyle = "rgba(0,0,0,.16)";
-  g.beginPath();
-  g.moveTo(S - 5, 14);
-  g.lineTo(S - 5, S - 18);
-  g.quadraticCurveTo(S - 5, S - 11, S - 12, S - 11);
-  g.lineTo(14, S - 11);
-  g.stroke();
+  // a slightly darker lower edge
+  g.save();
+  rr(g, pad, pad, w, w, 6.5);
+  g.clip();
+  g.fillStyle = "rgba(0,0,0,.13)";
+  g.fillRect(pad, S - pad - 5, w, 5);
+  g.restore();
   // the glint
-  g.fillStyle = "rgba(255,255,255,.62)";
-  rr(g, 9, 8, 15, 6, 3);
-  g.fill();
-  g.fillStyle = "rgba(255,255,255,.4)";
-  rr(g, 9, 16, 5, 5, 2.5);
+  g.fillStyle = "rgba(255,255,255,.55)";
+  g.beginPath();
+  g.arc(12, 12, 3.2, 0, 7);
   g.fill();
   cubeCache.set(hex, c);
   return c;
