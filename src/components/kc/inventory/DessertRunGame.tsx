@@ -95,6 +95,8 @@ export function DessertRunGame({
     let acc = 0;
     let shownPhase: Phase = "play";
     let shownDelivered = 0;
+    // While paused or when the round is over nothing moves: repaint at about ten frames a second instead of every frame (it keeps the guests' bob).
+    let lastDraw = -Infinity;
     const loop = (now: number) => {
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
@@ -120,6 +122,11 @@ export function DessertRunGame({
           shownDelivered = state.delivered;
           setDelivered(state.delivered);
         }
+        if ((pausedRef.current || state.phase !== "play") && now - lastDraw < 100) {
+          raf = requestAnimationFrame(loop);
+          return;
+        }
+        lastDraw = now;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         const drawView: DrawView = {
           now,

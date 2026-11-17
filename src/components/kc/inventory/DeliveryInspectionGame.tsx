@@ -22,7 +22,7 @@ import {
   WRONG_PENALTY_MS,
   deliveriesTag,
   findPoints,
-  howtoSeen,
+  howtoDue,
   isDefective,
   pinsOf,
   progressOf,
@@ -157,7 +157,7 @@ function Round({
   const [shake, setShake] = useState<number | null>(null);
   const [note, setNote] = useState<Note | null>(null);
   const [phase, setPhase] = useState<Phase>("ready");
-  const [guide, setGuide] = useState(!howtoSeen(save));
+  const [guide, setGuide] = useState(howtoDue(save, crate.tier));
   const [msLeft, setMsLeft] = useState(crate.timeMs);
   const [wrongs, setWrongs] = useState(0);
   const [live, setLive] = useState(0);
@@ -273,7 +273,8 @@ function Round({
 
   // ── flagging ──
   const flag = (id: number) => {
-    if (phase !== "playing" || found.has(id) || cleared.has(id)) return;
+    // (the round is over the moment the last defect is found, even while the card still waits to show: a late tap counts for nothing)
+    if (phase !== "playing" || doneRef.current || found.has(id) || cleared.has(id)) return;
     const it = items.find((x) => x.id === id)!;
     if (isDefective(it)) {
       const m = it.mark as Extract<typeof it.mark, { type: "defect" }>;
@@ -318,7 +319,7 @@ function Round({
   // ── dragging an ingredient aside ──
   const unit = () => (areaRef.current?.getBoundingClientRect().width ?? 500) / CRATE_W;
   const onDown = (e: React.PointerEvent, it: CrateItem) => {
-    if (phase !== "playing") return;
+    if (phase !== "playing" || doneRef.current) return;
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     drag.current = { id: it.id, sx: e.clientX, sy: e.clientY, ox: it.x, oy: it.y, moved: false };
   };
@@ -485,11 +486,15 @@ function Round({
             {DECOY_LABEL[it.mark.kind]}: fine
           </span>
         ) : null}
-        {!lens && hint === it.id && !reducedMotion ? (
+        {!lens && hint === it.id ? (
+          // (Reduced Motion: the same ring, still; the hint must never disappear)
           <span
             aria-hidden
             data-testid="insp-hint"
-            className="pointer-events-none absolute -inset-[10%] animate-pulse rounded-full border-[3px] border-[#ffd35a]"
+            className={cn(
+              "pointer-events-none absolute -inset-[10%] rounded-full border-[3px] border-[#ffd35a]",
+              !reducedMotion && "animate-pulse",
+            )}
           />
         ) : null}
       </div>
@@ -813,7 +818,7 @@ function Round({
                     onExit();
                   }}
                 >
-                  🧑‍🍳 Prep Cook does it
+                  🧑‍🍳 Prep Cook does it · no stars
                 </SortButton>
               ) : null}
               <SortButton quiet onClick={onExit} testId="insp-leave">
@@ -830,7 +835,7 @@ function Round({
           tierNumber={crate.tier}
           onDone={() => {
             setGuide(false);
-            if (!howtoSeen(save)) onAction({ kind: "howto" });
+            if (howtoDue(save, crate.tier)) onAction({ kind: "howto", tier: crate.tier });
           }}
         />
       ) : null}

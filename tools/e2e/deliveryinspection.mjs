@@ -212,7 +212,9 @@ const s0 = await state(page);
 const saved = await readSave(page);
 check(
   "I2 the how-to guide shows the first time and is saved as seen; the clock waits for Start",
-  guideShown && s0?.phase === "ready" && saved?.business?.deliveryInspection?.howto === 1,
+  guideShown &&
+    s0?.phase === "ready" &&
+    ((saved?.business?.deliveryInspection?.howto ?? 0) & 1) === 1,
   { guideShown, phase: s0?.phase, howto: saved?.business?.deliveryInspection?.howto },
 );
 await shot(page, "insp-2-ready");

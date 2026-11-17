@@ -175,6 +175,10 @@ export function KitchenDispatchGame({
     let raf = 0;
     let last = performance.now();
     let shownSecond = -1;
+    // The canvas is redrawn only while something moves (a crate gliding, leaving, dragged, a power armed) or a board change is new; a still board
+    // is repainted four times a second (late art still appears). It used to repaint every frame, still or not.
+    let lastDraw = -Infinity;
+    let lastBoard: unknown = null;
     const loop = (now: number) => {
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
@@ -215,6 +219,24 @@ export function KitchenDispatchGame({
         }
       }
       for (const id of [...vis.keys()]) if (!here.has(id)) vis.delete(id);
+      let settling = false;
+      for (const b of roundRef.current.board.bricks) {
+        const v = vis.get(b.id);
+        if (v && (v.x !== b.x || v.y !== b.y)) settling = true;
+      }
+      const still =
+        !settling &&
+        leavingRef.current.length === 0 &&
+        dragIdRef.current === null &&
+        armedRef.current === null &&
+        lastBoard === roundRef.current.board &&
+        now - lastDraw < 250;
+      if (still) {
+        raf = requestAnimationFrame(loop);
+        return;
+      }
+      lastDraw = now;
+      lastBoard = roundRef.current.board;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       drawKitchenDispatch(ctx, roundRef.current.board, {
         now,
@@ -242,7 +264,8 @@ export function KitchenDispatchGame({
     if (!roundCleared(next)) return;
     timers.current.push(
       window.setTimeout(() => {
-        if (phaseRef.current === "play") setPhaseBoth("won");
+        // an Undo inside this delay can bring a crate back: win only if the board is still clear
+        if (phaseRef.current === "play" && roundCleared(roundRef.current)) setPhaseBoth("won");
       }, WIN_DELAY_MS),
     );
   };
@@ -510,7 +533,7 @@ export function KitchenDispatchGame({
           }}
         >
           <span role="status" data-testid="kd-notice">
-            {notice || "The van is here! Slide each crate out of the door of its own colour."}
+            {notice || "The van is here! Slide each crate to the door of its colour."}
           </span>
         </div>
         <div

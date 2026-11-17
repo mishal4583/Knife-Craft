@@ -69,6 +69,8 @@ export function FridgeCheckGame(props: {
   onFinish: (o: CheckOutcome) => CleanlinessActionResult | null;
   /** The old way: one tap does the chore, and the game closes. */
   onSkip: () => void;
+  /** The pause card's skip marks tonight's chore done (no stars) instead of just leaving: the label says so. */
+  skipMarksDone?: boolean;
   onClose: () => void;
   /** Continue to the other stage (Wrap and label after the sort). */
   onNext: (stage: CheckStage) => void;
@@ -107,6 +109,7 @@ function Round({
   practice,
   onFinish,
   onSkip,
+  skipMarksDone = false,
   onClose,
   onNext,
   onAgain,
@@ -122,6 +125,7 @@ function Round({
   practice: boolean;
   onFinish: (o: CheckOutcome) => CleanlinessActionResult | null;
   onSkip: () => void;
+  skipMarksDone?: boolean;
   onClose: () => void;
   onNext: (stage: CheckStage) => void;
   onAgain: () => void;
@@ -178,6 +182,9 @@ function Round({
   const finishedRef = useRef(false);
   const deadlineRef = useRef<number | null>(null);
   const remainingRef = useRef(timeMs);
+  const shownSecRef = useRef(-1);
+  /** The clock was running when the round was paused / the how-to opened (a pause before the first card must not start it). */
+  const heldRunningRef = useRef(false);
   const startRef = useRef<{ x: number; y: number; id: number } | null>(null);
   const timersRef = useRef<number[]>([]);
   const after = (fn: () => void, ms: number) => {
@@ -274,7 +281,12 @@ function Round({
     const id = window.setInterval(() => {
       if (deadlineRef.current === null) return;
       const left = Math.max(0, deadlineRef.current - performance.now());
-      setMsLeft(left);
+      // the screen shows whole seconds: draw once a second, not ten times a second
+      const sec = Math.ceil(left / 1000);
+      if (sec !== shownSecRef.current) {
+        shownSecRef.current = sec;
+        setMsLeft(left);
+      }
       if (left <= 0) finish(true, liveRef.current);
     }, 100);
     return () => window.clearInterval(id);
@@ -292,13 +304,30 @@ function Round({
     if (deadlineRef.current !== null) {
       remainingRef.current = Math.max(0, deadlineRef.current - performance.now());
       deadlineRef.current = null;
+      heldRunningRef.current = true;
     }
     setPhase("paused");
   };
   const resume = () => {
     setPhase("playing");
-    if (hasClock) deadlineRef.current = performance.now() + remainingRef.current;
+    if (hasClock && heldRunningRef.current) {
+      heldRunningRef.current = false;
+      deadlineRef.current = performance.now() + remainingRef.current;
+    }
   };
+  // The how-to card freezes the clock too, and gives it back when it closes.
+  useEffect(() => {
+    if (guide) {
+      if (deadlineRef.current !== null) {
+        remainingRef.current = Math.max(0, deadlineRef.current - performance.now());
+        deadlineRef.current = null;
+        heldRunningRef.current = true;
+      }
+    } else if (heldRunningRef.current && phase === "playing" && hasClock) {
+      heldRunningRef.current = false;
+      deadlineRef.current = performance.now() + remainingRef.current;
+    }
+  }, [guide, phase, hasClock]);
 
   // ── stage 1: answering a card ──
   const answer = useCallback(
@@ -703,11 +732,13 @@ function Round({
                               {stickerText(c)}
                             </span>
                           </span>
-                        ) : tier.cues.days ? (
+                        ) : (
+                          // The days left are ALWAYS shown while wrapping (developer 2026-11-17 rule: instructions are never a difficulty): the
+                          // order to wrap in cannot be worked out without them. A harder tier is time and count here, not a hidden fact.
                           <span className="absolute bottom-0 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#12303b]/90 px-1.5 py-[1px] font-ui text-[10.5px] font-extrabold text-ivory">
                             {c.daysLeft <= 0 ? "today" : `${c.daysLeft} d`}
                           </span>
-                        ) : null}
+                        )}
                       </button>
                     );
                   })}
@@ -819,7 +850,11 @@ function Round({
                   onSkip();
                 }}
               >
-                {practice ? "Leave the check" : "Leave for now"}
+                {practice
+                  ? "Leave the check"
+                  : skipMarksDone
+                    ? "Skip it: chore done, no stars"
+                    : "Leave for now"}
               </SortButton>
             </div>
           </div>

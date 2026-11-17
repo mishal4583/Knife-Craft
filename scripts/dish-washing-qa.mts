@@ -858,5 +858,38 @@ console.log("N. Pots, pans, plates, glasses: used per order, washed one by one")
   );
 }
 
+console.log(
+  "S. 2026-11-17 audit: the sink never closes under the player, soap is checked before a dish, the combo ends",
+);
+{
+  const sink = read("src/components/kc/restaurant/WashUpSink.tsx");
+  const wash = read("src/components/kc/restaurant/SinkWash.tsx");
+  const closing = read("src/components/kc/restaurant/ClosingTime.tsx");
+  assert(
+    /r\.type === "sink" && cleanlinessAction \? \(/.test(closing) &&
+      /showButton=\{r\.state === "todo" && tableCash === 0\}/.test(closing) &&
+      /\) : sink \? null : \(/.test(closing) &&
+      /\{sink\}\s*<\/li>/.test(closing) &&
+      /showButton = true/.test(wash),
+    "X1: Closing Time keeps ONE SinkWash mounted for the row's whole life (only its button follows the row), so washing the last dish no longer tears the sink down before the shine and summary",
+  );
+  assert(
+    /soapEmptyRef\.current\)/.test(sink) &&
+      /soapEmpty=\{soap\.status === "empty"\}/.test(wash) &&
+      /setNoSoap\(true\)/.test(sink),
+    "X2: when the soap runs out with a dish, the next dish is not shown: the sink says 'out of dish soap' before any scrubbing",
+  );
+  assert(
+    /STREAK_WINDOW_MS \+ 60/.test(sink) && /setStreak\(0\)/.test(sink),
+    "X3: the combo chip ends when its window passes (and at the next dish)",
+  );
+  assert(
+    /\/\/ The timers and the animation frame are cleared when the sink closes, with or without Reduced Motion\./.test(
+      sink,
+    ),
+    "X4: the timers and the animation frame are cleared on close under Reduced Motion too",
+  );
+}
+
 console.log(failures ? `DISH WASHING QA: ${failures} FAILURE(S)` : "DISH WASHING QA: ALL PASS");
 process.exit(failures ? 1 : 0);

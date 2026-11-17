@@ -21,6 +21,9 @@ import {
   PANTRY_BY_ID,
   PERFECTS_PER_PIN,
   SAUCES,
+  bowlChunks,
+  BOTTLE_GOOD,
+  overallStars,
   SAUCE_FIRST_LEVEL,
   SAUCE_TIERS,
   autoSauce,
@@ -825,7 +828,7 @@ console.log("M. 2026-11-11: the pot's liquid, Play again, the Pour button");
     );
   }
   assert(
-    /Math\.abs\(fill - FILL_LINE\) <= window_/.test(gameSrc) &&
+    /bottleScore\(fill, window_\)\.score >= BOTTLE_GOOD/.test(gameSrc) &&
       /data-state=\{state\}/.test(gameSrc) &&
       /data-testid="sauce-pour"/.test(gameSrc) &&
       /LET GO NOW!/.test(gameSrc) &&
@@ -993,6 +996,109 @@ console.log("P. The Sauce Shelf shows every sauce made (developer 2026-11-17)");
   assert(
     shelf.includes("grey={!made}") && shelf.includes("stand") && shelf.includes('"made"'),
     "P7: the shelf stands a made sauce in colour (grey only when not made yet), cut to its painted pixels",
+  );
+}
+
+console.log("Q. 2026-11-17: the bowl shows only what has been poured");
+{
+  const chunky = SAUCES.filter((x) => x.chunks);
+  assert(chunky.length > 0, "Q0: some sauces have floating pieces");
+  const guac = SAUCES.find((x) => x.id === "guacamole")!;
+  const onlyAvocado = bowlChunks(guac, { avocado: 3 });
+  assert(
+    bowlChunks(guac, {}).length === 0 &&
+      onlyAvocado.length > 0 &&
+      onlyAvocado.every((c) => c === 6),
+    "Q1: guacamole with only avocado poured shows avocado pieces and no tomato or onion (the reported bug)",
+    onlyAvocado,
+  );
+  const both = bowlChunks(guac, { avocado: 4, tomato: 1 });
+  assert(
+    both.includes(0) && both.includes(6) && !both.includes(1),
+    "Q2: tomato appears once it is poured; onion still does not",
+    both,
+  );
+  let leaks = 0;
+  let missing = 0;
+  for (const x of chunky) {
+    if (bowlChunks(x, {}).length !== 0) leaks++;
+    const full = bowlChunks(x, Object.fromEntries(x.recipe.map(([id, n]) => [id, n])));
+    if (full.length < (x.chunks ?? []).length) missing++;
+  }
+  assert(
+    leaks === 0 && missing === 0,
+    "Q3: every chunky sauce: empty bowl no pieces, full recipe all pieces",
+    { leaks, missing },
+  );
+  const game = read("src/components/kc/sauce/SauceStationGame.tsx");
+  assert(
+    /bowlChunks\(sauce, scoops\)/.test(game),
+    "Q4: the screen draws its pieces from the poured scoops",
+  );
+  assert(
+    game.includes('data-testid="sauce-ad-why"') && /not a skip/.test(game),
+    "Q5: the ad button says what it gives (more rounds to cook) and that it is not a skip",
+  );
+}
+
+console.log("R. 2026-11-17 audit: what the screen says always matches what happened");
+{
+  const game = read("src/components/kc/sauce/SauceStationGame.tsx");
+  // the Pour button's cue is the real score
+  const line = bottleScore(0.9, 0.25).score;
+  const edge = bottleScore(0.9 - 0.25, 0.25).score;
+  assert(
+    line >= BOTTLE_GOOD && edge === 0,
+    "R1: on the line scores good and the edge of the window scores 0 (so the LET GO cue must not light at the edge)",
+    { line, edge },
+  );
+  assert(
+    /const good = pouring && fill <= 1 && bottleScore\(fill, window_\)\.score >= BOTTLE_GOOD/.test(
+      game,
+    ) && /const over = pouring && !good && fill > FILL_LINE/.test(game),
+    "R2: 'LET GO NOW!' lights only where the release would score well; past that it says 'Too much!'",
+  );
+  // over-pouring is called out, never ticked
+  assert(
+    /const overOf = /.test(game) &&
+      /"over"/.test(game) &&
+      /Too much \$\{tooMuch\[0\]\}: tap ↶ to take one back/.test(game) &&
+      /sauce-extra-/.test(game) &&
+      /<span>extra<\/span>/.test(game),
+    "R3: an ingredient poured past its count (or not in the recipe) shows 'over' / 'extra' and a step line, not a tick or 'Looks good!'",
+  );
+  // an empty bowl is not a sauce
+  assert(
+    /volumeOf\(scoopsRef\.current\) <= 0 \? 0 : overallStars/.test(game) &&
+      /Pour something in first/.test(game),
+    "R4: 'Bottle it' on an empty bowl says to pour first, and an empty bowl can never score stars",
+  );
+  assert(
+    overallStars(0, 3) === 2,
+    "R4b: (the star formula itself is unchanged: 0 + 3 still averages to 2; the empty bowl is stopped before it)",
+  );
+  // the wax seal and the hints
+  assert(
+    /const sealMatch = taste\?\.match \?\? liveMatch \?\? 0/.test(game),
+    "R5: the wax seal never shows the live match on the tiers that hide it",
+  );
+  assert(
+    /"Oil in slowly"/.test(game) &&
+      /"Taste ↓"/.test(game) &&
+      !/<span className="sr-only">\s*\{sauce\.emulsify/.test(game),
+    "R6: 'Oil in slowly' and 'Taste ↓' (where the hidden match would be) are visible words, not screen-reader-only",
+  );
+  assert(
+    /oilLog\.current = oilLog\.current\.slice\(0, -1\)/.test(game),
+    "R7: undoing an oil scoop takes it out of the 'too fast' count",
+  );
+  assert(
+    /Play again · just for fun/.test(game) && /Next sauce · \{left\} left/.test(game),
+    "R8: 'Play again' says it is for fun and 'Next sauce' says how many are left",
+  );
+  assert(
+    /shownSecRef/.test(game),
+    "R9: the clock re-renders the round once a second, not every 50 ms",
   );
 }
 

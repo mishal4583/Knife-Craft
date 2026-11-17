@@ -208,7 +208,7 @@ await open(22);
   const t = await text();
   check(
     "P6 the Tow takes one blocked vehicle and is then used up",
-    after === before - 1 && /Tow used today/.test(t),
+    after === before - 1 && /Tow used/.test(t),
     { before, after },
   );
 }

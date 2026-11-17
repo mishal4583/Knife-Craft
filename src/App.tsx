@@ -1313,7 +1313,7 @@ export function App() {
       return { ok: true, effects: none };
     }
     if (action.kind === "howto") {
-      persist(withInspectionHowtoSeen(current));
+      persist(withInspectionHowtoSeen(current, action.tier));
       return { ok: true, effects: none };
     }
     const out = finishInspectionRound(current, action.outcome);

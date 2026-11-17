@@ -161,12 +161,15 @@ export function ClosingTime({
                 }
                 onBuy={buy}
                 sink={
-                  r.type === "sink" && r.state === "todo" && cleanlinessAction ? (
+                  // ONE SinkWash for the row's whole life (developer 2026-11-17 audit): washing the last dish turns the row "done", and the
+                  // sink must not be torn down under the player's hands before its shine and summary show. Only its button follows the row.
+                  r.type === "sink" && cleanlinessAction ? (
                     <SinkWash
                       save={save}
                       go={go}
                       cleanlinessAction={cleanlinessAction}
                       variant="button"
+                      showButton={r.state === "todo" && tableCash === 0}
                     />
                   ) : null
                 }
@@ -363,9 +366,7 @@ function ChoreRow({
             ⏳ START
           </span>
         )
-      ) : sink ? (
-        sink
-      ) : (
+      ) : sink ? null : (
         <button
           type="button"
           onClick={onDo}
@@ -374,6 +375,7 @@ function ChoreRow({
           {verb}
         </button>
       )}
+      {sink}
     </li>
   );
 }

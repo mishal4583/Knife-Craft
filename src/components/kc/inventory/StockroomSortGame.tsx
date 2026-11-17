@@ -162,6 +162,7 @@ export function StockroomSortGame({
   const phaseRef = useRef<Phase>("ready");
   const leftRef = useRef(round?.timeMs ?? 0);
   const lastTickRef = useRef(0);
+  const shownSecRef = useRef(-1);
   const stockedRef = useRef<string[]>([]);
   const gapsRef = useRef<number[]>([]);
   const lastStockRef = useRef(0);
@@ -233,14 +234,19 @@ export function StockroomSortGame({
 
   // The clock: runs only while playing (it starts with the first move, and pausing freezes it).
   useEffect(() => {
-    if (phase !== "playing" || !round) return;
+    // the how-to card freezes the clock too (the effect restarts when it closes, so the time it was open is never counted)
+    if (phase !== "playing" || !round || guide) return;
     let last = performance.now();
     const id = window.setInterval(() => {
       const now = performance.now();
       leftRef.current = Math.max(0, leftRef.current - (now - last));
       last = now;
-      setMsLeft(leftRef.current);
       const sec = Math.ceil(leftRef.current / 1000);
+      // the screen shows whole seconds: draw once a second, not ten times a second
+      if (sec !== shownSecRef.current) {
+        shownSecRef.current = sec;
+        setMsLeft(leftRef.current);
+      }
       if (sec <= 8 && sec > 0 && sec !== lastTickRef.current) {
         lastTickRef.current = sec;
         AudioManager.playSfx("sortTick");
@@ -251,7 +257,7 @@ export function StockroomSortGame({
       }
     }, 100);
     return () => window.clearInterval(id);
-  }, [phase, round, finish]);
+  }, [phase, round, finish, guide]);
 
   /** "After a miss" hints (Level 31-43): the Hint button wakes up after a quiet spell. */
   const poke = useCallback(() => {
@@ -431,6 +437,9 @@ export function StockroomSortGame({
     doneRef.current = false;
     leftRef.current = r?.timeMs ?? 0;
     lastTickRef.current = 0;
+    shownSecRef.current = -1;
+    // wrapped pieces are wrapped again on a restart / a new board (uids restart at 1 on every board)
+    setRevealed(new Set());
     setBoard(r?.board ?? null);
     setMsLeft(r?.timeMs ?? 0);
     setResult(null);
@@ -1058,7 +1067,7 @@ export function StockroomSortGame({
           }}
           className="absolute right-3 top-[76px] z-30 min-h-12 rounded-full border-2 border-[#d6b46a] bg-walnut-dark px-3 font-ui text-[12px] font-extrabold text-ivory"
         >
-          🧑‍🍳 Prep Cook does it
+          🧑‍🍳 Prep Cook does it · no stars
         </button>
       ) : null}
     </div>

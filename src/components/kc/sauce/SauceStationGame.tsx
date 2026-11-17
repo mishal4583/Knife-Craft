@@ -11,6 +11,7 @@ import {
   OMEGA_WINDOW_MS,
   ZONE_GRACE_MS,
   bottleScore,
+  BOTTLE_GOOD,
   lostStarReasons,
   bottleStars,
   blendStep,
@@ -38,6 +39,7 @@ import {
   SAUCE_BY_ID,
   volumeOf,
   rng,
+  bowlChunks,
   type MixResult,
   type PantryItem,
   type RoundEffects,
@@ -189,6 +191,7 @@ function Round({
   const [blend, setBlend] = useState(0);
   const [omega, setOmega] = useState(0);
   const [msLeft, setMsLeft] = useState(tier.timeMs);
+  const shownSecRef = useRef(-1);
   const [splitFlag, setSplitFlag] = useState(false);
   const [auto, setAuto] = useState(false);
   const [note, setNote] = useState<Note | null>(null);
@@ -302,7 +305,12 @@ function Round({
         blendRef.current = nb;
         setBlend(nb);
         setOmega(w);
-        setMsLeft(msRef.current);
+        // the clock shows whole seconds: draw once a second (it used to re-render the whole round 20 times a second)
+        const secNow = Math.ceil(msRef.current / 1000);
+        if (secNow !== shownSecRef.current) {
+          shownSecRef.current = secNow;
+          setMsLeft(msRef.current);
+        }
         if (nb >= 0.5) setSplitFlag(false);
         if (msRef.current <= 0) endMix(true);
       } else if (ph === "bottle" && pourRef.current.on) {
@@ -405,6 +413,8 @@ function Round({
     scoopsRef.current = next;
     setScoops(next);
     setLog((l) => l.slice(0, -1));
+    // an undone oil scoop no longer counts toward "too fast" (it was taken back)
+    if (item.kind === "oil") oilLog.current = oilLog.current.slice(0, -1);
     AudioManager.playSfx("tap");
   };
   const holdStart = (item: PantryItem) => {
@@ -516,7 +526,8 @@ function Round({
         ? null
         : { scores, spill: spillSum.current, bottles, filled: filledCount.current };
       const bs = bottled ? bottleStars(bottled) : null;
-      const stars = overallStars(m.mix.stars, bs);
+      // an empty bowl is never a sauce, however well the (empty) bottles are filled
+      const stars = volumeOf(scoopsRef.current) <= 0 ? 0 : overallStars(m.mix.stars, bs);
       const avg = scores.length ? scores.reduce((s, v) => s + v, 0) / bottles : 0;
       const score = roundScore(m.mix.de, m.secs, avg);
       let effects: RoundEffects = NO_EFFECTS;
@@ -610,7 +621,9 @@ function Round({
   const low = msLeft <= 10_000 && phase === "mix";
   const hint = taste?.hint;
   const liveMatch = Number.isFinite(tier.tastes) ? null : volume > 0 ? match : 0;
-  const sealIndex = (taste?.match ?? match) >= 90 ? 2 : (taste?.match ?? match) >= 70 ? 1 : 0;
+  // (on the tiers with limited tastes the seal must not show the live match: only a taste does)
+  const sealMatch = taste?.match ?? liveMatch ?? 0;
+  const sealIndex = sealMatch >= 90 ? 2 : sealMatch >= 70 ? 1 : 0;
   const icon = sauceIndex(sauce.id);
   const zoneNow = speedOf(sauce.tool, omega);
   // What to pour and do next (developer 2026-11-11: "not even understanding what to pour and do"): the recipe items still to add (while the tier
@@ -624,32 +637,46 @@ function Round({
     have: scoops[id] ?? 0,
     left: Math.max(0, +(n - (scoops[id] ?? 0)).toFixed(2)),
   }));
-  const needLeft: Record<string, number> = Object.fromEntries(needs.map((x) => [x.id, x.left]));
+  // TOO MUCH (developer 2026-11-17: a tick and "Looks good!" showed while the bowl held more than the recipe asks): an ingredient poured past its
+  // count, or one that is not in the recipe at all, is called out, never ticked.
+  const overOf = (x: { have: number; want: number }) => x.have > x.want + 1e-6;
+  const extras = Object.keys(scoops)
+    .filter((id) => !sauce.recipe.some(([rid]) => rid === id) && PANTRY_BY_ID[id])
+    .map((id) => ({ id, name: PANTRY_BY_ID[id]!.name, icon: PANTRY_BY_ID[id]!.icon }));
+  const tooMuch: string[] = [
+    ...needs.filter(overOf).map((x) => x.name),
+    ...extras.map((x) => x.name),
+  ];
+  const needLeft: Record<string, number | null> = Object.fromEntries(
+    needs.map((x) => [x.id, overOf(x) ? null : x.left]),
+  );
   const toAdd = needs.filter((x) => x.left > 0);
   const step: { n: 1 | 2 | 3; text: string } = splitFlag
     ? { n: 2, text: `Split! Circle the ${toolName} slowly to smooth it` }
-    : blend >= 0.9 && volume > 0 && toAdd.length === 0
-      ? { n: 3, text: "Looks good! Tap Bottle it" }
-      : volume > 0 && toAdd.length === 0
-        ? {
-            n: 2,
-            text: sauce.chunks
-              ? `Stir the ${toolName} gently, keep the pieces`
-              : `Now circle the ${toolName} in the green zone`,
-          }
-        : toAdd.length > 0
+    : tooMuch.length > 0
+      ? { n: 1, text: `Too much ${tooMuch[0]}: tap ↶ to take one back` }
+      : blend >= 0.9 && volume > 0 && toAdd.length === 0
+        ? { n: 3, text: "Looks good! Tap Bottle it" }
+        : volume > 0 && toAdd.length === 0
           ? {
-              n: 1,
-              text: `Pour: ${toAdd
-                .slice(0, 3)
-                .map((x) => `${x.name} ${x.left < 1 ? "a pinch" : `×${x.left}`}`)
-                .join(" · ")}${toAdd.length > 3 ? " …" : ""}`,
+              n: 2,
+              text: sauce.chunks
+                ? `Stir the ${toolName} gently, keep the pieces`
+                : `Now circle the ${toolName} in the green zone`,
             }
-          : volume > 0 && blend >= 0.9
-            ? { n: 3, text: "Match the colour, then tap Bottle it" }
-            : volume > 0
-              ? { n: 1, text: `Match the colour, then circle the ${toolName}` }
-              : { n: 1, text: "Tap the ingredients to pour them in" };
+          : toAdd.length > 0
+            ? {
+                n: 1,
+                text: `Pour: ${toAdd
+                  .slice(0, 3)
+                  .map((x) => `${x.name} ${x.left < 1 ? "a pinch" : `×${x.left}`}`)
+                  .join(" · ")}${toAdd.length > 3 ? " …" : ""}`,
+              }
+            : volume > 0 && blend >= 0.9
+              ? { n: 3, text: "Match the colour, then tap Bottle it" }
+              : volume > 0
+                ? { n: 1, text: `Match the colour, then circle the ${toolName}` }
+                : { n: 1, text: "Tap the ingredients to pour them in" };
   // What the idle hint lights up: the next ingredient (only while the tier shows the recipe), else the whisk, else Bottle it.
   const hintAt: string | null =
     !idle || phase !== "mix"
@@ -755,30 +782,54 @@ function Round({
             className="font-ui text-[12px] font-black tabular-nums text-walnut-dark"
             data-testid="sauce-match"
           >
-            {liveMatch !== null ? `${liveMatch}%` : taste ? `${taste.match}%` : "—"}
+            {liveMatch !== null ? `${liveMatch}%` : taste ? `${taste.match}%` : "Taste ↓"}
           </span>
         </div>
         <div className="min-w-0 flex-1 font-ui">
-          <div className="flex flex-wrap items-center gap-1" data-testid="sauce-help">
+          <div
+            className="flex flex-wrap items-center gap-1 [@media(max-height:620px)]:grid [@media(max-height:620px)]:grid-cols-2"
+            data-testid="sauce-help"
+          >
             {needs.map((x) => (
               <span
                 key={x.id}
                 data-testid={`sauce-need-${x.id}`}
                 data-left={x.left}
                 className={cn(
-                  "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-extrabold",
-                  x.left === 0 ? "bg-[#d9eec4] text-[#2f6b1f]" : "bg-white/75 text-walnut-dark",
+                  "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] [@media(max-height:620px)]:px-1 [@media(max-height:620px)]:text-[10.5px] font-extrabold",
+                  overOf(x)
+                    ? "bg-[#f6cfc4] text-[#a8321f]"
+                    : x.left === 0
+                      ? "bg-[#d9eec4] text-[#2f6b1f]"
+                      : "bg-white/75 text-walnut-dark",
                 )}
               >
                 <span aria-hidden>{x.icon}</span>
-                <span className="max-w-[52px] truncate">{x.name}</span>
-                <span className="tabular-nums">
-                  {x.left === 0
-                    ? "✓"
-                    : x.want < 1
-                      ? "pinch"
-                      : `${Math.min(x.have, x.want)}/${x.want}`}
+                <span className="max-w-[52px] truncate [@media(max-height:620px)]:min-w-0 [@media(max-height:620px)]:max-w-none">
+                  {x.name}
                 </span>
+                <span className="tabular-nums">
+                  {overOf(x)
+                    ? "over"
+                    : x.left === 0
+                      ? "✓"
+                      : x.want < 1
+                        ? "pinch"
+                        : `${Math.min(x.have, x.want)}/${x.want}`}
+                </span>
+              </span>
+            ))}
+            {extras.map((x) => (
+              <span
+                key={x.id}
+                data-testid={`sauce-extra-${x.id}`}
+                className="flex items-center gap-0.5 rounded-full bg-[#f6cfc4] px-1.5 py-0.5 text-[11px] [@media(max-height:620px)]:px-1 [@media(max-height:620px)]:text-[10.5px] font-extrabold text-[#a8321f]"
+              >
+                <span aria-hidden>{x.icon}</span>
+                <span className="max-w-[52px] truncate [@media(max-height:620px)]:min-w-0 [@media(max-height:620px)]:max-w-none">
+                  {x.name}
+                </span>
+                <span>extra</span>
               </span>
             ))}
           </div>
@@ -794,8 +845,8 @@ function Round({
                 ) : null}
               </span>
             ) : (
-              <span className="sr-only">
-                {sauce.emulsify ? "Oil in slowly, one scoop at a time." : "Stir it smooth."}
+              <span className="text-[11.5px] font-bold text-walnut/75">
+                {sauce.emulsify ? "Oil in slowly" : "Stir it smooth"}
               </span>
             )}
             <InfoTip tone="copper" label="How to mix">
@@ -919,7 +970,7 @@ function Round({
                 color={mix.hex}
                 swirl={!reducedMotion && omega > 0.3}
                 split={splitFlag}
-                chunks={sauce.chunks ? chunkIndexes(sauce) : undefined}
+                chunks={sauce.chunks ? bowlChunks(sauce, scoops) : undefined}
                 className="max-h-full w-full"
               />
               {/* the tool: in the hand while dragging (handle up, head in the bowl), standing in the bowl otherwise */}
@@ -1001,7 +1052,8 @@ function Round({
 
           {/* the pantry */}
           <div
-            className="mx-3 mt-1.5 grid gap-1"
+            // (short screens: narrower margins so six 48 px tiles fit a 320 px row: two shelves instead of three, and the bowl gets its height back)
+            className="mx-3 mt-1.5 grid gap-1 [@media(max-height:620px)]:mx-2 [@media(max-height:620px)]:gap-0.5"
             style={{ gridTemplateColumns: pantryCols }}
             data-testid="sauce-pantry"
           >
@@ -1039,7 +1091,12 @@ function Round({
               className={cn("rounded-2xl", hintAt === "bottle" && !reducedMotion && "sauce-hint")}
               data-hint={hintAt === "bottle" ? "1" : undefined}
             >
-              <SortButton onClick={() => endMix(false)} testId="sauce-bottle-it">
+              <SortButton
+                onClick={() =>
+                  volume > 0 ? endMix(false) : say("Pour something in first", "info")
+                }
+                testId="sauce-bottle-it"
+              >
                 Bottle it →
               </SortButton>
             </div>
@@ -1078,7 +1135,7 @@ function Round({
                     onExit();
                   }}
                 >
-                  🧑‍🍳 Prep Cook does it
+                  🧑‍🍳 Prep Cook does it · no stars
                 </SortButton>
               ) : null}
               {practice && onWatchAd && canOfferRoundsAd(save, level) ? (
@@ -1149,21 +1206,6 @@ function Round({
     </div>
   );
 }
-
-const chunkIndexes = (s: SauceDef): number[] => {
-  const map: Record<string, number> = {
-    tomato: 0,
-    onion: 1,
-    pineapple: 2,
-    corn: 3,
-    mango: 5,
-    avocado: 6,
-    chilli: 7,
-    garlic: 8,
-  };
-  const base = (s.chunks ?? []).map((c) => map[c] ?? 0);
-  return [...base, ...base, ...base, 4].slice(0, 8);
-};
 
 function Chip({ children }: { children: React.ReactNode }) {
   return (
@@ -1505,8 +1547,10 @@ export function PourButton({
   onDown: () => void;
   onUp: () => void;
 }) {
-  const onLine = pouring && Math.abs(fill - FILL_LINE) <= window_;
-  const over = pouring && fill > FILL_LINE + window_;
+  // The cues read the REAL score (a release at the edge of the window scores 0, and more than full spills): LET GO only where the pour would be good.
+  const good = pouring && fill <= 1 && bottleScore(fill, window_).score >= BOTTLE_GOOD;
+  const onLine = good;
+  const over = pouring && !good && fill > FILL_LINE;
   const progress = Math.min(1, Math.max(0, fill / FILL_LINE));
   const state = disabled ? "off" : over ? "over" : onLine ? "line" : pouring ? "pour" : "idle";
   // A short buzz the moment the level reaches the line (where the phone can).
@@ -1730,7 +1774,7 @@ function ResultPanel({
         <div className="relative mt-3 grid gap-2">
           {!practice && left > 0 ? (
             <SortButton onClick={onNext} testId="sauce-next">
-              Next sauce · {left}
+              Next sauce · {left} left
             </SortButton>
           ) : null}
           {!practice && left === 0 && onWatchAd ? <RoundsAdButton onWatch={onWatchAd} /> : null}
@@ -1741,7 +1785,7 @@ function ResultPanel({
             Done
           </SortButton>
           <SortButton quiet onClick={onAgain} testId="sauce-again">
-            Play again
+            Play again · just for fun
           </SortButton>
         </div>
       </div>
@@ -1763,6 +1807,10 @@ function RoundsAdButton({
   const [state, setState] = useState<"idle" | "busy" | "no">("idle");
   return (
     <>
+      <p className="font-ui text-[12.5px] font-bold text-walnut/75" data-testid="sauce-ad-why">
+        Today&apos;s free sauces are done. An ad gives {SAUCE_AD_ROUNDS} more to cook (stars, Hype),
+        not a skip.
+      </p>
       <SortButton
         quiet
         testId="sauce-ad"

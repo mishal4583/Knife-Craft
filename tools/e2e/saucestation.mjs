@@ -14,6 +14,7 @@
 //   S15 the free rounds used: the chip offers "3 more rounds"; the ad button in the game grants them ONLY after the ad reports rewarded (placement sauce_rounds, no money)
 //   S16 a skipped ad grants nothing and says so
 //   S3c at every tier (Level 7, 40, 55, 75) the recipe is listed (a chip per ingredient), those tiles glow and the step says Pour: ... (never hidden)
+//   S3d (audit 2026-11-17) an empty bowl cannot be bottled; pouring past a count says "too much" (never a tick); only poured items float as pieces
 //   S13 without any painted art the game still plays (CSS stand-ins)
 //   S14 no console errors
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -563,6 +564,50 @@ for (const n of [7, 40, 55, 75]) {
     view,
   );
 }
+// S3d (audit 2026-11-17): the screen says what really happened. At Level 40, 320 x 568.
+await boot(page, saveAt(40));
+await openInventory(page);
+await openGame(page);
+await start(page);
+await sleep(300);
+const emptyPieces = await page.evaluate(() => document.querySelectorAll(".sauce-chunk").length);
+await tap(page, '[data-testid="sauce-bottle-it"]');
+await sleep(300);
+const stillMixing = await page.evaluate(
+  () =>
+    !document.querySelector('[data-testid="sauce-pour"]') &&
+    !!document.querySelector('[data-testid="sauce-stage"]'),
+);
+const firstIng = await page.evaluate(() => {
+  const parts = (document.querySelector('[data-testid="sauce-station"]')?.dataset.recipe ?? "")
+    .split(",")
+    .map((p) => p.split(":"));
+  const [id, n] = parts.find(([x]) => !/oil$/.test(x)) ?? parts[0];
+  return { id, n: Number(n) };
+});
+const firstId = firstIng.id;
+const wantN = firstIng.n;
+for (let i = 0; i < Math.ceil(wantN / (wantN < 1 ? 0.25 : 1)) + 2; i++)
+  await press(page, `[data-testid="sauce-pantry-${firstId}"]`, 30);
+await sleep(2900); // (a note such as "Nice!" covers the step line for 2.6 s)
+const over = await page.evaluate((id) => {
+  const chip = document.querySelector(`[data-testid="sauce-need-${id}"]`);
+  return {
+    chip: chip?.textContent?.trim() ?? "",
+    step: document.querySelector('[data-testid="sauce-step"]')?.textContent?.trim() ?? "",
+    pieces: document.querySelectorAll(".sauce-chunk").length,
+  };
+}, firstId);
+await shot(page, "sauce-3d-over");
+check(
+  "S3d an empty bowl cannot be bottled; past the count the chip says 'over' and the step too; at most one ingredient's pieces float",
+  emptyPieces === 0 &&
+    stillMixing &&
+    /over/.test(over.chip) &&
+    /Too much/.test(over.step) &&
+    over.pieces <= 3,
+  { emptyPieces, stillMixing, firstId, wantN, over },
+);
 await page.setViewport({ width: 430, height: 900, deviceScaleFactor: 1 });
 
 // S15: the rewarded ad, "3 more rounds today"

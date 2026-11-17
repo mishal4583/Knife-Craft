@@ -119,6 +119,51 @@ function drawFloorCell(ctx: CanvasRenderingContext2D, px: number, py: number, ce
   ctx.fill();
 }
 
+/** The room and the floor of the board: a dark wooden cell with a chef's hat in it, edge to edge. */
+function paintBack(
+  ctx: CanvasRenderingContext2D,
+  board: CrateBoard,
+  backdrop: CanvasImageSource | null,
+  cell: number,
+) {
+  if (backdrop) ctx.drawImage(backdrop, 0, 0, KD_STAGE.w, KD_STAGE.h);
+  else {
+    const g = ctx.createLinearGradient(0, 0, 0, KD_STAGE.h);
+    g.addColorStop(0, "#7a5233");
+    g.addColorStop(1, "#4b2f1c");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, KD_STAGE.w, KD_STAGE.h);
+  }
+  ctx.fillStyle = "#2a1c18";
+  ctx.fillRect(GRID_BOX.x, GRID_BOX.y, GRID_BOX.size, GRID_BOX.size);
+  for (let y = 0; y < board.rows; y++)
+    for (let x = 0; x < board.cols; x++)
+      drawFloorCell(ctx, GRID_BOX.x + x * cell, GRID_BOX.y + y * cell, cell);
+}
+
+let back: { key: string; backdrop: unknown; canvas: HTMLCanvasElement } | null = null;
+/** The cached room + floor layer (null where no canvas can be made, e.g. a test without a DOM: the caller paints it directly). */
+function backLayer(
+  ctx: CanvasRenderingContext2D,
+  board: CrateBoard,
+  backdrop: CanvasImageSource | null,
+  cell: number,
+): HTMLCanvasElement | null {
+  if (typeof document === "undefined") return null;
+  const scale = ctx.getTransform().a || 1;
+  const key = `${board.cols}x${board.rows}@${scale}`;
+  if (back && back.key === key && back.backdrop === backdrop) return back.canvas;
+  const canvas = back?.canvas ?? document.createElement("canvas");
+  canvas.width = Math.round(KD_STAGE.w * scale);
+  canvas.height = Math.round(KD_STAGE.h * scale);
+  const c = canvas.getContext("2d");
+  if (!c) return null;
+  c.setTransform(scale, 0, 0, scale, 0, 0);
+  paintBack(c, board, backdrop, cell);
+  back = { key, backdrop, canvas };
+  return canvas;
+}
+
 /** A fixed dark block: a riveted metal plate. */
 function drawWall(ctx: CanvasRenderingContext2D, board: CrateBoard, w: Wall, pulse: number) {
   const cell = cellOf(board);
@@ -315,22 +360,11 @@ export function drawKitchenDispatch(
   const { art, now } = view;
   const img = art?.images;
   ctx.clearRect(0, 0, KD_STAGE.w, KD_STAGE.h);
-  // the room
-  if (img?.backdrop) ctx.drawImage(img.backdrop, 0, 0, KD_STAGE.w, KD_STAGE.h);
-  else {
-    const g = ctx.createLinearGradient(0, 0, 0, KD_STAGE.h);
-    g.addColorStop(0, "#7a5233");
-    g.addColorStop(1, "#4b2f1c");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, KD_STAGE.w, KD_STAGE.h);
-  }
-  // the floor of the board: a dark wooden cell with a chef's hat in it, edge to edge
+  // the room and the floor of the board never change during a round: painted once into a layer, then copied
   const cell = cellOf(board);
-  ctx.fillStyle = "#2a1c18";
-  ctx.fillRect(GRID_BOX.x, GRID_BOX.y, GRID_BOX.size, GRID_BOX.size);
-  for (let y = 0; y < board.rows; y++)
-    for (let x = 0; x < board.cols; x++)
-      drawFloorCell(ctx, GRID_BOX.x + x * cell, GRID_BOX.y + y * cell, cell);
+  const layer = backLayer(ctx, board, img?.backdrop ?? null, cell);
+  if (layer) ctx.drawImage(layer, 0, 0, KD_STAGE.w, KD_STAGE.h);
+  else paintBack(ctx, board, img?.backdrop ?? null, cell);
   const pulse = 0.55 + 0.45 * Math.sin(now / 140);
   // the dark blocks
   for (const w of board.walls) drawWall(ctx, board, w, view.armed === "hammer" ? pulse : 0);

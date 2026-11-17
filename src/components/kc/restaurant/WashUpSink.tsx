@@ -6,6 +6,7 @@ import { getSupplyItem, type SupplyId } from "@/game/business/businessSupplies";
 import {
   cleanedShare,
   nextStreak,
+  STREAK_WINDOW_MS,
   scrubAmount,
   seeded,
   strengthOpacity,
@@ -253,6 +254,7 @@ export function WashUpSink({
   onBuySoap,
   onClose,
   noSoapAtStart = false,
+  soapEmpty = false,
 }: {
   /** The sink when it opened (it stays fixed while you wash). */
   lines: readonly SinkLine[];
@@ -263,6 +265,11 @@ export function WashUpSink({
   onClose: () => void;
   /** No dish soap at all: the sink says so at once (nothing can be washed). */
   noSoapAtStart?: boolean;
+  /**
+   * The dish soap is used up RIGHT NOW (live, from the save): checked before the next piece is shown, so the player never scrubs and rinses a whole
+   * dish only to be told "Out of dish soap" (developer 2026-11-17 audit).
+   */
+  soapEmpty?: boolean;
 }) {
   const [items] = useState(() =>
     [...lines]
@@ -298,6 +305,9 @@ export function WashUpSink({
   const activePointerRef = useRef<number | null>(null);
   const lastPointRef = useRef<Point | null>(null);
   const streakRef = useRef({ count: 0, at: -Infinity });
+  const streakTimerRef = useRef(0);
+  const soapEmptyRef = useRef(soapEmpty);
+  soapEmptyRef.current = soapEmpty;
   const bestRef = useRef(0);
   const startedAtRef = useRef(0);
   const completedRef = useRef(noSoapAtStart);
@@ -354,6 +364,17 @@ export function WashUpSink({
     ro?.observe(box);
     return () => ro?.disconnect();
   }, [portalTarget]);
+
+  // The timers and the animation frame are cleared when the sink closes, with or without Reduced Motion.
+  useEffect(() => {
+    const timers = timersRef.current;
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+      timers.forEach((id) => window.clearTimeout(id));
+      timers.clear();
+    };
+  }, []);
 
   // The effects layer for the whole sink; everything is cleaned up on close.
   useEffect(() => {
@@ -490,6 +511,15 @@ export function WashUpSink({
       streakRef.current = nextStreak(streakRef.current, t);
       bestRef.current = Math.max(bestRef.current, streakRef.current.count);
       setStreak(streakRef.current.count);
+      // the combo is only as long as its window: the chip goes when the next stain does not come in time
+      window.clearTimeout(streakTimerRef.current);
+      timersRef.current.delete(streakTimerRef.current);
+      const sid = window.setTimeout(() => {
+        timersRef.current.delete(sid);
+        setStreak(0);
+      }, STREAK_WINDOW_MS + 60);
+      streakTimerRef.current = sid;
+      timersRef.current.add(sid);
       AudioManager.playSparkle(streakRef.current.count);
       if (!reduced) buzz(10);
     }
@@ -555,6 +585,13 @@ export function WashUpSink({
             lastPointRef.current = null;
             setScrubbing(false);
             setPhase("scrub");
+            setStreak(0);
+            if (soapEmptyRef.current) {
+              // the soap ran out with that dish: say so now, before the next one is scrubbed
+              completedRef.current = true;
+              setNoSoap(true);
+              return;
+            }
             setActiveItemIndex((i) => Math.min(i + 1, queue.length - 1));
           },
           reduced ? 0 : SLIDE_MS,

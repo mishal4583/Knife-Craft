@@ -278,7 +278,8 @@ export function FridgeSortGame({
 
   // The clock: runs only while playing (it starts with the first touch, and pausing freezes it).
   useEffect(() => {
-    if (phase !== "playing" || !round) return;
+    // the how-to card freezes the clock too (the effect restarts when it closes, so the time it was open is never counted)
+    if (phase !== "playing" || !round || guide) return;
     let last = performance.now();
     const id = window.setInterval(() => {
       const now = performance.now();
@@ -299,7 +300,7 @@ export function FridgeSortGame({
       }
     }, 100);
     return () => window.clearInterval(id);
-  }, [phase, round, finish]);
+  }, [phase, round, finish, guide]);
 
   const start = () => {
     if (phaseRef.current !== "ready") return;
@@ -1216,7 +1217,7 @@ export function FridgeSortGame({
           }}
           className="absolute right-3 top-[76px] z-30 min-h-12 rounded-full border-2 border-[#d6b46a] bg-walnut-dark px-3 font-ui text-[12px] font-extrabold text-ivory"
         >
-          🧑‍🍳 Prep Cook does it
+          🧑‍🍳 Prep Cook does it · no stars
         </button>
       ) : null}
     </div>

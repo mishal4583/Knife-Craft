@@ -243,7 +243,7 @@ export type DeliveryInspectionState = {
   rounds?: number;
   /** Three-star rounds in a row (display only). */
   streak?: number;
-  /** Bit 1: the how-to tour was seen. */
+  /** Bit 1: the how-to tour was seen; the bits above it are the highest tier whose guide was shown (`howto >> 1`). */
   howto?: number;
 };
 
@@ -262,7 +262,7 @@ export function deliveryInspectionOf(save: SaveData): DeliveryInspectionState {
     perfect: whole(raw?.perfect),
     rounds: whole(raw?.rounds),
     streak: whole(raw?.streak, 999),
-    howto: whole(raw?.howto, 1),
+    howto: whole(raw?.howto, 1 | (INSPECTION_TIERS.length << 1)),
   };
 }
 
@@ -271,14 +271,23 @@ function withState(save: SaveData, state: DeliveryInspectionState): SaveData {
 }
 
 export const howtoSeen = (save: SaveData): boolean => (deliveryInspectionOf(save).howto! & 1) !== 0;
+/** The highest tier whose guide the player has been shown (0 = none; a save from before the per-tier guide reads 0 too). */
+export const howtoTierSeen = (save: SaveData): number =>
+  howtoSeen(save) ? deliveryInspectionOf(save).howto! >> 1 : 0;
+/**
+ * Is the how-to due at this tier (developer 2026-11-17: instructions are never a difficulty)? The guide lists the kinds of bad food and the harmless
+ * look-alikes of the tier being played, so it opens again on the first crate of each new tier; a tier already shown never asks again.
+ */
+export const howtoDue = (save: SaveData, tier: number): boolean => howtoTierSeen(save) < tier;
 
 /** Remembers that the tour was seen (the same save back when it already was). Never touches money or stock. */
-export function withHowtoSeen(save: SaveData): SaveData {
-  if (howtoSeen(save)) return save;
+export function withHowtoSeen(save: SaveData, tier = 1): SaveData {
+  const t = Math.max(1, Math.min(INSPECTION_TIERS.length, Math.floor(tier) || 1));
+  if (howtoSeen(save) && howtoTierSeen(save) >= t) return save;
   return withState(save, {
     ...(save.business.deliveryInspection ?? {}),
     ...deliveryInspectionOf(save),
-    howto: 1,
+    howto: 1 | (Math.max(howtoTierSeen(save), t) << 1),
   });
 }
 
@@ -867,7 +876,7 @@ export type DeliveryInspectionAction =
   | { kind: "skip" }
   /** The Prep Cook did this inspection (no reward). */
   | { kind: "auto" }
-  /** The how-to tour was closed for the first time. */
-  | { kind: "howto" };
+  /** The how-to tour was closed (for the first time, or the first time at a new tier). */
+  | { kind: "howto"; tier?: number };
 
 export type DeliveryInspectionResult = { ok: true; effects: RoundEffects } | { ok: false };

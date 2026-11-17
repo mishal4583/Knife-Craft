@@ -402,7 +402,7 @@ export function CarParkGame({
                   ? `${freeTowUsed ? "Bonus tow" : "Tow"} · costs 1★`
                   : towAdAvailable && carParkTowAdAvailable(save)
                     ? "Watch for extra tow"
-                    : "Tow used today"}
+                    : "Tow used"}
             </span>
           </button>
           <span className="rounded-xl border border-[#c49a61]/50 px-3 py-2 text-xs font-bold">

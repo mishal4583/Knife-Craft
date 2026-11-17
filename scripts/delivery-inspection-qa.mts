@@ -42,6 +42,8 @@ import {
   tierNumberAt,
   withHowtoSeen,
   howtoSeen,
+  howtoDue,
+  howtoTierSeen,
 } from "../src/game/business/deliveryInspection.ts";
 import { DIFFICULTY } from "../src/game/business/fridgeSort.ts";
 import { HYPE_BY_STARS } from "../src/game/business/fridgeSort.ts";
@@ -180,13 +182,36 @@ console.log("A. When it opens");
   };
   const sane = deliveryInspectionOf(bad);
   assert(
-    sane.rounds === 0 && sane.best === 0 && sane.howto! <= 1 && pinsOf(bad) <= MAX_PINS,
+    sane.rounds === 0 &&
+      sane.best === 0 &&
+      sane.howto! <= (1 | (INSPECTION_TIERS.length << 1)) &&
+      pinsOf(bad) <= MAX_PINS,
     "A12: bad saved numbers are made safe",
   );
   assert(
     (howtoSeen(withHowtoSeen(old)) && withHowtoSeen(withHowtoSeen(old)) === withHowtoSeen(old)) ||
       howtoSeen(withHowtoSeen(old)),
     "A13: the how-to tour is remembered once",
+  );
+  // 2026-11-17: the guide lists the tier being played, so it opens again on each NEW tier (decoys and new defects were never announced)
+  const t1 = withHowtoSeen(old, 1);
+  const t3 = withHowtoSeen(t1, 3);
+  assert(
+    howtoDue(old, 1) &&
+      !howtoDue(t1, 1) &&
+      howtoDue(t1, 2) &&
+      howtoDue(t1, 3) &&
+      !howtoDue(t3, 3) &&
+      !howtoDue(t3, 2) &&
+      howtoTierSeen(t3) === 3 &&
+      withHowtoSeen(t3, 2) === t3,
+    "A14: the guide is due at each new tier once; a tier already shown (or a lower one) never asks again",
+  );
+  const legacy = structuredClone(DEFAULT_SAVE) as SaveData;
+  (legacy.business as unknown as { deliveryInspection: unknown }).deliveryInspection = { howto: 1 };
+  assert(
+    howtoSeen(legacy) && howtoTierSeen(legacy) === 0 && howtoDue(legacy, 1),
+    "A15: a save from before the per-tier guide (howto = 1) is shown the guide of its current tier once",
   );
 }
 

@@ -92,6 +92,8 @@ export function useCleaningGame(
       stage={check}
       reducedMotion={save.settings.reducedMotion}
       onFinish={(outcome) => run({ kind: "check", task: CHECK_TASK[check], outcome })}
+      // Skip is the developer's design (2026-11-06: does the chore with one tap, no stars); its label now says so (2026-11-17 audit)
+      skipMarksDone
       onSkip={() => {
         run({ kind: "clean", task: CHECK_TASK[check] });
         setCheck(null);

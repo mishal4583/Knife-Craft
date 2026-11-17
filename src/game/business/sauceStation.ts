@@ -476,6 +476,33 @@ export function mixOf(scoops: Scoops): { color: Rgb; hex: string; thick: number;
   return { color, hex: rgbToHex(color), thick: vol > 0 ? visc / vol : 0, volume: vol };
 }
 
+/**
+ * The pieces floating in the bowl (developer 2026-11-17: tomato and onion pieces showed while only avocado had been poured). A piece shows ONLY for an
+ * ingredient that is really in the bowl, and the more of it is poured the more pieces: one at the first scoop, up to three at the full amount.
+ * The numbers are cells of the "chunks" sprite sheet.
+ */
+export function bowlChunks(sauce: SauceDef, scoops: Readonly<Record<string, number>>): number[] {
+  const cell: Record<string, number> = {
+    tomato: 0,
+    onion: 1,
+    pineapple: 2,
+    corn: 3,
+    mango: 5,
+    avocado: 6,
+    chilli: 7,
+    garlic: 8,
+  };
+  const out: number[] = [];
+  for (const id of sauce.chunks ?? []) {
+    const have = scoops[id] ?? 0;
+    if (!(have > 0)) continue;
+    const want = sauce.recipe.find(([rid]) => rid === id)?.[1] ?? 1;
+    const pieces = Math.min(3, Math.max(1, Math.ceil((Math.min(have, want) / want) * 3)));
+    for (let k = 0; k < pieces; k++) out.push(cell[id] ?? 0);
+  }
+  return out;
+}
+
 /** Blending thickens a dressing (an emulsion is thicker than its parts) and chunks read thicker. */
 export const EMULSION_THICKEN = 0.18;
 export const CHUNKY_THICKEN = 0.05;
@@ -717,6 +744,8 @@ export function pourRate(heldMs: number, thick: number): number {
   const ease = Math.min(1, 0.3 + heldMs / 1100);
   return 0.62 * ease * (1 - 0.4 * Math.min(1, thick));
 }
+/** A bottle at least this good is "on the line" (the Pour button's LET GO cue and the 3-star average both read it). */
+export const BOTTLE_GOOD = 0.85;
 /** What a released bottle scores: 1 on the line, less the further it is (0 at the edge of the tier's window); more than full is a spill. */
 export function bottleScore(fill: number, window: number): { score: number; spill: number } {
   const spill = Math.max(0, fill - 1);
@@ -734,7 +763,7 @@ export type BottleRound = {
 export function bottleStars(r: BottleRound): 0 | 1 | 2 | 3 {
   if (r.scores.length === 0) return 0;
   const avg = r.scores.reduce((s, v) => s + v, 0) / r.bottles;
-  if (avg >= 0.85 && r.spill <= 0.05 && r.filled >= r.bottles) return 3;
+  if (avg >= BOTTLE_GOOD && r.spill <= 0.05 && r.filled >= r.bottles) return 3;
   if (avg >= 0.6 && r.filled >= r.bottles - 1) return 2;
   return avg >= 0.3 ? 1 : 0;
 }

@@ -30,6 +30,7 @@ export function SinkWash({
   cleanlinessAction,
   className,
   variant = "row",
+  showButton = true,
 }: {
   save: SaveData;
   go?: ((s: ScreenId) => void) | undefined;
@@ -40,6 +41,8 @@ export function SinkWash({
    * "button": just "🧽 Wash N" (Closing Time's wash-up chore).
    */
   variant?: "row" | "card" | "button";
+  /** "button" only: false keeps an open sink alive but shows no button (Closing Time's row is done, blocked or locked). */
+  showButton?: boolean;
 }) {
   const [open, setOpen] = useState<{ lines: SinkLine[]; seed: number } | null>(null);
   const pieces = sinkPieces(save);
@@ -56,18 +59,20 @@ export function SinkWash({
           onWash={openSink}
           onBuySoap={go ? () => openMarketSupplies(go, "packaging", "dish-soap") : undefined}
         />
-      ) : variant === "button" && pieces > 0 ? (
-        <button
-          type="button"
-          onClick={openSink}
-          data-testid="sink-wash"
-          className={cn(
-            "press min-h-12 shrink-0 rounded-full border border-walnut-dark/30 bg-[linear-gradient(170deg,var(--color-gold),var(--color-copper))] px-3 font-ui text-[12.5px] font-extrabold text-ivory",
-            className,
-          )}
-        >
-          🧽 Wash {pieces}
-        </button>
+      ) : variant === "button" ? (
+        pieces > 0 && showButton ? (
+          <button
+            type="button"
+            onClick={openSink}
+            data-testid="sink-wash"
+            className={cn(
+              "press min-h-12 shrink-0 rounded-full border border-walnut-dark/30 bg-[linear-gradient(170deg,var(--color-gold),var(--color-copper))] px-3 font-ui text-[12.5px] font-extrabold text-ivory",
+              className,
+            )}
+          >
+            🧽 Wash {pieces}
+          </button>
+        ) : null
       ) : pieces > 0 ? (
         <div
           className={cn(
@@ -125,6 +130,7 @@ export function SinkWash({
           }
           onClose={() => setOpen(null)}
           noSoapAtStart={soap.status === "empty"}
+          soapEmpty={soap.status === "empty"}
         />
       ) : null}
     </>
