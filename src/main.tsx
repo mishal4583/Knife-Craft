@@ -2,6 +2,7 @@ import { Component, StrictMode, type ErrorInfo, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { startPlatform } from "@/game/PlayablesSDK";
 import { isChunkLoadError, reloadFresh } from "@/lib/freshReload";
+import { armBootFailsafe, finishBoot, setBootProgress } from "@/lib/bootSplash";
 import { App } from "./App";
 import "./styles.css";
 
@@ -14,6 +15,8 @@ class GameErrorBoundary extends Component<{ children: ReactNode }, { failed: boo
 
   override componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("The game screen failed to render.", error, info.componentStack);
+    // The loading screen must never cover the snag screen.
+    finishBoot();
     // A screen's file could not be fetched (a new version went out under a phone that still holds the old index.html): start fresh once.
     if (isChunkLoadError(error)) reloadFresh();
   }
@@ -74,6 +77,9 @@ window.addEventListener("vite:preloadError", (event) => {
 // Start the Playgama Bridge right away (it must finish initializing before any
 // SDK call). `game_ready` is sent later, once the Kitchen/Preparation is interactive.
 startPlatform();
+// The loading screen (index.html) is already on screen; the game's own code has arrived: the bar moves on (src/lib/bootSplash.ts).
+setBootProgress(0.3);
+armBootFailsafe();
 
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("#root element missing from index.html");

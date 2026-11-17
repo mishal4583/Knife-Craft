@@ -62,6 +62,7 @@ import { ScrollCue } from "./common/ScrollCue";
 import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 import { AskPaigeButton } from "./assistant/AskPaigeButton";
 import { useLandscape } from "./game/layoutMode";
+import { mgUrl, useMiniGameArt, warmMiniGameArt } from "./minigamesArt";
 import { useAssistant } from "./assistant/AssistantContext";
 import { PaigeStage } from "./assistant/PaigeStage";
 import { MiniGamesSheet } from "./MiniGamesSheet";
@@ -239,6 +240,14 @@ export function Kitchen({
   // The ranking-on-top layout needs room for six round buttons in the right column; a short screen (or a phone on its side) keeps the earlier arrangement
   // (wallet row on top with Paige and Settings, the cards under it).
   const landscape = useLandscape();
+  // The Mini-games button's painted controller, and every picture of the sheet it opens, fetched a moment after the Kitchen is up (never in its first
+  // load) so the sheet shows its art on the first tap (minigamesArt.ts).
+  const miniGameArt = useMiniGameArt(["shortcut-icon"]);
+  useEffect(() => {
+    if (!RESTAURANT_MODE) return;
+    const t = window.setTimeout(warmMiniGameArt, 1500);
+    return () => window.clearTimeout(t);
+  }, []);
   const short = useShortScreen();
   const stacked = landscape || short;
   const rankButton = (
@@ -547,7 +556,17 @@ export function Kitchen({
               aria-hidden
               className="grid h-10 w-10 shrink-0 place-items-center text-[24px] leading-none"
             >
-              🎮
+              {miniGameArt("shortcut-icon") ? (
+                <img
+                  src={mgUrl("shortcut-icon")}
+                  alt=""
+                  draggable={false}
+                  data-testid="minigames-shortcut-icon"
+                  className="h-10 w-10 object-contain drop-shadow-[0_2px_2px_rgba(60,30,10,0.35)]"
+                />
+              ) : (
+                "🎮"
+              )}
             </span>
             <span
               aria-hidden="true"

@@ -27,8 +27,250 @@
       resource the game loads. See src/game/PlayablesSDK.ts.
     -->
     <script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>
+    <!--
+      The loading screen (developer 2026-11-18): painted by THIS file alone, before any script has arrived (a phone on a slow connection used to show a
+      white page for several seconds). The small logo and the bar frame are fetched first; the big pictures follow at low priority so they never slow
+      the game's own files. src/lib/bootSplash.ts fills the bar with real progress and removes it when the first screen's pictures are ready.
+      Pictures: scripts/make-loading-assets.py -> public/loading/. Relative paths only (preflight).
+    -->
+    <link rel="preload" as="image" href="./loading/logo.webp" fetchpriority="high" />
+    <link rel="preload" as="image" href="./loading/bar-frame.webp" fetchpriority="high" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #2b1a0e;
+      }
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483000;
+        display: grid;
+        place-items: center;
+        background: #2b1a0e;
+        pointer-events: none;
+        transition: opacity 0.4s ease;
+      }
+      #boot-splash.leaving {
+        opacity: 0;
+      }
+      #boot-splash .bs-stage {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        max-width: calc(100dvh * 9 / 16);
+        overflow: hidden;
+        background:
+          url("data:image/webp;base64,UklGRgQBAABXRUJQVlA4IPgAAAAwBQCdASoSACAAPu1gqE2ppSOiMAgBMB2JbACdMoMh+nAUoAEQBxhCdP2FdWo44FumAAD+ooG54dMLiKvSnxEWm7kNhYdplO2OcAoJQoPzleMrCmuIWQhd3Im3mDsuB14H8+cw+5cnyT2PDOpSB/+sjlBZr3QLrML+ZMSHxv1Kc0O+L+joEY6lpjV3wUXcTedHuOqnwGBKbdy/bBfxstWGdY6ezbfcDDhRyiQZJ3jMPBaC5+ymmp438/VPLcyQHkjEsmL2zxIJQa9PwTse32g9yMvT1HXXz5ZXLrVsp+mYyZBmXnDBlPtVJ1UYW+sTmBoFgT38zFc4AA==")
+            center / cover no-repeat,
+          linear-gradient(180deg, #5f9a6a 0%, #c98a46 52%, #7a4420 100%);
+      }
+      #boot-splash img {
+        position: absolute;
+        display: block;
+        opacity: 0;
+        transition: opacity 0.5s ease;
+        user-select: none;
+        -webkit-user-drag: none;
+      }
+      #boot-splash img.in {
+        opacity: 1;
+      }
+      #boot-splash .bs-bg {
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      #boot-splash .bs-shade {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          180deg,
+          rgba(30, 15, 5, 0.25) 0%,
+          rgba(30, 15, 5, 0) 30%,
+          rgba(30, 15, 5, 0) 62%,
+          rgba(30, 15, 5, 0.55) 100%
+        );
+      }
+      #boot-splash .bs-chef {
+        left: 50%;
+        bottom: 11%;
+        height: 56%;
+        width: auto;
+        transform: translateX(-50%);
+      }
+      #boot-splash .bs-board {
+        left: -4%;
+        bottom: 6%;
+        width: 108%;
+        height: auto;
+      }
+      #boot-splash .bs-logo {
+        left: 5%;
+        top: 4%;
+        width: 90%;
+        height: auto;
+        animation: bs-float 3.2s ease-in-out infinite;
+      }
+      #boot-splash .bs-bar {
+        position: absolute;
+        left: 9%;
+        width: 82%;
+        bottom: calc(1.5% + env(safe-area-inset-bottom));
+        aspect-ratio: 560 / 140;
+      }
+      #boot-splash .bs-frame {
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      #boot-splash .bs-track {
+        position: absolute;
+        left: 7.32%;
+        top: 21.43%;
+        width: 85.54%;
+        height: 27.86%;
+        overflow: hidden;
+        border-radius: 999px;
+      }
+      #boot-splash .bs-fill {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: calc(var(--p, 0.18) * 100%);
+        overflow: hidden;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #b6f56a 0%, #55c42b 55%, #2f9a1f 100%);
+        box-shadow:
+          inset 0 2px 0 rgba(255, 255, 255, 0.55),
+          inset 0 -2px 0 rgba(0, 70, 0, 0.25);
+        transition: width 0.35s ease-out;
+      }
+      #boot-splash .bs-fill::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        width: 40%;
+        background: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0),
+          rgba(255, 255, 255, 0.5),
+          rgba(255, 255, 255, 0)
+        );
+        animation: bs-shine 1.4s ease-in-out infinite;
+      }
+      #boot-splash .bs-text {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 66%;
+        text-align: center;
+        font:
+          800 15px/1 Fraunces,
+          Georgia,
+          "Times New Roman",
+          serif;
+        letter-spacing: 0.1em;
+        color: #fff6dc;
+        text-shadow:
+          0 1px 0 #6b3a12,
+          0 2px 3px rgba(60, 25, 5, 0.7);
+      }
+      #boot-splash .bs-hint {
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        opacity: 0.9;
+      }
+      @keyframes bs-float {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-4px);
+        }
+      }
+      @keyframes bs-shine {
+        0% {
+          transform: translateX(-120%);
+        }
+        100% {
+          transform: translateX(320%);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot-splash img,
+        #boot-splash {
+          transition: none;
+        }
+        #boot-splash .bs-logo,
+        #boot-splash .bs-fill::after {
+          animation: none;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="boot-splash" role="status" aria-label="Loading KnifeCraft">
+      <div class="bs-stage">
+        <img
+          class="bs-bg"
+          src="./loading/bg.webp"
+          alt=""
+          width="576"
+          height="1024"
+          fetchpriority="low"
+          decoding="async"
+          onload="this.classList.add('in')"
+        />
+        <div class="bs-shade"></div>
+        <img
+          class="bs-chef"
+          src="./loading/chef.webp"
+          alt=""
+          width="420"
+          height="630"
+          fetchpriority="low"
+          decoding="async"
+          onload="this.classList.add('in')"
+        />
+        <img
+          class="bs-board"
+          src="./loading/board.webp"
+          alt=""
+          width="640"
+          height="332"
+          fetchpriority="low"
+          decoding="async"
+          onload="this.classList.add('in')"
+        />
+        <img
+          class="bs-logo"
+          src="./loading/logo.webp"
+          alt="KnifeCraft"
+          width="520"
+          height="243"
+          fetchpriority="high"
+          onload="this.classList.add('in')"
+        />
+        <div class="bs-bar">
+          <img
+            class="bs-frame"
+            src="./loading/bar-frame.webp"
+            alt=""
+            width="560"
+            height="140"
+            fetchpriority="high"
+            onload="this.classList.add('in')"
+          />
+          <span class="bs-track"><span class="bs-fill"></span></span>
+          <span class="bs-text"
+            >LOADING…<span class="bs-hint" hidden> · 🎵 TAP FOR MUSIC</span></span
+          >
+        </div>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="./src/main.tsx"></script>
   </body>

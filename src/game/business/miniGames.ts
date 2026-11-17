@@ -70,7 +70,7 @@ export type MiniGameEntry = {
   firstLevel: number;
   open: (save: SaveData, level: number) => boolean;
   /** Short line shown under the name once it is open. */
-  line: (save: SaveData, level: number) => { ready: boolean; text: string };
+  line: (save: SaveData, level: number) => { ready: boolean; text: string; waiting?: boolean };
 };
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -87,7 +87,7 @@ export const MINI_GAMES: readonly MiniGameEntry[] = [
     line: (s, level) => {
       const n = pendingInspections(s, level);
       return n > 0
-        ? { ready: true, text: plural(n, "basket waits", "baskets wait") }
+        ? { ready: true, text: plural(n, "basket waits", "baskets wait"), waiting: true }
         : { ready: false, text: "Nothing to check" };
     },
   },
@@ -103,7 +103,11 @@ export const MINI_GAMES: readonly MiniGameEntry[] = [
       if (!fridgeSortRound(s, level)) return { ready: false, text: "Nothing to unpack" };
       return unpackLocked(s, level)
         ? { ready: true, text: "Check the delivery first" }
-        : { ready: true, text: plural(piecesWaiting(s), "piece waits", "pieces wait") };
+        : {
+            ready: true,
+            text: plural(piecesWaiting(s), "piece waits", "pieces wait"),
+            waiting: true,
+          };
     },
   },
   {
@@ -116,7 +120,8 @@ export const MINI_GAMES: readonly MiniGameEntry[] = [
     open: (_s, level) => isSauceStationOpen(level),
     line: (s, level) => {
       const left = roundsLeft(s, level);
-      if (left > 0) return { ready: true, text: `${left}/${roundsAllowed(s)} rounds left` };
+      if (left > 0)
+        return { ready: true, text: `${left}/${roundsAllowed(s)} rounds left`, waiting: true };
       return canOfferRoundsAd(s, level)
         ? { ready: true, text: "More rounds for an ad" }
         : { ready: false, text: "Done for today" };
@@ -132,7 +137,7 @@ export const MINI_GAMES: readonly MiniGameEntry[] = [
     open: (_s, level) => isStockroomOpen(level),
     line: (s, level) =>
       stockroomRound(s, level)
-        ? { ready: true, text: plural(setsWaiting(s), "set waits", "sets wait") }
+        ? { ready: true, text: plural(setsWaiting(s), "set waits", "sets wait"), waiting: true }
         : { ready: false, text: "Nothing to stock" },
   },
   {
@@ -155,7 +160,7 @@ export const MINI_GAMES: readonly MiniGameEntry[] = [
     open: (_s, level) => isCarParkOpen(level),
     line: (s, level) =>
       carParkDue(s, level)
-        ? { ready: true, text: "Today's lot waits" }
+        ? { ready: true, text: "Today's lot waits", waiting: true }
         : { ready: false, text: "Cleared today" },
   },
   {
@@ -190,14 +195,16 @@ export type MiniGameView = {
   state: MiniGameState;
   /** The line under the name: "Opens at Level N" would be built by the screen from `entry.firstLevel`; here only the open lines. */
   text: string | null;
+  /** Something is really waiting to be played (baskets, pieces, rounds, sets, today's lot): the card shows a star. Free play and gated games are not "waiting". */
+  waiting: boolean;
 };
 
 /** Each game's state for this save: locked (below its level), ready (a tap plays), or resting (open, nothing to play now). */
 export function miniGameViews(save: SaveData, level: number): MiniGameView[] {
   return MINI_GAMES_BY_LEVEL.map((entry) => {
-    if (!entry.open(save, level)) return { entry, state: "locked", text: null };
-    const { ready, text } = entry.line(save, level);
-    return { entry, state: ready ? "ready" : "resting", text };
+    if (!entry.open(save, level)) return { entry, state: "locked", text: null, waiting: false };
+    const { ready, text, waiting } = entry.line(save, level);
+    return { entry, state: ready ? "ready" : "resting", text, waiting: ready && waiting === true };
   });
 }
 

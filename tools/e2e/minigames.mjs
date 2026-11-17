@@ -11,6 +11,8 @@
 //   M8 five phone sizes: the sheet inside the screen, no sideways scroll, every tile and button 48 px
 //   M9 the button never covers the Next customer card, and the Kitchen's other buttons still open
 //   M10 no console errors
+//   M11 the painted art (2026-11-18): the sheet has its art on the FIRST tap (no paint-in), eight painted icons, the right card plate per state, a star and glow on a game with
+//       something waiting, the lock badge on a locked game, the Kitchen's button shows the painted controller, and no broken picture anywhere
 // Screenshots: out/minigames-*.png. Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -320,6 +322,77 @@ check(
   geo,
 );
 await shot(page, "minigames-kitchen-320");
+
+// M11: the painted art
+await open(20, 390, 844);
+await sleep(3000); // the Kitchen fetches the sheet's pictures a moment after it opens
+await page.click(BTN);
+await page.waitForSelector(SHEET, { timeout: 5000 });
+const first = await page.evaluate(() => {
+  const sheet = document.querySelector('[data-testid="minigames-sheet"]');
+  const btn = document.querySelector('[data-testid="minigames-shortcut-icon"]');
+  return {
+    artOnFirstFrame: sheet.dataset.art === "1",
+    tilesArt: [...document.querySelectorAll('[data-testid^="minigame-"][data-state]')].map(
+      (t) => t.dataset.art,
+    ),
+    shortcutIcon: !!btn && btn.complete && btn.naturalWidth > 0,
+  };
+});
+await sleep(400);
+const art = await page.evaluate(() => {
+  const imgs = [...document.querySelectorAll('[data-testid="minigames-sheet"] img')];
+  const plate = (id) => {
+    const t = document.querySelector(`[data-testid="minigame-${id}"]`);
+    const span = t?.querySelector("span[style*='border-image']");
+    return span ? getComputedStyle(span).borderImageSource : "";
+  };
+  return {
+    broken: imgs
+      .filter((i) => !(i.complete && i.naturalWidth > 0))
+      .map((i) => i.src.split("/").pop()),
+    icons: document.querySelectorAll('[data-testid^="mg-icon-"]').length,
+    readyPlate: /card-ready/.test(plate("dessert-run")),
+    restingPlate: /card-resting/.test(plate("inspection")),
+    star: !!document.querySelector('[data-testid="mg-star-sauce"]'),
+    glow: !!document.querySelector('[data-testid="mg-glow-sauce"]'),
+    noStarOnFreePlay: !document.querySelector('[data-testid="mg-star-dessert-run"]'),
+    ribbon: !!document.querySelector('[data-testid="minigames-panel"]'),
+  };
+});
+await shot(page, "minigames-art-390");
+await page.click('[data-testid="minigames-close"]');
+await open(5, 390, 844);
+await sleep(3000);
+await openSheet();
+const locked = await page.evaluate(() => {
+  const t = document.querySelector('[data-testid="minigame-car-park"]');
+  const span = t?.querySelector("span[style*='border-image']");
+  return {
+    state: t?.dataset.state,
+    plate: span ? /card-locked/.test(getComputedStyle(span).borderImageSource) : false,
+    lockBadge: !!t?.querySelector('img[src*="lock-badge"]'),
+  };
+});
+check(
+  "M11 the sheet has its painted art on the first tap, eight icons, the right plate per state, a star and glow for a waiting game (none for free play), the lock badge, the Kitchen button's controller, and no broken picture",
+  first.artOnFirstFrame &&
+    first.tilesArt.length === 8 &&
+    first.tilesArt.every((a) => a === "1") &&
+    first.shortcutIcon &&
+    art.broken.length === 0 &&
+    art.icons === 8 &&
+    art.readyPlate &&
+    art.restingPlate &&
+    art.star &&
+    art.glow &&
+    art.noStarOnFreePlay &&
+    art.ribbon &&
+    locked.state === "locked" &&
+    locked.plate &&
+    locked.lockBadge,
+  { first, art, locked },
+);
 
 check(
   "M10 no console errors",

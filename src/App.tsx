@@ -64,6 +64,10 @@ import { type ScreenId } from "@/components/kc/data";
 import { SaveManager, type SaveData } from "@/game/SaveManager";
 import { PauseManager } from "@/game/PauseManager";
 import { AudioManager, type MusicMood } from "@/game/AudioManager";
+import { finishBoot, preloadCritical, setBootHint, setBootProgress } from "@/lib/bootSplash";
+import { paigeUrl } from "@/components/kc/assistant/PaigeArt";
+import intro1Url from "@/assets/story/intro-1-key.webp";
+import intro2Url from "@/assets/story/intro-2-kitchen.webp";
 import {
   getLevel,
   getLevels,
@@ -979,6 +983,26 @@ export function App() {
       for (const x of collectable(synced)) announcedRef.current.add(x.id);
       saveRef.current = synced;
       setSave(synced);
+      // The loading screen (index.html, src/lib/bootSplash.ts) stays until the FIRST screen's pictures and fonts are here, so the player sees the
+      // kitchen whole instead of watching it paint in: the kitchen's backdrop (and Paige when she is hired); the first two story pictures for a new
+      // player. Time-limited: a slow phone sees the game rather than a stuck bar. Nothing here touches the save.
+      setBootProgress(0.5);
+      if (!AudioManager.unlocked) {
+        setBootHint(true);
+        window.addEventListener("pointerdown", () => setBootHint(false), {
+          once: true,
+          capture: true,
+        });
+      }
+      const first: string[] = [];
+      if (isFreshSave && shouldRunIntro(synced)) first.push(intro1Url, intro2Url);
+      else {
+        first.push(
+          KITCHEN_SKIN_SRC[kitchenUpgradeOrDefault(synced.equippedKitchenUpgradeId).asset],
+        );
+        if (RESTAURANT_MODE && assistantHired(synced)) first.push(paigeUrl("cutout-point"));
+      }
+      void preloadCritical(first, { from: 0.5 }).then(finishBoot);
     });
   }, []);
 

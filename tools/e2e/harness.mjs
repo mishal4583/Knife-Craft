@@ -239,6 +239,10 @@ export async function boot(page, save) {
   await page.waitForFunction(() => document.querySelectorAll("button").length > 3, {
     timeout: 20000,
   });
+  // The loading screen (index.html #boot-splash, 2026-11-18) fades away once the first screen's pictures are in: screenshots wait for it.
+  await page
+    .waitForFunction(() => !document.getElementById("boot-splash"), { timeout: 20000 })
+    .catch(() => {});
 }
 
 /** The save as persisted in Bridge storage (null for a player who has never saved). */
