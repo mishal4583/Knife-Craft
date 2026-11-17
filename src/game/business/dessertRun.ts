@@ -18,6 +18,9 @@ import {
  * QA, so "every shipped plate can be won" is proved on the real rules, not on a model of them.
  */
 
+/** The first level Dessert Run opens at (the first of `RUN_TIERS`). */
+export const DESSERT_RUN_FIRST_LEVEL = 18;
+
 /** The stage is 540 x 960 logical pixels, the size every other screen and all the art are made for. */
 export const STAGE = { w: 540, h: 960 } as const;
 export const CELL = 13.5;

@@ -167,6 +167,7 @@ import {
 import { newStepSkipRewardId } from "@/game/ads/stepSkipAd";
 import { ServiceGateSheet } from "@/components/kc/business/DeliveryRoutine";
 import { PREP_COOK_STEPS } from "@/game/business/deliveryFlow";
+import { freePlayFirstLevel } from "@/game/business/miniGames";
 import { staffHireFrom } from "@/game/restaurant/staffRequirements";
 import { dailyPayroll } from "@/game/business/businessStaff";
 import { featuresOpeningAt } from "@/game/config/featureUnlocks";
@@ -1066,6 +1067,19 @@ export function App() {
     ) {
       setLockNotice("Check the delivery first");
       s = "delivery-inspection";
+    }
+    // The two free-play games open at their level (developer 2026-11-17, the Kitchen's Mini-games sheet); the other mini-games keep their own rules.
+    const freePlayFrom = freePlayFirstLevel(s);
+    if (
+      freePlayFrom !== null &&
+      RESTAURANT_MODE &&
+      saveRef.current &&
+      restaurantLevelOf(saveRef.current.levelProgress) < freePlayFrom
+    ) {
+      setLockNotice(
+        `🔒 ${s === "dessert-run" ? "Dessert Run" : "Kitchen Dispatch"} opens at Level ${freePlayFrom}`,
+      );
+      return;
     }
     // Unified Restaurant: no separate Business Day before Level 250 (the Endless Restaurant opens after it).
     if (

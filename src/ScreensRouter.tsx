@@ -15,7 +15,10 @@ import type {
   CleanlinessActionResult,
   DayCleanerOffer,
 } from "@/game/restaurant/cleanliness";
-import { Suspense, lazy, useState } from "react";
+import { Suspense, lazy, useRef, useState } from "react";
+import { DESSERT_RUN_FIRST_LEVEL } from "@/game/business/dessertRun";
+import { CRATE_FIRST_LEVEL } from "@/game/business/crateDispatch";
+import { isMiniGameScreen } from "@/game/business/miniGames";
 import { Kitchen, OrderBoard, BottomNav } from "@/components/kc/Kitchen";
 import { Shop } from "@/components/kc/Shop";
 import { RestaurantProgress } from "@/components/kc/RestaurantProgress";
@@ -127,21 +130,30 @@ const DessertRunGame = lazy(() =>
   loadRestaurantScreens().then((m) => ({ default: m.DessertRunGame })),
 );
 
-/** Developer preview (?dessertRun=<level>): the level whose plate to show, never below the first Dessert Run level. */
-function dessertRunPreviewLevel(): number {
-  if (typeof location === "undefined") return 18;
-  const asked = Number(new URLSearchParams(location.search).get("dessertRun"));
-  return Number.isFinite(asked) && asked >= 18 ? Math.floor(asked) : 18;
+/**
+ * Dessert Run's level: the developer preview link (?dessertRun=<level>) wins, else the player's own level (the Kitchen's
+ * Mini-games sheet opens it from Level 18); never below the first Dessert Run level.
+ */
+function dessertRunPreviewLevel(playerLevel: number): number {
+  const asked =
+    typeof location === "undefined"
+      ? NaN
+      : Number(new URLSearchParams(location.search).get("dessertRun"));
+  const level = Number.isFinite(asked) && asked >= 18 ? asked : playerLevel;
+  return Math.max(DESSERT_RUN_FIRST_LEVEL, Math.floor(level));
 }
 const KitchenDispatchGame = lazy(() =>
   loadRestaurantScreens().then((m) => ({ default: m.KitchenDispatchGame })),
 );
 
-/** Developer preview (?kitchenDispatch=<level>): the level whose counter to show, never below the first Kitchen Dispatch level. */
-function kitchenDispatchPreviewLevel(): number {
-  if (typeof location === "undefined") return 18;
-  const asked = Number(new URLSearchParams(location.search).get("kitchenDispatch"));
-  return Number.isFinite(asked) && asked >= 18 ? Math.floor(asked) : 18;
+/** Kitchen Dispatch's level: the preview link (?kitchenDispatch=<level>) wins, else the player's own level; never below its first level. */
+function kitchenDispatchPreviewLevel(playerLevel: number): number {
+  const asked =
+    typeof location === "undefined"
+      ? NaN
+      : Number(new URLSearchParams(location.search).get("kitchenDispatch"));
+  const level = Number.isFinite(asked) && asked >= 18 ? asked : playerLevel;
+  return Math.max(CRATE_FIRST_LEVEL, Math.floor(level));
 }
 const DeliveryInspectionGame = lazy(() =>
   loadRestaurantScreens().then((m) => ({ default: m.DeliveryInspectionGame })),
@@ -338,10 +350,15 @@ export function ScreensRouter({
 
   // Any normal navigation leaves map-return mode. A map hotspot sets it again
   // so the destination screen always has a direct route back to the map.
+  // A mini-game opened from the Kitchen's Mini-games sheet (developer 2026-11-17) leaves back to the Kitchen; opened from a
+  // routine step or a chip it leaves where it always did.
+  const fromKitchen = useRef(false);
   const routeGo = (destination: ScreenId) => {
+    fromKitchen.current = screen === "kitchen" && isMiniGameScreen(destination);
     setMapReturnAvailable(false);
     go(destination);
   };
+  const leaveTo = (fallback: ScreenId) => routeGo(fromKitchen.current ? "kitchen" : fallback);
 
   const openMapDestination = (destination: ScreenId, zoneId: RestaurantZoneId) => {
     setMapReturnAvailable(true);
@@ -500,7 +517,7 @@ export function ScreensRouter({
                       reducedMotion={save.settings.reducedMotion}
                       hasPrepCook={save.business.staff?.hiredRoles?.includes("prep-cook") ?? false}
                       onAction={fridgeSortAction}
-                      onExit={() => routeGo("inventory")}
+                      onExit={() => leaveTo("inventory")}
                     />
                   </div>
                 </Suspense>
@@ -515,7 +532,7 @@ export function ScreensRouter({
                       onAction={deliveryInspectionAction}
                       hasPrepCook={save.business.staff?.hiredRoles?.includes("prep-cook") ?? false}
                       onUnpack={() => routeGo("fridge-sort")}
-                      onExit={() => routeGo("inventory")}
+                      onExit={() => leaveTo("inventory")}
                     />
                   </div>
                 </Suspense>
@@ -531,7 +548,7 @@ export function ScreensRouter({
                       onWatchAd={sauceRoundsAd}
                       hasPrepCook={save.business.staff?.hiredRoles?.includes("prep-cook") ?? false}
                       onShelf={() => routeGo("sauce-shelf")}
-                      onExit={() => routeGo("inventory")}
+                      onExit={() => leaveTo("inventory")}
                     />
                   </div>
                 </Suspense>
@@ -557,7 +574,7 @@ export function ScreensRouter({
                       reducedMotion={save.settings.reducedMotion}
                       hasPrepCook={save.business.staff?.hiredRoles?.includes("prep-cook") ?? false}
                       onAction={stockroomSortAction}
-                      onExit={() => routeGo("inventory-supplies")}
+                      onExit={() => leaveTo("inventory-supplies")}
                     />
                   </div>
                 </Suspense>
@@ -573,7 +590,7 @@ export function ScreensRouter({
                       onAction={carParkAction}
                       towAdAvailable={carParkTowAdAvailable(save) && rushAdAvailable}
                       onTowAd={carParkTowAd}
-                      onExit={() => routeGo("restaurant-map")}
+                      onExit={() => leaveTo("restaurant-map")}
                     />
                   </div>
                 </Suspense>
@@ -583,8 +600,8 @@ export function ScreensRouter({
                   <div className="relative h-full w-full overflow-hidden">
                     <DessertRunGame
                       save={save}
-                      level={dessertRunPreviewLevel()}
-                      onExit={() => routeGo("restaurant-map")}
+                      level={dessertRunPreviewLevel(restaurantLevelOf(save.levelProgress))}
+                      onExit={() => leaveTo("restaurant-map")}
                     />
                   </div>
                 </Suspense>
@@ -594,8 +611,8 @@ export function ScreensRouter({
                   <div className="relative h-full w-full overflow-hidden">
                     <KitchenDispatchGame
                       save={save}
-                      level={kitchenDispatchPreviewLevel()}
-                      onExit={() => routeGo("restaurant-map")}
+                      level={kitchenDispatchPreviewLevel(restaurantLevelOf(save.levelProgress))}
+                      onExit={() => leaveTo("restaurant-map")}
                     />
                   </div>
                 </Suspense>
@@ -609,8 +626,8 @@ export function ScreensRouter({
                     reducedMotion={save.settings.reducedMotion}
                     initialPractice
                     onFinish={() => null}
-                    onSkip={() => routeGo("inventory")}
-                    onClose={() => routeGo("inventory")}
+                    onSkip={() => leaveTo("inventory")}
+                    onClose={() => leaveTo("inventory")}
                     onNext={() => undefined}
                     onGuideSeen={(stage) => cleanlinessAction({ kind: "check-howto", stage })}
                   />

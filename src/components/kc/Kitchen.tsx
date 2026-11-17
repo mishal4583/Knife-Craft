@@ -63,6 +63,7 @@ import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 import { AskPaigeButton } from "./assistant/AskPaigeButton";
 import { useAssistant } from "./assistant/AssistantContext";
 import { PaigeStage } from "./assistant/PaigeStage";
+import { MiniGamesSheet } from "./MiniGamesSheet";
 
 /** Icon for a level's own `unlockReward.type` (levelTypes.ts) — display-only. */
 const REWARD_TYPE_ICON: Record<"knife" | "board" | "cafe_milestone" | "story", string> = {
@@ -166,6 +167,7 @@ export function Kitchen({
   const levelProgress = save.levelProgress;
   const attention = useContext(NavAttentionContext);
   const [expandedShortcut, setExpandedShortcut] = useState<string | null>(null);
+  const [miniGamesOpen, setMiniGamesOpen] = useState(false);
 
   // Café progression (Phase 10A) — the restaurant rank card at the top left.
   const cafeProgress = getCafeProgress(levelProgress);
@@ -326,7 +328,7 @@ export function Kitchen({
         </div>
       </div>
 
-      <div className="absolute right-3 top-[16%] z-20 flex flex-col items-end gap-2 [@media(max-height:700px)]:top-[13%] [@media(max-height:700px)]:gap-1.5 land:!top-[68px]">
+      <div className="absolute right-3 top-[16%] z-20 flex flex-col items-end gap-2 [--pill:56px] [@media(max-height:620px)]:[--pill:48px] [@media(max-height:700px)]:top-[13%] [@media(max-height:700px)]:gap-1.5 land:!top-[68px]">
         <button
           type="button"
           data-testid="daily-check-shortcut"
@@ -355,7 +357,7 @@ export function Kitchen({
             go("daily-maintenance");
           }}
           className={cn(
-            "press group relative inline-flex h-14 w-14 shrink-0 items-center justify-start overflow-visible rounded-full border border-[#f5d58b] bg-[linear-gradient(145deg,#fff7dc_0%,#f5d998_100%)] px-2 font-ui text-walnut-dark shadow-[0_4px_0_rgba(111,66,28,0.48),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,255,255,0.95)] transition-[width,border-radius,transform,box-shadow] duration-300 ease-out motion-reduce:transition-none hover:w-[166px] hover:rounded-full focus-visible:w-[166px] focus-visible:rounded-full active:translate-y-0.5 active:shadow-[0_2px_0_rgba(111,66,28,0.48),0_4px_8px_rgba(35,18,8,0.3)]",
+            "press group relative inline-flex h-[var(--pill)] w-[var(--pill)] shrink-0 items-center justify-start overflow-visible rounded-full border border-[#f5d58b] bg-[linear-gradient(145deg,#fff7dc_0%,#f5d998_100%)] px-[calc((var(--pill)-40px)/2)] font-ui text-walnut-dark shadow-[0_4px_0_rgba(111,66,28,0.48),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,255,255,0.95)] transition-[width,border-radius,transform,box-shadow] duration-300 ease-out motion-reduce:transition-none hover:w-[166px] hover:rounded-full focus-visible:w-[166px] focus-visible:rounded-full active:translate-y-0.5 active:shadow-[0_2px_0_rgba(111,66,28,0.48),0_4px_8px_rgba(35,18,8,0.3)]",
             expandedShortcut === "daily-maintenance" && "w-[166px] rounded-full",
           )}
         >
@@ -442,7 +444,7 @@ export function Kitchen({
                 if (unlocked) go(item.id);
               }}
               className={cn(
-                "press group relative inline-flex h-14 w-14 shrink-0 items-center justify-start overflow-visible rounded-full border border-[#f5d58b] bg-[linear-gradient(145deg,#fff7dc_0%,#f5d998_100%)] px-2 font-ui text-[13px] font-extrabold text-walnut-dark shadow-[0_4px_0_rgba(111,66,28,0.48),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,255,255,0.95)] transition-[width,border-radius,transform,box-shadow] duration-300 ease-out motion-reduce:transition-none hover:w-[166px] hover:rounded-full focus-visible:w-[166px] focus-visible:rounded-full active:translate-y-0.5 active:shadow-[0_2px_0_rgba(111,66,28,0.48),0_4px_8px_rgba(35,18,8,0.3)]",
+                "press group relative inline-flex h-[var(--pill)] w-[var(--pill)] shrink-0 items-center justify-start overflow-visible rounded-full border border-[#f5d58b] bg-[linear-gradient(145deg,#fff7dc_0%,#f5d998_100%)] px-[calc((var(--pill)-40px)/2)] font-ui text-[13px] font-extrabold text-walnut-dark shadow-[0_4px_0_rgba(111,66,28,0.48),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,255,255,0.95)] transition-[width,border-radius,transform,box-shadow] duration-300 ease-out motion-reduce:transition-none hover:w-[166px] hover:rounded-full focus-visible:w-[166px] focus-visible:rounded-full active:translate-y-0.5 active:shadow-[0_2px_0_rgba(111,66,28,0.48),0_4px_8px_rgba(35,18,8,0.3)]",
                 expandedShortcut === item.id && "w-[166px] rounded-full",
                 !unlocked && "opacity-75",
               )}
@@ -482,7 +484,41 @@ export function Kitchen({
             </button>
           );
         })}
+
+        {/* Every mini-game in one place (developer 2026-11-17): a game logo that opens the sheet of games, each from its own level. */}
+        {RESTAURANT_MODE ? (
+          <button
+            type="button"
+            data-testid="minigames-shortcut"
+            aria-label="Mini-games"
+            aria-haspopup="dialog"
+            onClick={() => setMiniGamesOpen(true)}
+            className="press group relative inline-flex h-[var(--pill)] w-[var(--pill)] shrink-0 items-center justify-start overflow-visible rounded-full border border-[#f5d58b] bg-[linear-gradient(145deg,#fff7dc_0%,#f5d998_100%)] px-[calc((var(--pill)-40px)/2)] font-ui text-[13px] font-extrabold text-walnut-dark shadow-[0_4px_0_rgba(111,66,28,0.48),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,255,255,0.95)] transition-[width,transform,box-shadow] duration-300 ease-out motion-reduce:transition-none hover:w-[166px] focus-visible:w-[166px] active:translate-y-0.5 active:shadow-[0_2px_0_rgba(111,66,28,0.48),0_4px_8px_rgba(35,18,8,0.3)]"
+          >
+            <span
+              aria-hidden
+              className="grid h-10 w-10 shrink-0 place-items-center text-[24px] leading-none"
+            >
+              🎮
+            </span>
+            <span
+              aria-hidden="true"
+              className="ml-0 max-w-0 overflow-hidden whitespace-nowrap text-left opacity-0 transition-[max-width,opacity,margin] duration-200 group-hover:ml-1 group-hover:max-w-[104px] group-hover:opacity-100 group-focus-visible:ml-1 group-focus-visible:max-w-[104px] group-focus-visible:opacity-100"
+            >
+              Mini-games
+            </span>
+          </button>
+        ) : null}
       </div>
+
+      {RESTAURANT_MODE && miniGamesOpen ? (
+        <MiniGamesSheet
+          save={save}
+          level={reached}
+          go={go}
+          onClose={() => setMiniGamesOpen(false)}
+        />
+      ) : null}
 
       {/* The city-ranking badge above is the Kitchen screen's entry point
           for Restaurant Progress; Market remains in BottomNav. */}
