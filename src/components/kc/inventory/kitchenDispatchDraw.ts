@@ -1,12 +1,13 @@
 import {
   CRATE_COLORS,
-  gatesOf,
-  type Crate,
+  type Brick,
   type CrateBoard,
   type CrateIngredient,
-  type GateSide,
+  type Gate,
+  type Side,
+  type Wall,
 } from "@/game/business/crateDispatch";
-import { PANELS, kdSheet, type KdArt } from "./kitchenDispatchArt";
+import type { KdArt } from "./kitchenDispatchArt";
 
 /** Kitchen Dispatch is drawn on a 540 x 960 stage, like every other screen. */
 export const KD_STAGE = { w: 540, h: 960 } as const;
@@ -18,52 +19,37 @@ export const GRID_BOX = {
   size: (FRAME_BOX.size * 940) / 1080,
 } as const;
 export const COUNTER_Y = 750;
-export const LEAVE_MS = 460;
-export const SHAKE_MS = 380;
+export const LEAVE_MS = 480;
 
 export const cellOf = (board: Pick<CrateBoard, "cols">) => GRID_BOX.size / board.cols;
-export const crateRect = (c: Crate, board: Pick<CrateBoard, "cols">) => {
-  const cell = cellOf(board);
-  return {
-    x: GRID_BOX.x + c.x * cell,
-    y: GRID_BOX.y + c.y * cell,
-    w: (c.axis === "h" ? c.length : 1) * cell,
-    h: (c.axis === "v" ? c.length : 1) * cell,
-  };
-};
 
-/** The crate under a stage point, or null. */
-export function crateAt(board: CrateBoard, x: number, y: number): Crate | null {
+/** The grid cell under a stage point (it may be outside the board), as whole numbers and as a fraction. */
+export function cellAt(board: Pick<CrateBoard, "cols">, x: number, y: number) {
   const cell = cellOf(board);
-  const cx = Math.floor((x - GRID_BOX.x) / cell);
-  const cy = Math.floor((y - GRID_BOX.y) / cell);
-  if (cx < 0 || cy < 0 || cx >= board.cols || cy >= board.rows) return null;
-  return (
-    board.vehicles.find((c) =>
-      c.axis === "h"
-        ? cy === c.y && cx >= c.x && cx < c.x + c.length
-        : cx === c.x && cy >= c.y && cy < c.y + c.length,
-    ) ?? null
-  );
+  const fx = (x - GRID_BOX.x) / cell;
+  const fy = (y - GRID_BOX.y) / cell;
+  return { cx: Math.floor(fx), cy: Math.floor(fy), fx, fy };
 }
 
-export type Leaving = { crate: Crate; start: number };
+export type Leaving = { brick: Brick; gate: Gate; start: number };
 export type KdView = {
   now: number;
   art: KdArt | null;
   leaving: Leaving[];
-  shake: { id: string; start: number } | null;
-  hint: { id: string; until: number } | null;
+  /** Where each crate is drawn (in cells, easing toward its cell), so a crate glides instead of jumping. */
+  vis: Map<string, { x: number; y: number }>;
+  /** The crate under the finger. */
+  dragId: string | null;
+  /** A booster waiting for a tap: the crates (Rocket) or the dark blocks (Hammer) pulse. */
+  armed: "rocket" | "hammer" | null;
 };
 
-const ANGLE: Record<GateSide, number> = {
+const ANGLE: Record<Side, number> = {
   right: 0,
   bottom: Math.PI / 2,
   left: Math.PI,
   top: -Math.PI / 2,
 };
-const dirAngle = (c: Crate) =>
-  ANGLE[c.axis === "h" ? (c.dir < 0 ? "left" : "right") : c.dir < 0 ? "top" : "bottom"];
 
 function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
@@ -71,125 +57,205 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
   else ctx.rect(x, y, w, h);
 }
 
-/** A white arrow with a dark outline, pointing right at angle 0, `s` stage px long. */
-function drawArrow(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, s: number) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle);
-  ctx.beginPath();
-  ctx.moveTo(-s * 0.5, -s * 0.17);
-  ctx.lineTo(s * 0.08, -s * 0.17);
-  ctx.lineTo(s * 0.08, -s * 0.4);
-  ctx.lineTo(s * 0.55, 0);
-  ctx.lineTo(s * 0.08, s * 0.4);
-  ctx.lineTo(s * 0.08, s * 0.17);
-  ctx.lineTo(-s * 0.5, s * 0.17);
-  ctx.closePath();
-  ctx.lineJoin = "round";
-  ctx.lineWidth = Math.max(2, s * 0.13);
-  ctx.strokeStyle = "#4a2815";
-  ctx.stroke();
-  ctx.fillStyle = "#fffaf0";
-  ctx.fill();
-  ctx.restore();
+/** `hex` mixed toward `to` by `t` (0 to 1). */
+function mix(hex: string, to: string, t: number): string {
+  const a = parseInt(hex.slice(1), 16);
+  const b = parseInt(to.slice(1), 16);
+  const ch = (s: number) => Math.round(((a >> s) & 255) * (1 - t) + ((b >> s) & 255) * t);
+  return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
 }
 
-function drawCrate(
+function drawWall(ctx: CanvasRenderingContext2D, board: CrateBoard, w: Wall, pulse: number) {
+  const cell = cellOf(board);
+  const pad = cell * 0.03;
+  const x = GRID_BOX.x + w.x * cell + pad;
+  const y = GRID_BOX.y + w.y * cell + pad;
+  const wd = w.w * cell - pad * 2;
+  const ht = w.h * cell - pad * 2;
+  const rad = cell * 0.16;
+  ctx.fillStyle = "rgba(0,0,0,.4)";
+  rr(ctx, x, y + cell * 0.06, wd, ht, rad);
+  ctx.fill();
+  const g = ctx.createLinearGradient(0, y, 0, y + ht);
+  g.addColorStop(0, "#5a6070");
+  g.addColorStop(0.55, "#3c414d");
+  g.addColorStop(1, "#2a2e37");
+  ctx.fillStyle = g;
+  rr(ctx, x, y, wd, ht, rad);
+  ctx.fill();
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = "#14161b";
+  ctx.stroke();
+  // a lighter top edge and two rivets, so it reads as a solid fixture
+  ctx.strokeStyle = "rgba(255,255,255,.28)";
+  ctx.lineWidth = 2;
+  rr(ctx, x + 3, y + 3, wd - 6, ht - 6, rad * 0.8);
+  ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,.22)";
+  for (const [rx, ry] of [
+    [x + cell * 0.2, y + cell * 0.2],
+    [x + wd - cell * 0.2, y + ht - cell * 0.2],
+  ] as const) {
+    ctx.beginPath();
+    ctx.arc(rx, ry, cell * 0.06, 0, 7);
+    ctx.fill();
+  }
+  if (pulse > 0) {
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    ctx.strokeStyle = "#fff1a8";
+    ctx.shadowColor = "#ffd24a";
+    ctx.shadowBlur = 14;
+    ctx.lineWidth = 4;
+    rr(ctx, x, y, wd, ht, rad);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/** A crate: a toy brick in its ingredient's colour, with a stud on every cell and the ingredient on the stud. */
+function drawBrick(
   ctx: CanvasRenderingContext2D,
   art: KdArt | null,
   board: CrateBoard,
-  c: Crate,
-  dx: number,
-  dy: number,
+  b: Brick,
+  gx: number,
+  gy: number,
+  lifted: boolean,
+  pulse: number,
 ) {
   const cell = cellOf(board);
-  const r = crateRect(c, board);
-  const pad = cell * 0.04;
-  const len = c.length * cell - pad * 2;
-  const thick = cell - pad * 2;
-  const cx = r.x + r.w / 2 + dx;
-  const cy = r.y + r.h / 2 + dy;
-  const sheet = art ? kdSheet(art, c.length === 3 ? "crate-3" : "crate-2", c.color) : null;
+  const base = CRATE_COLORS[b.color];
+  const pad = cell * 0.035;
+  const lift = lifted ? cell * 0.05 : 0;
+  const x = GRID_BOX.x + gx * cell + pad;
+  const y = GRID_BOX.y + gy * cell + pad - lift;
+  const wd = b.w * cell - pad * 2;
+  const ht = b.h * cell - pad * 2;
+  const rad = cell * 0.2;
+  ctx.fillStyle = `rgba(0,0,0,${lifted ? 0.42 : 0.32})`;
+  rr(ctx, x, y + cell * (lifted ? 0.13 : 0.07) + lift, wd, ht, rad);
+  ctx.fill();
+  const g = ctx.createLinearGradient(0, y, 0, y + ht);
+  g.addColorStop(0, mix(base, "#ffffff", 0.22));
+  g.addColorStop(0.5, base);
+  g.addColorStop(1, mix(base, "#000000", 0.25));
+  ctx.fillStyle = g;
+  rr(ctx, x, y, wd, ht, rad);
+  ctx.fill();
+  ctx.lineWidth = 2.6;
+  ctx.strokeStyle = mix(base, "#000000", 0.5);
+  ctx.stroke();
+  // a bright top-left edge and a darker bottom edge: the bevel
   ctx.save();
-  ctx.translate(cx, cy);
-  if (c.axis === "v") ctx.rotate(c.dir > 0 ? Math.PI / 2 : -Math.PI / 2);
-  else if (c.dir < 0) ctx.scale(-1, 1);
-  if (sheet) ctx.drawImage(sheet, -len / 2, -thick / 2, len, thick);
-  else {
-    ctx.fillStyle = CRATE_COLORS[c.color as CrateIngredient] ?? "#B98A5A";
-    rr(ctx, -len / 2, -thick / 2, len, thick, cell * 0.14);
-    ctx.fill();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = "#4a2815";
+  rr(ctx, x, y, wd, ht, rad);
+  ctx.clip();
+  ctx.strokeStyle = "rgba(255,255,255,.5)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + ht - rad);
+  ctx.lineTo(x + 2, y + rad * 0.9);
+  ctx.quadraticCurveTo(x + 2, y + 2, x + rad * 0.9, y + 2);
+  ctx.lineTo(x + wd - rad, y + 2);
+  ctx.stroke();
+  ctx.restore();
+  // the studs
+  const sr = cell * 0.34;
+  for (let j = 0; j < b.h; j++)
+    for (let i = 0; i < b.w; i++) {
+      const cx = GRID_BOX.x + (gx + i + 0.5) * cell;
+      const cy = GRID_BOX.y + (gy + j + 0.5) * cell - lift;
+      ctx.fillStyle = "rgba(0,0,0,.3)";
+      ctx.beginPath();
+      ctx.arc(cx, cy + sr * 0.16, sr, 0, 7);
+      ctx.fill();
+      const sg = ctx.createRadialGradient(cx - sr * 0.35, cy - sr * 0.4, sr * 0.1, cx, cy, sr);
+      sg.addColorStop(0, mix(base, "#ffffff", 0.5));
+      sg.addColorStop(0.6, mix(base, "#ffffff", 0.12));
+      sg.addColorStop(1, mix(base, "#000000", 0.12));
+      ctx.fillStyle = sg;
+      ctx.beginPath();
+      ctx.arc(cx, cy, sr, 0, 7);
+      ctx.fill();
+      ctx.lineWidth = 1.6;
+      ctx.strokeStyle = mix(base, "#000000", 0.38);
+      ctx.stroke();
+      const img = art?.images[`ingredient-${b.color as CrateIngredient}`];
+      if (img) ctx.drawImage(img, cx - sr * 0.86, cy - sr * 0.9, sr * 1.72, sr * 1.72);
+    }
+  if (pulse > 0) {
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    ctx.strokeStyle = "#fff1a8";
+    ctx.shadowColor = "#ffd24a";
+    ctx.shadowBlur = 14;
+    ctx.lineWidth = 4;
+    rr(ctx, x, y, wd, ht, rad);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/** A gate in the frame: a plate in the ingredient's colour, with the ingredient and chevrons pointing out of the board. */
+function drawGate(ctx: CanvasRenderingContext2D, art: KdArt | null, board: CrateBoard, g: Gate) {
+  const cell = cellOf(board);
+  const band = (FRAME_BOX.size * 70) / 1080;
+  const thick = Math.min(band * 0.8, 26);
+  const len = g.span * cell - cell * 0.14;
+  const along = (g.at + g.span / 2) * cell;
+  const mid = band * 0.46;
+  const pos =
+    g.side === "top"
+      ? { x: GRID_BOX.x + along, y: GRID_BOX.y - mid }
+      : g.side === "bottom"
+        ? { x: GRID_BOX.x + along, y: GRID_BOX.y + GRID_BOX.size + mid }
+        : g.side === "left"
+          ? { x: GRID_BOX.x - mid, y: GRID_BOX.y + along }
+          : { x: GRID_BOX.x + GRID_BOX.size + mid, y: GRID_BOX.y + along };
+  const base = CRATE_COLORS[g.color];
+  ctx.save();
+  ctx.translate(pos.x, pos.y);
+  ctx.rotate(ANGLE[g.side]); // local +x points out of the board
+  // a dark slot in the frame, then the glowing plate
+  ctx.fillStyle = "rgba(20,10,4,.55)";
+  rr(ctx, -thick / 2 - 3, -len / 2 - 3, thick + 6, len + 6, thick * 0.5);
+  ctx.fill();
+  const pg = ctx.createLinearGradient(-thick / 2, 0, thick / 2, 0);
+  pg.addColorStop(0, mix(base, "#ffffff", 0.3));
+  pg.addColorStop(0.5, base);
+  pg.addColorStop(1, mix(base, "#000000", 0.3));
+  ctx.shadowColor = base;
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = pg;
+  rr(ctx, -thick / 2, -len / 2, thick, len, thick * 0.45);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = mix(base, "#000000", 0.5);
+  ctx.stroke();
+  // chevrons pointing out
+  ctx.strokeStyle = "#fffaf0";
+  ctx.lineWidth = Math.max(2.4, thick * 0.13);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  for (const o of [-len * 0.34, len * 0.34]) {
+    ctx.beginPath();
+    ctx.moveTo(-thick * 0.16, o - thick * 0.22);
+    ctx.lineTo(thick * 0.12, o);
+    ctx.lineTo(-thick * 0.16, o + thick * 0.22);
     ctx.stroke();
   }
   ctx.restore();
-  // the ingredient on every panel, always upright, and the arrow on the plate
-  const panels = PANELS[c.length as 2 | 3];
-  const img = art?.images[`ingredient-${c.color as CrateIngredient}`];
-  const along = (f: number) => (c.dir < 0 ? 1 - f : f) * len;
-  const startX = c.axis === "h" ? r.x + pad : r.y + pad;
-  const at = (f: number) => {
-    const t = startX + along(f);
-    return c.axis === "h" ? { x: t + dx, y: cy } : { x: cx, y: t + dy };
-  };
-  for (const f of panels.at) {
-    const p = at(f);
-    if (img) ctx.drawImage(img, p.x - cell * 0.31, p.y - cell * 0.31, cell * 0.62, cell * 0.62);
-    else {
-      ctx.fillStyle = "#fff4d9";
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, cell * 0.22, 0, 7);
-      ctx.fill();
-    }
-  }
-  const a = at(panels.arrow);
-  drawArrow(ctx, a.x, a.y, dirAngle(c), cell * 0.36);
-}
-
-function drawGates(ctx: CanvasRenderingContext2D, art: KdArt | null, board: CrateBoard) {
-  const cell = cellOf(board);
-  const w = Math.min(cell * 0.82, 62);
-  const h = w * 0.5;
-  const off = (FRAME_BOX.size * (70 - 24)) / 1080 / 2; // the middle of the frame's band
-  for (const g of gatesOf(board)) {
-    const along = (g.index + 0.5) * cell;
-    const pos =
-      g.side === "top"
-        ? { x: GRID_BOX.x + along, y: GRID_BOX.y - off }
-        : g.side === "bottom"
-          ? { x: GRID_BOX.x + along, y: GRID_BOX.y + GRID_BOX.size + off }
-          : g.side === "left"
-            ? { x: GRID_BOX.x - off, y: GRID_BOX.y + along }
-            : { x: GRID_BOX.x + GRID_BOX.size + off, y: GRID_BOX.y + along };
-    ctx.save();
-    ctx.translate(pos.x, pos.y);
-    if (g.side === "left" || g.side === "right") ctx.rotate(Math.PI / 2);
-    const sheet = art ? kdSheet(art, "gate", g.ingredient) : null;
-    if (sheet) ctx.drawImage(sheet, -w / 2, -h / 2, w, h);
-    else {
-      ctx.fillStyle = CRATE_COLORS[g.ingredient as CrateIngredient] ?? "#B98A5A";
-      rr(ctx, -w / 2, -h / 2, w, h, h / 2);
-      ctx.fill();
-    }
-    ctx.restore();
-    // two white chevrons pointing out of the board
-    ctx.save();
-    ctx.translate(pos.x, pos.y);
-    ctx.rotate(ANGLE[g.side]);
-    ctx.strokeStyle = "#fffaf0";
-    ctx.lineWidth = Math.max(2.4, h * 0.16);
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    for (const o of [-h * 0.22, h * 0.14]) {
-      ctx.beginPath();
-      ctx.moveTo(o - h * 0.14, -h * 0.26);
-      ctx.lineTo(o + h * 0.14, 0);
-      ctx.lineTo(o - h * 0.14, h * 0.26);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
+  // the ingredient in the middle, upright
+  const img = art?.images[`ingredient-${g.color as CrateIngredient}`];
+  ctx.fillStyle = "rgba(255,250,240,.92)";
+  ctx.beginPath();
+  ctx.arc(pos.x, pos.y, thick * 0.55, 0, 7);
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = mix(base, "#000000", 0.45);
+  ctx.stroke();
+  if (img) ctx.drawImage(img, pos.x - thick * 0.5, pos.y - thick * 0.5, thick, thick);
 }
 
 export function drawKitchenDispatch(
@@ -223,42 +289,25 @@ export function drawKitchenDispatch(
         ctx.fillRect(px, py, cell, cell);
       }
     }
-  // crates sitting on the board
-  const shaking = view.shake && now - view.shake.start < SHAKE_MS ? view.shake : null;
-  for (const c of board.vehicles) {
-    let dx = 0;
-    let dy = 0;
-    if (shaking && shaking.id === c.id) {
-      const t = (now - shaking.start) / SHAKE_MS;
-      const wob = Math.sin(t * 38) * 5 * (1 - t);
-      if (c.axis === "h") dx = wob;
-      else dy = wob;
-    }
-    drawCrate(ctx, art, board, c, dx, dy);
-    if (shaking && shaking.id === c.id) {
-      const r = crateRect(c, board);
-      ctx.globalAlpha = 0.3 * (1 - (now - shaking.start) / SHAKE_MS);
-      ctx.fillStyle = "#ff4a3a";
-      rr(ctx, r.x + dx + 2, r.y + dy + 2, r.w - 4, r.h - 4, cell * 0.14);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-  }
-  // a hint pulses round a crate that can leave
-  if (view.hint && now < view.hint.until) {
-    const c = board.vehicles.find((v) => v.id === view.hint!.id);
-    if (c) {
-      const r = crateRect(c, board);
-      ctx.save();
-      ctx.globalAlpha = 0.55 + 0.45 * Math.sin(now / 140);
-      ctx.strokeStyle = "#fff1a8";
-      ctx.shadowColor = "#ffd24a";
-      ctx.shadowBlur = 14;
-      ctx.lineWidth = 4.5;
-      rr(ctx, r.x + 1, r.y + 1, r.w - 2, r.h - 2, cell * 0.16);
-      ctx.stroke();
-      ctx.restore();
-    }
+  const pulse = 0.55 + 0.45 * Math.sin(now / 140);
+  // the dark blocks
+  for (const w of board.walls) drawWall(ctx, board, w, view.armed === "hammer" ? pulse : 0);
+  // the crates; the one under the finger last, so it rides over the others
+  const ordered = [...board.bricks].sort(
+    (a, b) => Number(a.id === view.dragId) - Number(b.id === view.dragId),
+  );
+  for (const b of ordered) {
+    const v = view.vis.get(b.id) ?? { x: b.x, y: b.y };
+    drawBrick(
+      ctx,
+      art,
+      board,
+      b,
+      v.x,
+      v.y,
+      b.id === view.dragId,
+      view.armed === "rocket" ? pulse : 0,
+    );
   }
   // the frame over the edges, then the gates on it
   if (img?.frame)
@@ -269,31 +318,25 @@ export function drawKitchenDispatch(
     rr(ctx, FRAME_BOX.x + 12, FRAME_BOX.y + 12, FRAME_BOX.size - 24, FRAME_BOX.size - 24, 24);
     ctx.stroke();
   }
-  drawGates(ctx, art, board);
-  // crates sliding out of their gates, cut off at the frame
+  for (const g of board.gates) drawGate(ctx, art, board, g);
+  // crates sliding out of their gates, cut off at the frame's outer edge
   ctx.save();
   ctx.beginPath();
-  ctx.rect(FRAME_BOX.x + 6, FRAME_BOX.y + 6, FRAME_BOX.size - 12, FRAME_BOX.size - 12);
+  ctx.rect(FRAME_BOX.x + 2, FRAME_BOX.y + 2, FRAME_BOX.size - 4, FRAME_BOX.size - 4);
   ctx.clip();
   for (const l of view.leaving) {
     const p = Math.min(1, (now - l.start) / LEAVE_MS);
-    const r = crateRect(l.crate, board);
-    const reach =
-      l.crate.axis === "h"
-        ? l.crate.dir > 0
-          ? FRAME_BOX.x + FRAME_BOX.size - r.x
-          : r.x + r.w - FRAME_BOX.x
-        : l.crate.dir > 0
-          ? FRAME_BOX.y + FRAME_BOX.size - r.y
-          : r.y + r.h - FRAME_BOX.y;
-    const d = (reach + 6) * p * p;
-    drawCrate(
+    const dist = (cell * Math.max(l.brick.w, l.brick.h) + 70) * p * p;
+    const dir = ANGLE[l.gate.side];
+    drawBrick(
       ctx,
       art,
       board,
-      l.crate,
-      l.crate.axis === "h" ? d * l.crate.dir : 0,
-      l.crate.axis === "v" ? d * l.crate.dir : 0,
+      l.brick,
+      l.brick.x + (Math.cos(dir) * dist) / cell,
+      l.brick.y + (Math.sin(dir) * dist) / cell,
+      false,
+      0,
     );
   }
   ctx.restore();
@@ -301,24 +344,24 @@ export function drawKitchenDispatch(
   if (img?.puff)
     for (const l of view.leaving) {
       const p = (now - l.start) / LEAVE_MS;
-      if (p < 0.55 || p > 1.5) continue;
-      const q = (p - 0.55) / 0.95;
-      const r = crateRect(l.crate, board);
-      const ex =
-        l.crate.axis === "h"
-          ? l.crate.dir > 0
-            ? GRID_BOX.x + GRID_BOX.size + 10
-            : GRID_BOX.x - 10
-          : r.x + r.w / 2;
-      const ey =
-        l.crate.axis === "v"
-          ? l.crate.dir > 0
-            ? GRID_BOX.y + GRID_BOX.size + 10
-            : GRID_BOX.y - 10
-          : r.y + r.h / 2;
-      ctx.globalAlpha = 1 - q;
-      const s = 34 + q * 30;
-      ctx.drawImage(img.puff, ex - s / 2, ey - s / 2 - q * 12, s, s);
+      if (p < 0.5 || p > 1.5) continue;
+      const q = (p - 0.5) / 1;
+      const dir = ANGLE[l.gate.side];
+      const horizontal = l.gate.side === "left" || l.gate.side === "right";
+      const gx = GRID_BOX.x + (l.gate.at + l.gate.span / 2) * cell;
+      const ex = horizontal ? GRID_BOX.x + (l.gate.side === "right" ? GRID_BOX.size : 0) : gx;
+      const ey = horizontal
+        ? gx - GRID_BOX.x + GRID_BOX.y
+        : GRID_BOX.y + (l.gate.side === "bottom" ? GRID_BOX.size : 0);
+      ctx.globalAlpha = Math.max(0, 1 - q);
+      const s = 38 + q * 34;
+      ctx.drawImage(
+        img.puff,
+        ex + Math.cos(dir) * 14 - s / 2,
+        ey + Math.sin(dir) * 14 - s / 2 - q * 10,
+        s,
+        s,
+      );
       ctx.globalAlpha = 1;
     }
   // the counter in front, under the boosters

@@ -10,20 +10,25 @@ import {
 import type { SaveData } from "@/game/SaveManager";
 import { InfoTip } from "@/components/kc/common/InfoTip";
 import {
-  addTime,
+  FREEZE_SECONDS,
+  brickAtCell,
   crateStars,
   cratesLeft,
-  hintCrate,
+  dragBrick,
+  finishDrag,
+  freezeRound,
+  hammerWall,
   roundCleared,
+  rocketBrick,
   startRound,
-  tapCrate,
   undoRound,
-  spendHint,
+  wallAtCell,
+  type Brick,
   type CrateRound,
 } from "@/game/business/crateDispatch";
 import {
   KD_STAGE,
-  crateAt,
+  cellAt,
   drawKitchenDispatch,
   type KdView,
   type Leaving,
@@ -31,8 +36,7 @@ import {
 import { kdUrl, loadKdArt, type KdArt } from "./kitchenDispatchArt";
 
 type Phase = "play" | "won" | "lost";
-const HINT_MS = 3200;
-const NOTICE_MS = 1500;
+const NOTICE_MS = 1700;
 const WIN_DELAY_MS = 650;
 
 /** A box in stage units (540 x 960), placed as percentages so it scales with the stage. */
@@ -55,8 +59,9 @@ const clock = (seconds: number) => {
 };
 
 /**
- * Kitchen Dispatch (developer 2026-11-17, replaces nothing: a preview at /?kitchenDispatch=<level>, not in the daily
- * routine, no rewards, ads or analytics until the developer has played it on a real phone). All the rules live in
+ * Kitchen Dispatch (developer 2026-11-17, rebuilt the same day on the sliding-block "door" mechanism: drag a crate across the
+ * counter and push it against the gate of its own colour). A preview at /?kitchenDispatch=<level> and on the Kitchen's
+ * Mini-games sheet; no rewards, ads or analytics until the developer has played it on a real phone. All the rules live in
  * `game/business/crateDispatch.ts`; this screen draws the board, reads the finger and counts the seconds.
  */
 export function KitchenDispatchGame({
@@ -88,9 +93,21 @@ export function KitchenDispatchGame({
   const pausedRef = useRef(false);
   const timeRef = useRef(initial.seconds);
   const leavingRef = useRef<Leaving[]>([]);
-  const shakeRef = useRef<KdView["shake"]>(null);
-  const hintRef = useRef<KdView["hint"]>(null);
+  const visRef = useRef<KdView["vis"]>(new Map());
+  const dragIdRef = useRef<string | null>(null);
+  const dragRef = useRef<{
+    id: string;
+    pointerId: number;
+    from: Brick;
+    offX: number;
+    offY: number;
+    moved: boolean;
+  } | null>(null);
+  const armedRef = useRef<KdView["armed"]>(null);
+  const freezeRef = useRef(0);
   const timers = useRef<number[]>([]);
+  const [armed, setArmedState] = useState<KdView["armed"]>(null);
+  const [frozen, setFrozen] = useState(false);
 
   const setRoundBoth = useCallback((next: CrateRound) => {
     roundRef.current = next;
@@ -99,6 +116,10 @@ export function KitchenDispatchGame({
   const setPhaseBoth = useCallback((next: Phase) => {
     phaseRef.current = next;
     setPhase(next);
+  }, []);
+  const setArmed = useCallback((next: KdView["armed"]) => {
+    armedRef.current = next;
+    setArmedState(next);
   }, []);
   const say = useCallback((text: string) => {
     setNotice(text);
@@ -110,8 +131,13 @@ export function KitchenDispatchGame({
     timers.current.forEach((t) => window.clearTimeout(t));
     timers.current = [];
     leavingRef.current = [];
-    shakeRef.current = null;
-    hintRef.current = null;
+    visRef.current = new Map();
+    dragRef.current = null;
+    dragIdRef.current = null;
+    freezeRef.current = 0;
+    setFrozen(false);
+    armedRef.current = null;
+    setArmedState(null);
     pausedRef.current = false;
     timeRef.current = initial.seconds;
     setRoundBoth(initial);
@@ -150,9 +176,12 @@ export function KitchenDispatchGame({
       if (
         phaseRef.current === "play" &&
         !pausedRef.current &&
-        roundRef.current.board.vehicles.length > 0
+        roundRef.current.board.bricks.length > 0
       ) {
-        timeRef.current -= dt;
+        if (freezeRef.current > 0) {
+          freezeRef.current = Math.max(0, freezeRef.current - dt);
+          if (freezeRef.current === 0) setFrozen(false);
+        } else timeRef.current -= dt;
         if (timeRef.current <= 0) {
           timeRef.current = 0;
           phaseRef.current = "lost";
@@ -165,13 +194,30 @@ export function KitchenDispatchGame({
         setSecondsLeft(timeRef.current);
       }
       leavingRef.current = leavingRef.current.filter((l) => now - l.start < 1100);
+      // every crate glides toward its cell
+      const ease = 1 - Math.exp(-dt * 26);
+      const vis = visRef.current;
+      const here = new Set<string>();
+      for (const b of roundRef.current.board.bricks) {
+        here.add(b.id);
+        const v = vis.get(b.id);
+        if (!v) vis.set(b.id, { x: b.x, y: b.y });
+        else {
+          v.x += (b.x - v.x) * ease;
+          v.y += (b.y - v.y) * ease;
+          if (Math.abs(b.x - v.x) < 0.002) v.x = b.x;
+          if (Math.abs(b.y - v.y) < 0.002) v.y = b.y;
+        }
+      }
+      for (const id of [...vis.keys()]) if (!here.has(id)) vis.delete(id);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       drawKitchenDispatch(ctx, roundRef.current.board, {
         now,
         art: artRef.current,
         leaving: leavingRef.current,
-        shake: shakeRef.current,
-        hint: hintRef.current,
+        vis,
+        dragId: dragIdRef.current,
+        armed: armedRef.current,
       });
       raf = requestAnimationFrame(loop);
     };
@@ -179,57 +225,121 @@ export function KitchenDispatchGame({
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  const onTap = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (phaseRef.current !== "play" || pausedRef.current) return;
-    const box = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - box.left) / box.width) * KD_STAGE.w;
-    const y = ((e.clientY - box.top) / box.height) * KD_STAGE.h;
-    const crate = crateAt(roundRef.current.board, x, y);
-    if (!crate) return;
-    const res = tapCrate(roundRef.current, crate.id);
-    const now = performance.now();
-    if (res.kind === "blocked") {
-      shakeRef.current = { id: crate.id, start: now };
-      setRoundBoth(res.round);
-      say("Something is in the way");
-    } else if (res.kind === "out") {
-      leavingRef.current = [...leavingRef.current, { crate: res.crate, start: now }];
-      if (hintRef.current?.id === crate.id) hintRef.current = null;
-      setRoundBoth(res.round);
-      if (roundCleared(res.round))
-        timers.current.push(
-          window.setTimeout(() => {
-            if (phaseRef.current === "play") setPhaseBoth("won");
-          }, WIN_DELAY_MS),
-        );
+  /** The stage point under a pointer event. */
+  const stagePoint = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    return {
+      x: ((e.clientX - r.left) / r.width) * KD_STAGE.w,
+      y: ((e.clientY - r.top) / r.height) * KD_STAGE.h,
+    };
+  };
+  const winSoon = (next: CrateRound) => {
+    if (!roundCleared(next)) return;
+    timers.current.push(
+      window.setTimeout(() => {
+        if (phaseRef.current === "play") setPhaseBoth("won");
+      }, WIN_DELAY_MS),
+    );
+  };
+  /** A crate has gone out of its gate: it slides away, and the board may be clear. */
+  const sendOut = (brick: Brick, gate: Leaving["gate"], next: CrateRound) => {
+    leavingRef.current = [...leavingRef.current, { brick, gate, start: performance.now() }];
+    visRef.current.delete(brick.id);
+    setRoundBoth(next);
+    winSoon(next);
+  };
+
+  const onDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (phaseRef.current !== "play" || pausedRef.current || dragRef.current) return;
+    const p = stagePoint(e);
+    const round = roundRef.current;
+    const { cx, cy, fx, fy } = cellAt(round.board, p.x, p.y);
+    const armedNow = armedRef.current;
+    if (armedNow === "rocket") {
+      const b = brickAtCell(round.board, cx, cy);
+      if (!b) return;
+      const gate = round.board.gates.find((g) => g.color === b.color);
+      if (!gate) return;
+      sendOut(b, gate, rocketBrick(round, b.id));
+      setArmed(null);
+      return;
     }
+    if (armedNow === "hammer") {
+      const w = wallAtCell(round.board, cx, cy);
+      if (!w) return;
+      setRoundBoth(hammerWall(round, w.id));
+      setArmed(null);
+      say("Smashed!");
+      return;
+    }
+    const brick = brickAtCell(round.board, cx, cy);
+    if (!brick) return;
+    dragRef.current = {
+      id: brick.id,
+      pointerId: e.pointerId,
+      from: brick,
+      offX: fx - brick.x,
+      offY: fy - brick.y,
+      moved: false,
+    };
+    dragIdRef.current = brick.id;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* a browser without capture: the drag still works while the finger stays on the canvas */
+    }
+  };
+  const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const d = dragRef.current;
+    if (!d || e.pointerId !== d.pointerId || phaseRef.current !== "play" || pausedRef.current)
+      return;
+    const p = stagePoint(e);
+    const { fx, fy } = cellAt(roundRef.current.board, p.x, p.y);
+    const res = dragBrick(roundRef.current, d.id, Math.round(fx - d.offX), Math.round(fy - d.offY));
+    if (!res.moved) return;
+    d.moved = true;
+    if (res.out && res.brick) {
+      const next = finishDrag(res.round, d.from, { moved: true, out: true });
+      dragRef.current = null;
+      dragIdRef.current = null;
+      sendOut(res.brick, res.out, next);
+      return;
+    }
+    setRoundBoth(res.round);
+  };
+  const onUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const d = dragRef.current;
+    if (!d || e.pointerId !== d.pointerId) return;
+    dragRef.current = null;
+    dragIdRef.current = null;
+    if (d.moved) setRoundBoth(finishDrag(roundRef.current, d.from, { moved: true, out: false }));
   };
 
   const playing = phase === "play" && !paused;
-  const onHint = () => {
-    if (!playing || roundRef.current.hints <= 0) return;
-    const id = hintCrate(roundRef.current);
-    if (!id) return;
-    hintRef.current = { id, until: performance.now() + HINT_MS };
-    setRoundBoth(spendHint(roundRef.current));
+  const arm = (kind: "rocket" | "hammer") => {
+    if (!playing) return;
+    if (armedRef.current === kind) return setArmed(null);
+    setArmed(kind);
+    say(kind === "rocket" ? "Tap a crate to launch it" : "Tap a dark block to smash it");
   };
-  const onTime = () => {
-    if (!playing || roundRef.current.extras <= 0) return;
-    const next = addTime(roundRef.current);
-    timeRef.current += next.seconds - roundRef.current.seconds;
-    setRoundBoth(next);
-    setSecondsLeft(timeRef.current);
-    say("20 seconds added");
+  const onFreeze = () => {
+    if (!playing || roundRef.current.freezes <= 0 || freezeRef.current > 0) return;
+    freezeRef.current = FREEZE_SECONDS;
+    setFrozen(true);
+    setRoundBoth(freezeRound(roundRef.current));
+    say(`Clock frozen for ${FREEZE_SECONDS} seconds`);
   };
   const onUndo = () => {
-    if (!playing || roundRef.current.undos <= 0 || roundRef.current.gone.length === 0) return;
-    const back = roundRef.current.gone[roundRef.current.gone.length - 1]!;
-    leavingRef.current = leavingRef.current.filter((l) => l.crate.id !== back.id);
-    setRoundBoth(undoRound(roundRef.current));
+    if (!playing || roundRef.current.undos <= 0 || roundRef.current.history.length === 0) return;
+    const next = undoRound(roundRef.current);
+    if (next === roundRef.current) return;
+    const ids = new Set(next.board.bricks.map((b) => b.id));
+    leavingRef.current = leavingRef.current.filter((l) => !ids.has(l.brick.id));
+    setRoundBoth(next);
   };
 
-  const stars = crateStars(round.blocked);
   const budget = Math.max(1, round.seconds);
+  const stars = crateStars(secondsLeft, budget);
   const frac = Math.max(0, Math.min(1, secondsLeft / budget));
   const low = secondsLeft <= 15;
   const roundBtn: CSSProperties = {
@@ -237,22 +347,50 @@ export function KitchenDispatchGame({
     backgroundSize: "100% 100%",
   };
   const boosters: Array<{
-    key: "hint" | "time" | "undo";
+    key: "freeze" | "rocket" | "hammer" | "undo";
     label: string;
     n: number;
-    cell: number;
+    cell?: number;
+    glyph?: string;
     on: () => void;
     off: boolean;
+    lit: boolean;
   }> = [
-    { key: "hint", label: "Hint", n: round.hints, cell: 0, on: onHint, off: round.hints <= 0 },
-    { key: "time", label: "Time", n: round.extras, cell: 1, on: onTime, off: round.extras <= 0 },
+    {
+      key: "freeze",
+      label: "Freeze",
+      n: round.freezes,
+      cell: 1,
+      on: onFreeze,
+      off: round.freezes <= 0 || frozen,
+      lit: frozen,
+    },
+    {
+      key: "rocket",
+      label: "Rocket",
+      n: round.rockets,
+      glyph: "🚀",
+      on: () => arm("rocket"),
+      off: round.rockets <= 0,
+      lit: armed === "rocket",
+    },
+    {
+      key: "hammer",
+      label: "Hammer",
+      n: round.hammers,
+      glyph: "🔨",
+      on: () => arm("hammer"),
+      off: round.hammers <= 0 || round.board.walls.length === 0,
+      lit: armed === "hammer",
+    },
     {
       key: "undo",
       label: "Undo",
       n: round.undos,
       cell: 2,
       on: onUndo,
-      off: round.undos <= 0 || round.gone.length === 0,
+      off: round.undos <= 0 || round.history.length === 0,
+      lit: false,
     },
   ];
 
@@ -262,7 +400,15 @@ export function KitchenDispatchGame({
       data-testid="kitchen-dispatch-game"
       data-phase={phase}
       data-crates={cratesLeft(round)}
-      data-blocked={round.blocked}
+      data-moves={round.moves}
+      data-frozen={frozen || undefined}
+      data-armed={armed ?? undefined}
+      data-board={JSON.stringify({
+        cols: round.board.cols,
+        bricks: round.board.bricks.map((b) => [b.id, b.x, b.y, b.w, b.h, b.color]),
+        walls: round.board.walls.map((w) => [w.id, w.x, w.y, w.w, w.h]),
+        gates: round.board.gates.map((g) => [g.id, g.side, g.at, g.span, g.color]),
+      })}
     >
       <div
         className="relative select-none [container-type:inline-size]"
@@ -274,9 +420,12 @@ export function KitchenDispatchGame({
         <canvas
           ref={canvasRef}
           data-testid="kd-canvas"
-          aria-label="Kitchen Dispatch: crates on a counter, each with an arrow"
+          aria-label="Kitchen Dispatch: drag each crate across the counter to the gate of its own colour"
           className="block h-full w-full touch-none"
-          onPointerUp={onTap}
+          onPointerDown={onDown}
+          onPointerMove={onMove}
+          onPointerUp={onUp}
+          onPointerCancel={onUp}
         />
 
         {/* the top bar */}
@@ -334,14 +483,15 @@ export function KitchenDispatchGame({
             ...fs(16.5),
           }}
         >
-          <span>Clear every crate before the timer runs out.</span>
+          <span>Drag each crate to the gate of its own colour.</span>
         </div>
         <span className="grid place-items-center" style={box(452, 124, 50, 50)}>
           <InfoTip label="How to play">
-            Tap a crate and it slides the way its arrow points, out through its gate, when nothing
-            is in the way. A crate that is blocked shakes. Clear every crate before the timer ends.
-            Hint lights a crate that can go. Time adds 20 seconds. Undo puts the last crate back.
-            Fewer blocked taps earn more stars.
+            Drag a crate across the counter. It cannot pass through other crates or the dark blocks.
+            Push it against the gate of its own colour, with its width inside the gate, and it
+            leaves. Clear every crate before the timer ends. Freeze stops the clock for 10 seconds,
+            Rocket sends one crate out, Hammer smashes one dark block and Undo takes back your last
+            move. More time left earns more stars.
           </InfoTip>
         </span>
 
@@ -364,9 +514,11 @@ export function KitchenDispatchGame({
               className="h-full rounded-full"
               style={{
                 width: `${frac * 100}%`,
-                background: low
-                  ? "linear-gradient(#ff7a5a,#d6402a)"
-                  : "linear-gradient(#8de06a,#3fa43a)",
+                background: frozen
+                  ? "linear-gradient(#9ee7ff,#3fa6d6)"
+                  : low
+                    ? "linear-gradient(#ff7a5a,#d6402a)"
+                    : "linear-gradient(#8de06a,#3fa43a)",
                 transition: "width .25s linear",
               }}
             />
@@ -433,7 +585,7 @@ export function KitchenDispatchGame({
 
         {/* the boosters on the counter */}
         {boosters.map((b, i) => {
-          const cx = 135 + i * 135;
+          const cx = 84 + i * 124;
           return (
             <div key={b.key}>
               <button
@@ -442,21 +594,28 @@ export function KitchenDispatchGame({
                 disabled={b.off}
                 aria-label={`${b.label}, ${b.n} left`}
                 data-testid={`kd-booster-${b.key}`}
-                className="grid place-items-center transition-transform active:scale-90 disabled:opacity-45"
+                data-lit={b.lit || undefined}
+                className="grid place-items-center transition-transform active:scale-90 disabled:opacity-45 data-[lit]:scale-110 data-[lit]:drop-shadow-[0_0_10px_#ffd24a]"
                 style={{ ...box(cx - 42, 764, 84, 84), ...TOUCH, ...roundBtn }}
               >
-                <span
-                  aria-hidden="true"
-                  style={{
-                    display: "block",
-                    width: "74%",
-                    height: "74%",
-                    backgroundImage: img("booster-icons"),
-                    backgroundSize: "300% 100%",
-                    backgroundPosition: `${b.cell * 50}% 50%`,
-                    backgroundRepeat: "no-repeat",
-                  }}
-                />
+                {b.glyph ? (
+                  <span aria-hidden="true" style={fs(34)}>
+                    {b.glyph}
+                  </span>
+                ) : (
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      display: "block",
+                      width: "74%",
+                      height: "74%",
+                      backgroundImage: img("booster-icons"),
+                      backgroundSize: "300% 100%",
+                      backgroundPosition: `${(b.cell ?? 0) * 50}% 50%`,
+                      backgroundRepeat: "no-repeat",
+                    }}
+                  />
+                )}
               </button>
               <span
                 className="grid place-items-center font-black text-[#5a3419]"
@@ -512,7 +671,7 @@ export function KitchenDispatchGame({
                 <p className="mt-1 text-sm font-bold" data-testid="kd-result">
                   <span aria-label={`${stars} stars`}>{"⭐".repeat(stars)}</span>
                   <br />
-                  {round.blocked} blocked {round.blocked === 1 ? "tap" : "taps"}
+                  {clock(secondsLeft)} left · {round.moves} {round.moves === 1 ? "move" : "moves"}
                 </p>
               ) : phase === "lost" ? (
                 <p className="mt-1 text-sm">

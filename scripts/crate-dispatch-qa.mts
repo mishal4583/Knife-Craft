@@ -1,4 +1,5 @@
-// Kitchen Dispatch QA (developer 2026-11-17). Pure rules: every board solvable, the moves, undo, time, hints, gates.
+// Kitchen Dispatch QA (developer 2026-11-17, rebuilt the same day on the sliding-block "door" mechanism).
+// Pure rules: every board can be won, the drag, the gates, undo, the boosters, the clock, and that no move can spoil a board.
 // Run: npx tsx scripts/crate-dispatch-qa.mts   (the browser side is tools/e2e/kitchendispatch.mjs)
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -22,31 +23,54 @@ const check = (name: string, fn: () => void) => {
 };
 try {
   const rules = await vite.ssrLoadModule("/src/game/business/crateDispatch.ts");
-  const park = await vite.ssrLoadModule("/src/game/business/carPark.ts");
   const {
     CRATE_TIERS,
     CRATE_INGREDIENTS,
     CRATE_COLORS,
+    FREEZE_SECONDS,
+    START_BOOSTERS,
     crateTierFor,
     crateBoardFor,
     crateSeconds,
-    startRound,
-    tapCrate,
-    undoRound,
-    addTime,
-    hintCrate,
-    spendHint,
     crateStars,
-    crateSolution,
-    gatesOf,
-    crateSide,
+    solveBoard,
+    exitSteps,
+    brickFits,
+    gateTouched,
+    startRound,
+    dragBrick,
+    finishDrag,
+    undoRound,
+    freezeRound,
+    rocketBrick,
+    hammerWall,
     roundCleared,
     cratesLeft,
-    EXTRA_TIME_SECONDS,
-    START_BOOSTERS,
+    brickAtCell,
   } = rules;
 
-  console.log("A. Every board is solvable, and fits its tier");
+  // A small counter to test by hand: 5 x 5, a tomato gate on the right (rows 0-1), a dark block at (2, 2).
+  const hand = (over: Record<string, unknown> = {}) => ({
+    cols: 5,
+    rows: 5,
+    walls: [{ id: "w1", x: 2, y: 2, w: 1, h: 1 }],
+    gates: [{ id: "g1", side: "right", at: 0, span: 2, color: "tomato" }],
+    bricks: [{ id: "b1", x: 0, y: 0, w: 2, h: 1, color: "tomato" }],
+    ...over,
+  });
+  const roundOf = (board: any) => ({
+    board,
+    history: [],
+    seconds: 100,
+    total: board.bricks.length,
+    freezes: 2,
+    rockets: 2,
+    hammers: 2,
+    undos: 3,
+    moves: 0,
+  });
+
+  console.log("A. Every board can be won, and fits its tier");
   check("A1: four tiers from Level 18 / 28 / 45 / 65, never below the first", () => {
     assert.deepEqual(
       CRATE_TIERS.map((t: { from: number }) => t.from),
@@ -59,49 +83,79 @@ try {
   const SEEDS = 150;
   CRATE_TIERS.forEach((tier: any, index: number) => {
     check(
-      `A${index + 2}: tier ${index + 1} (${tier.cols}x${tier.rows}): ${SEEDS} boards, all solvable and in bounds`,
+      `A${index + 2}: tier ${index + 1} (${tier.cols}x${tier.rows}): ${SEEDS} boards, all winnable, well formed, and as hard as the tier says`,
       () => {
-        let hardEnough = 0;
         for (let seed = 1; seed <= SEEDS; seed++) {
           const board = crateBoardFor(tier.from, seed);
+          const at = `seed ${seed}`;
           assert.equal(board.cols, tier.cols);
           assert.equal(board.rows, tier.rows);
-          assert.ok(crateSolution(board), `seed ${seed}: not solvable`);
-          const n = board.vehicles.length;
+          const sol = solveBoard(board);
+          assert.ok(sol.solvable, `${at}: cannot be won`);
+          const n = board.bricks.length;
           assert.ok(
-            n >= tier.minVehicles && n <= tier.maxVehicles,
-            `seed ${seed}: ${n} crates, tier wants ${tier.minVehicles}-${tier.maxVehicles}`,
+            n >= tier.bricks[0] && n <= tier.bricks[1],
+            `${at}: ${n} crates, tier wants ${tier.bricks[0]}-${tier.bricks[1]}`,
           );
+          assert.ok(sol.waves.length >= tier.minWaves, `${at}: only ${sol.waves.length} waves`);
+          assert.ok(
+            sol.free >= 1 && sol.free <= tier.maxFree,
+            `${at}: ${sol.free} crates free at the start (1-${tier.maxFree})`,
+          );
+          // nothing overlaps, nothing is off the counter
           const taken = new Set<string>();
-          for (const c of board.vehicles) {
+          const claim = (x: number, y: number, w: number, h: number, what: string) => {
             assert.ok(
-              tier.lengths.includes(c.length),
-              `seed ${seed}: a crate of ${c.length} cells`,
+              x >= 0 && y >= 0 && x + w <= board.cols && y + h <= board.rows,
+              `${at}: ${what} off the counter`,
             );
-            assert.ok(c.length === 2 || c.length === 3, "the painted crates are 2 and 3 cells");
-            for (let i = 0; i < c.length; i++) {
-              const x = c.axis === "h" ? c.x + i : c.x;
-              const y = c.axis === "v" ? c.y + i : c.y;
-              assert.ok(
-                x >= 0 && y >= 0 && x < board.cols && y < board.rows,
-                `seed ${seed}: out of the board`,
-              );
-              const key = `${x},${y}`;
-              assert.ok(!taken.has(key), `seed ${seed}: two crates on ${key}`);
-              taken.add(key);
-            }
+            for (let j = 0; j < h; j++)
+              for (let i = 0; i < w; i++) {
+                const key = `${x + i},${y + j}`;
+                assert.ok(!taken.has(key), `${at}: ${what} overlaps on ${key}`);
+                taken.add(key);
+              }
+          };
+          for (const w of board.walls) claim(w.x, w.y, w.w, w.h, w.id);
+          for (const b of board.bricks) {
+            claim(b.x, b.y, b.w, b.h, b.id);
             assert.ok(
-              (CRATE_INGREDIENTS as readonly string[]).includes(c.color),
-              `seed ${seed}: unknown ingredient ${c.color}`,
+              tier.sizes.some(([w, h]: number[]) => w === b.w && h === b.h),
+              `${at}: a ${b.w}x${b.h} crate is not a tier size`,
+            );
+            assert.ok(
+              (CRATE_INGREDIENTS as readonly string[]).includes(b.color),
+              `${at}: ${b.color}`,
             );
           }
-          const free = board.vehicles.filter((c: any) => park.canLeave(board, c.id)).length;
-          if (free >= tier.minFree && free <= tier.maxFree) hardEnough += 1;
+          // the gates: one per ingredient, inside the frame's sides, not overlapping, every crate fits its gate, no dark block in a gate's mouth
+          assert.equal(board.gates.length, tier.colors, `${at}: one gate for each ingredient`);
+          assert.equal(new Set(board.gates.map((g: any) => g.color)).size, board.gates.length);
+          for (const g of board.gates) {
+            const length = g.side === "left" || g.side === "right" ? board.rows : board.cols;
+            assert.ok(g.at >= 0 && g.at + g.span <= length, `${at}: gate off its side`);
+            assert.equal(g.span, tier.span);
+            for (const o of board.gates)
+              if (o !== g && o.side === g.side)
+                assert.ok(g.at + g.span < o.at || o.at + o.span < g.at, `${at}: gates touch`);
+            for (let k = g.at; k < g.at + g.span; k++) {
+              const x = g.side === "left" ? 0 : g.side === "right" ? board.cols - 1 : k;
+              const y = g.side === "top" ? 0 : g.side === "bottom" ? board.rows - 1 : k;
+              assert.ok(
+                !board.walls.some(
+                  (w: any) => x >= w.x && x < w.x + w.w && y >= w.y && y < w.y + w.h,
+                ),
+                `${at}: a dark block in a gate's mouth`,
+              );
+            }
+          }
+          for (const b of board.bricks) {
+            const g = board.gates.find((x: any) => x.color === b.color);
+            assert.ok(g, `${at}: ${b.id} has no gate`);
+            const cross = g.side === "left" || g.side === "right" ? b.h : b.w;
+            assert.ok(cross <= g.span, `${at}: ${b.id} is wider than its gate`);
+          }
         }
-        assert.ok(
-          hardEnough / SEEDS >= 0.8,
-          `only ${hardEnough}/${SEEDS} boards start with ${tier.minFree}-${tier.maxFree} crates free`,
-        );
       },
     );
   });
@@ -109,158 +163,346 @@ try {
     assert.deepEqual(crateBoardFor(28, 7), crateBoardFor(28, 7));
     assert.notDeepEqual(crateBoardFor(28, 7), crateBoardFor(28, 8));
   });
-  check(
-    "A7: ingredients are dealt like a deck: a board of 8 or more shows at least 6 kinds",
-    () => {
-      for (let seed = 1; seed <= 40; seed++) {
-        const board = crateBoardFor(45, seed);
-        assert.ok(new Set(board.vehicles.map((c: any) => c.color)).size >= 6, `seed ${seed}`);
-      }
-      for (const name of CRATE_INGREDIENTS) assert.match(CRATE_COLORS[name], /^#[0-9A-F]{6}$/);
-      assert.equal(
-        new Set(Object.values(CRATE_COLORS)).size,
-        CRATE_INGREDIENTS.length,
-        "a colour for each, all different",
-      );
-    },
-  );
-  check("A8: a board is built in under 800 ms (a phone)", () => {
+  check("A7: the colours are all different, and a harder tier shows more ingredients", () => {
+    for (const name of CRATE_INGREDIENTS) assert.match(CRATE_COLORS[name], /^#[0-9A-F]{6}$/);
+    assert.equal(new Set(Object.values(CRATE_COLORS)).size, CRATE_INGREDIENTS.length);
+    const kinds = (level: number) => {
+      let most = 0;
+      for (let seed = 1; seed <= 20; seed++)
+        most = Math.max(
+          most,
+          new Set(crateBoardFor(level, seed).bricks.map((b: any) => b.color)).size,
+        );
+      return most;
+    };
+    assert.ok(kinds(18) <= 3 && kinds(65) >= 5, `${kinds(18)} then ${kinds(65)}`);
+  });
+  check("A8: a board is built in under 800 ms (a phone), and tiers get harder, not easier", () => {
     for (const level of [18, 28, 45, 65]) {
       const t0 = performance.now();
-      crateBoardFor(level, 99);
+      for (let s = 0; s < 5; s++) crateBoardFor(level, 99 + s);
       assert.ok(
-        performance.now() - t0 < 800,
-        `level ${level}: ${(performance.now() - t0).toFixed(0)} ms`,
+        performance.now() - t0 < 4000,
+        `level ${level}: ${(performance.now() - t0).toFixed(0)} ms for 5`,
       );
     }
+    const mean = (level: number) => {
+      let w = 0;
+      for (let s = 1; s <= 40; s++) w += solveBoard(crateBoardFor(level, s)).waves.length;
+      return w / 40;
+    };
+    const m = [18, 28, 45, 65].map(mean);
+    assert.ok(
+      m[0] < m[1] && m[1] < m[2] && m[2] < m[3],
+      `waves per tier ${m.map((x) => x.toFixed(1))}`,
+    );
   });
 
-  console.log("B. The moves");
-  check("B1: a free crate leaves; the board loses exactly it and it is remembered", () => {
-    const round = startRound(28, 3);
-    const free = round.board.vehicles.find((c: any) => park.canLeave(round.board, c.id));
-    const out = tapCrate(round, free.id);
-    assert.equal(out.kind, "out");
-    assert.equal(out.round.board.vehicles.length, round.board.vehicles.length - 1);
-    assert.equal(out.round.gone.length, 1);
-    assert.equal(out.round.blocked, 0);
-  });
-  check("B2: a blocked crate stays, the tap is counted, and it says who is in the way", () => {
-    const round = startRound(45, 5);
-    const stuck = round.board.vehicles.find((c: any) => !park.canLeave(round.board, c.id));
-    assert.ok(stuck, "a tier 3 board starts with a blocked crate");
-    const res = tapCrate(round, stuck.id);
-    assert.equal(res.kind, "blocked");
-    assert.deepEqual(res.round.board, round.board);
-    assert.equal(res.round.blocked, 1);
-    assert.ok(res.by.length >= 1);
-  });
-  check("B3: a crate that is not there is ignored", () => {
-    const round = startRound(18, 1);
-    assert.equal(tapCrate(round, "nope").kind, "none");
+  console.log("B. The drag");
+  check("B1: a crate follows the target one cell at a time and stops at a dark block", () => {
+    // b1 (2 x 1) at (0, 2) dragged right: the dark block at (2, 2) stops it flush against it
+    const board = hand({ bricks: [{ id: "b1", x: 0, y: 2, w: 2, h: 1, color: "carrot" }] });
+    const res = dragBrick(roundOf(board), "b1", 3, 2);
+    assert.equal(res.moved, false, "it is already against the block");
+    const res2 = dragBrick(roundOf(board), "b1", 0, 4);
+    assert.ok(res2.moved);
+    assert.deepEqual([res2.round.board.bricks[0].x, res2.round.board.bricks[0].y], [0, 4]);
   });
   check(
-    "B4: taking the crates in the proven order clears every board with no blocked tap and 3 stars",
+    "B2: a crate cannot pass through another crate, a dark block or the edge of the counter",
+    () => {
+      const board = hand({
+        bricks: [
+          { id: "b1", x: 0, y: 3, w: 1, h: 1, color: "carrot" },
+          { id: "b2", x: 2, y: 3, w: 1, h: 1, color: "onion" },
+        ],
+      });
+      const right = dragBrick(roundOf(board), "b1", 4, 3);
+      assert.equal(
+        right.round.board.bricks.find((b: any) => b.id === "b1").x,
+        1,
+        "stops against b2",
+      );
+      const off = dragBrick(roundOf(board), "b1", -3, 3);
+      assert.equal(off.moved, false, "never off the counter");
+      const far = dragBrick(roundOf(board), "b2", 9, 9);
+      const b2 = far.round.board.bricks.find((b: any) => b.id === "b2");
+      assert.ok(b2.x <= 4 && b2.y <= 4, "stays on the 5 x 5 counter");
+    },
+  );
+  check("B3: a blocked drag slides along the obstacle toward the target", () => {
+    // b1 at (1,2) dragged toward (4,4): the way right is open, so it goes right then down
+    const board = hand({ bricks: [{ id: "b1", x: 1, y: 3, w: 1, h: 1, color: "carrot" }] });
+    const res = dragBrick(roundOf(board), "b1", 4, 4);
+    const b = res.round.board.bricks[0];
+    assert.deepEqual([b.x, b.y], [4, 4]);
+  });
+  check(
+    "B4: a crate pushed against the gate of ITS colour, with its width inside the gate, leaves",
+    () => {
+      const board = hand();
+      const res = dragBrick(roundOf(board), "b1", 3, 0);
+      assert.ok(res.out, "it left");
+      assert.equal(res.out.side, "right");
+      assert.deepEqual([res.brick.x, res.brick.y], [3, 0]);
+      assert.equal(res.round.board.bricks.length, 0);
+      assert.ok(roundCleared(res.round));
+    },
+  );
+  check("B5: another colour's crate, or one wider than the gate, does not leave", () => {
+    const wrong = hand({ bricks: [{ id: "b1", x: 0, y: 0, w: 2, h: 1, color: "onion" }] });
+    const r1 = dragBrick(roundOf(wrong), "b1", 3, 0);
+    assert.equal(r1.out, null);
+    assert.equal(r1.round.board.bricks[0].x, 3, "it sits against the wrong gate");
+    // a 1 x 3 crate (3 high) cannot go through a 2-wide gate on the right
+    const tall = hand({ bricks: [{ id: "b1", x: 0, y: 0, w: 1, h: 3, color: "tomato" }] });
+    const r2 = dragBrick(roundOf(tall), "b1", 4, 0);
+    assert.equal(r2.out, null, "3 high does not fit a gate 2 high");
+    assert.equal(gateTouched(tall, "tomato", 4, 0, 1, 2)?.id, "g1", "2 high does");
+    assert.equal(gateTouched(tall, "tomato", 4, 1, 1, 2), null, "rows 1-2 are not inside rows 0-1");
+  });
+  check("B6: dragging writes no history; finishDrag writes one entry for the whole drag", () => {
+    const board = hand({ bricks: [{ id: "b1", x: 0, y: 3, w: 1, h: 1, color: "carrot" }] });
+    const r = roundOf(board);
+    const mid = dragBrick(r, "b1", 3, 3);
+    assert.equal(mid.round.history.length, 0);
+    const done = finishDrag(mid.round, board.bricks[0], { moved: true, out: false });
+    assert.equal(done.history.length, 1);
+    assert.equal(done.moves, 1);
+    assert.deepEqual(finishDrag(r, board.bricks[0], { moved: false, out: false }), r);
+  });
+  check("B7: brickAtCell finds the crate under any of its cells", () => {
+    const board = hand({ bricks: [{ id: "b1", x: 1, y: 3, w: 2, h: 2, color: "carrot" }] });
+    for (const [x, y] of [
+      [1, 3],
+      [2, 3],
+      [1, 4],
+      [2, 4],
+    ])
+      assert.equal(brickAtCell(board, x, y)?.id, "b1");
+    assert.equal(brickAtCell(board, 3, 3), null);
+  });
+
+  console.log("C. The boards can really be won by dragging (the real drag function, cell by cell)");
+  /** The fewest-cell path to a cell touching the crate's gate, by the same rules as the engine; null when there is none. */
+  const pathOut = (board: any, brick: any) => {
+    const key = (x: number, y: number) => `${x},${y}`;
+    const prev = new Map<string, string | null>([[key(brick.x, brick.y), null]]);
+    const queue: Array<[number, number]> = [[brick.x, brick.y]];
+    for (let head = 0; head < queue.length; head++) {
+      const [x, y] = queue[head];
+      if (gateTouched(board, brick.color, x, y, brick.w, brick.h)) {
+        const path: Array<[number, number]> = [];
+        for (let k: string | null = key(x, y); k; k = prev.get(k) ?? null) {
+          const [px, py] = k.split(",").map(Number);
+          path.unshift([px, py]);
+        }
+        return path;
+      }
+      for (const [sx, sy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ]) {
+        const nx = x + sx;
+        const ny = y + sy;
+        if (prev.has(key(nx, ny)) || !brickFits(board, brick.id, nx, ny)) continue;
+        prev.set(key(nx, ny), key(x, y));
+        queue.push([nx, ny]);
+      }
+    }
+    return null;
+  };
+  check(
+    "C1: following each crate's own path with dragBrick clears every board of every tier (20 each)",
     () => {
       for (const level of [18, 28, 45, 65])
         for (let seed = 1; seed <= 20; seed++) {
           let round = startRound(level, seed);
-          for (const id of crateSolution(round.board)) {
-            const res = tapCrate(round, id);
-            assert.equal(res.kind, "out", `level ${level} seed ${seed}`);
-            round = res.round;
+          for (let guard = 0; guard < 60 && !roundCleared(round); guard++) {
+            const ready = round.board.bricks.find((b: any) => exitSteps(round.board, b) >= 0);
+            assert.ok(ready, `level ${level} seed ${seed}: nothing can leave`);
+            const path = pathOut(round.board, ready);
+            assert.ok(path, `level ${level} seed ${seed}: no path for ${ready.id}`);
+            const from = round.board.bricks.find((b: any) => b.id === ready.id);
+            let out = false;
+            for (const [x, y] of path.slice(1)) {
+              const res = dragBrick(round, ready.id, x, y);
+              assert.ok(
+                res.moved,
+                `level ${level} seed ${seed}: the drag to ${x},${y} did not move`,
+              );
+              round = res.round;
+              if (res.out) {
+                round = finishDrag(round, from, { moved: true, out: true });
+                out = true;
+                break;
+              }
+            }
+            assert.ok(out, `level ${level} seed ${seed}: ${ready.id} never left`);
           }
-          assert.ok(roundCleared(round));
+          assert.ok(roundCleared(round), `level ${level} seed ${seed}`);
           assert.equal(cratesLeft(round), 0);
-          assert.equal(crateStars(round.blocked), 3);
         }
     },
   );
-  check("B5: stars: 0 blocked taps = 3, 1 or 2 = 2, more = 1", () => {
-    assert.deepEqual([0, 1, 2, 3, 9].map(crateStars), [3, 2, 2, 1, 1]);
-  });
+  check(
+    "C2: no move can spoil a board: 40 random drags (and crates leaving) can all be taken back, and the board can be won again (15 boards a tier)",
+    () => {
+      let seedState = 12345;
+      const rnd = () => {
+        seedState = (Math.imul(seedState, 1664525) + 1013904223) >>> 0;
+        return seedState / 4294967296;
+      };
+      for (const level of [18, 28, 45, 65])
+        for (let seed = 1; seed <= 15; seed++) {
+          const start = startRound(level, seed);
+          let round = { ...start, undos: 999 };
+          for (let step = 0; step < 40 && !roundCleared(round); step++) {
+            const b = round.board.bricks[Math.floor(rnd() * round.board.bricks.length)];
+            const res = dragBrick(
+              round,
+              b.id,
+              Math.floor(rnd() * round.board.cols),
+              Math.floor(rnd() * round.board.rows),
+            );
+            round = finishDrag(res.round, b, { moved: res.moved, out: !!res.out });
+          }
+          while (round.history.length > 0) {
+            const next = undoRound(round);
+            assert.notEqual(
+              next,
+              round,
+              `level ${level} seed ${seed}: a drag could not be taken back`,
+            );
+            round = next;
+          }
+          assert.deepEqual(
+            [...round.board.bricks].sort((a: any, b: any) => a.id.localeCompare(b.id)),
+            [...start.board.bricks].sort((a: any, b: any) => a.id.localeCompare(b.id)),
+            `level ${level} seed ${seed}: not back to the start`,
+          );
+          assert.ok(solveBoard(round.board).solvable, `level ${level} seed ${seed}`);
+        }
+    },
+  );
 
-  console.log("C. Undo, time and hints");
-  check("C1: Undo puts the last crate back exactly where it was and costs one Undo", () => {
-    const round = startRound(28, 4);
-    const free = round.board.vehicles.find((c: any) => park.canLeave(round.board, c.id));
-    const out = tapCrate(round, free.id).round;
-    const back = undoRound(out);
-    assert.equal(back.undos, START_BOOSTERS.undo - 1);
-    assert.equal(back.gone.length, 0);
-    const restored = back.board.vehicles.find((c: any) => c.id === free.id);
-    assert.deepEqual(restored, free);
-    assert.ok(crateSolution(back.board), "the board is still solvable after Undo");
+  console.log("D. Undo");
+  check("D1: Undo takes back a whole drag and costs one", () => {
+    const board = hand({ bricks: [{ id: "b1", x: 0, y: 3, w: 1, h: 1, color: "carrot" }] });
+    const r = roundOf(board);
+    const res = dragBrick(r, "b1", 3, 3);
+    const after = finishDrag(res.round, board.bricks[0], { moved: true, out: false });
+    const back = undoRound(after);
+    assert.deepEqual(back.board.bricks, board.bricks);
+    assert.equal(back.undos, r.undos - 1);
+    assert.equal(back.history.length, 0);
   });
-  check("C2: Undo with nothing to undo, or none left, changes nothing", () => {
+  check("D2: Undo brings back a crate that left, where it stood before the drag", () => {
+    const board = hand({ bricks: [{ id: "b1", x: 0, y: 0, w: 2, h: 1, color: "tomato" }] });
+    const r = roundOf(board);
+    const res = dragBrick(r, "b1", 3, 0);
+    assert.ok(res.out);
+    const after = finishDrag(res.round, board.bricks[0], { moved: true, out: true });
+    const back = undoRound(after);
+    assert.deepEqual(back.board.bricks, board.bricks);
+    assert.ok(solveBoard(back.board).solvable);
+  });
+  check("D3: Undo with nothing to undo, or none left, changes nothing", () => {
     const fresh = startRound(18, 2);
     assert.deepEqual(undoRound(fresh), fresh);
-    let round = fresh;
-    const free = round.board.vehicles.find((c: any) => park.canLeave(round.board, c.id));
-    round = { ...tapCrate(round, free.id).round, undos: 0 };
-    assert.deepEqual(undoRound(round), round);
-  });
-  check("C3: the clock gives time for every crate; Extra Time adds 20 s and costs one", () => {
-    assert.equal(crateSeconds(10), 100);
-    const round = startRound(28, 1);
-    assert.equal(round.seconds, crateSeconds(round.board.vehicles.length));
-    const more = addTime(round);
-    assert.equal(more.seconds, round.seconds + EXTRA_TIME_SECONDS);
-    assert.equal(more.extras, START_BOOSTERS.time - 1);
-    assert.deepEqual(addTime({ ...round, extras: 0 }), { ...round, extras: 0 });
-  });
-  check("C4: a hint names a crate that can leave now, and costs one Hint", () => {
-    for (let seed = 1; seed <= 30; seed++) {
-      const round = startRound(45, seed);
-      const id = hintCrate(round);
-      assert.ok(id && park.canLeave(round.board, id), `seed ${seed}`);
-    }
-    const round = startRound(18, 1);
-    assert.equal(spendHint(round).hints, START_BOOSTERS.hint - 1);
-    assert.deepEqual(spendHint({ ...round, hints: 0 }), { ...round, hints: 0 });
-    assert.equal(hintCrate({ ...round, board: { ...round.board, vehicles: [] } }), null);
-  });
-  check("C5: following hints alone clears a board", () => {
-    let round = startRound(45, 6);
-    for (let guard = 0; guard < 60 && !roundCleared(round); guard++) {
-      const id = hintCrate(round);
-      assert.ok(id);
-      round = tapCrate(round, id).round;
-    }
-    assert.ok(roundCleared(round), "a hint is always a move that makes progress");
-    assert.equal(round.blocked, 0);
+    const board = hand({ bricks: [{ id: "b1", x: 0, y: 3, w: 1, h: 1, color: "carrot" }] });
+    const res = dragBrick(roundOf(board), "b1", 3, 3);
+    const after = {
+      ...finishDrag(res.round, board.bricks[0], { moved: true, out: false }),
+      undos: 0,
+    };
+    assert.deepEqual(undoRound(after), after);
   });
 
-  console.log("D. The gates and the source");
-  check("D1: every crate's line has a gate on the side it leaves by", () => {
-    const board = crateBoardFor(45, 11);
-    const gates = gatesOf(board);
-    for (const c of board.vehicles) {
-      const side = crateSide(c);
-      const index = c.axis === "h" ? c.y : c.x;
-      assert.ok(
-        gates.some((g: any) => g.side === side && g.index === index),
-        `${c.id}`,
-      );
-      assert.equal(
-        side,
-        c.axis === "h" ? (c.dir < 0 ? "left" : "right") : c.dir < 0 ? "top" : "bottom",
-      );
+  console.log("E. The boosters, the clock and the stars");
+  check("E1: the clock gives time for every crate", () => {
+    assert.equal(crateSeconds(10), 130);
+    const round = startRound(28, 1);
+    assert.equal(round.seconds, crateSeconds(round.board.bricks.length));
+    assert.equal(round.total, round.board.bricks.length);
+  });
+  check(
+    "E2: Freeze costs one, holds the clock for 10 s (the screen), and does nothing at zero",
+    () => {
+      assert.equal(FREEZE_SECONDS, 10);
+      const round = startRound(18, 1);
+      assert.equal(freezeRound(round).freezes, START_BOOSTERS.freeze - 1);
+      assert.deepEqual(freezeRound({ ...round, freezes: 0 }), { ...round, freezes: 0 });
+    },
+  );
+  check("E3: Rocket sends one crate out wherever it is, costs one, and Undo brings it back", () => {
+    const round = startRound(45, 3);
+    const id = round.board.bricks[0].id;
+    const out = rocketBrick(round, id);
+    assert.equal(out.board.bricks.length, round.board.bricks.length - 1);
+    assert.equal(out.rockets, START_BOOSTERS.rocket - 1);
+    assert.equal(out.history.length, 1);
+    assert.ok(solveBoard(out.board).solvable);
+    assert.deepEqual(
+      undoRound(out).board.bricks.find((b: any) => b.id === id),
+      round.board.bricks[0],
+    );
+    assert.deepEqual(rocketBrick({ ...round, rockets: 0 }, id), { ...round, rockets: 0 });
+    assert.deepEqual(rocketBrick(round, "nope"), round);
+  });
+  check("E4: Hammer smashes one dark block, costs one, and never makes a board harder", () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const round = startRound(45, seed);
+      const w = round.board.walls[0];
+      assert.ok(w, `seed ${seed}: a tier 3 board has dark blocks`);
+      const out = hammerWall(round, w.id);
+      assert.equal(out.board.walls.length, round.board.walls.length - 1);
+      assert.equal(out.hammers, START_BOOSTERS.hammer - 1);
+      const before = solveBoard(round.board);
+      const after = solveBoard(out.board);
+      assert.ok(after.solvable && after.waves.length <= before.waves.length);
     }
-    assert.equal(
-      new Set(gates.map((g: any) => g.side + g.index)).size,
-      gates.length,
-      "one gate a line",
+    const round = startRound(18, 1);
+    assert.deepEqual(hammerWall({ ...round, hammers: 0 }, round.board.walls[0].id), {
+      ...round,
+      hammers: 0,
+    });
+    assert.deepEqual(hammerWall(round, "nope"), round);
+  });
+  check("E5: stars: 45 % of the clock left or more = 3, 20 % = 2, less = 1", () => {
+    assert.deepEqual(
+      [100, 45, 44, 20, 19, 0].map((left) => crateStars(left, 100)),
+      [3, 3, 2, 2, 1, 1],
     );
   });
-  check("D2: no uncontrolled randomness or clocks in the rules", () => {
+  check("E6: the boosters on the screen are the four the rules have", () => {
+    assert.deepEqual(START_BOOSTERS, { freeze: 2, rocket: 2, hammer: 2, undo: 3 });
+  });
+
+  console.log("F. The source");
+  check("F1: no uncontrolled randomness or clocks in the rules", () => {
     const text = readFileSync("src/game/business/crateDispatch.ts", "utf8");
     assert.ok(!/Math\.random|Date\.now|performance\.now/.test(text));
   });
-  check("D3: the crates never touch money, stock or the save", () => {
+  check("F2: the crates never touch money, stock or the save", () => {
     const text = readFileSync("src/game/business/crateDispatch.ts", "utf8");
     assert.ok(!/SaveData|credits|ledger|inventory/i.test(text.replace(/\/\*[\s\S]*?\*\//g, "")));
   });
+  check(
+    "F3: the screen drags (pointer down, move, up), has the four boosters, and no longer loads the old arrow crates",
+    () => {
+      const game = readFileSync("src/components/kc/inventory/KitchenDispatchGame.tsx", "utf8");
+      assert.ok(game.includes("onPointerDown={onDown}") && game.includes("onPointerMove={onMove}"));
+      assert.ok(game.includes("dragBrick(") && game.includes("finishDrag("));
+      for (const key of ["freeze", "rocket", "hammer", "undo"])
+        assert.ok(game.includes(`"${key}"`), key);
+      assert.ok(!/tapCrate|hintCrate|addTime/.test(game));
+      const art = readFileSync("src/components/kc/inventory/kitchenDispatchArt.ts", "utf8");
+      assert.ok(!art.includes("crate-2") && !art.includes("kdSheet"));
+    },
+  );
 } finally {
   await vite.close();
 }

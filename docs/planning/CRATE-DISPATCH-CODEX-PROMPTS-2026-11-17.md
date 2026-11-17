@@ -1,6 +1,6 @@
 # Crate Dispatch ("Kitchen Dispatch"): Codex prompts for the art (developer 2026-11-17)
 
-> **STATUS 2026-11-17:** all 22 pictures were delivered and built into `public/business/cratedispatch/` by `scripts/make-crate-dispatch-assets.py`; the game is built (HANDOFF). `CD-crate-heavy-*`, the objectives panel and the speech bubble are not used yet.
+> **STATUS 2026-11-17 (updated):** the game was REBUILT as a drag-to-the-gate puzzle the same day; the crates, gate and tile pictures (`CD-crate-*`, `CD-gate`) are no longer used (bricks and gates are drawn in code). The room, frame, tile, puff, counter and ingredient pictures are still used.
 >
 > **PROVISIONAL.** The developer's 244-line brief for this game did not reach Claude (only its placeholder came through). These prompts
 > are worked out from the developer's screenshot (`Crate Dispatch\CD-reference-kitchen-dispatch.png`) and the folder contents. If the brief
