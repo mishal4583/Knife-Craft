@@ -47,6 +47,26 @@ export function wasteValueFor(save: SaveData, rawValue: number): number {
   );
 }
 
+function withoutIds(
+  inventory: SaveData["business"]["inventory"],
+  ids: readonly IngredientId[],
+): SaveData["business"]["inventory"] {
+  const next = { ...inventory };
+  for (const id of ids) delete next[id];
+  return next;
+}
+
+/**
+ * Freshness is ONE weighted average per ingredient (businessInventory.ts), so new stock bought on top of an expired lot of the same food
+ * is averaged with it and can come out expired too (developer 2026-11-17: "Buy all" left two ingredients still needed, buying more
+ * one by one finally cleared it). Every purchase therefore clears the expired stock of the ingredients it adds first: the same sweep as
+ * "Throw Out Expired", recorded as waste, no money, no ledger. The save is returned unchanged when none of them is expired.
+ */
+export function withoutExpiredOf(save: SaveData, ids: readonly IngredientId[]): SaveData {
+  const cleared = discardExpiredStock(save, ids);
+  return cleared.ok ? cleared.save : save;
+}
+
 /** What "Throw Out Expired" would remove right now (for the button's label). */
 export function expiredStockPreview(save: SaveData): {
   quantity: number;
@@ -61,9 +81,20 @@ export function expiredStockPreview(save: SaveData): {
   };
 }
 
-export function discardExpiredStock(save: SaveData): DiscardExpiredResult {
+export function discardExpiredStock(
+  save: SaveData,
+  /** Only these ingredients (a purchase clears the expired stock of what it is about to add); left out = the whole fridge. */
+  only?: readonly IngredientId[],
+): DiscardExpiredResult {
   const business = save.business;
-  const swept = clearExpiredStock(business.inventory, business.calendar.businessDay);
+  const scope = only
+    ? Object.fromEntries(
+        Object.entries(business.inventory).filter(([id]) => only.includes(id as IngredientId)),
+      )
+    : business.inventory;
+  let swept = clearExpiredStock(scope, business.calendar.businessDay);
+  if (only)
+    swept = { ...swept, inventory: withoutIds(business.inventory, swept.spoiledIngredientIds) };
   if (swept.spoiledIngredientIds.length === 0) return { ok: false, reason: "nothingExpired" };
   const value = wasteValueFor(save, swept.spoiledValue);
   const acc = business.finance.dailyAccumulator;

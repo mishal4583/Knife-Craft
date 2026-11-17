@@ -28,6 +28,7 @@ import { addStock, normalizeQuantity } from "../business/businessInventory";
 import { RUSH_RESTOCK_FEE, rushUnitCost } from "../business/businessRushRestock";
 import { canStoreQuantity, getAvailableStorageCapacity } from "../business/RefrigeratorManager";
 import { applyStockingWear } from "../business/businessEquipmentCondition";
+import { withoutExpiredOf } from "../business/discardExpired";
 import type { ServiceStockCheck } from "./campaignStock";
 import { supplierEffects } from "./restaurantEconomy";
 
@@ -108,8 +109,12 @@ export function quickRestock(save: SaveData, check: ServiceStockCheck): QuickRes
   if (!plan.affordable) return { ok: false, reason: "insufficientFunds" };
   if (!plan.fits) return { ok: false, reason: "insufficientStorage" };
   // Dated like a Market purchase: a Premium supplier's stock starts ageing later.
-  const day = save.business.calendar.businessDay + supplierEffects(save).freshnessBonusDays;
-  let inventory = save.business.inventory;
+  const base = withoutExpiredOf(
+    save,
+    plan.lines.map((l) => l.ingredientId),
+  );
+  const day = base.business.calendar.businessDay + supplierEffects(base).freshnessBonusDays;
+  let inventory = base.business.inventory;
   for (const line of plan.lines)
     inventory = addStock(
       inventory,
@@ -121,12 +126,12 @@ export function quickRestock(save: SaveData, check: ServiceStockCheck): QuickRes
   return {
     ok: true,
     save: {
-      ...save,
-      credits: save.credits - plan.totalCost,
+      ...base,
+      credits: base.credits - plan.totalCost,
       business: {
-        ...save.business,
+        ...base.business,
         inventory,
-        equipmentCondition: applyStockingWear(save.business.equipmentCondition, plan.storageNeeded),
+        equipmentCondition: applyStockingWear(base.business.equipmentCondition, plan.storageNeeded),
       },
     },
     lines: plan.lines,

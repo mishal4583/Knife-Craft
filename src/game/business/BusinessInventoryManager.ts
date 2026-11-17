@@ -15,6 +15,7 @@ import type { IngredientId } from "../definitions";
 import { INGREDIENTS } from "../definitions";
 import { businessUnitCostFor } from "./businessPricing";
 import { addStock, normalizeQuantity } from "./businessInventory";
+import { withoutExpiredOf } from "./discardExpired";
 import { canStoreQuantity, getAvailableStorageCapacity } from "./RefrigeratorManager";
 import { effectiveUnitCost } from "./businessSupplierContract";
 import {
@@ -249,8 +250,11 @@ export function purchaseIngredient(
     !(soldWhole(ingredientId) && lbPerUnit === lbPerMarketUnit(ingredientId, "lb"))
   )
     return { ok: false, reason: "invalidQuantity" };
+  // An expired lot of this food goes first (waste), so the new stock is not averaged into it and expired too (discardExpired.ts),
+  // and the room it took is free for the purchase.
+  const base = withoutExpiredOf(save, [ingredientId as IngredientId]);
   const quote = purchaseQuote(
-    save,
+    base,
     ingredientId,
     quantity,
     bulkDiscount,
@@ -265,20 +269,20 @@ export function purchaseIngredient(
       ? unitCost
       : Math.round(totalCost / stockQuantity);
   const inventory = addStock(
-    save.business.inventory,
+    base.business.inventory,
     ingredientId,
     stockQuantity,
     stockUnitCost,
-    save.business.calendar.businessDay + freshnessBonusDays,
+    base.business.calendar.businessDay + freshnessBonusDays,
   );
-  const equipmentCondition = applyStockingWear(save.business.equipmentCondition, stockQuantity);
+  const equipmentCondition = applyStockingWear(base.business.equipmentCondition, stockQuantity);
   return {
     ok: true,
     save: {
-      ...save,
-      credits: save.credits - totalCost,
+      ...base,
+      credits: save.credits - totalCost, // (the expired sweep moves no money: base.credits is save.credits)
       business: {
-        ...save.business,
+        ...base.business,
         inventory,
         equipmentCondition,
       },
@@ -371,8 +375,12 @@ export function rushRestock(
   ) {
     return { ok: false, reason: "insufficientStorage" };
   }
-  const day = save.business.calendar.businessDay;
-  let inventory = save.business.inventory;
+  const base = withoutExpiredOf(
+    save,
+    plan.lines.map((l) => l.ingredientId),
+  );
+  const day = base.business.calendar.businessDay;
+  let inventory = base.business.inventory;
   for (const line of plan.lines) {
     inventory = addStock(
       inventory,
@@ -383,12 +391,12 @@ export function rushRestock(
     );
   }
   const next: SaveData = {
-    ...save,
+    ...base,
     credits: save.credits - totalCost,
     business: {
-      ...save.business,
+      ...base.business,
       inventory,
-      equipmentCondition: applyStockingWear(save.business.equipmentCondition, plan.totalQuantity),
+      equipmentCondition: applyStockingWear(base.business.equipmentCondition, plan.totalQuantity),
     },
   };
   // Buying the shortfall can still leave an order blocked when old stock of

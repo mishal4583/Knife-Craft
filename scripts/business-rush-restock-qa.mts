@@ -259,7 +259,8 @@ const ledgerSum = (s: SaveData) => s.economyLedger.reduce((t, e) => t + e.amount
     );
   }
 
-  // Expired old stock: the merged entry would stay expired.
+  // Expired old stock (rule change, developer 2026-11-17: a purchase clears the expired stock of what it adds first, as waste, so the new
+  // stock is not averaged into it): the restock goes through, the old lot is waste, and the order is unblocked by stock that is usable.
   const shelf = shelfLifeForIngredient("carrot");
   let lateDay = 1 + shelf * 40;
   while (eventForDay(lateDay) !== null) lateDay++;
@@ -267,8 +268,11 @@ const ledgerSum = (s: SaveData) => s.economyLedger.reduce((t, e) => t + e.amount
   const expired = blockedSave(500_000, lateDay, oldInv);
   const r4 = rushRestock(expired, SALAD, "cash");
   assert(
-    !r4.ok && r4.reason === "wouldNotUnblock",
-    `D4: expired old stock that would keep the order blocked is never charged (Day ${lateDay})`,
+    r4.ok &&
+      businessOrderAvailability(r4.save, SALAD).available &&
+      r4.save.business.finance.dailyAccumulator.discardedQuantity === 30 &&
+      r4.save.business.inventory.carrot?.purchaseDay === lateDay,
+    `D4: expired old stock is thrown out as waste first, so the restock really unblocks the order (Day ${lateDay})`,
   );
 
   // A supplier-event day: the rush price follows that day's Market price.

@@ -114,9 +114,7 @@ function Tile({
       data-state={state}
       aria-disabled={!ready || undefined}
       aria-label={
-        locked
-          ? `${entry.name}, locked, opens at Level ${entry.firstLevel}`
-          : `${entry.name}, ${text ?? ""}`
+        locked ? `${entry.name}, locked, opens ${opensText}` : `${entry.name}, ${text ?? ""}`
       }
       onClick={ready ? onPlay : undefined}
       className={cn(
@@ -148,11 +146,8 @@ function Tile({
       </span>
       <span className="block font-display text-[14px] font-black leading-tight">{entry.name}</span>
       {locked ? (
-        <span className="block font-ui text-[11.5px] font-extrabold leading-tight">
-          Level {entry.firstLevel}
-          <span className="block font-hand text-[13px] font-bold italic text-walnut/65">
-            opens {opensText}
-          </span>
+        <span className="block font-hand text-[14px] font-bold italic leading-tight text-walnut/70">
+          opens {opensText}
         </span>
       ) : (
         <span

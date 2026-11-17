@@ -627,9 +627,11 @@ const hired = (s: SaveData) => A.hireAssistant(s);
       /pose-\$\{pose\}/.test(read("src/components/kc/assistant/PaigeArt.tsx")),
   );
   check(
-    "H7 mobile: the stage height and the words scale with the screen (clamp), the bubble scrolls instead of overflowing, the words are 16-20 px, the buttons a never-clipped row",
+    "H7 mobile: the stage height and the words scale with the screen (clamp), the bubble scrolls by touch instead of overflowing (never sideways, no scrollbar drawn: developer 2026-11-17), the words are 16-20 px, the buttons a never-clipped row",
     /--paige-h: clamp\(/.test(css) &&
-      /overflow: auto/.test(css) &&
+      /overflow-y: auto/.test(css) &&
+      /overflow-x: hidden/.test(css) &&
+      /scrollbar-width: none/.test(css) &&
       /font-size: clamp\(16px/.test(css) &&
       /paige-actions/.test(css) &&
       /--paige-h/.test(css),

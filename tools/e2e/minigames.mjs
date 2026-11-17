@@ -2,7 +2,7 @@
 // restaurant build, real browser: business/miniGames.ts + components/kc/MiniGamesSheet.tsx + Kitchen.tsx + ScreensRouter.tsx.
 // The shelf's rules are proved by scripts/mini-games-qa.mts; this checks the screen that shows them.
 //   M1 Level 20: the 🎮 button opens a sheet of eight game logos, all open
-//   M2 Level 5: only the games of its level are open; a locked tile names its level and a tap on it does nothing
+//   M2 Level 5: only the games of its level are open; a locked tile says how many services are left (never a level number) and a tap on it does nothing
 //   M3 Dessert Run opens from the sheet at the player's level and Back returns to the Kitchen
 //   M4 Kitchen Dispatch the same
 //   M5 Fridge Check (free play) the same
@@ -140,10 +140,11 @@ await page.click('[data-testid="minigame-dessert-run"]');
 await sleep(400);
 const stillSheet = Boolean(await page.$(SHEET));
 check(
-  "M2 Level 5: only the games of its level are open; a locked tile names its level and a tap on it does nothing",
+  "M2 Level 5: only the games of its level are open; a locked tile says how many services are left (never a level number) and a tap on it does nothing",
   JSON.stringify(openIds.sort()) === JSON.stringify(["fridge-sort", "inspection"]) &&
     lockedIds.length === 6 &&
-    /Level 18/.test(dessert5.text) &&
+    /opens in \d+ services?/.test(dessert5.text) &&
+    !/Level/.test(dessert5.text) &&
     stillSheet &&
     !(await page.$('[data-testid="dessert-run-game"]')),
   { openIds, lockedIds, dessert: dessert5.text, stillSheet },
