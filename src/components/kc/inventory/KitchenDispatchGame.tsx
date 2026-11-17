@@ -52,6 +52,8 @@ const fs = (px: number): CSSProperties => ({ fontSize: `${(px / KD_STAGE.w) * 10
 /** A touch target never smaller than 48 px, whatever the stage's scale. */
 const TOUCH: CSSProperties = { minWidth: 48, minHeight: 48 };
 const img = (name: string) => `url(${kdUrl(name)})`;
+/** The centre of each booster button on the counter, in stage units. */
+const BOOSTER_X = [109, 218, 327, 435];
 
 const clock = (seconds: number) => {
   const s = Math.max(0, Math.ceil(seconds));
@@ -350,8 +352,6 @@ export function KitchenDispatchGame({
     key: "freeze" | "rocket" | "hammer" | "undo";
     label: string;
     n: number;
-    cell?: number;
-    glyph?: string;
     on: () => void;
     off: boolean;
     lit: boolean;
@@ -360,7 +360,6 @@ export function KitchenDispatchGame({
       key: "freeze",
       label: "Freeze",
       n: round.freezes,
-      cell: 1,
       on: onFreeze,
       off: round.freezes <= 0 || frozen,
       lit: frozen,
@@ -369,7 +368,6 @@ export function KitchenDispatchGame({
       key: "rocket",
       label: "Rocket",
       n: round.rockets,
-      glyph: "🚀",
       on: () => arm("rocket"),
       off: round.rockets <= 0,
       lit: armed === "rocket",
@@ -378,7 +376,6 @@ export function KitchenDispatchGame({
       key: "hammer",
       label: "Hammer",
       n: round.hammers,
-      glyph: "🔨",
       on: () => arm("hammer"),
       off: round.hammers <= 0 || round.board.walls.length === 0,
       lit: armed === "hammer",
@@ -387,7 +384,6 @@ export function KitchenDispatchGame({
       key: "undo",
       label: "Undo",
       n: round.undos,
-      cell: 2,
       on: onUndo,
       off: round.undos <= 0 || round.history.length === 0,
       lit: false,
@@ -445,11 +441,22 @@ export function KitchenDispatchGame({
             ...box(72, 6, 86, 72),
             backgroundImage: img("level-badge"),
             backgroundSize: "100% 100%",
-            ...fs(28),
           }}
-          data-testid="kd-level"
         >
-          <span className="drop-shadow-[0_2px_0_rgba(0,0,0,.4)]">{level}</span>
+          <span
+            aria-hidden="true"
+            className="absolute left-0 right-0 text-center font-extrabold text-[#dff0ff] drop-shadow-[0_1px_0_rgba(0,0,0,.4)]"
+            style={{ top: "21%", ...fs(9.5) }}
+          >
+            Level
+          </span>
+          <span
+            data-testid="kd-level"
+            className="mt-[20%] drop-shadow-[0_2px_0_rgba(0,0,0,.4)]"
+            style={fs(24)}
+          >
+            {level}
+          </span>
         </div>
         <div
           className="grid place-items-center text-center font-black text-[#fff4d9]"
@@ -473,19 +480,46 @@ export function KitchenDispatchGame({
           {paused ? "▶" : "Ⅱ"}
         </button>
 
-        {/* the instruction and its tip */}
+        {/* Paige beside the instruction, and the pinned crate card with its tip */}
+        <div
+          aria-hidden="true"
+          data-testid="kd-mascot"
+          style={{
+            ...box(0, 90, 146, 124),
+            backgroundImage: img("mascot"),
+            backgroundSize: "100% auto",
+            backgroundPosition: "top center",
+            backgroundRepeat: "no-repeat",
+          }}
+        />
         <div
           className="grid place-items-center px-[7%] text-center font-extrabold leading-tight text-[#5a3419]"
           style={{
-            ...box(92, 106, 356, 86),
+            ...box(112, 104, 330, 90),
             backgroundImage: img("info-banner"),
             backgroundSize: "100% 100%",
             ...fs(16.5),
           }}
         >
-          <span>Drag each crate to the gate of its own colour.</span>
+          <span role="status" data-testid="kd-notice">
+            {notice || "Drag each crate to the gate of its own colour."}
+          </span>
         </div>
-        <span className="grid place-items-center" style={box(452, 124, 50, 50)}>
+        <div
+          aria-hidden="true"
+          className="rounded-md border-2 border-[#d8b373] bg-[#fff3d6] shadow-[0_4px_8px_rgba(0,0,0,.35)]"
+          style={{
+            ...box(444, 104, 78, 88),
+            transform: "rotate(4deg)",
+            backgroundImage: img("ingredient-tomato"),
+            backgroundSize: "74% auto",
+            backgroundPosition: "center 38%",
+            backgroundRepeat: "no-repeat",
+          }}
+        >
+          <span className="absolute left-1/2 top-[-6%] h-[13%] w-[17%] -translate-x-1/2 rounded-full bg-[#d6402a] shadow-[0_2px_3px_rgba(0,0,0,.4)]" />
+        </div>
+        <span className="grid place-items-center" style={box(470, 146, 50, 50)}>
           <InfoTip label="How to play">
             Drag a crate across the counter. It cannot pass through other crates or the dark blocks.
             Push it against the gate of its own colour, with its width inside the gate, and it
@@ -498,7 +532,7 @@ export function KitchenDispatchGame({
         {/* the timer, the crates and the stars */}
         <div
           style={{
-            ...box(22, 202, 252, 84),
+            ...box(14, 196, 234, 78),
             backgroundImage: img("timer-pill"),
             backgroundSize: "100% 100%",
           }}
@@ -532,21 +566,37 @@ export function KitchenDispatchGame({
           </span>
         </div>
         <div
-          className="grid place-items-center font-black text-[#5a3419]"
+          className="flex items-center justify-center gap-[4%] font-black text-[#5a3419]"
           style={{
-            ...box(284, 210, 156, 52),
+            ...box(252, 206, 140, 54),
             backgroundImage: img("label-plate"),
             backgroundSize: "100% 100%",
-            ...fs(18),
+            ...fs(17),
           }}
           data-testid="kd-left"
         >
+          <svg viewBox="0 0 24 22" aria-hidden="true" style={{ width: "19%", height: "auto" }}>
+            <path
+              d="M2 7 12 2l10 5v11l-10 3-10-3Z"
+              fill="#d99a52"
+              stroke="#6b4021"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+            <path
+              d="m2 7 10 4 10-4M12 11v10"
+              fill="none"
+              stroke="#6b4021"
+              strokeWidth="1.3"
+              strokeLinejoin="round"
+            />
+          </svg>
           <span>
             Crates <span className="text-[#c0412a]">{cratesLeft(round)}</span>
           </span>
         </div>
         <div
-          style={box(436, 206, 88, 30)}
+          style={box(398, 213, 128, 40)}
           aria-label={`${stars} stars`}
           role="img"
           data-testid="kd-stars"
@@ -556,8 +606,8 @@ export function KitchenDispatchGame({
               key={i}
               style={{
                 position: "absolute",
-                left: `${(((i - 1) * 30) / 88) * 100}%`,
-                width: `${(28 / 88) * 100}%`,
+                left: `${(((i - 1) * 42) / 128) * 100}%`,
+                width: `${(38 / 128) * 100}%`,
                 height: "100%",
                 backgroundImage: img("stars"),
                 backgroundSize: "200% 100%",
@@ -568,24 +618,9 @@ export function KitchenDispatchGame({
           ))}
         </div>
 
-        {/* a short notice over the board */}
-        <p
-          role="status"
-          data-testid="kd-notice"
-          className="pointer-events-none grid place-items-center rounded-full bg-[#2b1a10]/85 font-extrabold text-[#fff4d9]"
-          style={{
-            ...box(130, 736, 280, 30),
-            ...fs(14.5),
-            opacity: notice ? 1 : 0,
-            transition: "opacity .2s",
-          }}
-        >
-          {notice}
-        </p>
-
         {/* the boosters on the counter */}
         {boosters.map((b, i) => {
-          const cx = 84 + i * 124;
+          const cx = BOOSTER_X[i] ?? 0;
           return (
             <div key={b.key}>
               <button
@@ -595,44 +630,30 @@ export function KitchenDispatchGame({
                 aria-label={`${b.label}, ${b.n} left`}
                 data-testid={`kd-booster-${b.key}`}
                 data-lit={b.lit || undefined}
-                className="grid place-items-center transition-transform active:scale-90 disabled:opacity-45 data-[lit]:scale-110 data-[lit]:drop-shadow-[0_0_10px_#ffd24a]"
-                style={{ ...box(cx - 42, 764, 84, 84), ...TOUCH, ...roundBtn }}
-              >
-                {b.glyph ? (
-                  <span aria-hidden="true" style={fs(34)}>
-                    {b.glyph}
-                  </span>
-                ) : (
-                  <span
-                    aria-hidden="true"
-                    style={{
-                      display: "block",
-                      width: "74%",
-                      height: "74%",
-                      backgroundImage: img("booster-icons"),
-                      backgroundSize: "300% 100%",
-                      backgroundPosition: `${(b.cell ?? 0) * 50}% 50%`,
-                      backgroundRepeat: "no-repeat",
-                    }}
-                  />
-                )}
-              </button>
-              <span
-                className="grid place-items-center font-black text-[#5a3419]"
+                className="transition-transform active:scale-90 disabled:opacity-50 disabled:grayscale-[.45] data-[lit]:scale-110 data-[lit]:drop-shadow-[0_0_10px_#ffd24a]"
                 style={{
-                  ...box(cx + 18, 758, 32, 32),
+                  ...box(cx - 43, 766, 86, 72),
+                  ...TOUCH,
+                  backgroundImage: img(`booster-${b.key}`),
+                  backgroundSize: "100% 100%",
+                }}
+              />
+              <span
+                className="pointer-events-none grid place-items-center font-black text-[#5a3419]"
+                style={{
+                  ...box(cx + 17, 757, 34, 34),
                   backgroundImage: img("count-badge"),
                   backgroundSize: "100% 100%",
-                  ...fs(15),
+                  ...fs(16),
                 }}
                 data-testid={`kd-booster-${b.key}-n`}
               >
                 {b.n}
               </span>
               <span
-                className="grid place-items-center font-black text-[#5a3419]"
+                className="pointer-events-none grid place-items-center font-black text-[#5a3419]"
                 style={{
-                  ...box(cx - 46, 850, 92, 31),
+                  ...box(cx - 46, 838, 92, 31),
                   backgroundImage: img("label-plate"),
                   backgroundSize: "100% 100%",
                   ...fs(14),

@@ -3,16 +3,14 @@ import { CRATE_INGREDIENTS, type CrateIngredient } from "@/game/business/crateDi
 /**
  * Kitchen Dispatch's painted art (Crate Dispatch folder, built by scripts/make-crate-dispatch-assets.py). Every piece is
  * optional: until a picture has loaded the screen draws a plain shape. The crates, the gates and the dark blocks are drawn in
- * code (they are bricks of any size, in the colour of their ingredient); the pictures are the room, the floor tile, the wooden
+ * code (they are bricks of any size, in the colour of their ingredient); the pictures are the room, the wooden
  * frame, the dust puff and the ingredient on every crate.
  */
-export type KdArtName =
-  "backdrop" | "counter" | "frame" | "tile" | "puff" | `ingredient-${CrateIngredient}`;
+export type KdArtName = "backdrop" | "counter" | "frame" | "puff" | `ingredient-${CrateIngredient}`;
 const NAMES: KdArtName[] = [
   "backdrop",
   "counter",
   "frame",
-  "tile",
   "puff",
   ...CRATE_INGREDIENTS.map((n): KdArtName => `ingredient-${n}`),
 ];
