@@ -61,6 +61,7 @@ import type { SaveData } from "@/game/SaveManager";
 import { ScrollCue } from "./common/ScrollCue";
 import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 import { AskPaigeButton } from "./assistant/AskPaigeButton";
+import { useLandscape } from "./game/layoutMode";
 import { useAssistant } from "./assistant/AssistantContext";
 import { PaigeStage } from "./assistant/PaigeStage";
 import { MiniGamesSheet } from "./MiniGamesSheet";
@@ -148,6 +149,23 @@ const DAY_LIGHT_TINT: Record<DayLight, string> = {
   night: "linear-gradient(180deg,rgba(16,26,72,0.55) 0%,rgba(10,14,40,0.45) 100%)",
 };
 
+/** A short screen (the CSS `max-height: 660px` rule): the Kitchen keeps its earlier top arrangement there. */
+function useShortScreen(): boolean {
+  const q = "(max-height: 660px)";
+  const [short, setShort] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia ? window.matchMedia(q).matches : false,
+  );
+  useEffect(() => {
+    if (!window.matchMedia) return;
+    const m = window.matchMedia(q);
+    const f = () => setShort(m.matches);
+    f();
+    m.addEventListener?.("change", f);
+    return () => m.removeEventListener?.("change", f);
+  }, []);
+  return short;
+}
+
 export function Kitchen({
   go,
   save,
@@ -218,6 +236,78 @@ export function Kitchen({
     gameReady();
   }, []);
 
+  // The ranking-on-top layout needs room for six round buttons in the right column; a short screen (or a phone on its side) keeps the earlier arrangement
+  // (wallet row on top with Paige and Settings, the cards under it).
+  const landscape = useLandscape();
+  const short = useShortScreen();
+  const stacked = landscape || short;
+  const rankButton = (
+    <button
+      type="button"
+      onClick={() => {
+        // Money waiting: straight to Achievements, where it's collected (developer 2026-10-18).
+        if (closedUntil("rack") === null) go(collectableTotal(save) > 0 ? "achievements" : "rack");
+      }}
+      data-testid="kitchen-rank"
+      // One line each, never wider than the room the wallet and Settings leave
+      // (audit 2026-10-08: at 320 px it wrapped into the Kitchen Upgrade sign).
+      className="press min-w-0 max-w-full shrink rounded-2xl border border-ivory/25 bg-walnut-dark/45 px-3 py-2 text-left backdrop-blur-sm"
+    >
+      {RESTAURANT_MODE ? (
+        <CityRankBadge save={save} />
+      ) : (
+        <>
+          {/* The restaurant's rank (developer 2026-10-08): which of the ranks it
+                  holds, its name, the bar to the next one and when that comes. */}
+          <p className="truncate whitespace-nowrap font-ui text-[10px] font-extrabold uppercase tracking-[0.14em] text-gold">
+            <span className="hidden min-[380px]:inline">Restaurant </span>rank · {rankNumber}/
+            {CAFE_MILESTONES.length}
+          </p>
+          <p className="truncate whitespace-nowrap font-display text-[15.5px] font-black leading-tight text-ivory">
+            🏆 {cafeMilestoneTitle}
+          </p>
+          <span className="mt-1.5 block h-[4px] w-24 overflow-hidden rounded-full bg-ivory/25">
+            <span
+              className="block h-full rounded-full"
+              style={{
+                width: `${Math.round(cafeProgress.progressFraction * 100)}%`,
+                background: "linear-gradient(90deg,var(--color-gold),var(--color-copper))",
+              }}
+            />
+          </span>
+          <p className="mt-1 truncate whitespace-nowrap font-ui text-[10px] font-bold leading-none text-ivory/70">
+            {nextRank
+              ? `Next: ${nextRank.title} · ${u.lv(nextRank.levelRequired)}`
+              : "Highest rank reached"}
+          </p>
+        </>
+      )}
+      {collectableTotal(save) > 0 ? (
+        <span
+          data-testid="kitchen-achievements-waiting"
+          className="mt-1.5 block truncate whitespace-nowrap rounded-full bg-gold/90 px-2 py-0.5 font-ui text-[11px] font-extrabold text-walnut-dark"
+        >
+          💰 {formatUsd(collectableTotal(save))} to collect
+        </span>
+      ) : null}
+    </button>
+  );
+  const settingsButton = (
+    <button
+      type="button"
+      onClick={() => go("settings")}
+      aria-label="Settings"
+      // 48x48dp Playables touch-target minimum (§2.17/§2.8) — was
+      // 36x36. Same fix as ScreenHeader's Back button: grow the real
+      // button box, glyph stays visually the same size, centered.
+      className="press grid h-12 w-12 shrink-0 place-items-center rounded-full border border-ivory/25 bg-walnut-dark/45 text-ivory backdrop-blur-sm"
+    >
+      <span aria-hidden className="text-[15.5px]">
+        ⚙️
+      </span>
+    </button>
+  );
+
   return (
     <div className="relative h-full w-full overflow-hidden bg-cream">
       <KitchenBackground skin={equippedUpgrade.asset} />
@@ -237,59 +327,23 @@ export function Kitchen({
       {/* Top HUD */}
       {/* Portrait (developer 2026-11-16, "optimize for all screen sizes"): the wallet row is on top and the rank, gift and kitchen cards sit under it, as wide as
           the shortcut column on the right allows; beside the wallet they were squeezed to ~40 px at 320 wide. Landscape keeps its one row. */}
-      <div className="absolute inset-x-0 top-0 z-20 flex flex-col-reverse items-start gap-2 p-3 [@media(max-height:600px)]:gap-1 [@media(max-height:600px)]:p-2 land:flex-row land:justify-between">
+      <div
+        className={cn(
+          "absolute inset-x-0 top-0 z-20 flex items-start gap-2 p-3 [@media(max-height:600px)]:gap-1 [@media(max-height:600px)]:p-2 land:flex-row land:justify-between",
+          stacked ? "flex-col-reverse" : "flex-col",
+        )}
+      >
+        {/* Portrait (developer 2026-11-17: "move the ranking container to top and move the assistant and settings icons down"): the city ranking is the
+            first thing at the top, the wallet beside it; Settings and Paige sit in the shortcut column on the right. Landscape keeps its one row. */}
+        {stacked ? null : (
+          <div className="flex w-full items-start gap-2" data-testid="kitchen-top-row">
+            <div className="flex min-w-0 flex-1">{rankButton}</div>
+            <Coin n={save.credits} />
+          </div>
+        )}
         {/* Phase 5 (B3): the daily gift sits under the rank, on the Kitchen's free wall. */}
         <div className="mr-2 flex min-w-0 max-w-[calc(100%-84px)] shrink flex-col items-start gap-2 [@media(max-height:600px)]:gap-1 land:max-w-[64%] land:flex-row">
-          <button
-            type="button"
-            onClick={() => {
-              // Money waiting: straight to Achievements, where it's collected (developer 2026-10-18).
-              if (closedUntil("rack") === null)
-                go(collectableTotal(save) > 0 ? "achievements" : "rack");
-            }}
-            data-testid="kitchen-rank"
-            // One line each, never wider than the room the wallet and Settings leave
-            // (audit 2026-10-08: at 320 px it wrapped into the Kitchen Upgrade sign).
-            className="press min-w-0 max-w-full shrink rounded-2xl border border-ivory/25 bg-walnut-dark/45 px-3 py-2 text-left backdrop-blur-sm"
-          >
-            {RESTAURANT_MODE ? (
-              <CityRankBadge save={save} />
-            ) : (
-              <>
-                {/* The restaurant's rank (developer 2026-10-08): which of the ranks it
-                  holds, its name, the bar to the next one and when that comes. */}
-                <p className="truncate whitespace-nowrap font-ui text-[10px] font-extrabold uppercase tracking-[0.14em] text-gold">
-                  <span className="hidden min-[380px]:inline">Restaurant </span>rank · {rankNumber}/
-                  {CAFE_MILESTONES.length}
-                </p>
-                <p className="truncate whitespace-nowrap font-display text-[15.5px] font-black leading-tight text-ivory">
-                  🏆 {cafeMilestoneTitle}
-                </p>
-                <span className="mt-1.5 block h-[4px] w-24 overflow-hidden rounded-full bg-ivory/25">
-                  <span
-                    className="block h-full rounded-full"
-                    style={{
-                      width: `${Math.round(cafeProgress.progressFraction * 100)}%`,
-                      background: "linear-gradient(90deg,var(--color-gold),var(--color-copper))",
-                    }}
-                  />
-                </span>
-                <p className="mt-1 truncate whitespace-nowrap font-ui text-[10px] font-bold leading-none text-ivory/70">
-                  {nextRank
-                    ? `Next: ${nextRank.title} · ${u.lv(nextRank.levelRequired)}`
-                    : "Highest rank reached"}
-                </p>
-              </>
-            )}
-            {collectableTotal(save) > 0 ? (
-              <span
-                data-testid="kitchen-achievements-waiting"
-                className="mt-1.5 block truncate whitespace-nowrap rounded-full bg-gold/90 px-2 py-0.5 font-ui text-[11px] font-extrabold text-walnut-dark"
-              >
-                💰 {formatUsd(collectableTotal(save))} to collect
-              </span>
-            ) : null}
-          </button>
+          {stacked ? rankButton : null}
           {onOpenDailyGift ? (
             <DailyGiftCard save={save} levelNumber={reached} onOpen={onOpenDailyGift} />
           ) : null}
@@ -305,30 +359,23 @@ export function Kitchen({
             </button>
           ) : null}
         </div>
-        <div className="flex shrink-0 items-center gap-2 self-end land:self-auto">
-          <AskPaigeButton />
-          <Coin n={save.credits} />
-          {/* Settings — Phase 15 dissolved the Journal hub, so this is the
-              one small persistent entry point Step 7 asks for ("keep
-              accessible... do not create a new major navigation
-              destination just for it") — a single icon, not a tab. */}
-          <button
-            type="button"
-            onClick={() => go("settings")}
-            aria-label="Settings"
-            // 48x48dp Playables touch-target minimum (§2.17/§2.8) — was
-            // 36x36. Same fix as ScreenHeader's Back button: grow the real
-            // button box, glyph stays visually the same size, centered.
-            className="press grid h-12 w-12 shrink-0 place-items-center rounded-full border border-ivory/25 bg-walnut-dark/45 text-ivory backdrop-blur-sm"
-          >
-            <span aria-hidden className="text-[15.5px]">
-              ⚙️
-            </span>
-          </button>
-        </div>
+        {stacked ? (
+          <div className="flex shrink-0 items-center gap-2 self-end land:self-auto">
+            <AskPaigeButton />
+            <Coin n={save.credits} />
+            {settingsButton}
+          </div>
+        ) : null}
       </div>
 
-      <div className="absolute right-3 top-[16%] z-20 flex flex-col items-end gap-2 [--pill:56px] [@media(max-height:620px)]:[--pill:48px] [@media(max-height:700px)]:top-[13%] [@media(max-height:700px)]:gap-1.5 land:!top-[68px]">
+      <div
+        className={cn(
+          "absolute right-3 top-[16%] z-20 flex flex-col items-end gap-2 [--pill:56px] [@media(max-height:620px)]:[--pill:48px] [@media(max-height:700px)]:top-[13%] [@media(max-height:700px)]:gap-1.5 land:!top-[68px]",
+          // Settings and Paige join the column, which then starts right under the wallet
+          !stacked && "!top-[58px] [@media(max-height:760px)]:[--pill:48px]",
+        )}
+      >
+        {stacked ? null : settingsButton}
         <button
           type="button"
           data-testid="daily-check-shortcut"
@@ -509,6 +556,7 @@ export function Kitchen({
             </span>
           </button>
         ) : null}
+        {stacked ? null : <AskPaigeButton />}
       </div>
 
       {RESTAURANT_MODE && miniGamesOpen ? (

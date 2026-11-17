@@ -43,10 +43,18 @@ function check(id: string, ok: unknown) {
   const kitchen = read("src/components/kc/Kitchen.tsx");
   const gift = read("src/components/kc/DailyGiftCard.tsx");
   check(
-    "F2 the Kitchen's HUD stacks (wallet row on top, cards under it, as wide as the shortcut column allows); short screens drop only the bar and the streak dots",
-    /flex flex-col-reverse items-start gap-2 p-3[^"]*land:flex-row land:justify-between/.test(
+    // 2026-11-17 (developer: "move the ranking container to top and the assistant and settings icons down"): on a tall portrait screen the city
+    // ranking is on top with the wallet beside it and Settings / Paige sit in the shortcut column; short screens (max-height 660) and phone
+    // landscape keep the earlier arrangement (wallet row with Paige and Settings, cards under it).
+    "F2 the Kitchen's HUD: ranking on top beside the wallet, Settings and Paige in the shortcut column; a short screen or landscape keeps the wallet row on top; the cards are as wide as the shortcut column allows; short screens drop only the bar and the streak dots",
+    /"absolute inset-x-0 top-0 z-20 flex items-start gap-2 p-3[^"]*land:flex-row land:justify-between"/.test(
       kitchen,
     ) &&
+      /stacked \? "flex-col-reverse" : "flex-col"/.test(kitchen) &&
+      /data-testid="kitchen-top-row"/.test(kitchen) &&
+      /\(max-height: 660px\)/.test(kitchen) &&
+      /\{stacked \? null : settingsButton\}/.test(kitchen) &&
+      /\{stacked \? null : <AskPaigeButton \/>\}/.test(kitchen) &&
       /max-w-\[calc\(100%-84px\)\]/.test(kitchen) &&
       /h-\[4px\] w-24 overflow-hidden rounded-full bg-ivory\/25 \[@media\(max-height:600px\)\]:hidden/.test(
         kitchen,
