@@ -176,8 +176,14 @@
 .paige-speech[data-tone="warning"]::before { border-color: #b4552f; }
 .paige-scroll {
   max-height: calc(var(--paige-h) * 0.84);
-  overflow: auto;
+  /* never sideways (a button label a pixel too wide used to raise a scrollbar: developer 2026-11-17); tall text still scrolls by touch, with no bar drawn */
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.paige-scroll::-webkit-scrollbar {
+  display: none;
 }
 /* Sizes (developer 2026-11-12: "optimize the text box and the text size"): 16-20 px words, a 13.5 px button row that never gets cut off. */
 .paige-words {
@@ -221,7 +227,14 @@
   min-height: 48px;
   padding: 0 6px;
   font-size: clamp(12.5px, 3.6vw, 13.5px);
-  white-space: nowrap;
+  line-height: 1.15;
+}
+/* a long label wraps inside its button (two lines fit the 48 px) instead of running out of it */
+.paige-actions > .paige-btn,
+.paige-actions > .paige-btn * {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 /* the main button (Go there, Go upstairs, Show me) gets the wider share of the row */
 .paige-actions > .paige-main {

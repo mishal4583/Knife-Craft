@@ -78,6 +78,36 @@ SHEETS = {
 }
 
 
+def gap_boxes(solid: "np.ndarray", cols: int, rows: int) -> list:
+    """The tight box [x, y, w, h] of each picture of a sheet whose pictures are separated by empty rows and columns (row-major)."""
+
+    def runs(v):
+        out, start = [], None
+        for i, on in enumerate(v):
+            if on and start is None:
+                start = i
+            if not on and start is not None:
+                out.append((start, i))
+                start = None
+        if start is not None:
+            out.append((start, len(v)))
+        return out
+
+    boxes = []
+    bands = runs(solid.sum(1) > 0)
+    if len(bands) != rows:
+        raise SystemExit(f"expected {rows} picture rows, found {len(bands)}")
+    for r0, r1 in bands:
+        band = solid[r0:r1]
+        spans = runs(band.sum(0) > 0)
+        if len(spans) != cols:
+            raise SystemExit(f"expected {cols} pictures in a row, found {len(spans)}")
+        for c0, c1 in spans:
+            ys = np.where(band[:, c0:c1].any(1))[0]
+            boxes.append((int(c0), int(r0 + ys.min()), int(c1 - c0), int(ys.max() - ys.min() + 1)))
+    return boxes
+
+
 def write_sheet_table() -> None:
     """Writes src/components/kc/sauce/sauceSheets.ts from the built sheets (the tight alpha box of each cell)."""
     lines = [
@@ -94,7 +124,11 @@ def write_sheet_table() -> None:
         cw, ch = w // cols, h // rows
         a = np.array(im.getchannel("A"))
         boxes = []
-        for r in range(rows):
+        if name == "sauce-icons":
+            # The bottles are not centred in their cells and some jars run past a cell edge, so a per-cell box would cut them: find each
+            # picture by the gaps between the painted rows and columns instead (developer 2026-11-17: bottles floated / were clipped on the shelf).
+            boxes = gap_boxes(a > 140, cols, rows)
+        for r in range(rows if not boxes else 0):
             for c in range(cols):
                 cell = a[r * ch:(r + 1) * ch, c * cw:(c + 1) * cw] > 16
                 ys, xs = np.where(cell)

@@ -1,6 +1,13 @@
 # KnifeCraft — Handoff (Playgama edition)
 
-## The Kitchen's Mini-games sheet (developer 2026-11-17, UNCOMMITTED)
+## Sauce Shelf shows every sauce made; Paige's bubble scrollbar (developer 2026-11-17, UNCOMMITTED)
+
+- **Shelf:** a bottle stood in colour only after a THREE-star round, so sauces made with one or two stars stayed grey ("I made many sauces and it is not showing"). New state bit field `business.sauceStation.made` (one bit per sauce, any round of 1+ star; `isMade`, `madeCount`; old saves start from `mastered`). The shelf and the Inventory chip count sauces made; a gold medal still marks the three-star ones, and the strip says "N mastered". **Sauces played before this change cannot be recovered** (the save only kept the three-star bits), so they show again the next time each is made.
+- **Bottles standing:** each icon is cut to its painted pixels (`SauceIcon stand`, true size against the cell height), so the base of every bottle sits on the cubby floor; the icon boxes were wrong where a jar ran past its 128 px cell (the table is now built from the gaps between pictures: `gap_boxes` in `scripts/make-sauce-assets.py`, output identical to `sauceSheets.ts`).
+- **Paige bubble:** at 320 to 360 px the button label ("Keep going ›", "Collect rewards ›") could not wrap and ran a few px out of its button, so the bubble's scroll box scrolled sideways and drew a scrollbar. Labels now wrap (two lines fit the 48 px), the box never scrolls sideways and draws no bar (tall text still scrolls by touch). Measured on the guide card at five phone sizes: scroll width equals client width at all of them.
+- **Tests:** `sauce-station-qa` section P (new), `mini-game-praise-qa` W6 (new), e2e `saucestation` S9 updated to the new rule (count = sauces made; all pass), `saucevisual` pass.
+
+## The Kitchen's Mini-games sheet (developer 2026-11-17, committed f613a62)
 
 "Every mini-game inside the home kitchen screen, each available to play according to its level." A 🎮 round button joins the Kitchen's right-hand column (Daily Check, Inventory, Business, now Mini-games); it opens a sheet of eight game logos (`components/kc/MiniGamesSheet.tsx`, one list in `business/miniGames.ts`, opening order from each game's own constant): Check the delivery (L3), Fridge Sort (L4), Stock the shelves (L6), Sauce Station (L7), Fridge Check (L10), Car Park (L15), Dessert Run (L18), Kitchen Dispatch (L18).
 - **A locked tile** is grey with a lock, its level and "opens in N services"; a tap does nothing. **An open tile** says what waits ("2 baskets wait", "3/3 rounds left", "Free play") and plays on a tap.

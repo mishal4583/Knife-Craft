@@ -4,11 +4,12 @@ import type { SaveData } from "@/game/SaveManager";
 import {
   MAX_PINS,
   SAUCES,
+  isMade,
   isMastered,
   isSauceStationOpen,
+  madeCount,
   masteredCount,
   pinsOf,
-  sauceStationOf,
 } from "@/game/business/sauceStation";
 import { Art, Plaque, SortButton } from "@/components/kc/inventory/sort/SortParts";
 import { sauceUrl, useSauceArt } from "./sauceArt";
@@ -37,9 +38,9 @@ export function SauceShelf({
 }) {
   const art = useSauceArt("shelf-backdrop");
   const [pick, setPick] = useState<number | null>(null);
-  const st = sauceStationOf(save);
   const pins = pinsOf(save);
-  const n = masteredCount(save);
+  const n = madeCount(save);
+  const gold = masteredCount(save);
   const sel = pick !== null ? SAUCES[pick]! : null;
   return (
     <div
@@ -65,6 +66,7 @@ export function SauceShelf({
       >
         {SAUCES.map((s, i) => {
           const open = isSauceStationOpen(playerLevel) && playerLevel >= s.unlock;
+          const made = isMade(save, s.id);
           const got = isMastered(save, s.id);
           const col = i % 6;
           const row = Math.floor(i / 6);
@@ -73,9 +75,9 @@ export function SauceShelf({
               key={s.id}
               type="button"
               data-testid={`sauce-slot-${s.id}`}
-              data-state={got ? "mastered" : open ? "open" : "locked"}
+              data-state={got ? "mastered" : made ? "made" : open ? "open" : "locked"}
               onClick={() => setPick(i)}
-              aria-label={`${s.name}: ${got ? "mastered" : open ? "not mastered yet" : "locked, keep cooking to unlock it"}`}
+              aria-label={`${s.name}: ${got ? "mastered" : made ? "made, not mastered yet" : open ? "not made yet" : "locked, keep cooking to unlock it"}`}
               className={cn(
                 "press absolute flex -translate-x-1/2 items-end justify-center rounded-lg",
                 pick === i && "bg-[#ffd25a]/25 ring-2 ring-[#ffd25a]",
@@ -88,7 +90,7 @@ export function SauceShelf({
               }}
             >
               {open ? (
-                <SauceIcon index={i} emoji={s.icon} grey={!got} className="h-full" />
+                <SauceIcon index={i} emoji={s.icon} grey={!made} stand />
               ) : (
                 <span className="relative flex h-[88%] items-center justify-center">
                   <Sprite sheet="slot-states" index={1} emoji="🔒" className="h-full" />
@@ -140,14 +142,16 @@ export function SauceShelf({
               <span className="block text-[12px] font-bold text-walnut/70">
                 {isMastered(save, sel.id)
                   ? "Mastered with three stars"
-                  : isSauceStationOpen(playerLevel) && playerLevel >= sel.unlock
-                    ? "Make it with three stars to put it on the shelf"
-                    : "Locked. Keep cooking to unlock it"}
+                  : isMade(save, sel.id)
+                    ? "Made. Make it again with three stars to master it"
+                    : isSauceStationOpen(playerLevel) && playerLevel >= sel.unlock
+                      ? "Make it once to put it on the shelf"
+                      : "Locked. Keep cooking to unlock it"}
               </span>
             </p>
           ) : (
             <p className="text-[13px] font-bold text-walnut/75">
-              Tap a bottle · 🎖️ {pins}/{MAX_PINS} Saucier pins · {st.perfect ?? 0} perfect
+              Tap a bottle · 🥇 {gold} mastered · 🎖️ {pins}/{MAX_PINS} pins
             </p>
           )}
         </div>

@@ -814,6 +814,8 @@ const hashOf = (...parts: number[]): number => {
 export type SauceStationState = {
   /** One bit per sauce (the Sauce Shelf's order): mastered with three stars. */
   mastered?: number;
+  /** One bit per sauce: made at least once with one star or more (the Sauce Shelf stands it in colour; developer 2026-11-17). Older saves start from `mastered`. */
+  made?: number;
   best?: number;
   stars?: number;
   /** Three-star rounds (every 3 earn a pin). */
@@ -838,8 +840,10 @@ const ALL_BITS = 2 ** SAUCES.length - 1;
 
 export function sauceStationOf(save: SaveData): SauceStationState {
   const raw = save.business.sauceStation;
+  const mastered = whole(raw?.mastered, ALL_BITS);
   return {
-    mastered: whole(raw?.mastered, ALL_BITS),
+    mastered,
+    made: whole(raw?.made, ALL_BITS) | mastered,
     best: whole(raw?.best),
     stars: whole(raw?.stars),
     perfect: whole(raw?.perfect),
@@ -868,6 +872,16 @@ export function withHowtoSeen(save: SaveData): SaveData {
 export const isMastered = (save: SaveData, sauceId: string): boolean => {
   const i = sauceIndex(sauceId);
   return i >= 0 && (sauceStationOf(save).mastered! & (1 << i)) !== 0;
+};
+export const isMade = (save: SaveData, sauceId: string): boolean => {
+  const i = sauceIndex(sauceId);
+  return i >= 0 && (sauceStationOf(save).made! & (1 << i)) !== 0;
+};
+export const madeCount = (save: SaveData): number => {
+  let n = 0;
+  const m = sauceStationOf(save).made!;
+  for (let i = 0; i < SAUCES.length; i++) if (m & (1 << i)) n++;
+  return n;
 };
 export const masteredCount = (save: SaveData): number => {
   let n = 0;
@@ -989,6 +1003,7 @@ export function finishRound(
   const next: SauceStationState = {
     ...(save.business.sauceStation ?? {}),
     mastered: mastered ? st.mastered! | (1 << i) : st.mastered!,
+    made: o.stars >= 1 && i >= 0 ? st.made! | (1 << i) : st.made!,
     best: newBest ? o.score : st.best!,
     stars: st.stars! + o.stars,
     perfect,

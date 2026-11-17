@@ -442,17 +442,24 @@ const shelf = await page.evaluate(() => ({
   slots: document.querySelectorAll('[data-testid^="sauce-slot-"]').length,
   locked: document.querySelectorAll('[data-testid^="sauce-slot-"][data-state="locked"]').length,
   mastered: document.querySelectorAll('[data-testid^="sauce-slot-"][data-state="mastered"]').length,
+  made: document.querySelectorAll('[data-testid^="sauce-slot-"][data-state="made"]').length,
   count: document.querySelector('[data-testid="sauce-shelf-count"]')?.textContent?.trim(),
 }));
-const bits = sv?.business?.sauceStation?.mastered ?? 0;
-const bitCount = bits.toString(2).split("1").length - 1;
+// The shelf stands every sauce MADE in colour (developer 2026-11-17; it used to wait for three stars): the count is the sauces made, a gold medal marks the mastered ones.
+const ones = (n) => n.toString(2).split("1").length - 1;
+const bitCount = ones(sv?.business?.sauceStation?.mastered ?? 0);
+const madeCount = ones(
+  (sv?.business?.sauceStation?.made ?? 0) | (sv?.business?.sauceStation?.mastered ?? 0),
+);
 check(
-  "S9 the Sauce Shelf lists 24 sauces, the locked ones are marked, the count matches the save",
+  "S9 the Sauce Shelf lists 24 sauces, the locked ones are marked, every sauce made is in colour and the count matches the save",
   shelf.slots === 24 &&
     shelf.locked >= 10 &&
+    madeCount >= 1 &&
     shelf.mastered === bitCount &&
-    new RegExp(`${bitCount}/24`).test(shelf.count ?? ""),
-  { shelf, bitCount },
+    shelf.mastered + shelf.made === madeCount &&
+    new RegExp(`${madeCount}/24`).test(shelf.count ?? ""),
+  { shelf, bitCount, madeCount },
 );
 await shot(page, "sauce-9-shelf");
 

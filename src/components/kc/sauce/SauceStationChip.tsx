@@ -4,7 +4,7 @@ import {
   SAUCE_AD_ROUNDS,
   canOfferRoundsAd,
   roundsAllowed,
-  masteredCount,
+  madeCount,
   roundsLeft,
   SAUCES,
 } from "@/game/business/sauceStation";
@@ -27,7 +27,7 @@ export function SauceStationChip({
 }) {
   const level = restaurantLevelOf(save.levelProgress);
   const left = roundsLeft(save, level);
-  const m = masteredCount(save);
+  const m = madeCount(save);
   // The free rounds are used: the chip stays once a day with the ad offer (developer 2026-11-10); the ad itself is asked inside the game.
   if (left <= 0 && canOfferRoundsAd(save, level))
     return (

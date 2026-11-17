@@ -29,6 +29,8 @@ import {
   bottleScore,
   bottleStars,
   finishRound,
+  isMade,
+  madeCount,
   gradeMix,
   hasPrepCook,
   isMastered,
@@ -917,6 +919,58 @@ console.log("N. Why not three stars, and the clocks (developer 2026-11-13)");
       game.includes('data-testid="sauce-hint-whisk"') &&
       game.includes('data-testid="sauce-why"'),
     "N9: nothing done for 4 s lights up the next ingredient, the whisk or Bottle it; the result shows 'Why not 3 stars'",
+  );
+}
+
+console.log("P. The Sauce Shelf shows every sauce made (developer 2026-11-17)");
+{
+  const base = structuredClone(DEFAULT_SAVE) as SaveData;
+  const round = (sauceId: string, stars: 0 | 1 | 2 | 3, practice = false) => ({
+    sauceId,
+    stars,
+    score: stars * 300,
+    practice,
+  });
+  const one = finishRound(base, round("tomato-sauce", 1)).save;
+  assert(
+    isMade(one, "tomato-sauce") && !isMastered(one, "tomato-sauce") && madeCount(one) === 1,
+    "P1: a sauce made with one star is on the shelf, not mastered",
+  );
+  const none = finishRound(base, round("tomato-sauce", 0)).save;
+  assert(
+    !isMade(none, "tomato-sauce") && madeCount(none) === 0,
+    "P2: a round with no stars puts nothing on the shelf",
+  );
+  const practice = finishRound(base, round("tomato-sauce", 3, true)).save;
+  assert(practice === base && madeCount(practice) === 0, "P3: practice puts nothing on the shelf");
+  const two = finishRound(
+    finishRound(one, round("vinaigrette", 2)).save,
+    round("tomato-sauce", 3),
+  ).save;
+  assert(
+    madeCount(two) === 2 &&
+      masteredCount(two) === 1 &&
+      isMastered(two, "tomato-sauce") &&
+      isMade(two, "vinaigrette"),
+    "P4: made counts every sauce made; mastered still needs three stars",
+  );
+  const old = {
+    ...base,
+    business: { ...base.business, sauceStation: { mastered: 0b101 } },
+  } as SaveData;
+  assert(
+    madeCount(old) === 2 && masteredCount(old) === 2,
+    "P5: an older save (no made record) starts from what it mastered",
+  );
+  const again = finishRound(two, round("tomato-sauce", 1)).save;
+  assert(
+    madeCount(again) === 2 && masteredCount(again) === 1,
+    "P6: making a sauce again never un-makes or un-masters it",
+  );
+  const shelf = read("src/components/kc/sauce/SauceShelf.tsx");
+  assert(
+    shelf.includes("grey={!made}") && shelf.includes("stand") && shelf.includes('"made"'),
+    "P7: the shelf stands a made sauce in colour (grey only when not made yet), cut to its painted pixels",
   );
 }
 

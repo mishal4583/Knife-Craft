@@ -52,20 +52,33 @@ export function SauceIcon({
   emoji,
   className,
   grey,
+  stand,
 }: {
   index: number;
   emoji: string;
   className?: string;
   grey?: boolean;
+  /** Cut the bottle to its painted pixels, in its true size against the tallest cell, so its base is the bottom of the box (it stands on a shelf, never floats). */
+  stand?: boolean;
 }) {
   const ok = useSauceArt("sauce-icons");
-  const style: CSSProperties = ok
+  const tight = ok && stand ? boxStyle("sauce-icons", index) : null;
+  const sheet = SHEETS["sauce-icons"];
+  const grayed = grey ? { filter: "grayscale(1) brightness(.55)", opacity: 0.7 } : null;
+  const style: CSSProperties = tight
     ? {
-        ...cellStyle("sauce-icons", index % 6, Math.floor(index / 6)),
-        aspectRatio: String(cellAspect("sauce-icons")),
-        ...(grey ? { filter: "grayscale(1) brightness(.55)", opacity: 0.7 } : null),
+        ...tight.style,
+        aspectRatio: String(tight.aspect),
+        height: `${(sheet ? (sheet.boxes[index]![3] / (sheet.h / sheet.rows)) * 100 : 100).toFixed(2)}%`,
+        ...grayed,
       }
-    : { aspectRatio: "1" };
+    : ok
+      ? {
+          ...cellStyle("sauce-icons", index % 6, Math.floor(index / 6)),
+          aspectRatio: String(cellAspect("sauce-icons")),
+          ...grayed,
+        }
+      : { aspectRatio: "1" };
   return (
     <span
       aria-hidden

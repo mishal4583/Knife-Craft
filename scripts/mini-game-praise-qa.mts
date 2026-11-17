@@ -152,6 +152,12 @@ console.log("W. Wiring");
     /result\.checkEffects\)\s*notePraise\("fridge-check"/.test(app),
     "W5: the Fridge Check praises only a finished real round (the check effects exist)",
   );
+  const css = read("src/components/kc/assistant/assistant.css");
+  assert(
+    /\.paige-scroll \{[^}]*overflow-x: hidden;[^}]*scrollbar-width: none;/.test(css) &&
+      /\.paige-actions > \.paige-btn \*[^{]*\{[^}]*white-space: normal;/.test(css),
+    "W6: Paige's bubble never scrolls sideways or draws a scrollbar, and a long button label wraps (a 1 px overflow showed a scrollbar on narrow phones, 2026-11-17)",
+  );
 }
 
 console.log(
