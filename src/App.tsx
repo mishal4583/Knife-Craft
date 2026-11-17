@@ -1338,7 +1338,14 @@ export function App() {
     const current = saveRef.current;
     if (!current) return { ok: false };
     const level = restaurantLevelOf(current.levelProgress);
-    const none = { hype: 0, pin: false, newBest: false, streak: 0, mastered: false };
+    const none = {
+      hype: 0,
+      pin: false,
+      newBest: false,
+      streak: 0,
+      mastered: false,
+      shelved: false,
+    };
     if (action.kind === "start") {
       sendAnalyticsEvent("sauce_station_started", {
         level,

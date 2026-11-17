@@ -1103,6 +1103,64 @@ console.log("R. 2026-11-17 audit: what the screen says always matches what happe
 }
 
 console.log(
+  "T. 2026-11-17: the shelf grows (developer: 'I made 2 sauces and the shelf still shows 1')",
+);
+{
+  // Play a whole week of rounds at one star: every round must be a NEW sauce until every unlocked sauce is on the shelf
+  const lv = 40;
+  let s = saveAt(lv);
+  const open = unlockedSauces(lv);
+  const seen: string[] = [];
+  let repeatedTooSoon = 0;
+  for (let n = 0; n < open.length; n++) {
+    const pick = sauceOfTheDay(s, lv);
+    if (seen.includes(pick.id)) repeatedTooSoon++;
+    seen.push(pick.id);
+    const r = finishRound(s, outcome(pick.id, 1));
+    assert(
+      r.effects.shelved === true && isMade(r.save, pick.id),
+      `T1.${n}: a one-star round puts ${pick.id} on the shelf and says so`,
+    );
+    s = r.save;
+    // the day's counter moves on, so a new day / round is seeded differently; keep the same day on purpose
+    if (n === 2)
+      s.business.calendar = {
+        ...s.business.calendar,
+        businessDay: s.business.calendar.businessDay + 1,
+      };
+  }
+  assert(
+    repeatedTooSoon === 0 && madeCount(s) === open.length,
+    "T2: the day's sauce is never one already made while an unmade one is open, so the shelf fills one sauce per round (it used to re-deal one-star sauces)",
+    { repeatedTooSoon, made: madeCount(s), open: open.length },
+  );
+  const again = finishRound(s, outcome(open[0]!.id, 1));
+  assert(
+    again.effects.shelved === false,
+    "T3: making a sauce that is already on the shelf is not 'newly shelved'",
+  );
+  const zero = finishRound(saveAt(lv), outcome(open[0]!.id, 0));
+  assert(
+    zero.effects.shelved === false && !isMade(zero.save, open[0]!.id),
+    "T4: a zero-star round does not shelve the sauce",
+  );
+  const prac = finishRound(saveAt(lv), { ...outcome(open[0]!.id, 3), practice: true });
+  assert(
+    prac.effects.shelved === false && !isMade(prac.save, open[0]!.id),
+    "T5: an extra (practice) round never shelves a sauce",
+  );
+  const game = read("src/components/kc/sauce/SauceStationGame.tsx");
+  assert(
+    /data-testid="sauce-shelf-note"/.test(game) &&
+      /Added to your Sauce Shelf!/.test(game) &&
+      /Not on the shelf: it needs 1 star/.test(game) &&
+      /Already on your Sauce Shelf/.test(game) &&
+      /not added to the shelf/.test(game),
+    "T6: the result says plainly whether this round put the sauce on the shelf (added / already there / needs a star / extra round)",
+  );
+}
+
+console.log(
   failures ? `\nSAUCE STATION QA: ${failures} FAILURE(S)` : "\nSAUCE STATION QA: ALL PASS",
 );
 process.exit(failures ? 1 : 0);

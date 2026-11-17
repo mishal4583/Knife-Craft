@@ -1738,7 +1738,7 @@ function ResultPanel({
         ) : null}
         {practice ? (
           <p className="relative mt-1 font-ui text-[12.5px] font-bold text-walnut/65">
-            Extra round: no reward
+            Extra round: no reward, not added to the shelf
           </p>
         ) : (
           <p
@@ -1757,13 +1757,26 @@ function ResultPanel({
             className="relative mx-auto mt-1 h-[48px]"
           />
         ) : null}
-        {!practice && e.mastered ? (
+        {/* Says plainly whether this round put the sauce on the shelf (developer 2026-11-17: "I made 2 sauces and still it is not showing in the shelf") */}
+        {!practice ? (
           <p
-            className="relative mt-1 flex items-center justify-center gap-1.5 font-ui text-[13px] font-extrabold text-copper"
-            data-testid="sauce-mastered"
+            className={cn(
+              "relative mt-1 flex items-center justify-center gap-1.5 font-ui text-[13px] font-extrabold",
+              result.stars === 0 ? "text-tomato" : "text-copper",
+            )}
+            data-testid="sauce-shelf-note"
+            data-shelved={e.shelved ? "1" : "0"}
           >
-            <SauceIcon index={sauceIndex(sauce.id)} emoji={sauce.icon} className="h-8" /> On your
-            Sauce Shelf!
+            {e.shelved || e.mastered ? (
+              <SauceIcon index={sauceIndex(sauce.id)} emoji={sauce.icon} className="h-8" />
+            ) : null}
+            {e.mastered
+              ? "🥇 Mastered: gold seal on your Sauce Shelf!"
+              : e.shelved
+                ? "✓ Added to your Sauce Shelf!"
+                : result.stars === 0
+                  ? "Not on the shelf: it needs 1 star"
+                  : "Already on your Sauce Shelf"}
           </p>
         ) : null}
         {!practice && e.streak >= 2 ? (

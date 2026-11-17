@@ -959,8 +959,9 @@ export function withAdRounds(save: SaveData, level: number): SaveData {
 }
 
 /**
- * The sauce of today's next round: one the player has unlocked, preferring one not mastered yet, seeded by the day and the round (so the same round is
- * the same sauce). Practice asks for any unlocked sauce by id instead.
+ * The sauce of today's next round: one the player has unlocked, preferring one NOT MADE yet (so the Sauce Shelf fills; developer 2026-11-17: two
+ * sauces made and the shelf did not grow, because the pool only skipped the mastered ones and dealt the same one-star sauce again), then one not
+ * mastered, then any; seeded by the day and the round (so the same round is the same sauce). Practice asks for any unlocked sauce by id instead.
  */
 export function sauceOfTheDay(save: SaveData, level: number): SauceDef {
   const open = unlockedSauces(level);
@@ -973,8 +974,9 @@ export function sauceOfTheDay(save: SaveData, level: number): SauceDef {
     const first = open.find((s) => s.id === FIRST_SAUCE_ID);
     if (first) return first;
   }
+  const unmade = open.filter((s) => !isMade(save, s.id));
   const fresh = open.filter((s) => !isMastered(save, s.id));
-  const pool = fresh.length > 0 ? fresh : open;
+  const pool = unmade.length > 0 ? unmade : fresh.length > 0 ? fresh : open;
   const rand = rng(hashOf(day, round, level, st.rounds ?? 0));
   return pool[Math.floor(rand() * pool.length)]!;
 }
@@ -998,6 +1000,8 @@ export type RoundEffects = {
   newBest: boolean;
   streak: number;
   mastered: boolean;
+  /** This round put the sauce on the Sauce Shelf for the first time (one star or more, a real round). */
+  shelved: boolean;
 };
 export const NO_EFFECTS: RoundEffects = {
   hype: 0,
@@ -1005,6 +1009,7 @@ export const NO_EFFECTS: RoundEffects = {
   newBest: false,
   streak: 0,
   mastered: false,
+  shelved: false,
 };
 
 /**
@@ -1025,6 +1030,7 @@ export function finishRound(
   const i = sauceIndex(o.sauceId);
   const wasMastered = i >= 0 && (st.mastered! & (1 << i)) !== 0;
   const mastered = o.stars === 3 && i >= 0 && !wasMastered;
+  const shelved = o.stars >= 1 && i >= 0 && (st.made! & (1 << i)) === 0;
   const newBest = o.score > st.best!;
   const streak = o.stars === 3 ? st.streak! + 1 : 0;
   const next: SauceStationState = {
@@ -1043,7 +1049,7 @@ export function finishRound(
   const hype = HYPE_BY_STARS[o.stars];
   let out = withState(save, next);
   if (hype > 0) out = addHype(out, hype);
-  return { save: out, effects: { hype, pin, newBest, streak, mastered } };
+  return { save: out, effects: { hype, pin, newBest, streak, mastered, shelved } };
 }
 
 /** Today's duty is met: a rewarded round was played, or the Prep Cook / the ad skip covered it. */
