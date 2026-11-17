@@ -1077,7 +1077,7 @@ export function App() {
       restaurantLevelOf(saveRef.current.levelProgress) < freePlayFrom
     ) {
       setLockNotice(
-        `🔒 ${s === "dessert-run" ? "Dessert Run" : "Kitchen Dispatch"} opens at Level ${freePlayFrom}`,
+        `🔒 ${s === "dessert-run" ? "Dessert Run" : "Unload the Van"} opens at Level ${freePlayFrom}`,
       );
       return;
     }

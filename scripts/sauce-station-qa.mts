@@ -775,6 +775,28 @@ console.log("L. What you see: the guidance, the whisk, the pour (developer 2026-
       /data-testid=\{`sauce-need-\$\{x\.id\}`\}/.test(game),
     "L8: the recipe's tiles glow with how many scoops are still wanted, and the recipe chips count 0/3 up to a tick",
   );
+  // The recipe and the steps are NEVER a difficulty (developer 2026-11-17, third report: at Level 55+ the screen only said "Tap the ingredients
+  // to pour them in" and the player had to guess the ingredients from a colour). Every tier shows what to pour, how much, and the step.
+  {
+    const tierKeys = new Set(SAUCE_TIERS.flatMap((x) => Object.keys(x)));
+    const sauceSrc = read("src/game/business/sauceStation.ts");
+    assert(
+      !tierKeys.has("help") && !/help:\s*"/.test(sauceSrc) && !/tier\.help|showsRecipe/.test(game),
+      "L9: no tier can hide the recipe: SauceTier has no `help` switch and the screen has no branch on one",
+    );
+    assert(
+      /\{needs\.map\(\(x\) => \(/.test(game) &&
+        /need=\{needLeft\[it\.id\] \?\? null\}/.test(game) &&
+        /text: `Pour: \$\{toAdd/.test(game) &&
+        !/Match the colour and the thickness|Taste it and trust your eyes/.test(game),
+      "L9b: the recipe chips (name and count), the glowing tiles and the 'Pour: …' line are drawn on every tier, and the old 'trust your eyes' text is gone",
+    );
+    // every sauce has a recipe the screen can list: known pantry items, at least one
+    const bad = SAUCES.filter(
+      (x) => x.recipe.length === 0 || x.recipe.some(([id]) => !PANTRY_BY_ID[id]),
+    ).map((x) => x.id);
+    assert(bad.length === 0, "L9c: every sauce has a recipe made of pantry items", bad);
+  }
 }
 
 console.log("M. 2026-11-11: the pot's liquid, Play again, the Pour button");

@@ -2,7 +2,8 @@ import {
   CRATE_COLORS,
   type Brick,
   type CrateBoard,
-  type CrateIngredient,
+  crateItemOf,
+  zoneEmblem,
   type Gate,
   type Side,
   type Wall,
@@ -165,7 +166,7 @@ function drawWall(ctx: CanvasRenderingContext2D, board: CrateBoard, w: Wall, pul
   glow(ctx, x, y, wd, ht, rad, pulse);
 }
 
-/** A crate: a painted wooden box in its ingredient's colour, with the ingredient shown on every cell. */
+/** A crate: a painted wooden box in its zone's colour, with the food it carries shown on every cell. */
 function drawBrick(
   ctx: CanvasRenderingContext2D,
   art: KdArt | null,
@@ -221,7 +222,7 @@ function drawBrick(
   ctx.fillRect(x, y, wd, ht * 0.5);
   ctx.restore();
   // the ingredient on every cell
-  const pic = art?.images[`ingredient-${b.color as CrateIngredient}`];
+  const pic = art?.images[`item-${crateItemOf(b)}`];
   if (pic) {
     const s = cell * 0.8;
     ctx.save();
@@ -239,7 +240,7 @@ function drawBrick(
   glow(ctx, x, y, wd, ht, rad, pulse);
 }
 
-/** A gate in the frame: a plate in the ingredient's colour, chevrons pointing out of the board and the ingredient in the middle. */
+/** A door in the frame: a plate in the zone's colour, chevrons pointing out of the board and the zone's emblem food in the middle. */
 function drawGate(ctx: CanvasRenderingContext2D, art: KdArt | null, board: CrateBoard, g: Gate) {
   const cell = cellOf(board);
   const thick = GATE_THICK;
@@ -294,7 +295,7 @@ function drawGate(ctx: CanvasRenderingContext2D, art: KdArt | null, board: Crate
   }
   ctx.restore();
   // the ingredient in the middle, upright, in a white ring
-  const pic = art?.images[`ingredient-${g.color as CrateIngredient}`];
+  const pic = art?.images[`item-${zoneEmblem(g.color)}`];
   const r = thick * 0.62;
   ctx.fillStyle = "#fffaf0";
   ctx.beginPath();

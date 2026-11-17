@@ -1,5 +1,5 @@
 /**
- * Kitchen Dispatch (developer 2026-11-17, preview), rebuilt the same day on the mechanism of the sliding-block "door" games
+ * "Unload the Van" (shown name; ids and files keep the first name, Kitchen Dispatch; developer 2026-11-17, preview), rebuilt the same day on the mechanism of the sliding-block "door" games
  * (Color Block Jam and its kind): ingredient crates of different sizes (1x2, 2x2, 2x3 ...) sit on a counter with a few dark
  * fixed blocks. The player DRAGS a crate freely in any direction; it cannot pass through another crate or a dark block. Each
  * ingredient has a GATE of its own colour in the wooden frame: push a crate against its own gate, with its width inside the
@@ -16,7 +16,10 @@
  */
 
 export const CRATE_FIRST_LEVEL = 18;
-/** The ingredients on the crates; each has a picture and a colour. */
+/**
+ * The colour keys of the crates and their doors. (The names are the game's first, when a colour WAS one ingredient; since the
+ * "Unload the Van" retheme each key is a STORAGE ZONE with its own colour, see `CRATE_ZONES`.)
+ */
 export const CRATE_INGREDIENTS = [
   "tomato",
   "carrot",
@@ -28,7 +31,7 @@ export const CRATE_INGREDIENTS = [
   "broccoli",
 ] as const;
 export type CrateIngredient = (typeof CRATE_INGREDIENTS)[number];
-/** The colour of an ingredient's crates and gate. */
+/** The colour of a zone's crates and door. */
 export const CRATE_COLORS: Record<CrateIngredient, string> = {
   tomato: "#E5483E",
   carrot: "#F59A28",
@@ -39,6 +42,62 @@ export const CRATE_COLORS: Record<CrateIngredient, string> = {
   mushroom: "#B98A5A",
   broccoli: "#2FB5A0",
 };
+
+/**
+ * THE VAN (developer 2026-11-17: "vegetables are delivered, not dispatched: the delivery person brings crates and we sort the items by
+ * their crate colour"). The van's crates are jammed on the loading bay; every crate goes out of the door of its OWN COLOUR, and each
+ * colour is a storage zone with a name. A crate shows one of its zone's foods (`crateItemOf`, no dice: from the crate's number), so
+ * the player also learns where food lives. The game logic still matches colour to colour; the foods are drawn and named only.
+ * `emblem` is the food drawn on the zone's door. `colour` is the word shown in the hints.
+ */
+export const CRATE_ZONES: Record<
+  CrateIngredient,
+  { name: string; colour: string; items: readonly [string, string, string] }
+> = {
+  tomato: { name: "Fruit bin", colour: "red", items: ["tomato", "avocado", "mango"] },
+  carrot: { name: "Root bin", colour: "orange", items: ["carrot", "potato", "ginger"] },
+  lettuce: { name: "Leafy rack", colour: "green", items: ["lettuce", "basil", "parsley"] },
+  broccoli: { name: "Veg rack", colour: "teal", items: ["broccoli", "corn", "mushroom"] },
+  onion: { name: "Aromatics shelf", colour: "purple", items: ["onion", "garlic", "chilli"] },
+  cheddar: { name: "Pantry shelf", colour: "yellow", items: ["olive-oil", "honey", "mustard"] },
+  salmon: { name: "Cold room", colour: "blue", items: ["salmon", "cheddar", "yogurt"] },
+  mushroom: { name: "Spice rack", colour: "brown", items: ["paprika", "cumin", "turmeric"] },
+};
+/** The name a food is called on screen. */
+export const CRATE_ITEM_NAMES: Record<string, string> = {
+  tomato: "Tomatoes",
+  avocado: "Avocados",
+  mango: "Mangoes",
+  carrot: "Carrots",
+  potato: "Potatoes",
+  ginger: "Ginger",
+  lettuce: "Lettuce",
+  basil: "Basil",
+  parsley: "Parsley",
+  broccoli: "Broccoli",
+  corn: "Sweetcorn",
+  mushroom: "Mushrooms",
+  onion: "Onions",
+  garlic: "Garlic",
+  chilli: "Chillies",
+  "olive-oil": "Olive oil",
+  honey: "Honey",
+  mustard: "Mustard",
+  salmon: "Salmon",
+  cheddar: "Cheddar",
+  yogurt: "Yogurt",
+  paprika: "Paprika",
+  cumin: "Cumin",
+  turmeric: "Turmeric",
+};
+/** The food a crate carries: one of its zone's three, by the crate's number (stable, never random). */
+export function crateItemOf(brick: Pick<Brick, "id" | "color">): string {
+  const n = Number(brick.id.replace(/\D/g, "")) || 0;
+  const items = CRATE_ZONES[brick.color].items;
+  return items[n % items.length]!;
+}
+/** The food drawn on a zone's door. */
+export const zoneEmblem = (color: CrateIngredient): string => CRATE_ZONES[color].items[0];
 
 export type Side = "top" | "bottom" | "left" | "right";
 /** A crate: `w` x `h` cells with its top-left cell at (`x`, `y`). */

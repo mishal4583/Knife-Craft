@@ -276,6 +276,7 @@ Release zip: the CONTENTS of `dist/` →
   paper, Fraunces / Nunito / Caveat bundled locally.
 - Touch targets ≥ 48 px.
 - **A new mini-game** (developer 2026-11-14, `docs/planning/MINIGAME-PRODUCTION-RULES-2026-11-14.md`): the core action with plain art first; no art prompts, rewards or ads until the developer has played it on a real phone and it feels good; every level solvable by construction (QA proves it); a mistake never blocks progress and a restart is one tap (Car Park, 2026-11-15: three honks end the round, "Try again" is the same lot); store text and screenshots updated in the same release.
+- **Mini-game instructions are never a difficulty** (developer 2026-11-17, third report on the Sauce Station): at EVERY level and tier a mini-game shows WHAT to do next in plain words and what it needs (the Sauce Station lists each ingredient with its count, the step ladder and a "Pour: …" line). A harder tier is time, tolerance, speed, size or count, never a hidden recipe, rule or step. Before changing a mini-game tier, check that a first-time player at the hardest tier still sees what to do; keep a QA assertion for it (`sauce-station-qa` L9, `saucestation.mjs` S3c).
 - **Short game copy** (developer 2026-10-16): a few words, icons and numbers
   (`StatChip`, `Points`). Any longer explanation goes behind an ⓘ
   (`InfoTip`, `kc/common/InfoTip.tsx`); `ui-copy-qa` guards it.

@@ -49,6 +49,8 @@ import {
   DISH_SCRUB_RATE,
   DISH_TOUGH,
   DISH_ZOOM,
+  DISH_CENTER,
+  DISH_BASIN_CENTER,
   dishMarks,
   dishRinsePoints,
   dishShapeFor,
@@ -393,6 +395,39 @@ console.log("W. Wiring");
       DISH_ORDER.pot < DISH_ORDER.plate,
     "R6: big pieces come first; thin cutlery is zoomed in so its dirt shows",
   );
+  // developer 2026-11-17: the glass stuck out of the sink. The zoomed piece (its hit shape scaled about its centre, moved to the basin's middle)
+  // must lie inside the water (about 205 scene units tall, 300 wide at the middle).
+  {
+    const outside: unknown[] = [];
+    for (const shape of shapes) {
+      let x0 = 1e9,
+        x1 = -1e9,
+        y0 = 1e9,
+        y1 = -1e9;
+      for (let y = 0; y <= 280; y += 1)
+        for (let x = 0; x <= 360; x += 1)
+          if (inDishSurface(x, y, shape)) {
+            x0 = Math.min(x0, x);
+            x1 = Math.max(x1, x);
+            y0 = Math.min(y0, y);
+            y1 = Math.max(y1, y);
+          }
+      const z = DISH_ZOOM[shape];
+      const c = z === 1 ? { x: (x0 + x1) / 2, y: (y0 + y1) / 2 } : DISH_CENTER[shape];
+      const to = z === 1 ? c : DISH_BASIN_CENTER;
+      const top = to.y + (y0 - c.y) * z,
+        bottom = to.y + (y1 - c.y) * z;
+      const left = to.x + (x0 - c.x) * z,
+        right = to.x + (x1 - c.x) * z;
+      if (top < 37 || bottom > 240 || left < 40 || right > 320)
+        outside.push({ shape, top, bottom, left, right });
+    }
+    assert(
+      outside.length === 0,
+      "R6b: every piece, zoomed, lies inside the sink's water (the glass used to stick out)",
+      outside,
+    );
+  }
   const game = read("src/components/kc/restaurant/WashUpSink.tsx");
   assert(
     /dishStains\(/.test(game) &&

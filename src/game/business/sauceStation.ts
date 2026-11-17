@@ -539,8 +539,6 @@ export type SauceTier = {
   /** The most scoops the bowl holds. */
   cap: number;
   timeMs: number;
-  /** "pips" = the reference recipe is shown, "list" = its ingredients only, "color" = the target only, "swatch" = the swatch alone. */
-  help: "pips" | "list" | "color" | "swatch";
   /** How many times a round the Taste button shows the match (Infinity = always). */
   tastes: number;
   /** The colour tolerance is widened by this factor. */
@@ -556,13 +554,16 @@ export type SauceTier = {
  * Tighter clocks and colour tolerance (developer 2026-11-12, player reviews: "increase the toughness of the mini games"): the first tier is 65 s at x1.3 (was 75 s at
  * x1.5), then 62 / 58 / 54 s (was 70 / 65 / 60); the tiers still only get harder (sauce-station-qa D19).
  * Clocks again (developer 2026-11-13: "there is not enough time to finish the sauce"): 90 / 82 / 74 / 66 s. The colour tolerance is unchanged.
+ * THE RECIPE AND THE STEPS ARE NEVER A DIFFICULTY (developer 2026-11-17, the third time he reported it: at Level 55+ the screen only said "Tap the
+ * ingredients to pour them in" and the player had to guess the ingredients from a colour): every tier shows what to pour, how much, and the
+ * current step. A harder tier is a tighter clock, colour tolerance, oil limit, narrower bottle window and fewer Taste looks, never a hidden
+ * recipe. `sauce-station-qa` L8 guards it.
  */
 export const SAUCE_TIERS: readonly SauceTier[] = [
   {
     from: SAUCE_FIRST_LEVEL,
     cap: 9,
     timeMs: 90_000,
-    help: "pips",
     tastes: Infinity,
     tolerance: 1.3,
     oilLimit: 2,
@@ -573,7 +574,6 @@ export const SAUCE_TIERS: readonly SauceTier[] = [
     from: 40,
     cap: 10,
     timeMs: 82_000,
-    help: "list",
     tastes: 5,
     tolerance: 1.1,
     oilLimit: 1.4,
@@ -584,7 +584,6 @@ export const SAUCE_TIERS: readonly SauceTier[] = [
     from: 55,
     cap: 12,
     timeMs: 74_000,
-    help: "color",
     tastes: 3,
     tolerance: 1,
     oilLimit: 1,
@@ -595,7 +594,6 @@ export const SAUCE_TIERS: readonly SauceTier[] = [
     from: 75,
     cap: 12,
     timeMs: 66_000,
-    help: "swatch",
     tastes: 2,
     tolerance: 1,
     oilLimit: 1,

@@ -1,8 +1,8 @@
-// Kitchen Dispatch QA (developer 2026-11-17, rebuilt the same day on the sliding-block "door" mechanism).
+// Unload the Van / Kitchen Dispatch QA (developer 2026-11-17, rebuilt the same day on the sliding-block "door" mechanism).
 // Pure rules: every board can be won, the drag, the gates, undo, the boosters, the clock, and that no move can spoil a board.
 // Run: npx tsx scripts/crate-dispatch-qa.mts   (the browser side is tools/e2e/kitchendispatch.mjs)
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createServer } from "vite";
 
 const vite = await createServer({
@@ -47,6 +47,10 @@ try {
     roundCleared,
     cratesLeft,
     brickAtCell,
+    CRATE_ZONES,
+    CRATE_ITEM_NAMES,
+    crateItemOf,
+    zoneEmblem,
   } = rules;
 
   // A small counter to test by hand: 5 x 5, a tomato gate on the right (rows 0-1), a dark block at (2, 2).
@@ -501,6 +505,76 @@ try {
       assert.ok(!/tapCrate|hintCrate|addTime/.test(game));
       const art = readFileSync("src/components/kc/inventory/kitchenDispatchArt.ts", "utf8");
       assert.ok(!art.includes("crate-2") && !art.includes("kdSheet"));
+    },
+  );
+  // THE VAN (developer 2026-11-17: the crates are delivered and sorted by colour; every colour is a storage zone with foods in it).
+  check(
+    "Z1: every colour is a named zone with three different foods; no food is in two zones; every food has a name",
+    () => {
+      const seen = new Set<string>();
+      for (const key of CRATE_INGREDIENTS) {
+        const z = CRATE_ZONES[key];
+        assert.ok(z && z.name.length > 2 && z.colour.length > 2, key);
+        assert.equal(new Set(z.items).size, 3, `${key}: three foods`);
+        for (const item of z.items) {
+          assert.ok(!seen.has(item), `${item} is in two zones`);
+          seen.add(item);
+          assert.ok(CRATE_ITEM_NAMES[item], `${item} has a name`);
+        }
+      }
+      assert.equal(new Set(CRATE_INGREDIENTS.map((k: string) => CRATE_ZONES[k].name)).size, 8);
+    },
+  );
+  check(
+    "Z2: a crate carries one of ITS zone's foods, always the same one (no dice), and a zone's crates show more than one food",
+    () => {
+      let varied = 0;
+      for (let seed = 1; seed <= 30; seed++)
+        for (const level of [18, 45, 65]) {
+          const board = crateBoardFor(level, seed);
+          const byZone = new Map<string, Set<string>>();
+          for (const b of board.bricks) {
+            const item = crateItemOf(b);
+            assert.ok(CRATE_ZONES[b.color].items.includes(item), `${b.id} ${b.color} ${item}`);
+            assert.equal(item, crateItemOf({ ...b }));
+            (byZone.get(b.color) ?? byZone.set(b.color, new Set()).get(b.color)!).add(item);
+          }
+          if ([...byZone.values()].some((set) => set.size > 1)) varied++;
+        }
+      assert.ok(varied > 40, `foods vary inside a zone on ${varied} of 90 boards`);
+      for (const key of CRATE_INGREDIENTS) assert.equal(zoneEmblem(key), CRATE_ZONES[key].items[0]);
+    },
+  );
+  check(
+    "Z3: every food has a picture file (the crates' own, or the Sauce Station's product), and the screen says where a crate goes",
+    () => {
+      const own = new Set([
+        "tomato",
+        "carrot",
+        "lettuce",
+        "onion",
+        "cheddar",
+        "salmon",
+        "mushroom",
+        "broccoli",
+      ]);
+      for (const key of CRATE_INGREDIENTS)
+        for (const item of CRATE_ZONES[key].items) {
+          const file = own.has(item)
+            ? `public/business/cratedispatch/ingredient-${item}.webp`
+            : `public/business/sauce/products/${item}.webp`;
+          assert.ok(existsSync(file), file);
+        }
+      const game = readFileSync("src/components/kc/inventory/KitchenDispatchGame.tsx", "utf8");
+      assert.ok(game.includes("Unload the Van") && !game.includes(">Kitchen Dispatch<"));
+      assert.ok(
+        /go to the \$\{CRATE_ZONES\[brick\.color\]\.name\}/.test(game),
+        "the hint on a touched crate",
+      );
+      assert.ok(
+        /✓ \$\{CRATE_ITEM_NAMES\[crateItemOf\(brick\)\]\} → /.test(game),
+        "the line when a crate goes out",
+      );
     },
   );
 } finally {

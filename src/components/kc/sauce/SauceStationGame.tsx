@@ -615,45 +615,41 @@ function Round({
   const zoneNow = speedOf(sauce.tool, omega);
   // What to pour and do next (developer 2026-11-11: "not even understanding what to pour and do"): the recipe items still to add (while the tier
   // shows the recipe), then the whisk, then the bottles, in plain steps.
-  const showsRecipe = tier.help === "pips" || tier.help === "list";
-  const needs = showsRecipe
-    ? sauce.recipe.map(([id, n]) => ({
-        id,
-        name: PANTRY_BY_ID[id]!.name,
-        icon: PANTRY_BY_ID[id]!.icon,
-        want: n,
-        have: scoops[id] ?? 0,
-        left: Math.max(0, +(n - (scoops[id] ?? 0)).toFixed(2)),
-      }))
-    : [];
+  // The recipe is shown on EVERY tier (developer 2026-11-17: "why is the sauce station still not showing proper steps"); a harder tier never hides it.
+  const needs = sauce.recipe.map(([id, n]) => ({
+    id,
+    name: PANTRY_BY_ID[id]!.name,
+    icon: PANTRY_BY_ID[id]!.icon,
+    want: n,
+    have: scoops[id] ?? 0,
+    left: Math.max(0, +(n - (scoops[id] ?? 0)).toFixed(2)),
+  }));
   const needLeft: Record<string, number> = Object.fromEntries(needs.map((x) => [x.id, x.left]));
   const toAdd = needs.filter((x) => x.left > 0);
   const step: { n: 1 | 2 | 3; text: string } = splitFlag
     ? { n: 2, text: `Split! Circle the ${toolName} slowly to smooth it` }
     : blend >= 0.9 && volume > 0 && toAdd.length === 0
       ? { n: 3, text: "Looks good! Tap Bottle it" }
-      : !showsRecipe && volume > 0 && match < POURED_MATCH && blend < 0.5
-        ? { n: 1, text: `Match the colour, then circle the ${toolName}` }
-        : volume > 0 && toAdd.length === 0
+      : volume > 0 && toAdd.length === 0
+        ? {
+            n: 2,
+            text: sauce.chunks
+              ? `Stir the ${toolName} gently, keep the pieces`
+              : `Now circle the ${toolName} in the green zone`,
+          }
+        : toAdd.length > 0
           ? {
-              n: 2,
-              text: sauce.chunks
-                ? `Stir the ${toolName} gently, keep the pieces`
-                : `Now circle the ${toolName} in the green zone`,
+              n: 1,
+              text: `Pour: ${toAdd
+                .slice(0, 3)
+                .map((x) => `${x.name} ${x.left < 1 ? "a pinch" : `×${x.left}`}`)
+                .join(" · ")}${toAdd.length > 3 ? " …" : ""}`,
             }
-          : showsRecipe && toAdd.length > 0
-            ? {
-                n: 1,
-                text: `Pour: ${toAdd
-                  .slice(0, 3)
-                  .map((x) => `${x.name} ${x.left < 1 ? "a pinch" : `×${x.left}`}`)
-                  .join(" · ")}${toAdd.length > 3 ? " …" : ""}`,
-              }
-            : volume > 0 && blend >= 0.9
-              ? { n: 3, text: "Match the colour, then tap Bottle it" }
-              : volume > 0
-                ? { n: 1, text: `Match the colour, then circle the ${toolName}` }
-                : { n: 1, text: "Tap the ingredients to pour them in" };
+          : volume > 0 && blend >= 0.9
+            ? { n: 3, text: "Match the colour, then tap Bottle it" }
+            : volume > 0
+              ? { n: 1, text: `Match the colour, then circle the ${toolName}` }
+              : { n: 1, text: "Tap the ingredients to pour them in" };
   // What the idle hint lights up: the next ingredient (only while the tier shows the recipe), else the whisk, else Bottle it.
   const hintAt: string | null =
     !idle || phase !== "mix"
@@ -764,38 +760,27 @@ function Round({
         </div>
         <div className="min-w-0 flex-1 font-ui">
           <div className="flex flex-wrap items-center gap-1" data-testid="sauce-help">
-            {tier.help === "pips" || tier.help === "list" ? (
-              needs.map((x) => (
-                <span
-                  key={x.id}
-                  data-testid={`sauce-need-${x.id}`}
-                  data-left={x.left}
-                  className={cn(
-                    "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-extrabold",
-                    x.left === 0 ? "bg-[#d9eec4] text-[#2f6b1f]" : "bg-white/75 text-walnut-dark",
-                  )}
-                >
-                  <span aria-hidden>{x.icon}</span>
-                  {tier.help === "pips" ? (
-                    <span>
-                      {x.left === 0
-                        ? "✓"
-                        : x.want < 1
-                          ? "pinch"
-                          : `${Math.min(x.have, x.want)}/${x.want}`}
-                    </span>
-                  ) : (
-                    <span className="max-w-[64px] truncate">{x.name}</span>
-                  )}
+            {needs.map((x) => (
+              <span
+                key={x.id}
+                data-testid={`sauce-need-${x.id}`}
+                data-left={x.left}
+                className={cn(
+                  "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-extrabold",
+                  x.left === 0 ? "bg-[#d9eec4] text-[#2f6b1f]" : "bg-white/75 text-walnut-dark",
+                )}
+              >
+                <span aria-hidden>{x.icon}</span>
+                <span className="max-w-[52px] truncate">{x.name}</span>
+                <span className="tabular-nums">
+                  {x.left === 0
+                    ? "✓"
+                    : x.want < 1
+                      ? "pinch"
+                      : `${Math.min(x.have, x.want)}/${x.want}`}
                 </span>
-              ))
-            ) : (
-              <span className="text-[12.5px] font-bold text-walnut/75">
-                {tier.help === "color"
-                  ? "Match the colour and the thickness."
-                  : "Taste it and trust your eyes."}
               </span>
-            )}
+            ))}
           </div>
           <div className="mt-1 flex items-center gap-1.5">
             {hint ? (
@@ -827,7 +812,7 @@ function Round({
       </div>
 
       {/* the steps of the sauce, always in view (developer 2026-11-16: "the sauce station is not showing any steps to do the preparation"):
-          what is done is ticked, the current one is lit, and the line below says what to do now (the recipe list stays a tier's choice) */}
+          what is done is ticked, the current one is lit, and the line below says what to do now; the recipe list above is on every tier too (2026-11-17)) */}
       {phase === "mix" ? (
         <ol
           className="mx-3 mt-1.5 flex items-center justify-center gap-1.5 font-ui text-[12px] font-extrabold"
@@ -1025,7 +1010,7 @@ function Round({
                 key={it.id}
                 item={it}
                 count={scoops[it.id] ?? 0}
-                need={showsRecipe ? (needLeft[it.id] ?? null) : null}
+                need={needLeft[it.id] ?? null}
                 hint={hintAt === `item:${it.id}` && !reducedMotion}
                 disabled={phase !== "mix"}
                 onDown={() => holdStart(it)}

@@ -13,6 +13,7 @@
 //   S12 at 320 x 568 nothing scrolls sideways and every pantry tile is at least 48 px tall
 //   S15 the free rounds used: the chip offers "3 more rounds"; the ad button in the game grants them ONLY after the ad reports rewarded (placement sauce_rounds, no money)
 //   S16 a skipped ad grants nothing and says so
+//   S3c at every tier (Level 7, 40, 55, 75) the recipe is listed (a chip per ingredient), those tiles glow and the step says Pour: ... (never hidden)
 //   S13 without any painted art the game still plays (CSS stand-ins)
 //   S14 no console errors
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -520,6 +521,48 @@ check(
   small,
 );
 await shot(page, "sauce-12-small");
+
+// S3c (developer 2026-11-17, third report: "why is the sauce station still not showing proper steps"): at EVERY tier (Level 7, 40, 55, 75) the
+// screen lists the recipe (a chip per ingredient with its count), says "Pour: ..." for the first step and glows the wanted tiles. At 320 x 568.
+for (const n of [7, 40, 55, 75]) {
+  await boot(page, saveAt(n));
+  await openInventory(page);
+  await openGame(page);
+  await start(page);
+  await sleep(300);
+  const view = await page.evaluate(() => {
+    const g = document.querySelector('[data-testid="sauce-station"]');
+    const ids = (g?.dataset.recipe ?? "").split(",").map((p) => p.split(":")[0]);
+    const chips = [...document.querySelectorAll('[data-testid^="sauce-need-"]')].map((e) =>
+      e.dataset.testid.replace("sauce-need-", ""),
+    );
+    const glowing = [...document.querySelectorAll('[data-testid^="sauce-pantry-"][data-need]')]
+      .filter((e) => Number(e.dataset.need) > 0)
+      .map((e) => e.dataset.testid.replace("sauce-pantry-", ""));
+    const r = document.querySelector('[data-testid="sauce-help"]')?.getBoundingClientRect();
+    return {
+      tier: Number(g?.dataset.tier),
+      ids,
+      chips,
+      glowing,
+      step: document.querySelector('[data-testid="sauce-step"]')?.textContent?.trim() ?? "",
+      chipsInside: !!r && r.left >= 0 && r.right <= window.innerWidth + 1,
+      sideways: document.documentElement.scrollWidth > window.innerWidth + 1,
+    };
+  });
+  await shot(page, `sauce-3c-tier-${n}`);
+  check(
+    `S3c Level ${n} (tier ${view.tier}): a chip for every recipe item, those tiles glow, the step says Pour: ..., nothing sideways`,
+    view.ids.length > 0 &&
+      view.ids.every((id) => view.chips.includes(id)) &&
+      view.chips.length === view.ids.length &&
+      view.ids.every((id) => view.glowing.includes(id)) &&
+      /Pour:/.test(view.step) &&
+      view.chipsInside &&
+      !view.sideways,
+    view,
+  );
+}
 await page.setViewport({ width: 430, height: 900, deviceScaleFactor: 1 });
 
 // S15: the rewarded ad, "3 more rounds today"

@@ -170,8 +170,8 @@ export const MINI_GAMES: readonly MiniGameEntry[] = [
   },
   {
     id: "kitchen-dispatch",
-    name: "Kitchen Dispatch",
-    glyph: "📦",
+    name: "Unload the Van",
+    glyph: "🚚",
     tint: ["#e4f3d4", "#8cc063"],
     screen: "kitchen-dispatch",
     firstLevel: CRATE_FIRST_LEVEL,

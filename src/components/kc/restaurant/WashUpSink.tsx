@@ -23,6 +23,8 @@ import {
   DISH_SCRUB_RATE,
   paceAmount,
   DISH_ZOOM,
+  DISH_CENTER,
+  DISH_BASIN_CENTER,
   DISH_PLATE,
   DISH_SCENE,
   dishMarks,
@@ -787,11 +789,16 @@ export function WashUpSink({
                           ? "inset(34% 41% 20% 41%)"
                           : "ellipse(9% 15% at 50% 55%)";
   const visualFrame = WASH_VISUAL_FRAMES[shape];
-  // Thin pieces are zoomed in around the basin's centre (scene units stay the same).
-  const zoomStyle = {
-    transform: DISH_ZOOM[shape] === 1 ? undefined : `scale(${DISH_ZOOM[shape]})`,
-    transformOrigin: "50% 59%",
-  };
+  // Thin pieces are zoomed in, and the piece's middle is put on the basin's middle so the whole piece sits inside the water (scene units stay
+  // the same; developer 2026-11-17: the glass stuck out of the sink).
+  const zoomAt = DISH_CENTER[shape];
+  const zoomStyle =
+    DISH_ZOOM[shape] === 1
+      ? undefined
+      : {
+          transform: `translate(${(((DISH_BASIN_CENTER.x - zoomAt.x) / WIDTH) * 100).toFixed(3)}%, ${(((DISH_BASIN_CENTER.y - zoomAt.y) / HEIGHT) * 100).toFixed(3)}%) scale(${DISH_ZOOM[shape]})`,
+          transformOrigin: `${((zoomAt.x / WIDTH) * 100).toFixed(3)}% ${((zoomAt.y / HEIGHT) * 100).toFixed(3)}%`,
+        };
   const ofN = `${activeItem.nth} of ${activeItem.n}`;
   const status = noSoap
     ? "🧴 Out of dish soap — the rest waits for the next START"
@@ -1623,8 +1630,9 @@ export function WashUpSink({
                 onPointerCancel={onPointerUp}
                 onLostPointerCapture={onPointerUp}
                 style={{
-                  left: shape === "plate" ? "68%" : "56%",
-                  top: shape === "plate" ? "64%" : "62%",
+                  // the pieces now sit on the basin's middle (DISH_BASIN_CENTER), so the sponge waits just right of it, on the piece
+                  left: shape === "plate" ? "68%" : "54%",
+                  top: shape === "plate" ? "64%" : "54%",
                   width: spongeSize,
                   height: spongeSize,
                   touchAction: "none",

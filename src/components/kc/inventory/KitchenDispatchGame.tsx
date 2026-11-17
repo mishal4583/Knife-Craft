@@ -17,6 +17,9 @@ import {
   dragBrick,
   finishDrag,
   freezeRound,
+  CRATE_ITEM_NAMES,
+  CRATE_ZONES,
+  crateItemOf,
   hammerWall,
   roundCleared,
   rocketBrick,
@@ -245,6 +248,7 @@ export function KitchenDispatchGame({
   };
   /** A crate has gone out of its gate: it slides away, and the board may be clear. */
   const sendOut = (brick: Brick, gate: Leaving["gate"], next: CrateRound) => {
+    say(`✓ ${CRATE_ITEM_NAMES[crateItemOf(brick)]} → ${CRATE_ZONES[brick.color].name}`);
     leavingRef.current = [...leavingRef.current, { brick, gate, start: performance.now() }];
     visRef.current.delete(brick.id);
     setRoundBoth(next);
@@ -276,6 +280,10 @@ export function KitchenDispatchGame({
     }
     const brick = brickAtCell(round.board, cx, cy);
     if (!brick) return;
+    // the sorting hint (developer 2026-11-17): what the crate holds and which door it belongs to
+    say(
+      `${CRATE_ITEM_NAMES[crateItemOf(brick)]} go to the ${CRATE_ZONES[brick.color].name}: the ${CRATE_ZONES[brick.color].colour} door`,
+    );
     dragRef.current = {
       id: brick.id,
       pointerId: e.pointerId,
@@ -416,7 +424,7 @@ export function KitchenDispatchGame({
         <canvas
           ref={canvasRef}
           data-testid="kd-canvas"
-          aria-label="Kitchen Dispatch: drag each crate across the counter to the gate of its own colour"
+          aria-label="Unload the Van: drag each crate across the loading bay to the door of its own colour"
           className="block h-full w-full touch-none"
           onPointerDown={onDown}
           onPointerMove={onMove}
@@ -467,7 +475,7 @@ export function KitchenDispatchGame({
             ...fs(21),
           }}
         >
-          <span className="mt-[6%] drop-shadow-[0_2px_0_rgba(0,0,0,.45)]">Kitchen Dispatch</span>
+          <span className="mt-[6%] drop-shadow-[0_2px_0_rgba(0,0,0,.45)]">Unload the Van</span>
         </div>
         <button
           type="button"
@@ -502,7 +510,7 @@ export function KitchenDispatchGame({
           }}
         >
           <span role="status" data-testid="kd-notice">
-            {notice || "Drag each crate to the gate of its own colour."}
+            {notice || "The van is here! Slide each crate out of the door of its own colour."}
           </span>
         </div>
         <div
@@ -511,21 +519,26 @@ export function KitchenDispatchGame({
           style={{
             ...box(444, 104, 78, 88),
             transform: "rotate(4deg)",
-            backgroundImage: img("ingredient-tomato"),
-            backgroundSize: "74% auto",
-            backgroundPosition: "center 38%",
-            backgroundRepeat: "no-repeat",
           }}
         >
+          <span
+            className="absolute inset-0 grid place-items-center pt-[14%] leading-none"
+            style={fs(40)}
+          >
+            🚚
+          </span>
           <span className="absolute left-1/2 top-[-6%] h-[13%] w-[17%] -translate-x-1/2 rounded-full bg-[#d6402a] shadow-[0_2px_3px_rgba(0,0,0,.4)]" />
         </div>
         <span className="grid place-items-center" style={box(470, 146, 50, 50)}>
           <InfoTip label="How to play">
-            Drag a crate across the counter. It cannot pass through other crates or the dark blocks.
-            Push it against the gate of its own colour, with its width inside the gate, and it
-            leaves. Clear every crate before the timer ends. Freeze stops the clock for 10 seconds,
-            Rocket sends one crate out, Hammer smashes one dark block and Undo takes back your last
-            move. More time left earns more stars.
+            The delivery van has dropped its crates on the loading bay. Drag a crate across it; it
+            cannot pass through other crates or the dark blocks. Push it against the door of its own
+            colour, with its width inside the door, and it goes out to that store: blue is the Cold
+            room, green the Leafy rack, teal the Veg rack, orange the Root bin, red the Fruit bin,
+            purple the Aromatics shelf, yellow the Pantry shelf, brown the Spice rack. Unload every
+            crate before the timer ends. Freeze stops the clock for 10 seconds, Rocket sends one
+            crate out, Hammer smashes one dark block and Undo takes back your last move. More time
+            left earns more stars.
           </InfoTip>
         </span>
 

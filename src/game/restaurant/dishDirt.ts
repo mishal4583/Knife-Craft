@@ -176,26 +176,48 @@ export const DISH_BRUSH: Record<DishShape, number> = {
 };
 
 /**
- * How much the sink zooms in on a piece so thin ones are worth scrubbing (a
- * fork fills the basin, a plate already does). Visual only: hits are tested
- * in scene units.
+ * How much the sink zooms in on a piece so thin ones are worth scrubbing, and where the piece's middle is in scene units (it is moved to
+ * the middle of the basin water, DISH_BASIN_CENTER). Visual only: hits are tested in scene units. Developer 2026-11-17: the glass stuck
+ * out of the sink at the old 1.5 zoom (and so did a fork at 1.7), so every zoom is capped so the WHOLE piece fits the water: the water
+ * shows about 205 scene units from top to bottom (measured on the phone screenshot; the painted outline alone is 54-226), and a piece's height here is its hit shape (`inDishSurface`) plus a few units.
  */
 export const DISH_ZOOM: Record<DishShape, number> = {
   plate: 1,
   "small-plate": 1.25,
   bowl: 1.3,
-  fork: 1.7,
-  knife: 1.7,
-  spoon: 1.7,
-  glass: 1.5,
+  fork: 1.28,
+  knife: 1.28,
+  spoon: 1.28,
+  glass: 1.4,
   "cup-set": 1.25,
   jug: 1.3,
   shakers: 1.55,
   pot: 1,
   pan: 1,
   tray: 1,
-  utensil: 1.6,
+  utensil: 1.3,
 };
+
+/** The middle of each piece (scene units) that the zoom keeps fixed on the basin's centre. */
+export const DISH_CENTER: Record<DishShape, { x: number; y: number }> = {
+  plate: { x: 180, y: 165 },
+  "small-plate": { x: 180, y: 165 },
+  bowl: { x: 180, y: 165 },
+  fork: { x: 180, y: 165 },
+  knife: { x: 180, y: 165 },
+  spoon: { x: 180, y: 165 },
+  glass: { x: 180, y: 161 },
+  "cup-set": { x: 178.5, y: 167.5 },
+  jug: { x: 186, y: 154 },
+  shakers: { x: 180, y: 153.5 },
+  pot: { x: 180, y: 160 },
+  pan: { x: 180, y: 160 },
+  tray: { x: 180, y: 162 },
+  utensil: { x: 180, y: 165.5 },
+};
+
+/** The middle of the basin's water in scene units (x: the scene's middle; y: the water spans about 35-242). */
+export const DISH_BASIN_CENTER = { x: 180, y: 140 } as const;
 
 /** The order pieces come to the sink: the big satisfying ones first (pots, pans, plates), cutlery last. */
 export const DISH_ORDER: Record<DishShape, number> = {
