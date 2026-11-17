@@ -1,5 +1,11 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+## Kitchen HUD: golden borders, Paige under the daily gift (developer 2026-11-18, UNCOMMITTED)
+Gold ring (`#e0a63a`) on the round shortcut buttons (3 px, the pill keeps its size) and on Settings; City Ranking and Daily Gift get a 2 px gold border with the same glass as before. On tall portrait screens Paige now sits under the Daily Gift card (the cards column); short screens and phone landscape keep her in the wallet row. The "Next kitchen" strip was not asked for and keeps its old border. QA/e2e as before (kitchenstrip K1 still fails for its old reason).
+
+## Dessert Run: no white dots on the mosaic tiles (developer 2026-11-18, UNCOMMITTED)
+Removed the small white glint drawn on every tile (`tileSprite`) and the white dot on the carried cube (`cubeSprite`) in `dessertRunDraw.ts`; the soft top/left light and bottom/right shade stay. dessert-run-qa and the dessertrun e2e pass; checked in a screenshot.
+
 ## Kitchen HUD: ranking on top, Settings and Paige in the shortcut column (developer 2026-11-17, UNCOMMITTED)
 On a portrait screen taller than 660 px the City Ranking card is the first thing at the top with the wallet beside it (`kitchen-top-row`); Settings is the first button of the right-hand shortcut column (it now starts at 58 px, under the wallet) and Paige the last, so the six round buttons end above the day banner (checked at 390x844, 430x900, 390x700, 768x1024). A short screen (height <= 660, `useShortScreen`) and phone landscape keep the earlier arrangement (wallet row with Paige and Settings, cards under it): six buttons do not fit above the banner there. Test updated to the new rule: full-screen-qa F2 (said here as CLAUDE.md asks). e2e kitchenstrip K1 still fails for an old reason (expects "Lv 5" and $16,000; the build now says "2 services" and $6,000), K2 (no overlap with Settings / shortcuts) passes.
 

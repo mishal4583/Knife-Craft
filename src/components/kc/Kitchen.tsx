@@ -251,7 +251,7 @@ export function Kitchen({
       data-testid="kitchen-rank"
       // One line each, never wider than the room the wallet and Settings leave
       // (audit 2026-10-08: at 320 px it wrapped into the Kitchen Upgrade sign).
-      className="press min-w-0 max-w-full shrink rounded-2xl border border-ivory/25 bg-walnut-dark/45 px-3 py-2 text-left backdrop-blur-sm"
+      className="press min-w-0 max-w-full shrink rounded-2xl border-2 border-[#e0a63a] bg-walnut-dark/45 px-3 py-2 text-left backdrop-blur-sm"
     >
       {RESTAURANT_MODE ? (
         <CityRankBadge save={save} />
@@ -300,7 +300,7 @@ export function Kitchen({
       // 48x48dp Playables touch-target minimum (§2.17/§2.8) — was
       // 36x36. Same fix as ScreenHeader's Back button: grow the real
       // button box, glyph stays visually the same size, centered.
-      className="press grid h-12 w-12 shrink-0 place-items-center rounded-full border border-ivory/25 bg-walnut-dark/45 text-ivory backdrop-blur-sm"
+      className="press grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-[#e0a63a] bg-walnut-dark/45 text-ivory backdrop-blur-sm"
     >
       <span aria-hidden className="text-[15.5px]">
         ⚙️
@@ -347,6 +347,7 @@ export function Kitchen({
           {onOpenDailyGift ? (
             <DailyGiftCard save={save} levelNumber={reached} onOpen={onOpenDailyGift} />
           ) : null}
+          {stacked ? null : <AskPaigeButton />}
           {RESTAURANT_MODE ? <NextKitchenStrip save={save} go={go} /> : null}
           {pendingCashTotal(save) > 0 && onCollectTableCash ? (
             <button
@@ -404,7 +405,7 @@ export function Kitchen({
             go("daily-maintenance");
           }}
           className={cn(
-            "press group relative inline-flex h-[var(--pill)] w-[var(--pill)] shrink-0 items-center justify-start overflow-visible rounded-full border border-[#f5d58b] bg-[linear-gradient(145deg,#fff7dc_0%,#f5d998_100%)] px-[calc((var(--pill)-40px)/2)] font-ui text-walnut-dark shadow-[0_4px_0_rgba(111,66,28,0.48),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,255,255,0.95)] transition-[width,border-radius,transform,box-shadow] duration-300 ease-out motion-reduce:transition-none hover:w-[166px] hover:rounded-full focus-visible:w-[166px] focus-visible:rounded-full active:translate-y-0.5 active:shadow-[0_2px_0_rgba(111,66,28,0.48),0_4px_8px_rgba(35,18,8,0.3)]",
+            "press group relative inline-flex h-[var(--pill)] w-[var(--pill)] shrink-0 items-center justify-start overflow-visible rounded-full border-[3px] border-[#e0a63a] bg-[linear-gradient(145deg,#fff7dc_0%,#f5d998_100%)] px-[calc((var(--pill)-40px)/2-3px)] font-ui text-walnut-dark shadow-[0_4px_0_rgba(111,66,28,0.48),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,255,255,0.95)] transition-[width,border-radius,transform,box-shadow] duration-300 ease-out motion-reduce:transition-none hover:w-[166px] hover:rounded-full focus-visible:w-[166px] focus-visible:rounded-full active:translate-y-0.5 active:shadow-[0_2px_0_rgba(111,66,28,0.48),0_4px_8px_rgba(35,18,8,0.3)]",
             expandedShortcut === "daily-maintenance" && "w-[166px] rounded-full",
           )}
         >
@@ -491,7 +492,7 @@ export function Kitchen({
                 if (unlocked) go(item.id);
               }}
               className={cn(
-                "press group relative inline-flex h-[var(--pill)] w-[var(--pill)] shrink-0 items-center justify-start overflow-visible rounded-full border border-[#f5d58b] bg-[linear-gradient(145deg,#fff7dc_0%,#f5d998_100%)] px-[calc((var(--pill)-40px)/2)] font-ui text-[13px] font-extrabold text-walnut-dark shadow-[0_4px_0_rgba(111,66,28,0.48),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,255,255,0.95)] transition-[width,border-radius,transform,box-shadow] duration-300 ease-out motion-reduce:transition-none hover:w-[166px] hover:rounded-full focus-visible:w-[166px] focus-visible:rounded-full active:translate-y-0.5 active:shadow-[0_2px_0_rgba(111,66,28,0.48),0_4px_8px_rgba(35,18,8,0.3)]",
+                "press group relative inline-flex h-[var(--pill)] w-[var(--pill)] shrink-0 items-center justify-start overflow-visible rounded-full border-[3px] border-[#e0a63a] bg-[linear-gradient(145deg,#fff7dc_0%,#f5d998_100%)] px-[calc((var(--pill)-40px)/2-3px)] font-ui text-[13px] font-extrabold text-walnut-dark shadow-[0_4px_0_rgba(111,66,28,0.48),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,255,255,0.95)] transition-[width,border-radius,transform,box-shadow] duration-300 ease-out motion-reduce:transition-none hover:w-[166px] hover:rounded-full focus-visible:w-[166px] focus-visible:rounded-full active:translate-y-0.5 active:shadow-[0_2px_0_rgba(111,66,28,0.48),0_4px_8px_rgba(35,18,8,0.3)]",
                 expandedShortcut === item.id && "w-[166px] rounded-full",
                 !unlocked && "opacity-75",
               )}
@@ -540,7 +541,7 @@ export function Kitchen({
             aria-label="Mini-games"
             aria-haspopup="dialog"
             onClick={() => setMiniGamesOpen(true)}
-            className="press group relative inline-flex h-[var(--pill)] w-[var(--pill)] shrink-0 items-center justify-start overflow-visible rounded-full border border-[#f5d58b] bg-[linear-gradient(145deg,#fff7dc_0%,#f5d998_100%)] px-[calc((var(--pill)-40px)/2)] font-ui text-[13px] font-extrabold text-walnut-dark shadow-[0_4px_0_rgba(111,66,28,0.48),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,255,255,0.95)] transition-[width,transform,box-shadow] duration-300 ease-out motion-reduce:transition-none hover:w-[166px] focus-visible:w-[166px] active:translate-y-0.5 active:shadow-[0_2px_0_rgba(111,66,28,0.48),0_4px_8px_rgba(35,18,8,0.3)]"
+            className="press group relative inline-flex h-[var(--pill)] w-[var(--pill)] shrink-0 items-center justify-start overflow-visible rounded-full border-[3px] border-[#e0a63a] bg-[linear-gradient(145deg,#fff7dc_0%,#f5d998_100%)] px-[calc((var(--pill)-40px)/2-3px)] font-ui text-[13px] font-extrabold text-walnut-dark shadow-[0_4px_0_rgba(111,66,28,0.48),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,255,255,0.95)] transition-[width,transform,box-shadow] duration-300 ease-out motion-reduce:transition-none hover:w-[166px] focus-visible:w-[166px] active:translate-y-0.5 active:shadow-[0_2px_0_rgba(111,66,28,0.48),0_4px_8px_rgba(35,18,8,0.3)]"
           >
             <span
               aria-hidden
@@ -556,7 +557,6 @@ export function Kitchen({
             </span>
           </button>
         ) : null}
-        {stacked ? null : <AskPaigeButton />}
       </div>
 
       {RESTAURANT_MODE && miniGamesOpen ? (

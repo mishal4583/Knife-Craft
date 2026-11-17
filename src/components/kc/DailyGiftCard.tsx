@@ -72,10 +72,10 @@ export function DailyGiftCard({
       data-day={s.todayDay}
       data-done={s.done}
       className={cn(
-        "w-[168px] max-w-full rounded-[16px] border px-2.5 py-2 text-left shadow-soft backdrop-blur-sm",
+        "w-[168px] max-w-full rounded-[16px] border-2 px-2.5 py-2 text-left shadow-soft backdrop-blur-sm",
         ready
-          ? "press border-gold/70 bg-walnut-dark/70 ring-1 ring-gold/40"
-          : "cursor-default border-ivory/20 bg-walnut-dark/55",
+          ? "press border-[#f0bd4a] bg-walnut-dark/70 ring-1 ring-gold/40"
+          : "cursor-default border-[#e0a63a] bg-walnut-dark/55",
       )}
     >
       <span className="block font-ui text-[10px] font-extrabold uppercase tracking-[0.14em] text-gold">

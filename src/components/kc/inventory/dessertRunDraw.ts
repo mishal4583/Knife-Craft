@@ -68,7 +68,7 @@ const cubeCache = new Map<string, HTMLCanvasElement>();
  * One toy-block tile, drawn once per colour at 3x. Like the developer's reference mosaics (Colony Flow) but with NO
  * gap at all (developer 2026-11-17: "absolute zero gaps"): the tile is a full-bleed square with sharp corners, so
  * neighbours meet edge to edge and nothing of the plate shows between them. Only a very soft cushion (a faint lit
- * edge at the top and left, a faint shaded edge at the bottom and right) and one small glint keep each tile readable.
+ * edge at the top and left, a faint shaded edge at the bottom and right) keeps each tile readable (the small white glint was removed 2026-11-18).
  */
 function cubeSprite(hex: string): HTMLCanvasElement {
   let c = cubeCache.get(hex);
@@ -80,10 +80,7 @@ function cubeSprite(hex: string): HTMLCanvasElement {
   const g = c.getContext("2d")!;
   g.fillStyle = hex;
   g.fillRect(0, 0, S, S);
-  g.fillStyle = "rgba(255,255,255,.5)";
-  g.beginPath();
-  g.arc(12, 12, 3, 0, 7);
-  g.fill();
+  // (no white dot: developer 2026-11-18, "remove these white dots from the mosaics")
   cubeCache.set(hex, c);
   return c;
 }
@@ -92,7 +89,7 @@ const tileCache = new Map<string, HTMLCanvasElement>();
 /**
  * One mosaic tile at its exact size in DEVICE pixels, with the edge treatment of the developer's reference tiles
  * (2026-11-17): a bright edge along the top, a soft fade from the light top to a deeper bottom, a thin shaded edge
- * at the bottom and right, and a small glint at the top left. It fills its whole box, so neighbouring tiles meet
+ * at the bottom and right (the small white glint was removed 2026-11-18). It fills its whole box, so neighbouring tiles meet
  * edge to edge with nothing showing between them (no gap, no rounded corner); and it is blitted 1:1 (never scaled),
  * so no edge is ever blurred into a hairline.
  */
@@ -120,13 +117,7 @@ function tileSprite(hex: string, w: number, h: number): HTMLCanvasElement {
   g.fillRect(0, h - t, w, t);
   g.fillStyle = "rgba(0,0,0,.1)";
   g.fillRect(w - l, 0, l, h);
-  g.fillStyle = "rgba(255,255,255,.7)";
-  g.fillRect(
-    Math.round(w * 0.16),
-    Math.round(h * 0.2),
-    Math.max(2, Math.round(w * 0.22)),
-    Math.max(1, Math.round(h * 0.09)),
-  );
+  // (no white glint on the face: developer 2026-11-18, "remove these white dots from the mosaics")
   tileCache.set(key, c);
   return c;
 }
