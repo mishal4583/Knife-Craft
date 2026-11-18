@@ -50,7 +50,7 @@ export type ScreenId =
   | "sauce-station"
   /** The Sauce Shelf: the 24 sauces and which are mastered (read-only). */
   | "sauce-shelf"
-  /** Stockroom Sort: match 3 and stock the supplies you bought (business/stockroomSort.ts). Optional, from Level 10 (STOCKROOM_FIRST_LEVEL). */
+  /** Stockroom Sort: match 3 and stock the supplies you bought (business/stockroomSort.ts). Optional, from Level 6 (STOCKROOM_FIRST_LEVEL = STOCKROOM_FROM_LEVEL in config/earlyLevels.ts). */
   | "stockroom-sort"
   /** Car Park shared-lot jam puzzle, a daily opening step from Level 15 (CAR_PARK_FIRST_LEVEL). */
   | "car-park"

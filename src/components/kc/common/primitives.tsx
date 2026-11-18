@@ -151,10 +151,15 @@ export function Badge({
   );
 }
 
-/** The shared wallet chip, used by screen headers across Campaign and Business. */
-export function Coin({ n }: { n: number }) {
+/** The shared wallet chip, used by screen headers across Campaign and Business. `gold` is the Kitchen's golden frame (developer 2026-11-18). */
+export function Coin({ n, gold = false }: { n: number; gold?: boolean }) {
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-copper/30 bg-ivory/80 px-2.5 py-1 font-ui text-[12.5px] font-extrabold text-walnut-dark shadow-soft">
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-ivory/80 px-2.5 py-1 font-ui text-[12.5px] font-extrabold text-walnut-dark shadow-soft",
+        gold ? "border-2 border-[#e0a63a] px-[9px] py-[2px]" : "border border-copper/30",
+      )}
+    >
       <CashStackIcon className="h-[21px] w-[25px] shrink-0 drop-shadow-sm" />
       {formatUsd(n)}
     </span>

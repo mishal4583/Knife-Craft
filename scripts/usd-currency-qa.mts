@@ -355,8 +355,9 @@ const read = (rel: string) => fs.readFileSync(path.resolve(ROOT, rel), "utf8");
   );
   const prim = read("src/components/kc/common/primitives.tsx");
   // Developer 2026-10-15 (5db9451): the chip's "$" glyph became a cash-stack icon; formatUsd itself writes the "$".
+  // 2026-11-18: Coin takes an optional `gold` (the Kitchen's golden frame); the chip itself is unchanged.
   assert(
-    /export function Coin\(\{ n \}: \{ n: number \}\)[\s\S]*?<CashStackIcon[^>]*\/>\s*\{formatUsd\(n\)\}/.test(
+    /export function Coin\(\{ n, gold = false \}: \{ n: number; gold\?: boolean \}\)[\s\S]*?<CashStackIcon[^>]*\/>\s*\{formatUsd\(n\)\}/.test(
       prim,
     ) && formatUsd(124_000) === "$1,240.00",
     'G2: the wallet chip on every screen shows the cash icon + formatUsd ("$1,240.00")',

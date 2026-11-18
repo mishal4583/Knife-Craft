@@ -347,11 +347,11 @@ export function Kitchen({
         {stacked ? null : (
           <div className="flex w-full items-start gap-2" data-testid="kitchen-top-row">
             <div className="flex min-w-0 flex-1">{rankButton}</div>
-            <Coin n={save.credits} />
+            <Coin n={save.credits} gold />
           </div>
         )}
         {/* Phase 5 (B3): the daily gift sits under the rank, on the Kitchen's free wall. */}
-        <div className="mr-2 flex min-w-0 max-w-[calc(100%-84px)] shrink flex-col items-start gap-2 [@media(max-height:600px)]:gap-1 land:max-w-[64%] land:flex-row">
+        <div className="mr-2 flex min-w-0 max-w-[calc(100%-84px)] shrink flex-col items-start gap-2 [@media(max-height:600px)]:gap-1 land:max-w-[64%] land:flex-row land:overflow-x-auto land:pb-1 land:no-scrollbar land:[&>*]:shrink-0">
           {stacked ? rankButton : null}
           {onOpenDailyGift ? (
             <DailyGiftCard save={save} levelNumber={reached} onOpen={onOpenDailyGift} />
@@ -372,7 +372,7 @@ export function Kitchen({
         {stacked ? (
           <div className="flex shrink-0 items-center gap-2 self-end land:self-auto">
             <AskPaigeButton />
-            <Coin n={save.credits} />
+            <Coin n={save.credits} gold />
             {settingsButton}
           </div>
         ) : null}
@@ -597,12 +597,12 @@ export function Kitchen({
           <p
             data-testid="day-strip"
             data-day-phase={clock.phase}
-            className="mx-auto mb-2 w-fit max-w-full truncate rounded-full border border-ivory/25 bg-walnut-dark/70 px-3 py-1.5 font-ui text-[12.5px] font-extrabold text-ivory shadow-soft backdrop-blur-sm [@media(max-height:700px)]:mb-1 [@media(max-height:700px)]:px-2.5 [@media(max-height:700px)]:py-1 [@media(max-height:700px)]:text-[11px]"
+            className="mx-auto mb-2 w-fit max-w-full truncate rounded-full border-2 border-[#e0a63a] bg-walnut-dark/70 px-[10px] py-[5px] font-ui text-[12.5px] font-extrabold text-ivory shadow-soft backdrop-blur-sm [@media(max-height:700px)]:mb-1 [@media(max-height:700px)]:px-[8px] [@media(max-height:700px)]:py-[2px] [@media(max-height:700px)]:text-[11px]"
           >
             {dayStripText(clock)}
           </p>
         ) : null}
-        <div className="anim-up relative mx-auto rounded-[20px] border border-[#f3d9a9] bg-[linear-gradient(145deg,#fff9e9_0%,#fff0d0_52%,#f6dfb5_100%)] p-2.5 shadow-[0_7px_18px_rgba(34,18,8,0.38),inset_0_2px_0_rgba(255,255,255,0.9)] sm:p-3">
+        <div className="anim-up relative mx-auto rounded-[20px] border-2 border-[#e0a63a] bg-[linear-gradient(145deg,#fff9e9_0%,#fff0d0_52%,#f6dfb5_100%)] p-[9px] shadow-[0_7px_18px_rgba(34,18,8,0.38),inset_0_2px_0_rgba(255,255,255,0.9)] sm:p-[11px]">
           <div className="flex items-center justify-between gap-2">
             <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.19em] text-[#95602c]">
               {campaignComplete
@@ -618,7 +618,7 @@ export function Kitchen({
               aria-expanded={orderCardExpanded}
               aria-controls="kitchen-order-details"
               onClick={() => setOrderCardExpanded((expanded) => !expanded)}
-              className="press inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full border border-[#8f4d1e] bg-[linear-gradient(145deg,#a85d25,#754018)] px-2.5 font-ui text-[10px] font-extrabold text-[#fff5df] shadow-[0_2px_6px_rgba(83,41,13,0.32),inset_0_1px_0_rgba(255,255,255,0.25)] transition-transform active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-copper"
+              className="press inline-flex min-h-12 shrink-0 items-center gap-1 rounded-full border border-[#8f4d1e] bg-[linear-gradient(145deg,#a85d25,#754018)] px-2.5 font-ui text-[10px] font-extrabold text-[#fff5df] shadow-[0_2px_6px_rgba(83,41,13,0.32),inset_0_1px_0_rgba(255,255,255,0.25)] transition-transform active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-copper"
             >
               {orderCardExpanded ? "Hide Details" : "View Details"}
               <span aria-hidden className="text-[14px] leading-none">
@@ -626,7 +626,7 @@ export function Kitchen({
               </span>
             </button>
           </div>
-          <div className="mt-1.5 flex items-center justify-between gap-2">
+          <div className="mt-1.5 flex items-center justify-between gap-2 [@media(max-height:620px)]:mt-0.5">
             <div className={`min-w-0 flex-1 ${todayUnlocked ? "" : "opacity-50"}`}>
               <p className="line-clamp-2 font-display text-[18px] font-black leading-[1.06] text-[#392013] sm:text-[20px]">
                 {todayLevel.title}
