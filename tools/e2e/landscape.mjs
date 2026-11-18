@@ -107,9 +107,11 @@ const layout = () =>
         if (q.bottom <= vh + 1 && q.right <= vw + 1 && q.top >= -1 && q.left >= -1) return false;
         for (let e = b.parentElement; e; e = e.parentElement) {
           const cs = getComputedStyle(e);
+          // A control inside a scroller is reachable by scrolling: a vertical one, or (2026-11-18, the Kitchen's card row swipes sideways in
+          // landscape) a horizontal one.
           if (
-            /(auto|scroll)/.test(cs.overflowY + cs.overflowX) &&
-            e.scrollHeight > e.clientHeight + 2
+            (/(auto|scroll)/.test(cs.overflowY) && e.scrollHeight > e.clientHeight + 2) ||
+            (/(auto|scroll)/.test(cs.overflowX) && e.scrollWidth > e.clientWidth + 2)
           )
             return false;
         }

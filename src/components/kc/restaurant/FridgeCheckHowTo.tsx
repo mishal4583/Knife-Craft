@@ -278,7 +278,7 @@ export function FridgeCheckHowTo({
   const last = i === pages.length - 1;
   return (
     <div
-      className="absolute inset-0 z-[60] grid place-items-center bg-black/75 p-4"
+      className="absolute inset-0 z-[60] flex items-center justify-center bg-black/75 p-4"
       data-testid="fc-guide"
       data-page={i + 1}
       data-pages={pages.length}

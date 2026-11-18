@@ -767,7 +767,9 @@ export function FridgeSortGame({
       </div>
       {/* the star bar: the painted frame, a fill that grows with the score, and a star on each painted ring */}
       <div className="px-4 pt-2">
-        <StarBar progress={progress} marks={STAR_AT} />
+        <div className="land:mx-auto land:max-w-[340px]">
+          <StarBar progress={progress} marks={STAR_AT} />
+        </div>
         <div className="mt-1 flex min-h-[34px] items-center gap-2 font-ui">
           <p
             className={cn(
@@ -810,182 +812,190 @@ export function FridgeSortGame({
         </div>
       </div>
 
-      {/* the fridge: the shelves share its height, so they are all in view (a tiny screen scrolls, with a cue) */}
-      <div className="relative mx-3 mt-1.5 min-h-0 flex-1">
-        <div
-          ref={panelRef}
-          data-testid="sort-fridge"
-          className="h-full overflow-y-auto rounded-[26px] border-4 border-[#b9773a] bg-[radial-gradient(ellipse_at_50%_0%,#fde7b0,#f0c377_55%,#e2a65a)] p-1 shadow-inner"
-        >
-          <div
-            className="grid h-full grid-cols-2 gap-1"
-            style={{ gridTemplateRows: rowSizes, gridAutoRows: "minmax(56px, 1fr)" }}
-            data-testid="sort-targets"
-          >
-            {shown.map(targetBand)}
+      {/* A phone on its side (developer 2026-11-18): the basket and the delivery slip on the left, the shelves on the right, so the shelves are on
+          screen. Upright: the groups are `display: contents` and the DOM order is the old single column, so nothing moves. */}
+      <div className="contents land:flex land:min-h-0 land:flex-1 land:gap-2 land:px-2 land:pb-1">
+        <div className="contents land:flex land:min-h-0 land:min-w-0 land:flex-1 land:basis-0 land:flex-col">
+          {/* the fridge: the shelves share its height, so they are all in view (a tiny screen scrolls, with a cue) */}
+          <div className="relative mx-3 mt-1.5 min-h-0 flex-1 land:mx-0">
+            <div
+              ref={panelRef}
+              data-testid="sort-fridge"
+              className="h-full overflow-y-auto rounded-[26px] border-4 border-[#b9773a] bg-[radial-gradient(ellipse_at_50%_0%,#fde7b0,#f0c377_55%,#e2a65a)] p-1 shadow-inner"
+            >
+              <div
+                className="grid h-full grid-cols-2 gap-1"
+                style={{ gridTemplateRows: rowSizes, gridAutoRows: "minmax(56px, 1fr)" }}
+                data-testid="sort-targets"
+              >
+                {shown.map(targetBand)}
+              </div>
+            </div>
+            {moreBelow ? (
+              <span
+                data-testid="sort-more-shelves"
+                className="pointer-events-none absolute inset-x-0 bottom-1.5 mx-auto w-fit rounded-full bg-walnut-dark/90 px-3 py-1 font-ui text-[12px] font-extrabold text-ivory shadow"
+              >
+                ▼ More shelves below
+              </span>
+            ) : null}
           </div>
         </div>
-        {moreBelow ? (
-          <span
-            data-testid="sort-more-shelves"
-            className="pointer-events-none absolute inset-x-0 bottom-1.5 mx-auto w-fit rounded-full bg-walnut-dark/90 px-3 py-1 font-ui text-[12px] font-extrabold text-ivory shadow"
+        <div className="contents land:order-first land:flex land:min-h-0 land:min-w-0 land:flex-1 land:basis-0 land:flex-col land:justify-end">
+          {/* the delivery slip: what was bought, and how many loose pieces that is (1 lb of tomato is about 3 tomatoes) */}
+          <div
+            className="mx-3 mt-1.5 flex items-center gap-1.5 overflow-x-auto rounded-xl bg-[#3b2a1d]/75 px-2 py-1 land:mx-0"
+            data-testid="sort-slip"
           >
-            ▼ More shelves below
-          </span>
-        ) : null}
-      </div>
+            <span className="shrink-0 font-ui text-[11px] font-extrabold text-ivory/80">
+              🧾 Delivery
+            </span>
+            {round.ingredients.map((id) => (
+              <span
+                key={id}
+                className="flex shrink-0 items-center gap-0.5 rounded-full bg-[#fff7e6]/90 px-1.5 py-0.5 font-ui text-[11px] font-black text-walnut-dark"
+              >
+                <IngredientIcon
+                  id={id}
+                  fallback={INGREDIENT_EMOJI[id]}
+                  className="h-[1.5em] w-[1.5em]"
+                />
+                ×{tokens.filter((t) => t === id).length}
+              </span>
+            ))}
+            {basketsLeft(save, playerLevel) > 1 ? (
+              <span
+                className="shrink-0 font-ui text-[11px] font-bold text-ivory/80"
+                data-testid="sort-more-baskets"
+              >
+                🧺 +{basketsLeft(save, playerLevel) - 1} more basket
+                {basketsLeft(save, playerLevel) - 1 === 1 ? "" : "s"} · ⚡ bonus for all
+              </span>
+            ) : null}
+          </div>
 
-      {/* the delivery slip: what was bought, and how many loose pieces that is (1 lb of tomato is about 3 tomatoes) */}
-      <div
-        className="mx-3 mt-1.5 flex items-center gap-1.5 overflow-x-auto rounded-xl bg-[#3b2a1d]/75 px-2 py-1"
-        data-testid="sort-slip"
-      >
-        <span className="shrink-0 font-ui text-[11px] font-extrabold text-ivory/80">
-          🧾 Delivery
-        </span>
-        {round.ingredients.map((id) => (
-          <span
-            key={id}
-            className="flex shrink-0 items-center gap-0.5 rounded-full bg-[#fff7e6]/90 px-1.5 py-0.5 font-ui text-[11px] font-black text-walnut-dark"
+          {/* the basket: every piece of the delivery lies mixed on the cloth. Its stool is cropped off and it sits low on the screen. */}
+          <div
+            className="relative mx-auto mb-1 mt-1 w-[calc(100%-24px)] max-w-[360px] shrink-0 land:w-full"
+            style={{ aspectRatio: BASKET_RATIO }}
+            data-testid="sort-crate"
           >
-            <IngredientIcon
-              id={id}
-              fallback={INGREDIENT_EMOJI[id]}
-              className="h-[1.5em] w-[1.5em]"
-            />
-            ×{tokens.filter((t) => t === id).length}
-          </span>
-        ))}
-        {basketsLeft(save, playerLevel) > 1 ? (
-          <span
-            className="shrink-0 font-ui text-[11px] font-bold text-ivory/80"
-            data-testid="sort-more-baskets"
-          >
-            🧺 +{basketsLeft(save, playerLevel) - 1} more basket
-            {basketsLeft(save, playerLevel) - 1 === 1 ? "" : "s"} · ⚡ bonus for all
-          </span>
-        ) : null}
-      </div>
-
-      {/* the basket: every piece of the delivery lies mixed on the cloth. Its stool is cropped off and it sits low on the screen. */}
-      <div
-        className="relative mx-auto mb-1 mt-1 w-[calc(100%-24px)] max-w-[360px] shrink-0"
-        style={{ aspectRatio: BASKET_RATIO }}
-        data-testid="sort-crate"
-      >
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <Art
-            name="basket"
-            className="absolute inset-x-0 top-0 w-full object-fill"
-            style={{ height: `${BASKET_CROP}%` }}
-          />
-        </div>
-        {tokens.map((id, i) => {
-          if (placed.has(i)) return null;
-          const isSel = selected === i;
-          const dragging = drag?.i === i;
-          const spot = pile[i]!;
-          const first =
-            guide === false &&
-            phase === "ready" &&
-            !practice &&
-            i === 0 &&
-            (fridgeSortOf(save).rounds ?? 0) === 0;
-          return (
-            <button
-              key={i}
-              type="button"
-              data-token={id}
-              data-piece={i}
-              data-expiring={expiring.has(id) ? "1" : undefined}
-              data-testid={`sort-token-${id}`}
-              aria-pressed={isSel}
-              aria-label={`${INGREDIENTS[id].name}${expiring.has(id) ? " (expires soon, worth double)" : ""}${isSel ? " (selected)" : ""}`}
-              onPointerDown={(e) => onTokenDown(e, i)}
-              onPointerMove={onTokenMove}
-              onPointerUp={onTokenUp}
-              onPointerCancel={() => {
-                gestureRef.current = null;
-                setDrag(null);
-                setHover(null);
-              }}
-              onClick={() => {
-                if (draggedRef.current) return;
-                // tap: pick it up (tap again to put it back); the clock starts with the first drop or drag, not a pick
-                const next = isSel ? null : i;
-                setSelected(next);
-                if (next !== null) AudioManager.playSfx("sortPick");
-              }}
-              className={cn(
-                "absolute grid touch-none place-items-center rounded-full leading-none transition-transform",
-                isSel && "z-20 -translate-y-1.5 scale-110 drop-shadow-[0_6px_6px_rgba(0,0,0,0.35)]",
-                dragging && "opacity-35",
-                first && !reducedMotion && "animate-pulse",
-                wrongId === i && !reducedMotion && "animate-[sortShake_0.4s_ease-in-out]",
-              )}
-              style={{
-                left: `${spot.x}%`,
-                top: `${spot.y}%`,
-                width: spot.size,
-                height: spot.size,
-                marginLeft: -spot.size / 2,
-                marginTop: -spot.size / 2,
-                zIndex: isSel ? 20 : 1 + (i % 7),
-                transform: isSel ? undefined : `rotate(${spot.rot}deg)`,
-                fontSize: spot.size,
-              }}
-            >
-              <IngredientIcon
-                id={id}
-                fallback={INGREDIENT_EMOJI[id]}
-                className="h-[0.95em] w-[0.95em] drop-shadow-[0_2px_2px_rgba(60,30,10,0.45)]"
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+              <Art
+                name="basket"
+                className="absolute inset-x-0 top-0 w-full object-fill"
+                style={{ height: `${BASKET_CROP}%` }}
               />
-              {isSel ? (
-                <span className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-walnut-dark px-2 py-0.5 font-ui text-[11px] font-extrabold leading-none text-ivory">
-                  {INGREDIENTS[id].name}
-                </span>
-              ) : null}
-              {expiring.has(id) ? (
-                <span
-                  aria-hidden
+            </div>
+            {tokens.map((id, i) => {
+              if (placed.has(i)) return null;
+              const isSel = selected === i;
+              const dragging = drag?.i === i;
+              const spot = pile[i]!;
+              const first =
+                guide === false &&
+                phase === "ready" &&
+                !practice &&
+                i === 0 &&
+                (fridgeSortOf(save).rounds ?? 0) === 0;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  data-token={id}
+                  data-piece={i}
+                  data-expiring={expiring.has(id) ? "1" : undefined}
+                  data-testid={`sort-token-${id}`}
+                  aria-pressed={isSel}
+                  aria-label={`${INGREDIENTS[id].name}${expiring.has(id) ? " (expires soon, worth double)" : ""}${isSel ? " (selected)" : ""}`}
+                  onPointerDown={(e) => onTokenDown(e, i)}
+                  onPointerMove={onTokenMove}
+                  onPointerUp={onTokenUp}
+                  onPointerCancel={() => {
+                    gestureRef.current = null;
+                    setDrag(null);
+                    setHover(null);
+                  }}
+                  onClick={() => {
+                    if (draggedRef.current) return;
+                    // tap: pick it up (tap again to put it back); the clock starts with the first drop or drag, not a pick
+                    const next = isSel ? null : i;
+                    setSelected(next);
+                    if (next !== null) AudioManager.playSfx("sortPick");
+                  }}
                   className={cn(
-                    "absolute -right-1 -top-1 rounded-full border border-[#c0392b] bg-[#fff1d6] px-1 font-ui text-[10px] font-black leading-[16px] text-[#c0392b]",
-                    expiryDoubleActive(msLeft, round.timeMs) ? "" : "opacity-40",
+                    "absolute grid touch-none place-items-center rounded-full leading-none transition-transform",
+                    isSel &&
+                      "z-20 -translate-y-1.5 scale-110 drop-shadow-[0_6px_6px_rgba(0,0,0,0.35)]",
+                    dragging && "opacity-35",
+                    first && !reducedMotion && "animate-pulse",
+                    wrongId === i && !reducedMotion && "animate-[sortShake_0.4s_ease-in-out]",
                   )}
+                  style={{
+                    left: `${spot.x}%`,
+                    top: `${spot.y}%`,
+                    width: spot.size,
+                    height: spot.size,
+                    marginLeft: -spot.size / 2,
+                    marginTop: -spot.size / 2,
+                    zIndex: isSel ? 20 : 1 + (i % 7),
+                    transform: isSel ? undefined : `rotate(${spot.rot}deg)`,
+                    fontSize: spot.size,
+                  }}
                 >
-                  ⏳×2
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
-        {/* the basket's front: it covers the lower part of the pieces, so they sit INSIDE it */}
-        <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
-          <Art
-            name="basket"
-            className="absolute inset-x-0 top-0 w-full object-fill"
-            style={{ height: `${BASKET_CROP}%`, clipPath: "inset(56% 0 0 0)" }}
-          />
+                  <IngredientIcon
+                    id={id}
+                    fallback={INGREDIENT_EMOJI[id]}
+                    className="h-[0.95em] w-[0.95em] drop-shadow-[0_2px_2px_rgba(60,30,10,0.45)]"
+                  />
+                  {isSel ? (
+                    <span className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-walnut-dark px-2 py-0.5 font-ui text-[11px] font-extrabold leading-none text-ivory">
+                      {INGREDIENTS[id].name}
+                    </span>
+                  ) : null}
+                  {expiring.has(id) ? (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "absolute -right-1 -top-1 rounded-full border border-[#c0392b] bg-[#fff1d6] px-1 font-ui text-[10px] font-black leading-[16px] text-[#c0392b]",
+                        expiryDoubleActive(msLeft, round.timeMs) ? "" : "opacity-40",
+                      )}
+                    >
+                      ⏳×2
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+            {/* the basket's front: it covers the lower part of the pieces, so they sit INSIDE it */}
+            <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
+              <Art
+                name="basket"
+                className="absolute inset-x-0 top-0 w-full object-fill"
+                style={{ height: `${BASKET_CROP}%`, clipPath: "inset(56% 0 0 0)" }}
+              />
+            </div>
+            {crateLeft.length === 0 && phase !== "done" ? (
+              <span className="absolute inset-x-0 top-[28%] z-30 text-center font-ui text-[14px] font-extrabold text-walnut-dark">
+                Empty ✓
+              </span>
+            ) : (
+              <span
+                className="absolute bottom-[10%] left-1/2 z-40 -translate-x-1/2 rounded-full bg-walnut-dark/85 px-3 py-0.5 font-ui text-[12px] font-extrabold text-ivory"
+                data-testid="sort-ready"
+              >
+                {crateLeft.length} piece{crateLeft.length === 1 ? "" : "s"}
+              </span>
+            )}
+            {guide === false &&
+            selected === null &&
+            phase === "ready" &&
+            (fridgeSortOf(save).rounds ?? 0) === 0 &&
+            !practice ? (
+              <PointerHand size={44} className="absolute left-[18%] top-[20%] z-40" />
+            ) : null}
+          </div>
         </div>
-        {crateLeft.length === 0 && phase !== "done" ? (
-          <span className="absolute inset-x-0 top-[28%] z-30 text-center font-ui text-[14px] font-extrabold text-walnut-dark">
-            Empty ✓
-          </span>
-        ) : (
-          <span
-            className="absolute bottom-[10%] left-1/2 z-40 -translate-x-1/2 rounded-full bg-walnut-dark/85 px-3 py-0.5 font-ui text-[12px] font-extrabold text-ivory"
-            data-testid="sort-ready"
-          >
-            {crateLeft.length} piece{crateLeft.length === 1 ? "" : "s"}
-          </span>
-        )}
-        {guide === false &&
-        selected === null &&
-        phase === "ready" &&
-        (fridgeSortOf(save).rounds ?? 0) === 0 &&
-        !practice ? (
-          <PointerHand size={44} className="absolute left-[18%] top-[20%] z-40" />
-        ) : null}
       </div>
 
       {/* the piece under the finger */}
@@ -1009,12 +1019,12 @@ export function FridgeSortGame({
       {/* how to play: shown by itself the first time, and from the ? button */}
       {guide ? (
         <div
-          className="absolute inset-0 z-[60] grid place-items-center bg-black/75 p-5"
+          className="absolute inset-0 z-[60] flex overflow-y-auto overscroll-contain bg-black/75 p-5"
           data-testid="sort-guide"
         >
-          <div className="w-full max-w-[330px] rounded-3xl border-4 border-[#b8873f] bg-[#f7edd7] p-4 text-center">
+          <div className="m-auto w-full max-w-[330px] rounded-3xl border-4 border-[#b8873f] bg-[#f7edd7] p-4 text-center land:max-w-[640px] land:p-3">
             <p className="font-display text-[22px] font-extrabold text-walnut-dark">Fridge Sort</p>
-            <ol className="mt-3 grid gap-2 text-left font-ui text-[14px] font-bold text-walnut-dark">
+            <ol className="mt-3 grid gap-2 text-left font-ui text-[14px] font-bold text-walnut-dark land:mt-2 land:grid-cols-2 land:gap-1.5">
               <li className="flex items-center gap-2.5 rounded-xl bg-white/50 p-2">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-copper/15 text-[20px]">
                   🧺
@@ -1059,10 +1069,10 @@ export function FridgeSortGame({
       {/* pause */}
       {phase === "paused" ? (
         <div
-          className="absolute inset-0 z-40 grid place-items-center bg-black/70 p-6"
+          className="absolute inset-0 z-40 flex overflow-y-auto overscroll-contain bg-black/70 p-6"
           data-testid="sort-paused"
         >
-          <div className="w-full max-w-[300px] rounded-3xl bg-[#f7edd7] p-4 text-center">
+          <div className="m-auto w-full max-w-[300px] rounded-3xl bg-[#f7edd7] p-4 text-center">
             <p className="font-display text-[22px] font-extrabold text-walnut-dark">Paused</p>
             <div className="mt-3 grid gap-2">
               <SortButton onClick={resume} testId="sort-resume">
@@ -1089,11 +1099,11 @@ export function FridgeSortGame({
       {/* the result */}
       {phase === "done" && result ? (
         <div
-          className="absolute inset-0 z-40 grid place-items-center bg-black/70 p-5"
+          className="absolute inset-0 z-40 flex overflow-y-auto overscroll-contain bg-black/70 p-5"
           data-testid="sort-result"
           data-stars={result.stars}
         >
-          <div className="relative w-full max-w-[340px] px-[22px] pb-[50px] pt-[96px] text-center">
+          <div className="relative m-auto w-full max-w-[340px] px-[22px] pb-[50px] pt-[96px] text-center land:pb-[40px] land:pt-[80px]">
             <span
               aria-hidden
               className="pointer-events-none absolute inset-0"

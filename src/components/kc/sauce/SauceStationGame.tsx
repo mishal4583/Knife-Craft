@@ -706,6 +706,8 @@ function Round({
       ? "repeat(5, minmax(0, 1fr))"
       : "repeat(auto-fill, minmax(48px, 1fr))";
   const showBackdrop = phase === "bottle" ? artBottle : art;
+  // the two-column phone-landscape layout is for mixing; bottling keeps its own full-width stage
+  const twoCol = phase !== "bottle" && phase !== "done";
   const backdrop = phase === "bottle" ? "bottle-backdrop" : "mix-backdrop";
 
   return (
@@ -733,7 +735,7 @@ function Round({
     >
       <SauceStyles />
       {/* HUD */}
-      <div className="flex items-center gap-2 px-3 pt-3">
+      <div className="flex items-center gap-2 px-3 pt-3 land:pt-1.5">
         <button
           type="button"
           onClick={pause}
@@ -770,349 +772,379 @@ function Round({
         </Plaque>
       </div>
 
-      {/* the order: the target swatch, the live swatch, the thickness */}
-      <div className="mx-3 mt-2 flex items-stretch gap-2 rounded-2xl bg-[#f7edd7]/92 p-1.5 shadow-soft">
-        <div className="flex flex-col items-center">
-          <Swatch
-            color={target.hex}
-            testId="sauce-target"
-            className="h-[58px] w-[58px] [@media(max-height:620px)]:h-10 [@media(max-height:620px)]:w-10"
-          />
-          <span className="font-ui text-[10px] font-extrabold uppercase tracking-wide text-walnut/70">
-            Match
-          </span>
-        </div>
-        <div className="flex flex-col items-center">
-          <Swatch
-            color={mix.hex}
-            testId="sauce-live"
-            className="h-[58px] w-[58px] [@media(max-height:620px)]:h-10 [@media(max-height:620px)]:w-10"
-          />
-          <span
-            className="font-ui text-[12px] font-black tabular-nums text-walnut-dark"
-            data-testid="sauce-match"
-          >
-            {liveMatch !== null ? `${liveMatch}%` : taste ? `${taste.match}%` : "Taste ↓"}
-          </span>
-        </div>
-        <div className="min-w-0 flex-1 font-ui">
-          <div
-            className="flex flex-wrap items-center gap-1 [@media(max-height:620px)]:grid [@media(max-height:620px)]:grid-cols-2"
-            data-testid="sauce-help"
-          >
-            {needs.map((x) => (
-              <span
-                key={x.id}
-                data-testid={`sauce-need-${x.id}`}
-                data-left={x.left}
-                className={cn(
-                  "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] [@media(max-height:620px)]:px-1 [@media(max-height:620px)]:text-[10.5px] font-extrabold",
-                  overOf(x)
-                    ? "bg-[#f6cfc4] text-[#a8321f]"
-                    : x.left === 0
-                      ? "bg-[#d9eec4] text-[#2f6b1f]"
-                      : "bg-white/75 text-walnut-dark",
-                )}
-              >
-                <span aria-hidden>{x.icon}</span>
-                <span className="max-w-[52px] truncate [@media(max-height:620px)]:min-w-0 [@media(max-height:620px)]:max-w-none">
-                  {x.name}
-                </span>
-                <span className="tabular-nums">
-                  {overOf(x)
-                    ? "over"
-                    : x.left === 0
-                      ? "✓"
-                      : x.want < 1
-                        ? "pinch"
-                        : `${Math.min(x.have, x.want)}/${x.want}`}
-                </span>
-              </span>
-            ))}
-            {extras.map((x) => (
-              <span
-                key={x.id}
-                data-testid={`sauce-extra-${x.id}`}
-                className="flex items-center gap-0.5 rounded-full bg-[#f6cfc4] px-1.5 py-0.5 text-[11px] [@media(max-height:620px)]:px-1 [@media(max-height:620px)]:text-[10.5px] font-extrabold text-[#a8321f]"
-              >
-                <span aria-hidden>{x.icon}</span>
-                <span className="max-w-[52px] truncate [@media(max-height:620px)]:min-w-0 [@media(max-height:620px)]:max-w-none">
-                  {x.name}
-                </span>
-                <span>extra</span>
-              </span>
-            ))}
-          </div>
-          <div className="mt-1 flex items-center gap-1.5">
-            {hint ? (
-              <span className="flex flex-wrap gap-1" data-testid="sauce-hint">
-                {hint.warmer ? <Chip>warmer</Chip> : null}
-                {hint.cooler ? <Chip>cooler</Chip> : null}
-                {hint.lighter ? <Chip>lighter</Chip> : null}
-                {hint.darker ? <Chip>darker</Chip> : null}
-                {!hint.warmer && !hint.cooler && !hint.lighter && !hint.darker ? (
-                  <Chip>spot on</Chip>
-                ) : null}
-              </span>
-            ) : (
-              <span className="text-[11.5px] font-bold text-walnut/75">
-                {sauce.emulsify ? "Oil in slowly" : "Stir it smooth"}
-              </span>
-            )}
-            <InfoTip tone="copper" label="How to mix">
-              Tap the pantry to add. Match the colour swatch and keep the thickness in the green
-              band. Circle the {toolName} in the green zone to blend.
-            </InfoTip>
-          </div>
-        </div>
-        <ThicknessGauge
-          thick={thick}
-          band={target.band}
-          className="h-[74px] shrink-0 [@media(max-height:620px)]:h-[56px]"
-        />
-      </div>
-
-      {/* the steps of the sauce, always in view (developer 2026-11-16: "the sauce station is not showing any steps to do the preparation"):
-          what is done is ticked, the current one is lit, and the line below says what to do now; the recipe list above is on every tier too (2026-11-17)) */}
-      {phase === "mix" ? (
-        <ol
-          className="mx-3 mt-1.5 flex items-center justify-center gap-1.5 font-ui text-[12px] font-extrabold"
-          aria-label="Steps"
-          data-testid="sauce-steps"
-          data-now={step.n}
+      {/* A phone on its side (developer 2026-11-18): the bowl and its gauges on the left, the steps, the pantry and the buttons on the right, so the pantry is on
+          screen. Upright: the two groups are `display: contents` and `order-*` restores the single column, so nothing moves. */}
+      <div className={cn("contents", twoCol && "land:flex land:min-h-0 land:flex-1 land:gap-2")}>
+        <div
+          className={cn(
+            "contents",
+            twoCol && "land:flex land:min-h-0 land:min-w-0 land:flex-1 land:basis-0 land:flex-col",
+          )}
         >
-          {(
-            [
-              [1, "Pour"],
-              [2, "Blend"],
-              [3, "Bottle"],
-            ] as const
-          ).map(([n, label], i) => {
-            const state = n < step.n ? "done" : n === step.n ? "now" : "next";
-            return (
-              <li key={n} className="flex items-center gap-1.5" data-step-n={n} data-state={state}>
-                {i > 0 ? <span aria-hidden className="h-px w-3 bg-ivory/50" /> : null}
-                <span
+          {/* the order: the target swatch, the live swatch, the thickness */}
+          <div className="order-1 mx-3 mt-2 flex items-stretch gap-2 rounded-2xl bg-[#f7edd7]/92 p-1.5 shadow-soft land:mx-2 land:mt-1">
+            <div className="flex flex-col items-center">
+              <Swatch
+                color={target.hex}
+                testId="sauce-target"
+                className="h-[58px] w-[58px] [@media(max-height:620px)]:h-10 [@media(max-height:620px)]:w-10"
+              />
+              <span className="font-ui text-[10px] font-extrabold uppercase tracking-wide text-walnut/70">
+                Match
+              </span>
+            </div>
+            <div className="flex flex-col items-center">
+              <Swatch
+                color={mix.hex}
+                testId="sauce-live"
+                className="h-[58px] w-[58px] [@media(max-height:620px)]:h-10 [@media(max-height:620px)]:w-10"
+              />
+              <span
+                className="font-ui text-[12px] font-black tabular-nums text-walnut-dark"
+                data-testid="sauce-match"
+              >
+                {liveMatch !== null ? `${liveMatch}%` : taste ? `${taste.match}%` : "Taste ↓"}
+              </span>
+            </div>
+            <div className="min-w-0 flex-1 font-ui">
+              <div
+                className="flex flex-wrap items-center gap-1 [@media(max-height:620px)]:grid [@media(max-height:620px)]:grid-cols-2"
+                data-testid="sauce-help"
+              >
+                {needs.map((x) => (
+                  <span
+                    key={x.id}
+                    data-testid={`sauce-need-${x.id}`}
+                    data-left={x.left}
+                    className={cn(
+                      "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] [@media(max-height:620px)]:px-1 [@media(max-height:620px)]:text-[10.5px] font-extrabold",
+                      overOf(x)
+                        ? "bg-[#f6cfc4] text-[#a8321f]"
+                        : x.left === 0
+                          ? "bg-[#d9eec4] text-[#2f6b1f]"
+                          : "bg-white/75 text-walnut-dark",
+                    )}
+                  >
+                    <span aria-hidden>{x.icon}</span>
+                    <span className="max-w-[52px] truncate [@media(max-height:620px)]:min-w-0 [@media(max-height:620px)]:max-w-none">
+                      {x.name}
+                    </span>
+                    <span className="tabular-nums">
+                      {overOf(x)
+                        ? "over"
+                        : x.left === 0
+                          ? "✓"
+                          : x.want < 1
+                            ? "pinch"
+                            : `${Math.min(x.have, x.want)}/${x.want}`}
+                    </span>
+                  </span>
+                ))}
+                {extras.map((x) => (
+                  <span
+                    key={x.id}
+                    data-testid={`sauce-extra-${x.id}`}
+                    className="flex items-center gap-0.5 rounded-full bg-[#f6cfc4] px-1.5 py-0.5 text-[11px] [@media(max-height:620px)]:px-1 [@media(max-height:620px)]:text-[10.5px] font-extrabold text-[#a8321f]"
+                  >
+                    <span aria-hidden>{x.icon}</span>
+                    <span className="max-w-[52px] truncate [@media(max-height:620px)]:min-w-0 [@media(max-height:620px)]:max-w-none">
+                      {x.name}
+                    </span>
+                    <span>extra</span>
+                  </span>
+                ))}
+              </div>
+              <div className="mt-1 flex items-center gap-1.5">
+                {hint ? (
+                  <span className="flex flex-wrap gap-1" data-testid="sauce-hint">
+                    {hint.warmer ? <Chip>warmer</Chip> : null}
+                    {hint.cooler ? <Chip>cooler</Chip> : null}
+                    {hint.lighter ? <Chip>lighter</Chip> : null}
+                    {hint.darker ? <Chip>darker</Chip> : null}
+                    {!hint.warmer && !hint.cooler && !hint.lighter && !hint.darker ? (
+                      <Chip>spot on</Chip>
+                    ) : null}
+                  </span>
+                ) : (
+                  <span className="text-[11.5px] font-bold text-walnut/75">
+                    {sauce.emulsify ? "Oil in slowly" : "Stir it smooth"}
+                  </span>
+                )}
+                <InfoTip tone="copper" label="How to mix">
+                  Tap the pantry to add. Match the colour swatch and keep the thickness in the green
+                  band. Circle the {toolName} in the green zone to blend.
+                </InfoTip>
+              </div>
+            </div>
+            <ThicknessGauge
+              thick={thick}
+              band={target.band}
+              className="h-[74px] shrink-0 [@media(max-height:620px)]:h-[56px]"
+            />
+          </div>
+
+          {phase === "bottle" || phase === "done" ? (
+            <BottleStage
+              sauce={sauce}
+              color={mix.hex}
+              fill={fill}
+              pouring={pouring}
+              capped={capped}
+              index={bIndex}
+              total={bottles}
+              made={madeBottles}
+              icon={sauce.icon}
+              window_={tier.window}
+              reducedMotion={reducedMotion}
+              onDown={beginPour}
+              onUp={releasePour}
+              onSkip={() => finish(true)}
+              className="order-4"
+            />
+          ) : (
+            <>
+              {/* the bowl and the tool */}
+              {/* the pot sits LOW in its space (developer 2026-11-11: "let the pot be a little down"): on the counter, not floating */}
+              <div className="relative order-4 flex min-h-0 flex-1 items-end justify-center px-2 pb-4 land:pb-1">
+                <div
+                  ref={vesselRef}
+                  className="relative flex h-full max-w-full items-center justify-center"
+                  style={{ aspectRatio: "540 / 360" }}
+                  data-testid="sauce-stage"
+                  onPointerDown={onToolDown}
+                  onPointerMove={onToolMove}
+                  onPointerUp={onToolUp}
+                  onPointerCancel={onToolUp}
+                >
+                  <Vessel
+                    kind={sauce.vessel}
+                    level={volume / cap}
+                    color={mix.hex}
+                    swirl={!reducedMotion && omega > 0.3}
+                    split={splitFlag}
+                    chunks={sauce.chunks ? bowlChunks(sauce, scoops) : undefined}
+                    className="max-h-full w-full"
+                  />
+                  {/* the tool: in the hand while dragging (handle up, head in the bowl), standing in the bowl otherwise */}
+                  <ToolInBowl
+                    name={toolName}
+                    posRef={toolPos}
+                    auto={auto && phase === "mix" && volume > 0}
+                    stirring={omega > 0.3 || auto}
+                    reducedMotion={reducedMotion}
+                    hasLiquid={volume > 0}
+                  />
+                  {hintAt === "whisk" && !reducedMotion ? (
+                    <span
+                      aria-hidden
+                      data-testid="sauce-hint-whisk"
+                      className="sauce-hint-ring pointer-events-none absolute z-[8] rounded-[50%] border-4 border-[#ffd25a]"
+                      style={{
+                        left: `${(TOOL_BOWL.cx - TOOL_BOWL.rx) * 100}%`,
+                        top: `${(TOOL_BOWL.cy - TOOL_BOWL.ry) * 100}%`,
+                        width: `${TOOL_BOWL.rx * 200}%`,
+                        height: `${TOOL_BOWL.ry * 200}%`,
+                      }}
+                    />
+                  ) : null}
+                  {phase === "mix" && volume > 0 && omega < 0.1 && !auto ? (
+                    <span className="pointer-events-none absolute inset-x-0 bottom-1 text-center font-ui text-[12px] font-extrabold text-white [text-shadow:0_1px_3px_rgba(0,0,0,.8)]">
+                      Circle the {toolName} in the bowl
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* the gauges and the small buttons */}
+              <div className="order-5 mx-3 flex items-center gap-2 land:mx-2 land:mb-1">
+                <DialGauge omega={omega} tool={sauce.tool} className="h-[58px] w-[58px] shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <EmulsionMeter blend={blend} className="w-full" />
+                  <p
+                    className="text-center font-ui text-[11px] font-extrabold text-ivory [text-shadow:0_1px_2px_rgba(0,0,0,.7)]"
+                    data-testid="sauce-speed"
+                  >
+                    {splitFlag
+                      ? "Split! Whisk it back"
+                      : zoneNow === "zone"
+                        ? "Smooth: keep going"
+                        : zoneNow === "fast"
+                          ? "Too fast!"
+                          : blend >= 0.9
+                            ? "Blended"
+                            : "Circle to blend"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  data-testid="sauce-auto"
+                  aria-pressed={auto}
+                  onClick={toggleAuto}
                   className={cn(
-                    "flex items-center gap-1 rounded-full px-2 py-0.5",
-                    state === "now" && "bg-gold text-walnut-dark shadow-soft",
-                    state === "done" && "bg-[#cde9b8] text-[#2f6b1f]",
-                    state === "next" && "bg-[#2f2118]/70 text-ivory/80",
+                    "press h-12 min-w-[58px] rounded-2xl border px-2 font-ui text-[12px] font-extrabold leading-tight",
+                    hintAt === "whisk" && !reducedMotion && "sauce-hint",
+                    auto
+                      ? "border-[#2f6b1f] bg-[#cde9b8] text-[#1f4a14]"
+                      : "border-walnut/30 bg-ivory/85 text-walnut",
                   )}
                 >
-                  <span aria-hidden className="tabular-nums">
-                    {state === "done" ? "✓" : n}
-                  </span>
-                  {label}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-      ) : null}
-
-      {note ? (
-        <p
-          key={note.text}
-          className={cn(
-            "sauce-pop mx-auto mt-1 rounded-full px-3 py-0.5 font-ui text-[13px] font-extrabold",
-            note.tone === "good" && "bg-[#e4f1d6] text-[#2f6b1f]",
-            note.tone === "bad" && "bg-[#fbd9cf] text-[#a02a14]",
-            note.tone === "info" && "bg-[#f7edd7] text-walnut-dark",
+                  {auto ? "Auto ✓" : `Auto ${toolName}`}
+                </button>
+                <button
+                  type="button"
+                  data-testid="sauce-undo"
+                  onClick={undo}
+                  disabled={log.length === 0}
+                  className="press h-12 w-12 rounded-2xl border border-walnut/30 bg-ivory/85 font-ui text-[18px] font-extrabold text-walnut disabled:opacity-40"
+                  aria-label="Undo the last scoop"
+                >
+                  ↶
+                </button>
+              </div>
+            </>
           )}
-          data-testid="sauce-note"
+        </div>
+        <div
+          className={cn(
+            "contents",
+            twoCol && "land:flex land:min-h-0 land:min-w-0 land:flex-1 land:basis-0 land:flex-col",
+          )}
         >
-          {note.text}
-        </p>
-      ) : phase === "mix" ? (
-        <p
-          data-testid="sauce-step"
-          data-step={step.n}
-          className="mx-3 mt-1 flex items-center gap-2 rounded-full bg-[#2f2118]/80 px-2 py-0.5 font-ui text-[12.5px] font-extrabold text-ivory"
-        >
-          <span
-            aria-hidden
-            className="grid h-[20px] w-[20px] shrink-0 place-items-center rounded-full bg-gold font-display text-[12px] font-black text-walnut-dark"
-          >
-            {step.n}
-          </span>
-          <span className="min-w-0 flex-1 truncate">{step.text}</span>
-        </p>
-      ) : (
-        <div className="h-[22px]" />
-      )}
-
-      {phase === "bottle" || phase === "done" ? (
-        <BottleStage
-          sauce={sauce}
-          color={mix.hex}
-          fill={fill}
-          pouring={pouring}
-          capped={capped}
-          index={bIndex}
-          total={bottles}
-          made={madeBottles}
-          icon={sauce.icon}
-          window_={tier.window}
-          reducedMotion={reducedMotion}
-          onDown={beginPour}
-          onUp={releasePour}
-          onSkip={() => finish(true)}
-        />
-      ) : (
-        <>
-          {/* the bowl and the tool */}
-          {/* the pot sits LOW in its space (developer 2026-11-11: "let the pot be a little down"): on the counter, not floating */}
-          <div className="relative flex min-h-0 flex-1 items-end justify-center px-2 pb-4">
-            <div
-              ref={vesselRef}
-              className="relative flex h-full max-w-full items-center justify-center"
-              style={{ aspectRatio: "540 / 360" }}
-              data-testid="sauce-stage"
-              onPointerDown={onToolDown}
-              onPointerMove={onToolMove}
-              onPointerUp={onToolUp}
-              onPointerCancel={onToolUp}
+          {/* the steps of the sauce, always in view (developer 2026-11-16: "the sauce station is not showing any steps to do the preparation"):
+          what is done is ticked, the current one is lit, and the line below says what to do now; the recipe list above is on every tier too (2026-11-17)) */}
+          {phase === "mix" ? (
+            <ol
+              className="order-2 mx-3 mt-1.5 flex items-center justify-center gap-1.5 font-ui text-[12px] font-extrabold land:mx-2"
+              aria-label="Steps"
+              data-testid="sauce-steps"
+              data-now={step.n}
             >
-              <Vessel
-                kind={sauce.vessel}
-                level={volume / cap}
-                color={mix.hex}
-                swirl={!reducedMotion && omega > 0.3}
-                split={splitFlag}
-                chunks={sauce.chunks ? bowlChunks(sauce, scoops) : undefined}
-                className="max-h-full w-full"
-              />
-              {/* the tool: in the hand while dragging (handle up, head in the bowl), standing in the bowl otherwise */}
-              <ToolInBowl
-                name={toolName}
-                posRef={toolPos}
-                auto={auto && phase === "mix" && volume > 0}
-                stirring={omega > 0.3 || auto}
-                reducedMotion={reducedMotion}
-                hasLiquid={volume > 0}
-              />
-              {hintAt === "whisk" && !reducedMotion ? (
-                <span
-                  aria-hidden
-                  data-testid="sauce-hint-whisk"
-                  className="sauce-hint-ring pointer-events-none absolute z-[8] rounded-[50%] border-4 border-[#ffd25a]"
-                  style={{
-                    left: `${(TOOL_BOWL.cx - TOOL_BOWL.rx) * 100}%`,
-                    top: `${(TOOL_BOWL.cy - TOOL_BOWL.ry) * 100}%`,
-                    width: `${TOOL_BOWL.rx * 200}%`,
-                    height: `${TOOL_BOWL.ry * 200}%`,
-                  }}
-                />
-              ) : null}
-              {phase === "mix" && volume > 0 && omega < 0.1 && !auto ? (
-                <span className="pointer-events-none absolute inset-x-0 bottom-1 text-center font-ui text-[12px] font-extrabold text-white [text-shadow:0_1px_3px_rgba(0,0,0,.8)]">
-                  Circle the {toolName} in the bowl
-                </span>
-              ) : null}
-            </div>
-          </div>
+              {(
+                [
+                  [1, "Pour"],
+                  [2, "Blend"],
+                  [3, "Bottle"],
+                ] as const
+              ).map(([n, label], i) => {
+                const state = n < step.n ? "done" : n === step.n ? "now" : "next";
+                return (
+                  <li
+                    key={n}
+                    className="flex items-center gap-1.5"
+                    data-step-n={n}
+                    data-state={state}
+                  >
+                    {i > 0 ? <span aria-hidden className="h-px w-3 bg-ivory/50" /> : null}
+                    <span
+                      className={cn(
+                        "flex items-center gap-1 rounded-full px-2 py-0.5",
+                        state === "now" && "bg-gold text-walnut-dark shadow-soft",
+                        state === "done" && "bg-[#cde9b8] text-[#2f6b1f]",
+                        state === "next" && "bg-[#2f2118]/70 text-ivory/80",
+                      )}
+                    >
+                      <span aria-hidden className="tabular-nums">
+                        {state === "done" ? "✓" : n}
+                      </span>
+                      {label}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          ) : null}
 
-          {/* the gauges and the small buttons */}
-          <div className="mx-3 flex items-center gap-2">
-            <DialGauge omega={omega} tool={sauce.tool} className="h-[58px] w-[58px] shrink-0" />
-            <div className="min-w-0 flex-1">
-              <EmulsionMeter blend={blend} className="w-full" />
-              <p
-                className="text-center font-ui text-[11px] font-extrabold text-ivory [text-shadow:0_1px_2px_rgba(0,0,0,.7)]"
-                data-testid="sauce-speed"
-              >
-                {splitFlag
-                  ? "Split! Whisk it back"
-                  : zoneNow === "zone"
-                    ? "Smooth: keep going"
-                    : zoneNow === "fast"
-                      ? "Too fast!"
-                      : blend >= 0.9
-                        ? "Blended"
-                        : "Circle to blend"}
-              </p>
-            </div>
-            <button
-              type="button"
-              data-testid="sauce-auto"
-              aria-pressed={auto}
-              onClick={toggleAuto}
+          {note ? (
+            <p
+              key={note.text}
               className={cn(
-                "press h-12 min-w-[58px] rounded-2xl border px-2 font-ui text-[12px] font-extrabold leading-tight",
-                hintAt === "whisk" && !reducedMotion && "sauce-hint",
-                auto
-                  ? "border-[#2f6b1f] bg-[#cde9b8] text-[#1f4a14]"
-                  : "border-walnut/30 bg-ivory/85 text-walnut",
+                "sauce-pop order-3 mx-auto mt-1 rounded-full px-3 py-0.5 font-ui text-[13px] font-extrabold",
+                note.tone === "good" && "bg-[#e4f1d6] text-[#2f6b1f]",
+                note.tone === "bad" && "bg-[#fbd9cf] text-[#a02a14]",
+                note.tone === "info" && "bg-[#f7edd7] text-walnut-dark",
               )}
+              data-testid="sauce-note"
             >
-              {auto ? "Auto ✓" : `Auto ${toolName}`}
-            </button>
-            <button
-              type="button"
-              data-testid="sauce-undo"
-              onClick={undo}
-              disabled={log.length === 0}
-              className="press h-12 w-12 rounded-2xl border border-walnut/30 bg-ivory/85 font-ui text-[18px] font-extrabold text-walnut disabled:opacity-40"
-              aria-label="Undo the last scoop"
+              {note.text}
+            </p>
+          ) : phase === "mix" ? (
+            <p
+              data-testid="sauce-step"
+              data-step={step.n}
+              className="order-3 mx-3 mt-1 flex items-center gap-2 rounded-full bg-[#2f2118]/80 px-2 py-0.5 land:mx-2 font-ui text-[12.5px] font-extrabold text-ivory"
             >
-              ↶
-            </button>
-          </div>
-
-          {/* the pantry */}
-          <div
-            // (short screens: narrower margins so six 48 px tiles fit a 320 px row: two shelves instead of three, and the bowl gets its height back)
-            className="mx-3 mt-1.5 grid gap-1 [@media(max-height:620px)]:mx-2 [@media(max-height:620px)]:gap-0.5"
-            style={{ gridTemplateColumns: pantryCols }}
-            data-testid="sauce-pantry"
-          >
-            {items.map((it) => (
-              <PantryTile
-                key={it.id}
-                item={it}
-                count={scoops[it.id] ?? 0}
-                need={needLeft[it.id] ?? null}
-                hint={hintAt === `item:${it.id}` && !reducedMotion}
-                disabled={phase !== "mix"}
-                onDown={() => holdStart(it)}
-                onUp={holdStop}
-              />
-            ))}
-          </div>
-
-          {/* the two big buttons */}
-          <div className="mx-3 mb-3 mt-2 grid grid-cols-[1fr_1.4fr] gap-2">
-            <button
-              type="button"
-              data-testid="sauce-taste"
-              disabled={volume <= 0 || tastesLeft <= 0}
-              onClick={doTaste}
-              className="press flex h-12 items-center justify-center gap-1.5 rounded-2xl border border-walnut/30 bg-ivory/90 font-ui text-[14px] font-extrabold text-walnut disabled:opacity-45"
-            >
-              {seal ? (
-                <Sprite sheet="wax-seals" index={sealIndex} emoji="🥄" className="h-6" />
-              ) : (
-                <span aria-hidden>🥄</span>
-              )}
-              {Number.isFinite(tastesLeft) ? `Taste · ${tastesLeft}` : "Taste"}
-            </button>
-            <div
-              className={cn("rounded-2xl", hintAt === "bottle" && !reducedMotion && "sauce-hint")}
-              data-hint={hintAt === "bottle" ? "1" : undefined}
-            >
-              <SortButton
-                onClick={() =>
-                  volume > 0 ? endMix(false) : say("Pour something in first", "info")
-                }
-                testId="sauce-bottle-it"
+              <span
+                aria-hidden
+                className="grid h-[20px] w-[20px] shrink-0 place-items-center rounded-full bg-gold font-display text-[12px] font-black text-walnut-dark"
               >
-                Bottle it →
-              </SortButton>
-            </div>
-          </div>
-        </>
-      )}
+                {step.n}
+              </span>
+              <span className="min-w-0 flex-1 truncate">{step.text}</span>
+            </p>
+          ) : (
+            <div className="order-3 h-[22px] land:h-1" />
+          )}
+
+          {phase === "bottle" || phase === "done" ? null : (
+            <>
+              {/* the pantry */}
+              <div
+                // (short screens: narrower margins so six 48 px tiles fit a 320 px row: two shelves instead of three, and the bowl gets its height back)
+                className="order-6 mx-3 mt-1.5 grid gap-1 [@media(max-height:620px)]:mx-2 [@media(max-height:620px)]:gap-0.5 land:mx-2 land:mt-auto"
+                style={{ gridTemplateColumns: pantryCols }}
+                data-testid="sauce-pantry"
+              >
+                {items.map((it) => (
+                  <PantryTile
+                    key={it.id}
+                    item={it}
+                    count={scoops[it.id] ?? 0}
+                    need={needLeft[it.id] ?? null}
+                    hint={hintAt === `item:${it.id}` && !reducedMotion}
+                    disabled={phase !== "mix"}
+                    onDown={() => holdStart(it)}
+                    onUp={holdStop}
+                  />
+                ))}
+              </div>
+
+              {/* the two big buttons */}
+              <div className="order-7 mx-3 mb-3 mt-2 grid grid-cols-[1fr_1.4fr] gap-2 land:mx-2 land:mb-1">
+                <button
+                  type="button"
+                  data-testid="sauce-taste"
+                  disabled={volume <= 0 || tastesLeft <= 0}
+                  onClick={doTaste}
+                  className="press flex h-12 items-center justify-center gap-1.5 rounded-2xl border border-walnut/30 bg-ivory/90 font-ui text-[14px] font-extrabold text-walnut disabled:opacity-45"
+                >
+                  {seal ? (
+                    <Sprite sheet="wax-seals" index={sealIndex} emoji="🥄" className="h-6" />
+                  ) : (
+                    <span aria-hidden>🥄</span>
+                  )}
+                  {Number.isFinite(tastesLeft) ? `Taste · ${tastesLeft}` : "Taste"}
+                </button>
+                <div
+                  className={cn(
+                    "rounded-2xl",
+                    hintAt === "bottle" && !reducedMotion && "sauce-hint",
+                  )}
+                  data-hint={hintAt === "bottle" ? "1" : undefined}
+                >
+                  <SortButton
+                    onClick={() =>
+                      volume > 0 ? endMix(false) : say("Pour something in first", "info")
+                    }
+                    testId="sauce-bottle-it"
+                  >
+                    Bottle it →
+                  </SortButton>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
 
       {/* ready */}
       {phase === "ready" && !guide ? (
@@ -1171,10 +1203,10 @@ function Round({
 
       {phase === "paused" ? (
         <div
-          className="absolute inset-0 z-40 grid place-items-center bg-black/70 p-6"
+          className="absolute inset-0 z-40 flex overflow-y-auto overscroll-contain bg-black/70 p-6"
           data-testid="sauce-paused"
         >
-          <div className="w-full max-w-[300px] rounded-3xl bg-[#f7edd7] p-4 text-center">
+          <div className="m-auto w-full max-w-[300px] rounded-3xl bg-[#f7edd7] p-4 text-center">
             <p className="font-display text-[22px] font-extrabold text-walnut-dark">Paused</p>
             <div className="mt-3 grid gap-2">
               <SortButton onClick={resume} testId="sauce-resume">
@@ -1427,6 +1459,7 @@ function BottleStage({
   onDown,
   onUp,
   onSkip,
+  className,
 }: {
   sauce: SauceDef;
   color: string;
@@ -1442,12 +1475,16 @@ function BottleStage({
   onDown: () => void;
   onUp: () => void;
   onSkip: () => void;
+  className?: string;
 }) {
   const belt = useSauceArt("belt");
   const jugOk = useSauceArt("pour-tools");
   const done = index >= total;
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col" data-testid="sauce-bottling">
+    <div
+      className={cn("relative flex min-h-0 flex-1 flex-col", className)}
+      data-testid="sauce-bottling"
+    >
       <div className="relative min-h-0 flex-1">
         {/* the belt */}
         <div
@@ -1691,11 +1728,11 @@ function ResultPanel({
   const e = result.effects;
   return (
     <div
-      className="absolute inset-0 z-40 grid place-items-center bg-black/70 p-5"
+      className="absolute inset-0 z-40 flex overflow-y-auto overscroll-contain bg-black/70 p-5"
       data-testid="sauce-result"
       data-stars={result.stars}
     >
-      <div className="relative w-full max-w-[340px] px-[22px] pb-[50px] pt-[96px] text-center">
+      <div className="relative m-auto w-full max-w-[340px] px-[22px] pb-[50px] pt-[96px] text-center land:pb-[40px] land:pt-[80px]">
         <span
           aria-hidden
           className="pointer-events-none absolute inset-0"
@@ -1877,14 +1914,14 @@ function HowTo({ tool, onDone }: { tool: string; onDone: () => void }) {
   ];
   return (
     <div
-      className="absolute inset-0 z-50 grid place-items-center bg-black/75 p-4"
+      className="absolute inset-0 z-50 flex overflow-y-auto overscroll-contain bg-black/75 p-4"
       data-testid="sauce-guide"
     >
-      <div className="w-full max-w-[340px] rounded-3xl border-2 border-[#e6b866] bg-[#f7edd7] p-4">
+      <div className="m-auto w-full max-w-[340px] rounded-3xl border-2 border-[#e6b866] bg-[#f7edd7] p-4 land:max-w-[560px] land:p-3">
         <p className="text-center font-display text-[20px] font-extrabold text-walnut-dark">
           Sauce Station
         </p>
-        <ul className="mt-2 space-y-1.5">
+        <ul className="mt-2 space-y-1.5 land:grid land:grid-cols-3 land:gap-1.5 land:space-y-0">
           {rows.map((r) => (
             <li key={r.title} className="flex items-center gap-2 rounded-2xl bg-white/60 p-2">
               <span aria-hidden className="text-[26px]">

@@ -877,15 +877,15 @@ export function StockroomSortGame({
       {/* how to play: shown by itself the first time, and from the ? button */}
       {guide ? (
         <div
-          className="absolute inset-0 z-[60] grid place-items-center bg-black/75 p-5"
+          className="absolute inset-0 z-[60] flex overflow-y-auto overscroll-contain bg-black/75 p-5"
           data-testid="stock-guide"
         >
-          <div className="w-full max-w-[330px] rounded-3xl border-4 border-[#b8873f] bg-[#f7edd7] p-4 text-center">
+          <div className="m-auto w-full max-w-[330px] rounded-3xl border-4 border-[#b8873f] bg-[#f7edd7] p-4 text-center land:max-w-[640px] land:p-3">
             <SrArt name="truck" className="mx-auto h-[72px] w-auto" />
             <p className="font-display text-[22px] font-extrabold text-walnut-dark">
               Stock the shelves
             </p>
-            <ol className="mt-2 grid gap-2 text-left font-ui text-[14px] font-bold text-walnut-dark">
+            <ol className="mt-2 grid gap-2 text-left font-ui text-[14px] font-bold text-walnut-dark land:grid-cols-2 land:gap-1.5">
               {[
                 ["🛒", "What you bought comes in sets of 3, mixed up on the shelves."],
                 ["👆", "Tap a product, then tap a cubby with a free slot (or drag it)."],
@@ -915,10 +915,10 @@ export function StockroomSortGame({
       {/* pause */}
       {phase === "paused" ? (
         <div
-          className="absolute inset-0 z-40 grid place-items-center bg-black/70 p-6"
+          className="absolute inset-0 z-40 flex overflow-y-auto overscroll-contain bg-black/70 p-6"
           data-testid="stock-paused"
         >
-          <div className="w-full max-w-[300px] rounded-3xl bg-[#f7edd7] p-4 text-center">
+          <div className="m-auto w-full max-w-[300px] rounded-3xl bg-[#f7edd7] p-4 text-center">
             <p className="font-display text-[22px] font-extrabold text-walnut-dark">Paused</p>
             <div className="mt-3 grid gap-2">
               <SortButton onClick={resume} testId="stock-resume">
@@ -945,11 +945,11 @@ export function StockroomSortGame({
       {/* the result */}
       {phase === "done" && result ? (
         <div
-          className="absolute inset-0 z-40 grid place-items-center bg-black/70 p-5"
+          className="absolute inset-0 z-40 flex overflow-y-auto overscroll-contain bg-black/70 p-5"
           data-testid="stock-result"
           data-stars={result.stars}
         >
-          <div className="relative w-full max-w-[340px] px-[22px] pb-[50px] pt-[96px] text-center">
+          <div className="relative m-auto w-full max-w-[340px] px-[22px] pb-[50px] pt-[96px] text-center land:pb-[40px] land:pt-[80px]">
             <span
               aria-hidden
               className="pointer-events-none absolute inset-0"

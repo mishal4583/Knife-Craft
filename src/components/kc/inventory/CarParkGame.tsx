@@ -234,7 +234,7 @@ export function CarParkGame({
 
   return (
     <main
-      className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#46372c] text-[#442716]"
+      className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#46372c] text-[#442716] land:grid land:grid-cols-[1fr_1.5fr_1fr] land:grid-rows-[auto_auto_1fr]"
       data-testid="car-park-game"
     >
       <img
@@ -244,7 +244,8 @@ export function CarParkGame({
         className="absolute inset-0 h-full w-full object-cover"
       />
       <div className="absolute inset-0 bg-gradient-to-b from-[#2e2113]/25 via-transparent to-[#2e2113]/35" />
-      <header className="relative z-10 flex items-center justify-between gap-2 px-3 pt-[max(10px,env(safe-area-inset-top))]">
+      {/* A phone on its side (developer 2026-11-18): the title and the patience on the left, the lot as tall as the screen in the middle, the tow on the right. */}
+      <header className="relative z-10 flex items-center justify-between gap-2 px-3 pt-[max(10px,env(safe-area-inset-top))] land:col-start-1 land:row-start-1 land:px-2 land:pt-2">
         <div className="rounded-2xl border border-[#e6bd69] bg-[#fff3d8]/95 px-3 py-2 shadow-lg">
           <div className="text-[10px] font-black uppercase tracking-[.18em] text-[#9a6533]">
             🚗 Car Park
@@ -260,7 +261,7 @@ export function CarParkGame({
         </button>
       </header>
 
-      <div className="relative z-10 mx-auto mt-2 flex w-[86%] items-center justify-between rounded-2xl border border-[#e4c683] bg-[#fff5df]/95 px-2 py-1 shadow-lg">
+      <div className="relative z-10 mx-auto mt-2 flex w-[86%] items-center justify-between rounded-2xl border border-[#e4c683] bg-[#fff5df]/95 px-2 py-1 shadow-lg land:col-start-1 land:row-start-2 land:mx-2 land:w-auto land:flex-wrap land:gap-y-1">
         <div className="flex items-center gap-2">
           <img
             src={art(
@@ -281,7 +282,7 @@ export function CarParkGame({
 
       <section
         ref={stage}
-        className="relative z-10 min-h-0 flex-1 overflow-hidden"
+        className="relative z-10 min-h-0 flex-1 overflow-hidden land:col-start-2 land:row-span-3 land:row-start-1"
         aria-label="Shared car park puzzle"
       >
         {cell > 0 ? (
@@ -372,7 +373,7 @@ export function CarParkGame({
         ) : null}
       </section>
 
-      <footer className="relative z-10 mx-3 mb-[max(12px,env(safe-area-inset-bottom))] rounded-2xl border border-[#dfbe7e] bg-[#fff2d7]/95 p-2 shadow-xl">
+      <footer className="relative z-10 mx-3 mb-[max(12px,env(safe-area-inset-bottom))] rounded-2xl border border-[#dfbe7e] bg-[#fff2d7]/95 p-2 shadow-xl land:col-start-3 land:row-span-3 land:row-start-1 land:mx-2 land:mb-2 land:self-end">
         <div className="flex items-center justify-between gap-2">
           <button
             data-testid="carpark-tow"
@@ -432,7 +433,7 @@ export function CarParkGame({
           <p>Cars drive out along their arrow. A blocked car honks.</p>
           <p>Three honks and you start over. A tow costs a star.</p>
           <button
-            className="mt-4 w-full rounded-xl bg-[#7b4a23] px-4 py-3 font-black text-white"
+            className="mt-4 min-h-12 w-full rounded-xl bg-[#7b4a23] px-4 py-3 font-black text-white"
             onClick={closeHowto}
           >
             Let’s go!
@@ -522,8 +523,8 @@ function Overlay({
   children: ReactNode;
 }) {
   return (
-    <div className="absolute inset-0 z-30 grid place-items-center bg-[#21160f]/60 p-5 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-[28px] border-2 border-[#dfbd78] bg-[#fff2d7] p-5 text-center shadow-2xl">
+    <div className="absolute inset-0 z-30 flex overflow-y-auto overscroll-contain bg-[#21160f]/60 p-5 backdrop-blur-sm land:p-2">
+      <div className="m-auto w-full max-w-sm rounded-[28px] border-2 border-[#dfbd78] bg-[#fff2d7] p-5 text-center shadow-2xl">
         {picture ? (
           <img src={picture} alt="" draggable={false} className="mx-auto h-20 w-20 rounded-full" />
         ) : (

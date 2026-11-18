@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { SaveData } from "@/game/SaveManager";
 import { InfoTip } from "@/components/kc/common/InfoTip";
+import { TurnUprightCard } from "@/components/kc/common/TurnUprightCard";
+import { useTurnUpright } from "@/components/kc/common/useTurnUpright";
 import { dessertRunFor } from "@/game/business/dessertRunContent";
 import {
   STAGE,
@@ -41,6 +43,8 @@ export function DessertRunGame({
   const [attempt, setAttempt] = useState(0);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(2);
   const [paused, setPaused] = useState(false);
+  /** On a phone on its side the stage is a thin strip: a card asks for the phone upright and the round waits behind it. */
+  const { held, playAnyway } = useTurnUpright();
   const [phase, setPhase] = useState<Phase>("play");
   const [delivered, setDelivered] = useState(0);
   /** The round lives in a ref (the game loop owns it); this repaints the header when a new one is made. */
@@ -62,8 +66,8 @@ export function DessertRunGame({
   const pausedRef = useRef(false);
   useEffect(() => {
     speedRef.current = speed;
-    pausedRef.current = paused;
-  }, [speed, paused]);
+    pausedRef.current = paused || held;
+  }, [speed, paused, held]);
 
   useEffect(() => {
     const state = makeRun(pick.dessertId, pick.seed, pick.tier);
@@ -376,6 +380,14 @@ export function DessertRunGame({
           </div>
         ) : null}
       </div>
+      {held ? (
+        <TurnUprightCard
+          game="Dessert Run"
+          testId="dr-upright"
+          onPlayAnyway={playAnyway}
+          onLeave={onExit}
+        />
+      ) : null}
     </main>
   );
 }

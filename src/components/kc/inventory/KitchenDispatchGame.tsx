@@ -9,6 +9,8 @@ import {
 } from "react";
 import type { SaveData } from "@/game/SaveManager";
 import { InfoTip } from "@/components/kc/common/InfoTip";
+import { TurnUprightCard } from "@/components/kc/common/TurnUprightCard";
+import { useTurnUpright } from "@/components/kc/common/useTurnUpright";
 import {
   FREEZE_SECONDS,
   brickAtCell,
@@ -87,6 +89,9 @@ export function KitchenDispatchGame({
   const [round, setRound] = useState<CrateRound>(initial);
   const [phase, setPhase] = useState<Phase>("play");
   const [paused, setPaused] = useState(false);
+  /** On a phone on its side the stage is a thin strip: a card asks for the phone upright and the clock waits behind it. */
+  const { held, playAnyway } = useTurnUpright();
+  const heldRef = useRef(held);
   const [secondsLeft, setSecondsLeft] = useState(initial.seconds);
   const [notice, setNotice] = useState("");
   const [, repaint] = useReducer((n: number) => n + 1, 0);
@@ -143,7 +148,7 @@ export function KitchenDispatchGame({
     setFrozen(false);
     armedRef.current = null;
     setArmedState(null);
-    pausedRef.current = false;
+    pausedRef.current = heldRef.current;
     timeRef.current = initial.seconds;
     setRoundBoth(initial);
     setSecondsLeft(initial.seconds);
@@ -159,8 +164,9 @@ export function KitchenDispatchGame({
     [],
   );
   useEffect(() => {
-    pausedRef.current = paused;
-  }, [paused]);
+    heldRef.current = held;
+    pausedRef.current = paused || held;
+  }, [paused, held]);
 
   // the draw loop and the clock
   useEffect(() => {
@@ -348,7 +354,7 @@ export function KitchenDispatchGame({
     if (d.moved) setRoundBoth(finishDrag(roundRef.current, d.from, { moved: true, out: false }));
   };
 
-  const playing = phase === "play" && !paused;
+  const playing = phase === "play" && !paused && !held;
   const arm = (kind: "rocket" | "hammer") => {
     if (!playing) return;
     if (armedRef.current === kind) return setArmed(null);
@@ -780,6 +786,14 @@ export function KitchenDispatchGame({
           </div>
         ) : null}
       </div>
+      {held ? (
+        <TurnUprightCard
+          game="Unload the Van"
+          testId="kd-upright"
+          onPlayAnyway={playAnyway}
+          onLeave={onExit}
+        />
+      ) : null}
     </main>
   );
 }

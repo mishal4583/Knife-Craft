@@ -843,10 +843,10 @@ function Round({
       {/* pause */}
       {phase === "paused" ? (
         <div
-          className="absolute inset-0 z-40 grid place-items-center bg-black/70 p-6"
+          className="absolute inset-0 z-40 flex overflow-y-auto overscroll-contain bg-black/70 p-6"
           data-testid="insp-paused"
         >
-          <div className="w-full max-w-[300px] rounded-3xl bg-[#f7edd7] p-4 text-center">
+          <div className="m-auto w-full max-w-[300px] rounded-3xl bg-[#f7edd7] p-4 text-center">
             <p className="font-display text-[22px] font-extrabold text-walnut-dark">Paused</p>
             <div className="mt-3 grid gap-2">
               <SortButton onClick={resume} testId="insp-resume">
@@ -873,11 +873,11 @@ function Round({
       {/* the result */}
       {phase === "done" && result ? (
         <div
-          className="absolute inset-0 z-40 grid place-items-center bg-black/70 p-5"
+          className="absolute inset-0 z-40 flex overflow-y-auto overscroll-contain bg-black/70 p-5"
           data-testid="insp-result"
           data-stars={result.stars}
         >
-          <div className="relative w-full max-w-[340px] px-[22px] pb-[50px] pt-[96px] text-center">
+          <div className="relative m-auto w-full max-w-[340px] px-[22px] pb-[50px] pt-[96px] text-center land:pb-[40px] land:pt-[80px]">
             <span
               aria-hidden
               className="pointer-events-none absolute inset-0"
@@ -1039,7 +1039,7 @@ function HowTo({ tierNumber, onDone }: { tierNumber: number; onDone: () => void 
   const cols = bad.length >= 4 ? "grid-cols-4" : "grid-cols-3";
   return (
     <div
-      className="absolute inset-0 z-50 grid place-items-center bg-black/75 p-3"
+      className="absolute inset-0 z-50 flex items-center justify-center bg-black/75 p-3"
       data-testid="insp-guide"
     >
       <div className="max-h-full w-full max-w-[340px] overflow-y-auto rounded-3xl border-2 border-[#e6b866] bg-[#f7edd7] p-3">
