@@ -14,6 +14,7 @@
  * and visible once that one is moved. A defect is never behind another defect, and a decoy never sits on a defective ingredient.
  */
 import type { IngredientId } from "../definitions";
+import { playDayOf } from "./playDay";
 import { INGREDIENTS } from "../definitions";
 import type { SaveData } from "../SaveManager";
 import { addHype } from "../restaurant/secondFloor";
@@ -315,7 +316,7 @@ export function autoInspect(save: SaveData): SaveData {
 export function roundsLeft(save: SaveData, level: number): number {
   if (!isInspectionOpen(level)) return 0;
   const st = deliveryInspectionOf(save);
-  const day = save.business.calendar.businessDay;
+  const day = playDayOf(save);
   const doneToday = st.day === day ? st.today! : 0;
   const baskets = basketsLeft(save, level);
   const seen = st.seed === fridgeSortOf(save).seed ? st.inspected! : 0;
@@ -353,7 +354,7 @@ export function shiftInspected(before: SaveData, after: SaveData, level: number)
 /** Rounds done today and the most there can be (the "Deliveries 2/5" tag). */
 export function deliveriesTag(save: SaveData, level: number): { done: number; total: number } {
   const st = deliveryInspectionOf(save);
-  const day = save.business.calendar.businessDay;
+  const day = playDayOf(save);
   const done = st.day === day ? st.today! : 0;
   return { done, total: Math.min(MAX_ROUNDS_PER_DAY, done + roundsLeft(save, level)) };
 }
@@ -757,7 +758,7 @@ export function roundCrate(save: SaveData, level: number, salt = 0): Crate | nul
   if (!isInspectionOpen(level)) return null;
   const st = deliveryInspectionOf(save);
   const crate = fridgeSortOf(save);
-  const day = save.business.calendar.businessDay;
+  const day = playDayOf(save);
   const tier = tierNumberAt(level);
   const seed = hashOf(crate.seed ?? 0, st.inspected ?? 0, day, level, salt);
   return buildCrate(level, (n) => crateIngredients(save, tier, n), seed);
@@ -839,7 +840,7 @@ export function finishRound(
 ): { save: SaveData; effects: RoundEffects } {
   if (o.practice) return { save: o.counts ? autoInspect(save) : save, effects: NO_EFFECTS };
   const st = deliveryInspectionOf(save);
-  const day = save.business.calendar.businessDay;
+  const day = playDayOf(save);
   const seed = fridgeSortOf(save).seed ?? 0;
   const sameCrate = st.seed === seed;
   const perfect = st.perfect! + (o.stars === 3 ? 1 : 0);

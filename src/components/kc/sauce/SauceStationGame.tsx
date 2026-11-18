@@ -17,6 +17,7 @@ import {
   blendStep,
   gradeMix,
   howtoSeen,
+  isMade,
   mixOf,
   overallStars,
   pantryFor,
@@ -192,6 +193,13 @@ function Round({
   const [omega, setOmega] = useState(0);
   const [msLeft, setMsLeft] = useState(tier.timeMs);
   const shownSecRef = useRef(-1);
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
   const [splitFlag, setSplitFlag] = useState(false);
   const [auto, setAuto] = useState(false);
   const [note, setNote] = useState<Note | null>(null);
@@ -587,6 +595,8 @@ function Round({
     setMadeBottles((b) => [...b, Math.min(1, f)]);
     window.setTimeout(
       () => {
+        // The player left (Leave the station, Back) during the pause after this bottle: nothing is finished or paid after they have gone (audit 2026-11-18).
+        if (!aliveRef.current) return;
         const nextI = i + 1;
         bIndexRef.current = nextI;
         setBIndex(nextI);
@@ -1196,6 +1206,7 @@ function Round({
           left={roundsLeft(save, level)}
           onWatchAd={canOfferRoundsAd(save, level) ? onWatchAd : undefined}
           pins={pinsOf(save)}
+          alreadyMade={isMade(save, sauce.id)}
           matchPct={matchPercent(result.mix.de)}
           onNext={onNext}
           onShelf={onShelf}
@@ -1648,6 +1659,7 @@ function ResultPanel({
   left,
   onWatchAd,
   pins,
+  alreadyMade,
   matchPct,
   onNext,
   onShelf,
@@ -1668,6 +1680,8 @@ function ResultPanel({
   left: number;
   onWatchAd?: (() => Promise<"ok" | "no">) | undefined;
   pins: number;
+  /** The sauce was on the shelf before this round (a zero-star round does not take it off). */
+  alreadyMade: boolean;
   matchPct: number;
   onNext: () => void;
   onShelf: () => void;
@@ -1774,7 +1788,7 @@ function ResultPanel({
               ? "🥇 Mastered: gold seal on your Sauce Shelf!"
               : e.shelved
                 ? "✓ Added to your Sauce Shelf!"
-                : result.stars === 0
+                : result.stars === 0 && !alreadyMade
                   ? "Not on the shelf: it needs 1 star"
                   : "Already on your Sauce Shelf"}
           </p>

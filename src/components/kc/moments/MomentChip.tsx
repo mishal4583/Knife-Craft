@@ -39,7 +39,7 @@ export function MomentChip({
         type="button"
         aria-label="Not now"
         onClick={onDismiss}
-        className="grid min-h-11 w-9 place-items-center border-l border-ivory/15 font-ui text-[13px] text-ivory/60"
+        className="grid min-h-12 w-12 place-items-center border-l border-ivory/15 font-ui text-[13px] text-ivory/60"
       >
         ✕
       </button>

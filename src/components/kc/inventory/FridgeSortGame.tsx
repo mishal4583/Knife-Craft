@@ -803,7 +803,7 @@ export function FridgeSortGame({
             data-testid="sort-help"
             aria-label="How to play"
             onClick={() => setGuide(true)}
-            className="press grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-[#d6b46a] bg-walnut-dark text-[16px] font-black text-gold"
+            className="press grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-[#d6b46a] bg-walnut-dark text-[16px] font-black text-gold"
           >
             ?
           </button>

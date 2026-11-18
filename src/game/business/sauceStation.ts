@@ -13,6 +13,7 @@
  * (the QA also searches it). State lives in `business.sauceStation` (optional; absent = nothing done yet) read through `sauceStationOf`.
  */
 import type { SaveData } from "../SaveManager";
+import { playDayOf } from "./playDay";
 import { addHype } from "../restaurant/secondFloor";
 import { HYPE_BY_STARS } from "./fridgeSort";
 import {
@@ -924,20 +925,20 @@ export const hasPrepCook = (save: SaveData): boolean =>
 /** The rounds today's reward covers: the free three, plus the ad's three when today's ad was watched. */
 export function roundsAllowed(save: SaveData): number {
   const st = sauceStationOf(save);
-  const day = save.business.calendar.businessDay;
+  const day = playDayOf(save);
   return MAX_ROUNDS_PER_DAY + (st.extraDay === day ? st.extra! : 0);
 }
 /** Rounds the player can still play for a reward today. */
 export function roundsLeft(save: SaveData, level: number): number {
   if (!isSauceStationOpen(level)) return 0;
   const st = sauceStationOf(save);
-  const day = save.business.calendar.businessDay;
+  const day = playDayOf(save);
   return Math.max(0, roundsAllowed(save) - (st.day === day ? st.today! : 0));
 }
 /** The "Sauces 1/3" tag. */
 export function roundsTag(save: SaveData, level: number): { done: number; total: number } {
   const st = sauceStationOf(save);
-  const day = save.business.calendar.businessDay;
+  const day = playDayOf(save);
   const done = st.day === day ? st.today! : 0;
   return { done, total: isSauceStationOpen(level) ? roundsAllowed(save) : 0 };
 }
@@ -945,7 +946,7 @@ export function roundsTag(save: SaveData, level: number): { done: number; total:
 export function canOfferRoundsAd(save: SaveData, level: number): boolean {
   if (!isSauceStationOpen(level) || roundsLeft(save, level) > 0) return false;
   const st = sauceStationOf(save);
-  return !(st.extraDay === save.business.calendar.businessDay && st.extra! > 0);
+  return !(st.extraDay === playDayOf(save) && st.extra! > 0);
 }
 /** Grants the ad's extra rounds for today (only on the ad's `rewarded` state). Once a day: a second call changes nothing. No money, no stock, no ledger. */
 export function withAdRounds(save: SaveData, level: number): SaveData {
@@ -954,7 +955,7 @@ export function withAdRounds(save: SaveData, level: number): SaveData {
     ...(save.business.sauceStation ?? {}),
     ...sauceStationOf(save),
     extra: SAUCE_AD_ROUNDS,
-    extraDay: save.business.calendar.businessDay,
+    extraDay: playDayOf(save),
   });
 }
 
@@ -966,7 +967,7 @@ export function withAdRounds(save: SaveData, level: number): SaveData {
 export function sauceOfTheDay(save: SaveData, level: number): SauceDef {
   const open = unlockedSauces(level);
   const st = sauceStationOf(save);
-  const day = save.business.calendar.businessDay;
+  const day = playDayOf(save);
   const round = st.day === day ? st.today! : 0;
   // The very first round (developer 2026-11-10, plan FIRST-20-LEVELS-ENGAGEMENT-PLAN §4): always the Lemon Dressing: one pour, one whisk, no
   // tricks, so a new player wins once without reading anything.
@@ -981,7 +982,7 @@ export function sauceOfTheDay(save: SaveData, level: number): SauceDef {
   return pool[Math.floor(rand() * pool.length)]!;
 }
 export const roundSeed = (save: SaveData, level: number, salt = 0): number =>
-  hashOf(save.business.calendar.businessDay, sauceStationOf(save).rounds ?? 0, level, salt);
+  hashOf(playDayOf(save), sauceStationOf(save).rounds ?? 0, level, salt);
 
 // ── Finishing a round ────────────────────────────────────────────────────────
 
@@ -1022,7 +1023,7 @@ export function finishRound(
 ): { save: SaveData; effects: RoundEffects } {
   if (o.practice) return { save, effects: NO_EFFECTS };
   const st = sauceStationOf(save);
-  const day = save.business.calendar.businessDay;
+  const day = playDayOf(save);
   const perfect = st.perfect! + (o.stars === 3 ? 1 : 0);
   const pin =
     Math.min(MAX_PINS, Math.floor(perfect / PERFECTS_PER_PIN)) >
@@ -1055,7 +1056,7 @@ export function finishRound(
 /** Today's duty is met: a rewarded round was played, or the Prep Cook / the ad skip covered it. */
 export function sauceDutyDone(save: SaveData): boolean {
   const st = sauceStationOf(save);
-  const day = save.business.calendar.businessDay;
+  const day = playDayOf(save);
   return st.doneDay === day || (st.day === day && st.today! > 0);
 }
 /** The Sauce Station is a duty now: from SAUCE_REQUIRED_FROM, once a business day, until it is done. */
@@ -1067,7 +1068,7 @@ export function coverSauceToday(save: SaveData): SaveData {
   return withState(save, {
     ...(save.business.sauceStation ?? {}),
     ...sauceStationOf(save),
-    doneDay: save.business.calendar.businessDay,
+    doneDay: playDayOf(save),
   });
 }
 /** The Prep Cook makes a batch on his own: it meets today's duty and counts as nothing else (no stars, Hype, pins, mastery or day count). */

@@ -32,8 +32,34 @@ export function MiniGamesSheet({
   const open = views.filter((v) => v.state !== "locked").length;
   const closeRef = useRef<HTMLButtonElement>(null);
 
+  // Focus goes into the dialog, stays inside it (Tab wraps) and returns to what opened it when it closes.
+  const sheetRef = useRef<HTMLElement>(null);
   useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
     closeRef.current?.focus();
+    const trap = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const items = [
+        ...(sheetRef.current?.querySelectorAll<HTMLElement>("button:not([aria-disabled='true'])") ??
+          []),
+      ];
+      if (items.length === 0) return;
+      const first = items[0]!;
+      const last = items[items.length - 1]!;
+      const here = document.activeElement;
+      if (e.shiftKey && (here === first || !sheetRef.current?.contains(here))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (here === last || !sheetRef.current?.contains(here))) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", trap);
+    return () => {
+      window.removeEventListener("keydown", trap);
+      opener?.focus?.();
+    };
   }, []);
 
   useEffect(() => {
@@ -55,6 +81,7 @@ export function MiniGamesSheet({
       data-testid="minigames-backdrop"
     >
       <section
+        ref={sheetRef}
         role="dialog"
         aria-modal="true"
         aria-label="Mini-games"
@@ -138,9 +165,9 @@ export function MiniGamesSheet({
           </button>
         </div>
 
-        <ul className="relative mt-3 grid min-h-0 grid-cols-2 gap-x-2.5 gap-y-3.5 overflow-y-auto px-0.5 pb-1 pt-6 [-webkit-overflow-scrolling:touch]">
+        <ul className="relative -mx-4 mt-3 grid min-h-0 grid-cols-2 gap-x-2.5 gap-y-3.5 overflow-y-auto px-4 pb-5 pt-6 [-webkit-overflow-scrolling:touch]">
           {views.map((v) => (
-            <li key={v.entry.id} className="min-w-0">
+            <li key={v.entry.id} className="flex min-w-0 flex-col">
               <Tile
                 view={v}
                 opensText={u.when(v.entry.firstLevel)}
@@ -193,7 +220,7 @@ function Tile({
       }
       onClick={ready ? onPlay : undefined}
       className={cn(
-        "relative flex min-h-[132px] w-full flex-col items-center gap-1 px-2 pb-2.5 pt-3.5 text-center transition-transform",
+        "relative flex min-h-[132px] w-full flex-1 flex-col items-center gap-1 px-2 pb-2.5 pt-3.5 text-center transition-transform",
         plate
           ? "rounded-[20px]"
           : cn(

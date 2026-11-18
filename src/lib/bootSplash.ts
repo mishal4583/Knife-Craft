@@ -85,13 +85,14 @@ function loadFonts(): Promise<void> {
  */
 export function preloadCritical(
   urls: readonly string[],
-  opts: { from?: number; to?: number; maxMs?: number } = {},
+  opts: { from?: number; to?: number; maxMs?: number; also?: readonly Promise<unknown>[] } = {},
 ): Promise<void> {
   const from = opts.from ?? 0.35;
   const to = opts.to ?? 0.96;
   const maxMs = opts.maxMs ?? BOOT_MAX_WAIT_MS;
   const unique = [...new Set(urls.filter(Boolean))];
-  const total = unique.length + 1; // + the fonts
+  const also = opts.also ?? []; // other things the first screen needs (its code)
+  const total = unique.length + 1 + also.length; // + the fonts
   let done = 0;
   const tick = () => {
     done += 1;
@@ -100,6 +101,7 @@ export function preloadCritical(
   const all = Promise.all([
     loadFonts().then(tick),
     ...unique.map((u) => loadImage(u).then(tick)),
+    ...also.map((p) => p.then(tick, tick)),
   ]).then(() => undefined);
   return Promise.race([all, new Promise<void>((resolve) => window.setTimeout(resolve, maxMs))]);
 }

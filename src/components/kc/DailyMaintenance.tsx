@@ -488,7 +488,7 @@ export function DailyMaintenance({
                               ),
                             )
                           }
-                          className="press min-h-10 shrink-0 rounded-full bg-walnut px-3 font-ui text-[10px] font-extrabold text-ivory"
+                          className="press min-h-12 shrink-0 rounded-full bg-walnut px-3 font-ui text-[10px] font-extrabold text-ivory"
                         >
                           Restock ›
                         </button>
@@ -646,7 +646,7 @@ export function DailyMaintenance({
                                 row.packs,
                               )
                             }
-                            className="press min-h-10 shrink-0 rounded-full bg-walnut px-3 font-ui text-[10px] font-extrabold text-ivory"
+                            className="press min-h-12 shrink-0 rounded-full bg-walnut px-3 font-ui text-[10px] font-extrabold text-ivory"
                           >
                             Restock ›
                           </button>
@@ -691,7 +691,7 @@ export function DailyMaintenance({
                         <button
                           type="button"
                           onClick={() => openStaffFor(go, [person.id])}
-                          className="press min-h-10 shrink-0 rounded-full bg-walnut px-3 font-ui text-[10px] font-extrabold text-ivory"
+                          className="press min-h-12 shrink-0 rounded-full bg-walnut px-3 font-ui text-[10px] font-extrabold text-ivory"
                         >
                           Hire ›
                         </button>

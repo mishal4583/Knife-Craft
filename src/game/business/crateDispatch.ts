@@ -642,7 +642,10 @@ export function undoRound(round: CrateRound): CrateRound {
     const b = board.bricks.find((x) => x.id === last.id);
     if (!b) return { ...round, history: round.history.slice(0, -1) };
     const grid = takenGrid(board, b.id);
-    if (!fitsGrid(grid, board.cols, board.rows, b.w, b.h, last.fromX, last.fromY)) return round;
+    // That drag can no longer be taken back (another crate sits where it came from): it is dropped from the list and the one before it is tried, so an
+    // Undo is never a dead button that blocks every older one (audit 2026-11-18). Only a take-back that works costs an Undo.
+    if (!fitsGrid(grid, board.cols, board.rows, b.w, b.h, last.fromX, last.fromY))
+      return undoRound({ ...round, history: round.history.slice(0, -1) });
     return {
       ...round,
       board: {
@@ -656,7 +659,8 @@ export function undoRound(round: CrateRound): CrateRound {
     };
   }
   const b = last.brick;
-  if (!fitsGrid(takenGrid(board, null), board.cols, board.rows, b.w, b.h, b.x, b.y)) return round;
+  if (!fitsGrid(takenGrid(board, null), board.cols, board.rows, b.w, b.h, b.x, b.y))
+    return undoRound({ ...round, history: round.history.slice(0, -1) });
   return {
     ...round,
     board: { ...board, bricks: [...board.bricks, b] },

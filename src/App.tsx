@@ -330,7 +330,7 @@ import {
 } from "@/game/restaurant/serviceCover";
 import { repayFromEarnings } from "@/game/restaurant/supplierCredit";
 import type { CoverAdOutcome } from "@/components/kc/restaurant/CoverActions";
-import type { NavGuide } from "@/components/kc/navLevel";
+import { unlockText, type NavGuide } from "@/components/kc/navLevel";
 import {
   TAB_OPENING_NOTE,
   dayCeremonyAt,
@@ -506,9 +506,9 @@ const ServiceCheckLayer = lazy(() =>
 const ClosingTime = lazy(() =>
   import("@/components/kc/restaurant/ClosingTime").then((m) => ({ default: m.ClosingTime })),
 );
-const ScreensRouter = lazy(() =>
-  import("./ScreensRouter").then((m) => ({ default: m.ScreensRouter })),
-);
+// (also fetched by the loading screen, so it does not fade to a second, different loading screen while the Kitchen's code arrives)
+const loadScreensRouter = () => import("./ScreensRouter");
+const ScreensRouter = lazy(() => loadScreensRouter().then((m) => ({ default: m.ScreensRouter })));
 
 /** A campaign level's own recipe pool (levelTypes.ts's `recipePoolIds`), resolved against the real campaignRecipes.ts library — never against TEST_RECIPE_POOL, which is the separate Phase 2 harness's own pool. */
 function campaignPoolFor(level: LevelDefinition | undefined): RecipeDefinition[] {
@@ -908,102 +908,108 @@ export function App() {
 
   useEffect(() => {
     PauseManager.wireToPlatform();
-    void SaveManager.load().then((loaded) => {
-      AudioManager.setUserSoundEnabled(loaded.settings.sound);
-      AudioManager.setUserMusicEnabled(loaded.settings.music !== false);
-      // Phase 12C — only a genuinely untouched, never-played save (the
-      // exact DEFAULT_LEVEL_PROGRESS shape) auto-opens Preparation on
-      // Level 1, matching a first-ever launch. Any save that has
-      // completed a level, or even just moved its "current" cursor past
-      // Level 1 (e.g. by opening the level board), is treated as a
-      // returning player and lands on Kitchen instead — restarting the
-      // app must never re-launch a prep session the player didn't ask
-      // for. Replaying Level 1 explicitly (Today's Order / level board)
-      // still works exactly as before via onSelectLevel.
-      const isFreshSave =
-        loaded.levelProgress.completedLevelIds.length === 0 &&
-        loaded.levelProgress.currentLevelId === LEVELS[0]!.id;
-      // A brand-new player lands on the Kitchen after the intro (developer 2026-10-30): the
-      // Market is open from the very first level, and a hand points them there to buy the first
-      // order's ingredients with their own money before cutting anything.
-      setScreen("kitchen");
-      setActiveLevelId(loaded.levelProgress.currentLevelId);
-      // Test hook, as the other mini-games have: ?carPark opens the Car Park straight away.
-      if (typeof location !== "undefined" && /[?&]carPark\b/.test(location.search))
-        setScreen("car-park");
-      // Dessert Run (was Plating Belt) stays isolated behind a developer preview until its
-      // real-phone gameplay gate is approved: ?dessertRun=18.
-      const dessertRunPreview =
-        typeof location !== "undefined" && /[?&]dessertRun(?:=|&|$)/.test(location.search);
-      if (dessertRunPreview) setScreen("dessert-run");
-      // Kitchen Dispatch (sliding ingredient crates), the same kind of preview: ?kitchenDispatch=18.
-      const kitchenDispatchPreview =
-        typeof location !== "undefined" && /[?&]kitchenDispatch(?:=|&|$)/.test(location.search);
-      if (kitchenDispatchPreview) setScreen("kitchen-dispatch");
-      // Economy V2.5 — kitchen tiers are bought (Restaurant Development);
-      // this only keeps the kitchen on the highest tier owned. Saves from
-      // before V2.5 already got their level-earned tiers in
-      // SaveManager.load (migrateKitchenDevelopment).
-      let synced = syncKitchenUpgradeOwnership(loaded);
-      // Cash a served order left on the table stays there (it is saved with the order): the
-      // player collects it when they want (Kitchen), and it must be in before closing.
-      // THE LAST WISH's intro (ported from boot()) is a "how you got
-      // here" origin scene — only a genuinely brand-new player should
-      // ever see it. Every save that predates this feature also has
-      // `story.introDone === false` by default, but a returning player
-      // with existing progress must never have it retroactively sprung
-      // on them; mark it silently done instead, once, and let the
-      // milestone/finale catch-up (checkStoryFlush, on their next level
-      // completion) surface their real accumulated progress instead —
-      // that catch-up IS the source's own documented forward-only
-      // behavior, not a special case invented here.
-      if (!dessertRunPreview && !kitchenDispatchPreview && shouldRunIntro(synced)) {
-        if (isFreshSave) setShowIntro(true);
-        else synced = markIntroDone(synced);
-      }
-      // Economy V2.5 — a milestone reached but not yet claimed (e.g. the
-      // game closed between completing Level 250 and saving its reward) is
-      // paid once, now. Saves from before V2.5 had their reached milestones
-      // claimed without payment by the one-time migration in
-      // SaveManager.load (economyMigration.ts), so they get no windfall.
-      // THE LAST PAGE (developer 2026-10-11): a save that finished Level 250
-      // before it existed plays it once now — flagged before it shows, so a
-      // dismissal or reload never repeats it; no money or ledger change.
-      if (legacyPendingOnLoad(synced)) {
-        synced = applyStoryFlush(synced, { kind: "legacy" });
-        setStoryEvent({ kind: "legacy" });
-      }
-      // Only the Family Legacy pays by itself; every other reward is collected in Achievements.
-      const loadGrant = grantEarnedMilestoneRewards(synced, legacyOnly);
-      synced = loadGrant.save;
-      if (loadGrant.granted.length > 0)
-        setMilestoneNoticeQueue([milestoneNoticeFor(loadGrant.granted)]);
-      if (synced !== loaded) void SaveManager.save(synced);
-      // Rewards already waiting at load are shown by the tab's badge, not a banner.
-      for (const x of collectable(synced)) announcedRef.current.add(x.id);
-      saveRef.current = synced;
-      setSave(synced);
-      // The loading screen (index.html, src/lib/bootSplash.ts) stays until the FIRST screen's pictures and fonts are here, so the player sees the
-      // kitchen whole instead of watching it paint in: the kitchen's backdrop (and Paige when she is hired); the first two story pictures for a new
-      // player. Time-limited: a slow phone sees the game rather than a stuck bar. Nothing here touches the save.
-      setBootProgress(0.5);
-      if (!AudioManager.unlocked) {
-        setBootHint(true);
-        window.addEventListener("pointerdown", () => setBootHint(false), {
-          once: true,
-          capture: true,
-        });
-      }
-      const first: string[] = [];
-      if (isFreshSave && shouldRunIntro(synced)) first.push(intro1Url, intro2Url);
-      else {
-        first.push(
-          KITCHEN_SKIN_SRC[kitchenUpgradeOrDefault(synced.equippedKitchenUpgradeId).asset],
-        );
-        if (RESTAURANT_MODE && assistantHired(synced)) first.push(paigeUrl("cutout-point"));
-      }
-      void preloadCritical(first, { from: 0.5 }).then(finishBoot);
-    });
+    void SaveManager.load()
+      .then((loaded) => {
+        AudioManager.setUserSoundEnabled(loaded.settings.sound);
+        AudioManager.setUserMusicEnabled(loaded.settings.music !== false);
+        // Phase 12C — only a genuinely untouched, never-played save (the
+        // exact DEFAULT_LEVEL_PROGRESS shape) auto-opens Preparation on
+        // Level 1, matching a first-ever launch. Any save that has
+        // completed a level, or even just moved its "current" cursor past
+        // Level 1 (e.g. by opening the level board), is treated as a
+        // returning player and lands on Kitchen instead — restarting the
+        // app must never re-launch a prep session the player didn't ask
+        // for. Replaying Level 1 explicitly (Today's Order / level board)
+        // still works exactly as before via onSelectLevel.
+        const isFreshSave =
+          loaded.levelProgress.completedLevelIds.length === 0 &&
+          loaded.levelProgress.currentLevelId === LEVELS[0]!.id;
+        // A brand-new player lands on the Kitchen after the intro (developer 2026-10-30): the
+        // Market is open from the very first level, and a hand points them there to buy the first
+        // order's ingredients with their own money before cutting anything.
+        setScreen("kitchen");
+        setActiveLevelId(loaded.levelProgress.currentLevelId);
+        // Test hook, as the other mini-games have: ?carPark opens the Car Park straight away.
+        if (typeof location !== "undefined" && /[?&]carPark\b/.test(location.search))
+          setScreen("car-park");
+        // Dessert Run (was Plating Belt) stays isolated behind a developer preview until its
+        // real-phone gameplay gate is approved: ?dessertRun=18.
+        const dessertRunPreview =
+          typeof location !== "undefined" && /[?&]dessertRun(?:=|&|$)/.test(location.search);
+        if (dessertRunPreview) setScreen("dessert-run");
+        // Kitchen Dispatch (sliding ingredient crates), the same kind of preview: ?kitchenDispatch=18.
+        const kitchenDispatchPreview =
+          typeof location !== "undefined" && /[?&]kitchenDispatch(?:=|&|$)/.test(location.search);
+        if (kitchenDispatchPreview) setScreen("kitchen-dispatch");
+        // Economy V2.5 — kitchen tiers are bought (Restaurant Development);
+        // this only keeps the kitchen on the highest tier owned. Saves from
+        // before V2.5 already got their level-earned tiers in
+        // SaveManager.load (migrateKitchenDevelopment).
+        let synced = syncKitchenUpgradeOwnership(loaded);
+        // Cash a served order left on the table stays there (it is saved with the order): the
+        // player collects it when they want (Kitchen), and it must be in before closing.
+        // THE LAST WISH's intro (ported from boot()) is a "how you got
+        // here" origin scene — only a genuinely brand-new player should
+        // ever see it. Every save that predates this feature also has
+        // `story.introDone === false` by default, but a returning player
+        // with existing progress must never have it retroactively sprung
+        // on them; mark it silently done instead, once, and let the
+        // milestone/finale catch-up (checkStoryFlush, on their next level
+        // completion) surface their real accumulated progress instead —
+        // that catch-up IS the source's own documented forward-only
+        // behavior, not a special case invented here.
+        if (!dessertRunPreview && !kitchenDispatchPreview && shouldRunIntro(synced)) {
+          if (isFreshSave) setShowIntro(true);
+          else synced = markIntroDone(synced);
+        }
+        // Economy V2.5 — a milestone reached but not yet claimed (e.g. the
+        // game closed between completing Level 250 and saving its reward) is
+        // paid once, now. Saves from before V2.5 had their reached milestones
+        // claimed without payment by the one-time migration in
+        // SaveManager.load (economyMigration.ts), so they get no windfall.
+        // THE LAST PAGE (developer 2026-10-11): a save that finished Level 250
+        // before it existed plays it once now — flagged before it shows, so a
+        // dismissal or reload never repeats it; no money or ledger change.
+        if (legacyPendingOnLoad(synced)) {
+          synced = applyStoryFlush(synced, { kind: "legacy" });
+          setStoryEvent({ kind: "legacy" });
+        }
+        // Only the Family Legacy pays by itself; every other reward is collected in Achievements.
+        const loadGrant = grantEarnedMilestoneRewards(synced, legacyOnly);
+        synced = loadGrant.save;
+        if (loadGrant.granted.length > 0)
+          setMilestoneNoticeQueue([milestoneNoticeFor(loadGrant.granted)]);
+        if (synced !== loaded) void SaveManager.save(synced);
+        // Rewards already waiting at load are shown by the tab's badge, not a banner.
+        for (const x of collectable(synced)) announcedRef.current.add(x.id);
+        saveRef.current = synced;
+        setSave(synced);
+        // The loading screen (index.html, src/lib/bootSplash.ts) stays until the FIRST screen's pictures and fonts are here, so the player sees the
+        // kitchen whole instead of watching it paint in: the kitchen's backdrop (and Paige when she is hired); the first two story pictures for a new
+        // player. Time-limited: a slow phone sees the game rather than a stuck bar. Nothing here touches the save.
+        setBootProgress(0.5);
+        if (!AudioManager.unlocked && loaded.settings.sound && loaded.settings.music !== false) {
+          setBootHint(true);
+          window.addEventListener("pointerdown", () => setBootHint(false), {
+            once: true,
+            capture: true,
+          });
+        }
+        const first: string[] = [];
+        if (isFreshSave && shouldRunIntro(synced)) first.push(intro1Url, intro2Url);
+        else {
+          first.push(
+            KITCHEN_SKIN_SRC[kitchenUpgradeOrDefault(synced.equippedKitchenUpgradeId).asset],
+          );
+          if (RESTAURANT_MODE && assistantHired(synced)) first.push(paigeUrl("cutout-point"));
+        }
+        void preloadCritical(first, { from: 0.5, also: [loadScreensRouter()] }).then(finishBoot);
+      })
+      .catch((error) => {
+        // A throw while the save is being applied must never leave the loading screen up for ever (the 20 s failsafe is the last resort).
+        console.error("The save could not be applied.", error);
+        finishBoot();
+      });
   }, []);
 
   // Safety net (Phase 2, extended in Phase 3 to cover campaign-service
@@ -1100,8 +1106,9 @@ export function App() {
       saveRef.current &&
       restaurantLevelOf(saveRef.current.levelProgress) < freePlayFrom
     ) {
+      // (the restaurant build never names a level: "in N services", navLevel.ts)
       setLockNotice(
-        `🔒 ${s === "dessert-run" ? "Dessert Run" : "Unload the Van"} opens at Level ${freePlayFrom}`,
+        `🔒 ${s === "dessert-run" ? "Dessert Run" : "Unload the Van"} opens ${unlockText(restaurantLevelOf(saveRef.current.levelProgress)).when(freePlayFrom)}`,
       );
       return;
     }
@@ -2238,14 +2245,16 @@ export function App() {
 
   /** Economy V3 Phase 2 (Business Inventory) — Business Mode's own purchase action, mirroring buyKnife/buyStaff exactly: routes through the pure manager, then records the ledger entry from the manager's own reported `totalCost` (never re-derived from a credits diff, since it's already exact). Business Mode only — Campaign never calls this. */
   function purchaseIngredient(ingredientId: string, quantity: number) {
-    if (!save) return { ok: false as const, reason: "unknownIngredient" as const };
-    const result = buyOn(save, ingredientId, quantity);
+    // The latest save (audit 2026-11-18): a persist made in the same tick (cash swept, an ad grant) must not be undone by a buy built on the render's copy.
+    const current = saveRef.current ?? save;
+    if (!current) return { ok: false as const, reason: "unknownIngredient" as const };
+    const result = buyOn(current, ingredientId, quantity);
     if (result.ok) {
       persistIngredientPurchases(result.save, [
         {
           ingredientId,
           totalCost: result.totalCost,
-          stock: quantity * lbPerMarketUnit(ingredientId as IngredientId, measureOf(save)),
+          stock: quantity * lbPerMarketUnit(ingredientId as IngredientId, measureOf(current)),
         },
       ]);
     }
@@ -2260,8 +2269,9 @@ export function App() {
    * the wallet or fridge can no longer take is skipped, never half-bought.
    */
   function purchaseIngredients(lines: ReadonlyArray<{ ingredientId: string; quantity: number }>) {
-    if (!save) return { bought: 0, skipped: lines.length, totalCost: 0 };
-    let next = save;
+    const current = saveRef.current ?? save;
+    if (!current) return { bought: 0, skipped: lines.length, totalCost: 0 };
+    let next = current;
     const recorded: { ingredientId: string; totalCost: number; stock: number }[] = [];
     let bought = 0;
     for (const line of lines) {

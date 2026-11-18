@@ -60,17 +60,23 @@ export function frameStyle(name: NineSliceArt, fill = true): CSSProperties {
 }
 
 const known = new Map<string, boolean>();
+const failedAt = new Map<string, number>();
+const RETRY_MS = 8000;
 const pending = new Set<string>();
 const listeners = new Set<() => void>();
 
 function probe(name: string) {
-  if (known.has(name) || pending.has(name) || typeof Image === "undefined") return;
+  if (pending.has(name) || typeof Image === "undefined") return;
+  // a file that came back missing (a flaky connection at the warm-up) is tried again, but not on every render
+  if (known.get(name) === true) return;
+  if (known.has(name) && Date.now() - (failedAt.get(name) ?? 0) < RETRY_MS) return;
   pending.add(name);
   const img = new Image();
   img.decoding = "async";
   const done = (ok: boolean) => {
     pending.delete(name);
     known.set(name, ok);
+    if (!ok) failedAt.set(name, Date.now());
     listeners.forEach((f) => f());
   };
   img.onload = () => done(true);
@@ -91,6 +97,8 @@ export function useMiniGameArt(names: readonly string[] = MG_ART): (name: string
     const f = () => tick((n) => n + 1);
     listeners.add(f);
     names.forEach(probe);
+    // a probe that finished between this render and this effect would otherwise go unheard
+    if (names.some((n) => known.has(n))) f();
     return () => {
       listeners.delete(f);
     };

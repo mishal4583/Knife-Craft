@@ -49,10 +49,11 @@
         display: grid;
         place-items: center;
         background: #2b1a0e;
-        pointer-events: none;
+        pointer-events: auto; /* taps never reach the game under it (it may be mounted already) */
         transition: opacity 0.4s ease;
       }
       #boot-splash.leaving {
+        pointer-events: none;
         opacity: 0;
       }
       #boot-splash .bs-stage {
@@ -271,6 +272,19 @@
         </div>
       </div>
     </div>
+    <script>
+      // Watchdog (audit 2026-11-18): if the game's own code never arrives (a lost connection, a missing file) the bar would sit still forever.
+      // After 25 s the screen says so and a tap reloads. A normal start sets html[data-booted] long before this (src/lib/bootSplash.ts).
+      setTimeout(function () {
+        var el = document.getElementById("boot-splash");
+        if (!el || document.documentElement.getAttribute("data-booted")) return;
+        var t = el.querySelector(".bs-text");
+        if (t) t.textContent = "STILL LOADING… TAP TO RELOAD";
+        el.addEventListener("click", function () {
+          location.reload();
+        });
+      }, 25000);
+    </script>
     <div id="root"></div>
     <script type="module" src="./src/main.tsx"></script>
   </body>

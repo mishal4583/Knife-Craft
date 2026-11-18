@@ -425,6 +425,32 @@ try {
     assert.deepEqual(undoRound(after), after);
   });
 
+  check(
+    "D4: an Undo that can no longer be done is dropped and the one before it is taken back (never a dead button)",
+    () => {
+      const board = hand({
+        bricks: [
+          { id: "b1", x: 3, y: 3, w: 1, h: 1, color: "carrot" },
+          { id: "b2", x: 0, y: 3, w: 1, h: 1, color: "tomato" },
+        ],
+      });
+      const r = roundOf(board);
+      // b2 was dragged from (0,1) to (0,3); b1 had been dragged from (0,3) before that, so its origin is taken now.
+      const stuck = {
+        ...r,
+        history: [
+          { kind: "move" as const, id: "b2", fromX: 0, fromY: 1 },
+          { kind: "move" as const, id: "b1", fromX: 0, fromY: 3 },
+        ],
+      };
+      const back = undoRound(stuck);
+      assert.equal(back.history.length, 0);
+      assert.equal(back.undos, r.undos - 1, "only the take-back that worked cost an Undo");
+      const b2 = back.board.bricks.find((b: any) => b.id === "b2");
+      assert.deepEqual([b2.x, b2.y], [0, 1]);
+    },
+  );
+
   console.log("E. The boosters, the clock and the stars");
   check("E1: the clock gives time for every crate", () => {
     assert.equal(crateSeconds(10), 130);

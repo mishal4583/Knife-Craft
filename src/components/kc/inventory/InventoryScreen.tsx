@@ -895,7 +895,7 @@ export function InventoryScreen({
                 </Panel>
               </div>
 
-              {/* Fridge Sort: the food that was just bought waits here to be put away (from Level 14) */}
+              {/* Fridge Sort: the food that was just bought waits here to be put away (from Level 4) */}
               <DeliveryInspectionChip save={save} go={go} className="mb-2" />
               <FridgeSortChip save={save} go={go} />
               <FridgeCheckChip save={save} go={go} className="mt-2" />

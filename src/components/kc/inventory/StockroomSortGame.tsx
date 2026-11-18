@@ -747,11 +747,16 @@ export function StockroomSortGame({
             <button
               type="button"
               data-testid="stock-hint"
-              onClick={showHint}
-              disabled={!hintOn || phase === "done"}
+              // Not `disabled` while it is only waiting: a tap says why (audit 2026-11-18: an icon that greys out for 7 s and says nothing).
+              onClick={
+                hintOn ? showHint : () => say("The hint wakes up after a short pause", "good", 2500)
+              }
+              disabled={phase === "done"}
+              aria-disabled={!hintOn || undefined}
               aria-label="Hint"
               className={cn(
                 "press grid h-12 w-12 place-items-center disabled:opacity-40",
+                !hintOn && "opacity-40",
                 hintOn && idle && !reducedMotion && "animate-pulse",
               )}
             >
@@ -805,7 +810,7 @@ export function StockroomSortGame({
             data-testid="stock-help"
             aria-label="How to play"
             onClick={() => setGuide(true)}
-            className="press grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-[#d6b46a] bg-walnut-dark text-[16px] font-black text-gold"
+            className="press grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-[#d6b46a] bg-walnut-dark text-[16px] font-black text-gold"
           >
             ?
           </button>

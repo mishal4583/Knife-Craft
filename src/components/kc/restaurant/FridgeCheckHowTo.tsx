@@ -329,7 +329,7 @@ export function FridgeCheckHowTo({
             type="button"
             data-testid="fc-guide-skip"
             onClick={onDone}
-            className="mx-auto mt-1.5 min-h-10 px-3 font-ui text-[12.5px] font-extrabold text-walnut/70 underline"
+            className="mx-auto mt-1.5 min-h-12 px-3 font-ui text-[12.5px] font-extrabold text-walnut/70 underline"
           >
             Skip
           </button>

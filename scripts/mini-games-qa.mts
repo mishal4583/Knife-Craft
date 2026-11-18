@@ -135,7 +135,7 @@ console.log("C. The shelf never farms a reward");
   };
   const afterDone = miniGameViews(done, 100).find((v) => v.entry.id === "car-park")!;
   assert(
-    afterDone.state === "resting" && afterDone.text === "Cleared today",
+    afterDone.state === "resting" && afterDone.text === "Cleared · back tomorrow",
     "C3: the Car Park rests once today's lot is cleared (its Hype stays once a business day)",
     afterDone,
   );

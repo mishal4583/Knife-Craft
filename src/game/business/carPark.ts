@@ -1,5 +1,6 @@
 /** Car Park — deterministic, solvable shared-lot puzzle. It never changes money or stock. */
 import type { SaveData } from "../SaveManager";
+import { playDayOf } from "./playDay";
 import { addHype } from "../restaurant/secondFloor";
 import { HYPE_BY_STARS } from "./fridgeSort";
 
@@ -123,12 +124,12 @@ export const carParkStateOf = (save: SaveData): CarParkState => {
 export const isCarParkOpen = (level: number) =>
   CAR_PARK_TEST_UNLOCK || level >= CAR_PARK_FIRST_LEVEL;
 export const carParkDue = (save: SaveData, level: number) =>
-  isCarParkOpen(level) && carParkStateOf(save).doneDay !== save.business.calendar.businessDay;
+  isCarParkOpen(level) && carParkStateOf(save).doneDay !== playDayOf(save);
 export const canPrepCookClearCarPark = (save: SaveData, level: number) =>
   level >= CAR_PARK_PREP_COOK_LEVEL &&
   save.business.staff?.hiredRoles?.includes("prep-cook") === true;
 export const carParkTowAdAvailable = (save: SaveData) =>
-  carParkStateOf(save).towAdDay !== save.business.calendar.businessDay;
+  carParkStateOf(save).towAdDay !== playDayOf(save);
 
 function rngFor(seed: number) {
   let a = seed >>> 0;
@@ -307,7 +308,7 @@ export function generateLot(level: number, seed: number): CarParkLot {
 }
 export function lotFor(save: SaveData, level: number): CarParkLot {
   const state = carParkStateOf(save);
-  const day = whole(save.business.calendar.businessDay);
+  const day = whole(playDayOf(save));
   return generateLot(level, level * 1000003 + day * 9176 + (state.rounds ?? 0));
 }
 
@@ -323,7 +324,7 @@ export function finishCarPark(
   stars: 0 | 1 | 2 | 3,
 ): SaveData {
   const state = carParkStateOf(save);
-  const day = save.business.calendar.businessDay;
+  const day = playDayOf(save);
   const perfect = stars === 3 ? state.perfect! + 1 : 0;
   const next: CarParkState = {
     ...state,
@@ -345,7 +346,7 @@ export function autoCarPark(save: SaveData): SaveData {
     ...save,
     business: {
       ...save.business,
-      carPark: { ...state, doneDay: save.business.calendar.businessDay },
+      carPark: { ...state, doneDay: playDayOf(save) },
     },
   };
 }

@@ -1158,6 +1158,30 @@ console.log(
       /not added to the shelf/.test(game),
     "T6: the result says plainly whether this round put the sauce on the shelf (added / already there / needs a star / extra round)",
   );
+  assert(
+    /alreadyMade=\{isMade\(save, sauce\.id\)\}/.test(game) &&
+      /result\.stars === 0 && !alreadyMade/.test(game),
+    "T7: a zero-star round on a sauce that is already on the shelf says so (it does not claim the shelf lacks it)",
+  );
+}
+
+console.log("U. 2026-11-18 audit: the daily rounds reset before Level 10 too");
+{
+  // business.calendar.businessDay only advances from Level 10; restaurantDay.day advances at every closing. At Levels 7-9 the three rounds a day
+  // never came back (the day stayed 1).
+  let s = saveAt(8);
+  for (let n = 0; n < MAX_ROUNDS_PER_DAY; n++) {
+    s = finishRound(s, outcome(sauceOfTheDay(s, 8).id, 1)).save;
+  }
+  assert(roundsLeft(s, 8) === 0, "U1: Level 8, the day's rounds are used up");
+  const tomorrow = structuredClone(s) as SaveData;
+  tomorrow.business.restaurantDay = { ...(tomorrow.business.restaurantDay ?? {}), day: 2 } as never;
+  assert(
+    tomorrow.business.calendar.businessDay === s.business.calendar.businessDay &&
+      roundsLeft(tomorrow, 8) === MAX_ROUNDS_PER_DAY,
+    "U2: after the restaurant closes a day (restaurantDay.day 2, the food calendar still on day 1) the rounds are back",
+    { left: roundsLeft(tomorrow, 8), calendar: tomorrow.business.calendar.businessDay },
+  );
 }
 
 console.log(

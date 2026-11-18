@@ -118,10 +118,11 @@ console.log("B. index.html");
     srcs,
   );
   assert(
-    /#boot-splash \{[^}]*pointer-events: none/.test(html) &&
+    /#boot-splash \{[^}]*pointer-events: auto/.test(html) &&
+      /#boot-splash\.leaving \{[^}]*pointer-events: none/.test(html) &&
       /max-width: calc\(100dvh \* 9 \/ 16\)/.test(html) &&
       /prefers-reduced-motion: reduce/.test(html),
-    "B4: it never blocks a tap, keeps the 9:16 shape on wide windows, and Reduced Motion turns its animation off",
+    "B4: while it is up it swallows taps (the game may already be mounted under it; audit 2026-11-18), lets them through while it fades, keeps the 9:16 shape on wide windows, and Reduced Motion turns its animation off",
   );
   assert(
     /--p, 0\.18/.test(html) && /\.bs-fill::after/.test(html),
@@ -182,7 +183,9 @@ console.log("D. The wiring");
   );
   assert(
     /setBootProgress\(0\.5\)/.test(app) &&
-      /preloadCritical\(first, \{ from: 0\.5 \}\)\.then\(finishBoot\)/.test(app) &&
+      /preloadCritical\(first, \{ from: 0\.5, also: \[loadScreensRouter\(\)\] \}\)\.then\(finishBoot\)/.test(
+        app,
+      ) &&
       /KITCHEN_SKIN_SRC\[kitchenUpgradeOrDefault\(synced\.equippedKitchenUpgradeId\)\.asset\]/.test(
         app,
       ) &&
@@ -193,6 +196,17 @@ console.log("D. The wiring");
   assert(
     /setBootHint\(true\)/.test(app) && /setBootHint\(false\)/.test(app),
     "D4: 'tap for music' shows while the browser keeps the page silent and goes with the first tap",
+  );
+  assert(
+    /\.catch\(\(error\) => \{[\s\S]{0,400}finishBoot\(\)/.test(app) &&
+      /loaded\.settings\.sound && loaded\.settings\.music !== false/.test(app),
+    "D6: a throw while the save is applied clears the screen; 'tap for music' only shows for a player who has sound and music on",
+  );
+  assert(
+    /armBootFailsafe\(\);\s*startPlatform\(\)/.test(main) &&
+      /STILL LOADING… TAP TO RELOAD/.test(read("index.html")) &&
+      /25000/.test(read("index.html")),
+    "D7: the failsafe is armed before the platform starts, and index.html has its own 25 s watchdog (a tap reloads) for the case where the game's code never arrives",
   );
   const harness = read("tools/e2e/harness.mjs");
   assert(

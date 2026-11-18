@@ -16,6 +16,7 @@
  * Pure: it reads the save and moves nothing. No money, stock or ledger.
  */
 import type { SaveData } from "../SaveManager";
+import { playDayOf } from "./playDay";
 import { piecesWaiting, roundFor as fridgeRound } from "./fridgeSort";
 import { pendingInspections } from "./deliveryInspection";
 import { roundFor as stockroomRound } from "./stockroomSort";
@@ -135,7 +136,6 @@ export function serviceGate(save: SaveData, level: number): ServiceGate {
 
 // ── The rewarded skip (developer 2026-11-11: "if the player does not want to play them, let them skip by watching an ad") ──
 
-/** Steps a rewarded ad may skip in one business day. */
 /** The steps a hired Prep Cook does for the player (the Fridge Check is the Cleaner's chore). */
 export const PREP_COOK_STEPS: readonly string[] = [
   "inspect",
@@ -145,18 +145,19 @@ export const PREP_COOK_STEPS: readonly string[] = [
   "carpark",
 ];
 
+/** Steps a rewarded ad may skip in one day. */
 export const SKIPS_PER_DAY = 3;
 
 /** How many skips are left today. */
 export function skipsLeft(save: SaveData): number {
   const s = save.business.stepSkips;
-  const day = save.business.calendar.businessDay;
+  const day = playDayOf(save);
   return Math.max(0, SKIPS_PER_DAY - (s && s.day === day ? Math.max(0, Math.floor(s.used)) : 0));
 }
 
 /** Counts one skip for today. Never touches money, stock or the ledger. */
 export function withSkipUsed(save: SaveData): SaveData {
-  const day = save.business.calendar.businessDay;
+  const day = playDayOf(save);
   const used =
     save.business.stepSkips && save.business.stepSkips.day === day
       ? save.business.stepSkips.used

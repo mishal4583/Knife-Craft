@@ -600,7 +600,7 @@ function Round({
             data-testid="fc-help"
             aria-label="How to play"
             onClick={() => setGuide(true)}
-            className="press grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-[#9fd0e0] bg-[#12303b] text-[16px] font-black text-[#cfeff8]"
+            className="press grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-[#9fd0e0] bg-[#12303b] text-[16px] font-black text-[#cfeff8]"
           >
             ?
           </button>

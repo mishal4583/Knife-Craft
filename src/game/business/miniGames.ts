@@ -124,7 +124,7 @@ export const MINI_GAMES: readonly MiniGameEntry[] = [
         return { ready: true, text: `${left}/${roundsAllowed(s)} rounds left`, waiting: true };
       return canOfferRoundsAd(s, level)
         ? { ready: true, text: "More rounds for an ad" }
-        : { ready: false, text: "Done for today" };
+        : { ready: false, text: "Done · back tomorrow" };
     },
   },
   {
@@ -161,7 +161,7 @@ export const MINI_GAMES: readonly MiniGameEntry[] = [
     line: (s, level) =>
       carParkDue(s, level)
         ? { ready: true, text: "Today's lot waits", waiting: true }
-        : { ready: false, text: "Cleared today" },
+        : { ready: false, text: "Cleared · back tomorrow" },
   },
   {
     id: "dessert-run",

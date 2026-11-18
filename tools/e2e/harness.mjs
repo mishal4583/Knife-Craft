@@ -53,6 +53,12 @@ export async function launch({ nameCard = false } = {}) {
         : r.continue(),
     );
   }
+  // The real loading screen swallows taps while it is up (index.html); the tests click as soon as a button exists, so it is made transparent to taps here.
+  await page.evaluateOnNewDocument(() => {
+    const css = document.createElement("style");
+    css.textContent = "#boot-splash{pointer-events:none!important}";
+    document.addEventListener("DOMContentLoaded", () => document.head.appendChild(css));
+  });
   const logs = [];
   page.on("console", (m) => {
     if (["error", "warning"].includes(m.type())) logs.push(`${m.type()}: ${m.text()}`);

@@ -347,6 +347,16 @@ export async function saveCloudSave(data: string): Promise<void> {
   await b.storage.set([SAVE_KEY], [data]);
 }
 
+/**
+ * A copy of a save the game could not read (a broken migration, a malformed string), kept under its own key so the player's progress is never only
+ * overwritten (audit 2026-11-18). Never read by the game: it is for support / a later repair.
+ */
+export async function saveCloudBackup(data: string): Promise<void> {
+  const b = await platformReady();
+  if (!b) return;
+  await b.storage.set([`${SAVE_KEY}_backup`], [data]);
+}
+
 /** Scores: no Playgama leaderboard is configured for KnifeCraft, so this is a no-op. */
 export function sendScore(value: number): void {
   void value;

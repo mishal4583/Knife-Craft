@@ -76,10 +76,11 @@ window.addEventListener("vite:preloadError", (event) => {
 
 // Start the Playgama Bridge right away (it must finish initializing before any
 // SDK call). `game_ready` is sent later, once the Kitchen/Preparation is interactive.
+// The failsafe first: if anything below throws, the loading screen still goes away after 20 s.
+armBootFailsafe();
 startPlatform();
 // The loading screen (index.html) is already on screen; the game's own code has arrived: the bar moves on (src/lib/bootSplash.ts).
 setBootProgress(0.3);
-armBootFailsafe();
 
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("#root element missing from index.html");

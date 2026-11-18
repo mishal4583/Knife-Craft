@@ -42,17 +42,17 @@ export type ScreenId =
   | "restaurant-map"
   /** The Second Floor: the automated food hall (restaurant/secondFloor.ts). */
   | "second-floor"
-  /** Fridge Sort: put the food you bought into the fridge (business/fridgeSort.ts). Optional, from Level 14. */
+  /** Fridge Sort: put the food you bought into the fridge (business/fridgeSort.ts). Optional, from Level 4 (FRIDGE_SORT_FIRST_LEVEL). */
   | "fridge-sort"
   /** Delivery Inspection: find the NOT FRESH ingredients in the delivery crate (business/deliveryInspection.ts). Optional, from Level 3. */
   | "delivery-inspection"
-  /** Sauce Station: mix a sauce to the target colour, blend it, bottle it (business/sauceStation.ts). Optional, from Level 23. */
+  /** Sauce Station: mix a sauce to the target colour, blend it, bottle it (business/sauceStation.ts). Optional, from Level 7 (SAUCE_FIRST_LEVEL). */
   | "sauce-station"
   /** The Sauce Shelf: the 24 sauces and which are mastered (read-only). */
   | "sauce-shelf"
-  /** Stockroom Sort: match 3 and stock the supplies you bought (business/stockroomSort.ts). Optional, from Level 10. */
+  /** Stockroom Sort: match 3 and stock the supplies you bought (business/stockroomSort.ts). Optional, from Level 10 (STOCKROOM_FIRST_LEVEL). */
   | "stockroom-sort"
-  /** Car Park shared-lot jam puzzle, the last daily opening step from level 15. */
+  /** Car Park shared-lot jam puzzle, a daily opening step from Level 15 (CAR_PARK_FIRST_LEVEL). */
   | "car-park"
   /** Dessert Run phone-feel preview; not yet connected to the daily routine. */
   | "dessert-run"

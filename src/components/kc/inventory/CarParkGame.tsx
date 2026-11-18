@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { AudioManager } from "@/game/AudioManager";
 import {
   carParkDue,
@@ -103,7 +103,9 @@ export function CarParkGame({
   towAdAvailable?: boolean;
   onTowAd?: () => Promise<"ok" | "no">;
 }) {
-  const initial = useMemo(() => lotFor(save, playerLevel), [save, playerLevel]);
+  // The lot is built ONCE for this visit (audit 2026-11-18). It used to be rebuilt whenever `save` changed (a finished round, a tow ad, any autosave):
+  // a hitch of up to a few hundred ms on a hard tier, and "Try again" could land on a different lot because the seed includes the rounds played.
+  const [initial] = useState(() => lotFor(save, playerLevel));
   const [lot, setLot] = useState<CarParkLot>(initial);
   const [phase, setPhase] = useState<Phase>("playing");
   const [honks, setHonks] = useState(0);

@@ -18,7 +18,7 @@ import {
   LEGACY_ECONOMY_STATE,
   type EconomyState,
 } from "./economy/economyState";
-import { loadCloudSave, platformReady, saveCloudSave } from "./PlayablesSDK";
+import { loadCloudSave, platformReady, saveCloudBackup, saveCloudSave } from "./PlayablesSDK";
 import { DEFAULT_LEVEL_PROGRESS, type LevelProgress } from "./levels/LevelManager";
 import { migrateCampaignProgress } from "./levels/campaignMigration";
 import { DEFAULT_SUPPLIER_ID } from "./economy/supplierDefinitions";
@@ -139,7 +139,7 @@ export type SaveData = {
    */
   economyLedger: EconomyLedgerEntry[];
   recipeProgress: Record<string, { best: number | null; done: boolean }>;
-  /** `sound` and `reducedMotion` (Settings → Reduced motion, audit 2026-10-08) are real settings; `music` is a legacy key kept so older saves round-trip unchanged (the game has no music). */
+  /** `sound` and `reducedMotion` (Settings → Reduced motion, audit 2026-10-08) are real settings; `music` turns the synthesized music on or off (Settings, AudioManager); a save without it reads as on. */
   /** `measure` (optional, developer 2026-10-08): the player's unit for weighed ingredients — absent = "lb" (business/measure.ts). */
   /** `restaurantName` (optional, developer 2026-10-17): the player's name for the restaurant — absent = not asked yet (restaurant/restaurantName.ts). */
   settings: {
@@ -314,8 +314,35 @@ function isSaveData(value: unknown): value is SaveData {
   return typeof value === "object" && value !== null && "version" in value && "credits" in value;
 }
 
+/** Reads the cloud save, trying again after a failure; a read that keeps failing yields null (the caller then starts a new game in memory only). */
+async function readCloudWithRetry(): Promise<{ raw: string | null; failed: boolean }> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return { raw: await loadCloudSave(), failed: false };
+    } catch (error) {
+      console.error("Reading the save failed.", error);
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+    }
+  }
+  return { raw: null, failed: true };
+}
+
+/** A copy of a save that could not be read (Bridge storage, or localStorage without a Bridge). Never throws. */
+async function keepBackup(raw: string | null): Promise<void> {
+  if (!raw) return;
+  try {
+    if (await platformReady()) await saveCloudBackup(raw);
+    else if (typeof localStorage !== "undefined")
+      localStorage.setItem(`${STORAGE_KEY}.backup`, raw);
+  } catch {
+    /* a backup that cannot be written changes nothing else */
+  }
+}
+
 class SaveManagerImpl {
   private cache: SaveData | null = null;
+  /** The cloud save could not be read at all (not "empty"): writing now would replace a real save with a new game. */
+  private readFailed = false;
 
   /** Loads the save, migrating/repairing anything malformed back to defaults. */
   async load(): Promise<SaveData> {
@@ -325,7 +352,12 @@ class SaveManagerImpl {
     // Plain localStorage is only the fallback when no Bridge exists at all.
     let raw: string | null = null;
     if (await platformReady()) {
-      raw = await loadCloudSave().catch(() => null);
+      // A failed read is NOT an empty save (audit 2026-11-18: one transient storage error at boot became "no save", and the first write then
+      // replaced the real one with a new game). It is tried three times; only a read that works and finds nothing means a new player.
+      const read = await readCloudWithRetry();
+      raw = read.raw;
+      // Still unreadable after three tries: this session plays on defaults in memory, but NOTHING is written over the real save (see save()).
+      this.readFailed = read.failed;
     } else if (typeof localStorage !== "undefined") {
       raw = localStorage.getItem(STORAGE_KEY);
     }
@@ -352,6 +384,8 @@ class SaveManagerImpl {
       const merged: SaveData = {
         ...DEFAULT_SAVE,
         ...partial,
+        // The wallet is whole, non-negative cents: a stored string, a fraction or a negative would make every later write refuse (wallet.ts).
+        credits: Math.max(0, Math.round(Number(partial.credits) || 0)),
         levelProgress: migrateCampaignProgress(partial.levelProgress ?? DEFAULT_SAVE.levelProgress),
         // Economy V2.5 — a save without `economy` predates V2.5: version 0,
         // migrated exactly once below (never the fresh-save default).
@@ -393,7 +427,11 @@ class SaveManagerImpl {
       this.cache = migrated;
       if (this.cache.economy.version !== merged.economy.version || movedIn)
         void this.save(this.cache).catch(() => {});
-    } catch {
+    } catch (error) {
+      // The save could not be understood. Keep a copy of the raw string before the defaults take its place, so the player's progress is never
+      // only overwritten (and say so in the console).
+      console.error("The saved game could not be read; a copy was kept.", error);
+      await keepBackup(raw);
       this.cache = { ...DEFAULT_SAVE };
     }
     return this.cache;
@@ -416,6 +454,12 @@ class SaveManagerImpl {
     const violation = walletInvariantViolation(data);
     if (violation) throw new Error(`Refusing to save: ${violation}`);
     this.cache = data;
+    if (this.readFailed) {
+      console.warn(
+        "Not saving: the saved game could not be read this session, so it is left untouched.",
+      );
+      return;
+    }
     const serialized = JSON.stringify(data);
     return new Promise<void>((resolve, reject) => {
       const waiter = { resolve, reject };

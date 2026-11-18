@@ -626,7 +626,7 @@ export function PreServiceCheck({
                   type="button"
                   aria-label="Dismiss first stock check tip"
                   onClick={onDismissFirstRestock}
-                  className="press -mr-1 -mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full text-[18px] font-black leading-none text-copper/70 hover:bg-gold/25"
+                  className="press -mr-1 -mt-1 grid h-12 w-12 shrink-0 place-items-center rounded-full text-[18px] font-black leading-none text-copper/70 hover:bg-gold/25"
                 >
                   ×
                 </button>
