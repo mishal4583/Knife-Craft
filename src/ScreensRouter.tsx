@@ -132,7 +132,7 @@ const DessertRunGame = lazy(() =>
 
 /**
  * Dessert Run's level: the developer preview link (?dessertRun=<level>) wins, else the player's own level (the Kitchen's
- * Mini-games sheet opens it from Level 18); never below the first Dessert Run level.
+ * Mini-games sheet opens it from Level 20); never below the first Dessert Run level.
  */
 function dessertRunPreviewLevel(playerLevel: number): number {
   const asked =

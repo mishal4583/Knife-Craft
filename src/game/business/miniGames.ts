@@ -123,8 +123,8 @@ export const MINI_GAMES: readonly MiniGameEntry[] = [
       if (left > 0)
         return { ready: true, text: `${left}/${roundsAllowed(s)} rounds left`, waiting: true };
       return canOfferRoundsAd(s, level)
-        ? { ready: true, text: "More rounds for an ad" }
-        : { ready: false, text: "Done · back tomorrow" };
+        ? { ready: true, text: "Ad: 3 more rounds" }
+        : { ready: false, text: "Back tomorrow" };
     },
   },
   {
@@ -161,7 +161,7 @@ export const MINI_GAMES: readonly MiniGameEntry[] = [
     line: (s, level) =>
       carParkDue(s, level)
         ? { ready: true, text: "Today's lot waits", waiting: true }
-        : { ready: false, text: "Cleared · back tomorrow" },
+        : { ready: false, text: "Back tomorrow" },
   },
   {
     id: "dessert-run",

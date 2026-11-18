@@ -89,9 +89,9 @@ export function MiniGamesSheet({
         data-art={panel ? "1" : "0"}
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "anim-up relative flex max-h-[88%] w-full max-w-[560px] flex-col rounded-t-[26px] px-4 pb-5 shadow-[0_-8px_28px_rgba(34,18,8,0.45)] land:rounded-[26px]",
+          "anim-up relative flex max-h-[90%] w-full max-w-[560px] flex-col rounded-t-[26px] px-4 pb-3 shadow-[0_-8px_28px_rgba(34,18,8,0.45)] land:max-h-[96%] land:max-w-[780px] land:rounded-[26px]",
           panel
-            ? "pt-[22px]"
+            ? "pt-[18px] land:pt-[14px]"
             : "border border-b-0 border-[#f3d9a9] bg-[linear-gradient(160deg,#fff9e9_0%,#fff0d0_55%,#f6dfb5_100%)] pt-3 land:border-b",
         )}
       >
@@ -104,9 +104,9 @@ export function MiniGamesSheet({
           />
         ) : null}
         <div className="relative flex items-center justify-between gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 land:flex land:items-center land:gap-3">
             {ribbon ? (
-              <div className="relative h-[60px] w-[240px] max-w-full">
+              <div className="relative h-[52px] w-[208px] max-w-full shrink-0 land:h-[44px] land:w-[176px]">
                 <img
                   src={mgUrl("title-ribbon")}
                   alt=""
@@ -114,7 +114,7 @@ export function MiniGamesSheet({
                   draggable={false}
                   className="absolute inset-0 h-full w-full object-contain"
                 />
-                <h2 className="relative grid h-full place-items-center pb-1 font-display text-[21px] font-black leading-none text-[#4a2410] [text-shadow:0_1px_0_rgba(255,255,255,0.6)]">
+                <h2 className="relative grid h-full place-items-center pb-1 font-display text-[19px] font-black leading-none text-[#4a2410] land:text-[17px] [text-shadow:0_1px_0_rgba(255,255,255,0.6)]">
                   Mini-games
                 </h2>
                 {has("header-sparkle") ? (
@@ -134,7 +134,7 @@ export function MiniGamesSheet({
             )}
             <p
               data-testid="minigames-count"
-              className="mt-1 font-hand text-[14px] italic leading-none text-[#795a3a]"
+              className="mt-0.5 font-hand text-[14px] italic leading-none text-[#795a3a] land:mt-0"
             >
               {open} of {views.length} open
             </p>
@@ -165,7 +165,7 @@ export function MiniGamesSheet({
           </button>
         </div>
 
-        <ul className="relative -mx-4 mt-3 grid min-h-0 grid-cols-2 gap-x-2.5 gap-y-3.5 overflow-y-auto px-4 pb-5 pt-6 [-webkit-overflow-scrolling:touch]">
+        <ul className="relative -mx-4 mt-1 grid min-h-0 grid-cols-2 gap-x-2.5 gap-y-3 overflow-y-auto overscroll-contain px-4 pb-7 pt-5 [-webkit-overflow-scrolling:touch] [mask-image:linear-gradient(to_bottom,#000_calc(100%-22px),transparent)] land:mt-0 land:grid-cols-4 land:gap-x-2 land:gap-y-3 land:pt-5">
           {views.map((v) => (
             <li key={v.entry.id} className="flex min-w-0 flex-col">
               <Tile
@@ -220,7 +220,7 @@ function Tile({
       }
       onClick={ready ? onPlay : undefined}
       className={cn(
-        "relative flex min-h-[132px] w-full flex-1 flex-col items-center gap-1 px-2 pb-2.5 pt-3.5 text-center transition-transform",
+        "relative flex min-h-[132px] w-full flex-1 flex-col items-center gap-1 px-2 pb-2.5 pt-3.5 text-center transition-transform [container-type:inline-size] [@media(max-height:700px)]:min-h-[116px] land:min-h-[104px] land:px-1",
         plate
           ? "rounded-[20px]"
           : cn(
@@ -252,7 +252,7 @@ function Tile({
       {icon ? (
         <span
           aria-hidden
-          className="relative -mt-[22px] block h-[76px] w-[76px] shrink-0"
+          className="relative -mt-[22px] block h-[76px] w-[76px] shrink-0 [@media(max-height:700px)]:h-[64px] [@media(max-height:700px)]:w-[64px] land:h-[54px] land:w-[54px]"
           data-testid={`mg-icon-${entry.id}`}
         >
           <img
@@ -312,14 +312,14 @@ function Tile({
           className="pointer-events-none absolute -right-2 -top-3 h-[32px] w-[32px] drop-shadow-[0_2px_2px_rgba(60,30,10,0.4)]"
         />
       ) : null}
-      <span className="relative block font-display text-[14px] font-black leading-tight">
+      <span className="relative block font-display text-[14px] font-black leading-tight land:text-[13px]">
         {entry.name}
       </span>
       <span
         data-testid={`mg-status-${entry.id}`}
         style={pill ? frameStyle(pillName) : undefined}
         className={cn(
-          "relative block min-h-[26px] max-w-full px-0.5 font-ui text-[11.5px] font-extrabold leading-tight",
+          "relative block min-h-[28px] max-w-full px-0.5 py-[3px] font-ui text-[clamp(9px,6.4cqw,11.5px)] font-extrabold leading-tight",
           pill && "flex items-center justify-center",
           pill
             ? ready

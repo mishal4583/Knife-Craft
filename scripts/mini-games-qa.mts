@@ -4,7 +4,7 @@
  *
  *  A  The list: all eight mini-games, one tile each, a real screen each, in the order they open, every unlock level read from the
  *     game's own constant (not copied)
- *  B  By level: locked below its level, open from it; the opening order is 3 / 4 / 7 / 10 / 10 / 15 / 18 / 18 (checked against the constants)
+ *  B  By level: locked below its level, open from it; the opening order is 3 / 4 / 7 / 10 / 10 / 15 / 18 / 20 (checked against the constants)
  *  C  The shelf never farms: a game that works on stock is "ready" only while something waits, the Car Park only while today's lot is open,
  *     a save with nothing waiting has no ready real-stock game; the free-play games are ready from their level
  *  D  Pure: the shelf moves no money, no stock, no ledger, no random and no clock
@@ -135,7 +135,7 @@ console.log("C. The shelf never farms a reward");
   };
   const afterDone = miniGameViews(done, 100).find((v) => v.entry.id === "car-park")!;
   assert(
-    afterDone.state === "resting" && afterDone.text === "Cleared · back tomorrow",
+    afterDone.state === "resting" && afterDone.text === "Back tomorrow",
     "C3: the Car Park rests once today's lot is cleared (its Hype stays once a business day)",
     afterDone,
   );
@@ -202,7 +202,7 @@ console.log("E. Wiring");
     "E5: go() refuses a free-play game below its level",
   );
   assert(
-    freePlayFirstLevel("dessert-run") === 18 &&
+    freePlayFirstLevel("dessert-run") === 20 &&
       freePlayFirstLevel("kitchen-dispatch") === 18 &&
       freePlayFirstLevel("car-park") === null,
     "E6: only the two free-play games are held by go()",

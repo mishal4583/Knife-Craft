@@ -18,14 +18,19 @@ import {
  * QA, so "every shipped plate can be won" is proved on the real rules, not on a model of them.
  */
 
-/** The first level Dessert Run opens at (the first of `RUN_TIERS`). */
-export const DESSERT_RUN_FIRST_LEVEL = 18;
+/** The first level Dessert Run opens at (developer 2026-11-18: Level 20; Unload the Van opens at 18). Its first tier still reads from Level 18, so a Level 20 player plays tier 1. */
+export const DESSERT_RUN_FIRST_LEVEL = 20;
 
 /** The stage is 540 x 960 logical pixels, the size every other screen and all the art are made for. */
 export const STAGE = { w: 540, h: 960 } as const;
 export const CELL = 13.5;
 export const ORIGIN = { x: 81, y: 119 } as const;
 export const PLATE = { x: 270, y: 308, r: 218 } as const;
+/**
+ * The plate's well, where the mosaic shows (developer 2026-11-18: the cubes at the edge follow the plate's round shape, as in the reference). The screen clips
+ * the cubes to this circle; the picture's cream well ends about 175 px from the middle, before the blue ring. The board holds every cube that meets it.
+ */
+export const WELL_R = 175;
 export const ENTRY = { x: 270, y: 514 } as const;
 export const CART = { x: 270, y: 596 } as const;
 export const AISLE = { x: 235, y: 500, w: 70, h: 170 } as const;
