@@ -38,9 +38,9 @@ export type MgArt = (typeof MG_ART)[number];
 
 /** The pieces drawn as stretchable frames (CSS border-image): the file's size in pixels, the slice and the width they are drawn at (css px). */
 export const NINE_SLICE = {
-  "card-ready": { w: 288, h: 288, slice: "72", width: "24px" },
-  "card-resting": { w: 288, h: 267, slice: "48 72", width: "16px 24px" },
-  "card-locked": { w: 288, h: 281, slice: "48 72", width: "16px 24px" },
+  "card-ready": { w: 288, h: 288, slice: "72", width: "20px" },
+  "card-resting": { w: 288, h: 288, slice: "72", width: "20px" },
+  "card-locked": { w: 288, h: 288, slice: "72", width: "20px" },
   "ready-glow": { w: 288, h: 288, slice: "56", width: "18px" },
   "sheet-panel": { w: 384, h: 376, slice: "96", width: "32px" },
   "pill-ready": { w: 288, h: 84, slice: "0 42", width: "0 13px" },

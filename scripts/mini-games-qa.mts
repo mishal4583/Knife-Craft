@@ -184,6 +184,13 @@ console.log("E. Wiring");
       sheet.includes("h-12 w-12"),
     "E2: a test id per tile, tiles over 48 px (the painted card is min-h 132, was 112 before the art of 2026-11-18), a 48 px close button",
   );
+  assert(
+    !/relative -mt-/.test(sheet) &&
+      (["card-ready", "card-resting", "card-locked"] as const).every(
+        (n) => NINE_SLICE[n].slice === "72" && NINE_SLICE[n].w === 288 && NINE_SLICE[n].h === 288,
+      ),
+    "E2b: (developer 2026-11-18) every card state is a FULL rounded frame (ready, resting and locked are all 288 x 288 sliced 72 on every side, none a two-plank strip) and the icon sits inside it, never lifted over the top border",
+  );
   const router = read("src/ScreensRouter.tsx");
   const exits = (router.match(/leaveTo\(/g) ?? []).length;
   assert(

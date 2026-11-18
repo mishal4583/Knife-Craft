@@ -220,7 +220,7 @@ function Tile({
       }
       onClick={ready ? onPlay : undefined}
       className={cn(
-        "relative flex min-h-[132px] w-full flex-1 flex-col items-center gap-1 px-2 pb-2.5 pt-3.5 text-center transition-transform [container-type:inline-size] [@media(max-height:700px)]:min-h-[116px] land:min-h-[104px] land:px-1",
+        "relative flex min-h-[132px] w-full flex-1 flex-col items-center gap-1 px-3 pb-5 pt-5 text-center transition-transform [container-type:inline-size] [@media(max-height:700px)]:pb-[18px] [@media(max-height:700px)]:pt-[18px] land:px-2 land:pb-4 land:pt-4",
         plate
           ? "rounded-[20px]"
           : cn(
@@ -252,7 +252,7 @@ function Tile({
       {icon ? (
         <span
           aria-hidden
-          className="relative -mt-[22px] block h-[76px] w-[76px] shrink-0 [@media(max-height:700px)]:h-[64px] [@media(max-height:700px)]:w-[64px] land:h-[54px] land:w-[54px]"
+          className="relative block h-[68px] w-[68px] shrink-0 [@media(max-height:700px)]:h-[58px] [@media(max-height:700px)]:w-[58px] land:h-[46px] land:w-[46px]"
           data-testid={`mg-icon-${entry.id}`}
         >
           <img
