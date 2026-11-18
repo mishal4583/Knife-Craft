@@ -47,10 +47,10 @@ try {
     roundCleared,
     cratesLeft,
     brickAtCell,
-    CRATE_ZONES,
+    CRATE_FOODS,
     CRATE_ITEM_NAMES,
-    crateItemOf,
-    zoneEmblem,
+    foodsFor,
+    foodOf,
   } = rules;
 
   // A small counter to test by hand: 5 x 5, a tomato gate on the right (rows 0-1), a dark block at (2, 2).
@@ -533,42 +533,71 @@ try {
       assert.ok(!art.includes("crate-2") && !art.includes("kdSheet"));
     },
   );
-  // THE VAN (developer 2026-11-17: the crates are delivered and sorted by colour; every colour is a storage zone with foods in it).
+  // THE VAN. RULE CHANGE (developer 2026-11-18: "if there is mushrooms let mushrooms only pass out through the mushroom door ... unique for each
+  // and every ingredient"): a door is no longer a colour shared by three foods; a board gives every colour key it uses ONE food, and the door and
+  // the crates of that key show that food. Z1-Z4 replace the old zone tests (three foods to a zone, a crate's food by its number).
   check(
-    "Z1: every colour is a named zone with three different foods; no food is in two zones; every food has a name",
+    "Z1: every colour holds three different foods in the foods' real colour; no food is in two colours; every food has a name",
     () => {
       const seen = new Set<string>();
       for (const key of CRATE_INGREDIENTS) {
-        const z = CRATE_ZONES[key];
-        assert.ok(z && z.name.length > 2 && z.colour.length > 2, key);
+        const z = CRATE_FOODS[key];
+        assert.ok(z && z.colour.length > 2, key);
         assert.equal(new Set(z.items).size, 3, `${key}: three foods`);
         for (const item of z.items) {
-          assert.ok(!seen.has(item), `${item} is in two zones`);
+          assert.ok(!seen.has(item), `${item} is in two colours`);
           seen.add(item);
           assert.ok(CRATE_ITEM_NAMES[item], `${item} has a name`);
         }
       }
-      assert.equal(new Set(CRATE_INGREDIENTS.map((k: string) => CRATE_ZONES[k].name)).size, 8);
+      assert.equal(seen.size, 24);
+      assert.ok(
+        CRATE_FOODS.mushroom.items.includes("mushroom") && CRATE_FOODS.mushroom.colour === "brown",
+      );
     },
   );
   check(
-    "Z2: a crate carries one of ITS zone's foods, always the same one (no dice), and a zone's crates show more than one food",
+    "Z2: a board gives each colour key ONE food of that colour, the same for a level and a seed, and the foods vary over the seeds",
     () => {
-      let varied = 0;
-      for (let seed = 1; seed <= 30; seed++)
-        for (const level of [18, 45, 65]) {
+      const used = new Map<string, Set<string>>();
+      for (let seed = 1; seed <= 60; seed++)
+        for (const level of [18, 28, 45, 65]) {
           const board = crateBoardFor(level, seed);
-          const byZone = new Map<string, Set<string>>();
-          for (const b of board.bricks) {
-            const item = crateItemOf(b);
-            assert.ok(CRATE_ZONES[b.color].items.includes(item), `${b.id} ${b.color} ${item}`);
-            assert.equal(item, crateItemOf({ ...b }));
-            (byZone.get(b.color) ?? byZone.set(b.color, new Set()).get(b.color)!).add(item);
+          assert.deepEqual(board.foods, foodsFor(level, seed), "same level and seed, same foods");
+          for (const key of CRATE_INGREDIENTS) {
+            const food = foodOf(board, key);
+            assert.ok(CRATE_FOODS[key].items.includes(food), `${key} -> ${food}`);
+            (used.get(key) ?? used.set(key, new Set()).get(key)!).add(food);
           }
-          if ([...byZone.values()].some((set) => set.size > 1)) varied++;
         }
-      assert.ok(varied > 40, `foods vary inside a zone on ${varied} of 90 boards`);
-      for (const key of CRATE_INGREDIENTS) assert.equal(zoneEmblem(key), CRATE_ZONES[key].items[0]);
+      for (const key of CRATE_INGREDIENTS)
+        assert.equal(
+          used.get(key)?.size,
+          3,
+          `${key}: all three of its foods turn up over the seeds`,
+        );
+    },
+  );
+  check(
+    "Z2b: ONE door per food on a board: every door shows a different food, every crate shows the food of its own door, and no two foods share a door",
+    () => {
+      for (let seed = 1; seed <= 60; seed++)
+        for (const level of [18, 28, 45, 65]) {
+          const board = crateBoardFor(level, seed);
+          const doorFoods = board.gates.map((g: { color: string }) => foodOf(board, g.color));
+          assert.equal(new Set(doorFoods).size, board.gates.length, "two doors show the same food");
+          const keys = new Set(board.gates.map((g: { color: string }) => g.color));
+          for (const b of board.bricks) {
+            assert.ok(keys.has(b.color), `${b.id} has a door`);
+            assert.equal(
+              board.gates.filter(
+                (g: { color: string }) => foodOf(board, g.color) === foodOf(board, b.color),
+              ).length,
+              1,
+              `${b.id}: exactly one door takes ${foodOf(board, b.color)}`,
+            );
+          }
+        }
     },
   );
   check(
@@ -585,7 +614,7 @@ try {
         "broccoli",
       ]);
       for (const key of CRATE_INGREDIENTS)
-        for (const item of CRATE_ZONES[key].items) {
+        for (const item of CRATE_FOODS[key].items) {
           const file = own.has(item)
             ? `public/business/cratedispatch/ingredient-${item}.webp`
             : `public/business/sauce/products/${item}.webp`;
@@ -594,12 +623,11 @@ try {
       const game = readFileSync("src/components/kc/inventory/KitchenDispatchGame.tsx", "utf8");
       assert.ok(game.includes("Unload the Van") && !game.includes(">Kitchen Dispatch<"));
       assert.ok(
-        /go to the \$\{CRATE_ZONES\[brick\.color\]\.name\}/.test(game),
-        "the hint on a touched crate",
+        /\$\{food\} → the \$\{food\} door/.test(game) && /door with the same food/.test(game),
+        "the hint on a touched crate and the line that tells what to do",
       );
       assert.ok(
-        /✓ \$\{CRATE_ITEM_NAMES\[crateItemOf\(brick\)\]\} → /.test(game),
-        "the line when a crate goes out",
+        /✓ \$\{CRATE_ITEM_NAMES\[foodOf\(next\.board, brick\.color\)\]\} sent out/.test(game),
       );
     },
   );

@@ -2,7 +2,7 @@
  * "Unload the Van" (shown name; ids and files keep the first name, Kitchen Dispatch; developer 2026-11-17, preview), rebuilt the same day on the mechanism of the sliding-block "door" games
  * (Color Block Jam and its kind): ingredient crates of different sizes (1x2, 2x2, 2x3 ...) sit on a counter with a few dark
  * fixed blocks. The player DRAGS a crate freely in any direction; it cannot pass through another crate or a dark block. Each
- * ingredient has a GATE of its own colour in the wooden frame: push a crate against its own gate, with its width inside the
+ * ingredient has a GATE of its own in the wooden frame (the same food, in the same colour): push a crate against its own gate, with its width inside the
  * gate, and it leaves. Clear every crate before the clock runs out. Boosters: Freeze (the clock stops for a few seconds),
  * Rocket (one crate goes out at once), Hammer (smash one dark block), Undo (take back the last move).
  *
@@ -17,8 +17,8 @@
 
 export const CRATE_FIRST_LEVEL = 18;
 /**
- * The colour keys of the crates and their doors. (The names are the game's first, when a colour WAS one ingredient; since the
- * "Unload the Van" retheme each key is a STORAGE ZONE with its own colour, see `CRATE_ZONES`.)
+ * The colour keys of the crates and their doors. (The names are the game's first, when a colour WAS one ingredient. Since 2026-11-18 a board
+ * gives each key it uses ONE food, so a key is again one ingredient's door: see `CRATE_FOODS`.)
  */
 export const CRATE_INGREDIENTS = [
   "tomato",
@@ -44,24 +44,28 @@ export const CRATE_COLORS: Record<CrateIngredient, string> = {
 };
 
 /**
- * THE VAN (developer 2026-11-17: "vegetables are delivered, not dispatched: the delivery person brings crates and we sort the items by
- * their crate colour"). The van's crates are jammed on the loading bay; every crate goes out of the door of its OWN COLOUR, and each
- * colour is a storage zone with a name. A crate shows one of its zone's foods (`crateItemOf`, no dice: from the crate's number), so
- * the player also learns where food lives. The game logic still matches colour to colour; the foods are drawn and named only.
- * `emblem` is the food drawn on the zone's door. `colour` is the word shown in the hints.
+ * THE VAN. A crate carries ONE food and goes out of the ONE door that shows that same food (developer 2026-11-18: "if there is mushrooms let
+ * mushrooms only pass out through the mushroom door, if there is a spinach crate only through the spinach door: unique for each and every
+ * ingredient"). Before this, a door was a colour shared by three foods (green: lettuce, basil, parsley; teal: broccoli, corn, mushroom), so a
+ * basil crate left by the lettuce door and a mushroom crate by the broccoli door.
+ *
+ * How it works: the match key stays a colour key (the solver, the builder and the drag code compare keys), but a board gives every key it
+ * uses exactly ONE food (`CrateBoard.foods`), so each food has its own door and its own crates, and no two foods on a board share a key.
+ * The foods that share a colour here (`CRATE_FOODS`) never appear on one board together; which of them a board uses comes from the level and
+ * the seed (`foodsFor`, no dice), so the player meets all 24 foods over the levels. Foods are grouped by their real colour (a mushroom is brown).
  */
-export const CRATE_ZONES: Record<
+export const CRATE_FOODS: Record<
   CrateIngredient,
-  { name: string; colour: string; items: readonly [string, string, string] }
+  { colour: string; items: readonly [string, string, string] }
 > = {
-  tomato: { name: "Fruit bin", colour: "red", items: ["tomato", "avocado", "mango"] },
-  carrot: { name: "Root bin", colour: "orange", items: ["carrot", "potato", "ginger"] },
-  lettuce: { name: "Leafy rack", colour: "green", items: ["lettuce", "basil", "parsley"] },
-  broccoli: { name: "Veg rack", colour: "teal", items: ["broccoli", "corn", "mushroom"] },
-  onion: { name: "Aromatics shelf", colour: "purple", items: ["onion", "garlic", "chilli"] },
-  cheddar: { name: "Pantry shelf", colour: "yellow", items: ["olive-oil", "honey", "mustard"] },
-  salmon: { name: "Cold room", colour: "blue", items: ["salmon", "cheddar", "yogurt"] },
-  mushroom: { name: "Spice rack", colour: "brown", items: ["paprika", "cumin", "turmeric"] },
+  tomato: { colour: "red", items: ["tomato", "chilli", "paprika"] },
+  carrot: { colour: "orange", items: ["carrot", "mango", "turmeric"] },
+  lettuce: { colour: "green", items: ["lettuce", "basil", "parsley"] },
+  broccoli: { colour: "teal", items: ["broccoli", "avocado", "olive-oil"] },
+  onion: { colour: "purple", items: ["onion", "garlic", "ginger"] },
+  cheddar: { colour: "yellow", items: ["cheddar", "corn", "lemon"] },
+  salmon: { colour: "blue", items: ["salmon", "yogurt", "milk"] },
+  mushroom: { colour: "brown", items: ["mushroom", "potato", "cumin"] },
 };
 /** The name a food is called on screen. */
 export const CRATE_ITEM_NAMES: Record<string, string> = {
@@ -81,8 +85,8 @@ export const CRATE_ITEM_NAMES: Record<string, string> = {
   garlic: "Garlic",
   chilli: "Chillies",
   "olive-oil": "Olive oil",
-  honey: "Honey",
-  mustard: "Mustard",
+  lemon: "Lemons",
+  milk: "Milk",
   salmon: "Salmon",
   cheddar: "Cheddar",
   yogurt: "Yogurt",
@@ -90,14 +94,17 @@ export const CRATE_ITEM_NAMES: Record<string, string> = {
   cumin: "Cumin",
   turmeric: "Turmeric",
 };
-/** The food a crate carries: one of its zone's three, by the crate's number (stable, never random). */
-export function crateItemOf(brick: Pick<Brick, "id" | "color">): string {
-  const n = Number(brick.id.replace(/\D/g, "")) || 0;
-  const items = CRATE_ZONES[brick.color].items;
-  return items[n % items.length]!;
+/** The foods of a board: one per colour key, the same for a level and a seed. */
+export function foodsFor(level: number, seed: number): Record<CrateIngredient, string> {
+  const rand = rngFor(seed * 131 + level * 17 + 9);
+  const out = {} as Record<CrateIngredient, string>;
+  for (const key of CRATE_INGREDIENTS) out[key] = CRATE_FOODS[key].items[Math.floor(rand() * 3)]!;
+  return out;
 }
-/** The food drawn on a zone's door. */
-export const zoneEmblem = (color: CrateIngredient): string => CRATE_ZONES[color].items[0];
+/** The food of a crate or a door of this colour key on this board (a hand-made board without foods reads the first of the colour). */
+export function foodOf(board: Pick<CrateBoard, "foods">, key: CrateIngredient): string {
+  return board.foods?.[key] ?? CRATE_FOODS[key].items[0];
+}
 
 export type Side = "top" | "bottom" | "left" | "right";
 /** A crate: `w` x `h` cells with its top-left cell at (`x`, `y`). */
@@ -119,6 +126,8 @@ export type CrateBoard = {
   bricks: Brick[];
   walls: Wall[];
   gates: Gate[];
+  /** The one food of every colour key this board uses (see `foodsFor`); a door and its crates show the same food. */
+  foods?: Record<CrateIngredient, string>;
 };
 
 export type DispatchTier = {
@@ -480,9 +489,10 @@ export function crateBoardFor(level: number, seed: number): CrateBoard {
     const sol = solveBoard(board);
     if (!sol.solvable) continue;
     fallback = board;
-    if (sol.waves.length >= tier.minWaves && sol.free <= tier.maxFree) return board;
+    if (sol.waves.length >= tier.minWaves && sol.free <= tier.maxFree)
+      return { ...board, foods: foodsFor(level, seed) };
   }
-  if (fallback) return fallback;
+  if (fallback) return { ...fallback, foods: foodsFor(level, seed) };
   // cannot happen with these tiers (the QA builds hundreds of boards); a tiny sure board keeps the screen alive
   return {
     cols: tier.cols,
@@ -490,6 +500,7 @@ export function crateBoardFor(level: number, seed: number): CrateBoard {
     walls: [],
     gates: [{ id: "g1", side: "right", at: 0, span: tier.span, color: "tomato" }],
     bricks: [{ id: "b1", x: 0, y: 0, w: 1, h: 2, color: "tomato" }],
+    foods: foodsFor(level, seed),
   };
 }
 

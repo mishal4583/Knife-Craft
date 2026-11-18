@@ -20,8 +20,7 @@ import {
   finishDrag,
   freezeRound,
   CRATE_ITEM_NAMES,
-  CRATE_ZONES,
-  crateItemOf,
+  foodOf,
   hammerWall,
   roundCleared,
   rocketBrick,
@@ -67,7 +66,7 @@ const clock = (seconds: number) => {
 
 /**
  * Kitchen Dispatch (developer 2026-11-17, rebuilt the same day on the sliding-block "door" mechanism: drag a crate across the
- * counter and push it against the gate of its own colour). A preview at /?kitchenDispatch=<level> and on the Kitchen's
+ * counter and push it against the gate that shows its own food). A preview at /?kitchenDispatch=<level> and on the Kitchen's
  * Mini-games sheet; no rewards, ads or analytics until the developer has played it on a real phone. All the rules live in
  * `game/business/crateDispatch.ts`; this screen draws the board, reads the finger and counts the seconds.
  */
@@ -277,7 +276,7 @@ export function KitchenDispatchGame({
   };
   /** A crate has gone out of its gate: it slides away, and the board may be clear. */
   const sendOut = (brick: Brick, gate: Leaving["gate"], next: CrateRound) => {
-    say(`✓ ${CRATE_ITEM_NAMES[crateItemOf(brick)]} → ${CRATE_ZONES[brick.color].name}`);
+    say(`✓ ${CRATE_ITEM_NAMES[foodOf(next.board, brick.color)]} sent out`);
     leavingRef.current = [...leavingRef.current, { brick, gate, start: performance.now() }];
     visRef.current.delete(brick.id);
     setRoundBoth(next);
@@ -310,9 +309,8 @@ export function KitchenDispatchGame({
     const brick = brickAtCell(round.board, cx, cy);
     if (!brick) return;
     // the sorting hint (developer 2026-11-17): what the crate holds and which door it belongs to
-    say(
-      `${CRATE_ITEM_NAMES[crateItemOf(brick)]} go to the ${CRATE_ZONES[brick.color].name}: the ${CRATE_ZONES[brick.color].colour} door`,
-    );
+    const food = CRATE_ITEM_NAMES[foodOf(round.board, brick.color)];
+    say(`${food} → the ${food} door`);
     dragRef.current = {
       id: brick.id,
       pointerId: e.pointerId,
@@ -453,7 +451,7 @@ export function KitchenDispatchGame({
         <canvas
           ref={canvasRef}
           data-testid="kd-canvas"
-          aria-label="Unload the Van: drag each crate across the loading bay to the door of its own colour"
+          aria-label="Unload the Van: drag each crate across the loading bay to the door that shows the same food"
           className="block h-full w-full touch-none"
           onPointerDown={onDown}
           onPointerMove={onMove}
@@ -539,7 +537,7 @@ export function KitchenDispatchGame({
           }}
         >
           <span role="status" data-testid="kd-notice">
-            {notice || "The van is here! Slide each crate to the door of its colour."}
+            {notice || "The van is here! Slide each crate to the door with the same food."}
           </span>
         </div>
         <div
@@ -561,13 +559,12 @@ export function KitchenDispatchGame({
         <span className="grid place-items-center" style={box(470, 146, 50, 50)}>
           <InfoTip label="How to play">
             The delivery van has dropped its crates on the loading bay. Drag a crate across it; it
-            cannot pass through other crates or the dark blocks. Push it against the door of its own
-            colour, with its width inside the door, and it goes out to that store: blue is the Cold
-            room, green the Leafy rack, teal the Veg rack, orange the Root bin, red the Fruit bin,
-            purple the Aromatics shelf, yellow the Pantry shelf, brown the Spice rack. Unload every
-            crate before the timer ends. Freeze stops the clock for 10 seconds, Rocket sends one
-            crate out, Hammer smashes one dark block and Undo takes back your last move. More time
-            left earns more stars.
+            cannot pass through other crates or the dark blocks. Push it against the door that shows
+            the same food, with its width inside the door, and it goes out: a mushroom crate only
+            leaves by the mushroom door, a lettuce crate only by the lettuce door, and so on for
+            every food. Unload every crate before the timer ends. Freeze stops the clock for 10
+            seconds, Rocket sends one crate out, Hammer smashes one dark block and Undo takes back
+            your last move. More time left earns more stars.
           </InfoTip>
         </span>
 

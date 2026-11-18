@@ -1,4 +1,4 @@
-import { CRATE_ZONES } from "@/game/business/crateDispatch";
+import { CRATE_FOODS } from "@/game/business/crateDispatch";
 
 /**
  * Unload the Van's (Kitchen Dispatch's) painted art (Crate Dispatch folder, built by scripts/make-crate-dispatch-assets.py). Every piece is
@@ -18,7 +18,7 @@ const OWN_ITEMS = new Set([
   "mushroom",
   "broccoli",
 ]);
-const ITEMS = [...new Set(Object.values(CRATE_ZONES).flatMap((z) => z.items))];
+const ITEMS = [...new Set(Object.values(CRATE_FOODS).flatMap((z) => z.items))];
 const NAMES: KdArtName[] = [
   "backdrop",
   "counter",
