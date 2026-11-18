@@ -6,6 +6,7 @@ import {
   GUEST_PLATE_Y,
   ORIGIN,
   PLATE,
+  WELL_R,
   QUEUE,
   SPOT_COUNT,
   SPOT_W,
@@ -415,6 +416,11 @@ export function drawRun(ctx: CanvasRenderingContext2D, state: RunState, view: Dr
   // ---- the dessert
   const dim = view.peek != null;
   const dprK = ctx.getTransform().a || 1;
+  // The cubes are cut by the plate's round well, so the ones at the edge follow its shape (the board holds every cube that meets the circle).
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(PLATE.x, PLATE.y, WELL_R, 0, Math.PI * 2);
+  ctx.clip();
   for (let i = 0; i < state.grid.length; i++) {
     const k = state.grid[i]!;
     if (k < 0) continue;
@@ -450,6 +456,13 @@ export function drawRun(ctx: CanvasRenderingContext2D, state: RunState, view: Dr
     }
   }
   ctx.globalAlpha = 1;
+  // a soft shade just inside the rim, so the mosaic sits down in the dish
+  const rim = ctx.createRadialGradient(PLATE.x, PLATE.y, WELL_R - 10, PLATE.x, PLATE.y, WELL_R);
+  rim.addColorStop(0, "rgba(70,35,10,0)");
+  rim.addColorStop(1, "rgba(70,35,10,.32)");
+  ctx.fillStyle = rim;
+  ctx.fillRect(PLATE.x - WELL_R, PLATE.y - WELL_R, WELL_R * 2, WELL_R * 2);
+  ctx.restore();
 
   // ---- runners and flying cubes
   const step = Math.floor(state.time * 9) % 2;

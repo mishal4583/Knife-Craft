@@ -91,8 +91,10 @@ try {
   }
   assert.deepEqual(
     cubes,
-    { cookie: 500, donut: 500, cupcake: 500, cone: 500 },
-    "every picture fills the whole plate disc",
+    { cookie: 568, donut: 568, cupcake: 568, cone: 568 },
+    // RULE CHANGE (developer 2026-11-18: the cubes at the edge follow the plate's round shape): the board holds every cube that meets the plate's
+    // well circle (WELL_R), 568, was a 500-cube staircase disc that stopped short of the rim.
+    "every picture fills the whole plate well, 568 cubes",
   );
   for (const tier of RUN_TIERS)
     for (const id of DESSERTS_BY_TIER[tier.id])
@@ -371,16 +373,25 @@ try {
     );
     for (const id of Object.keys(DESSERTS) as Id[]) {
       const grid: Int8Array = DESSERTS[id].build();
-      let far = 0;
-      grid.forEach((v, i) => {
-        if (v < 0) return;
-        const c = run.cellCenter(i);
-        far = Math.max(far, Math.hypot(c.x - run.PLATE.x, c.y - run.PLATE.y) + run.CELL / 2);
-      });
       assert.ok(
-        far <= run.PLATE.r * 0.83,
-        `${id}: the mosaic reaches ${far.toFixed(0)} px, inside the plate's well (${(run.PLATE.r * 0.83).toFixed(0)})`,
+        run.WELL_R <= run.PLATE.r * 0.83 &&
+          Math.abs(run.WELL_R / run.CELL - gallery.WELL_CELLS) < 1e-9,
+        "the clip circle is inside the plate's well and is the board's circle",
       );
+      // RULE CHANGE (2026-11-18): the screen clips the cubes to the well, so the board is every cube whose square meets the circle: none missing (bare plate at the
+      // rim), none hidden outside it (was: every cube within 0.83 of the plate's radius).
+      grid.forEach((v, i) => {
+        const x0 = run.ORIGIN.x + (i % GRID) * run.CELL;
+        const y0 = run.ORIGIN.y + Math.floor(i / GRID) * run.CELL;
+        const dx = Math.max(x0 - run.PLATE.x, 0, run.PLATE.x - (x0 + run.CELL));
+        const dy = Math.max(y0 - run.PLATE.y, 0, run.PLATE.y - (y0 + run.CELL));
+        const meets = Math.hypot(dx, dy) < run.WELL_R;
+        assert.equal(
+          v >= 0,
+          meets,
+          `${id}: cell ${i} ${meets ? "meets the well but is missing" : "is hidden outside the well"}`,
+        );
+      });
     }
     for (const tier of RUN_TIERS) {
       for (let lane = 0; lane < tier.lanes; lane++) {

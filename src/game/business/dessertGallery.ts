@@ -38,6 +38,7 @@ export const RUN_PALETTE = {
   mint1: "#9DF0D8",
   mint2: "#5ADDBB",
   mint3: "#2FBE9C",
+  redLight: "#FF7B6E",
   red: "#F4483F",
   redDark: "#C72B3A",
   butter1: "#FFF0A8",
@@ -49,6 +50,8 @@ export const RUN_PALETTE = {
   lilac1: "#E0D4FF",
   lilac2: "#B79EF8",
   lilac3: "#8F77E6",
+  leaf: "#6CCB45",
+  leafDark: "#3E9A33",
 } as const;
 export type RunColorKey = keyof typeof RUN_PALETTE;
 
@@ -73,8 +76,19 @@ export type Dessert = {
 
 const CX = GRID / 2;
 const CY = GRID / 2;
-/** The board is a disc that fills the plate's well. */
-const BOARD_R = 12.6;
+/**
+ * The board fills the plate's well. The screen clips the cubes to that circle (`WELL_R` in dessertRun.ts = `WELL_CELLS` cubes), so a cube that only
+ * touches the circle shows as a cut piece, like the reference. The board holds exactly the cubes whose square meets the circle: none is missing (no bare
+ * plate at the rim) and none is hidden outside it. `dessert-run-qa` checks both.
+ */
+export const WELL_CELLS = 175 / 13.5;
+/** Where the lit-to-deep gradient of the board ends (the old disc's radius); only the look of the board uses it. */
+const GRADIENT_R = 12.6;
+const inWell = (x: number, y: number) =>
+  Math.hypot(
+    Math.max(Math.abs(x + 0.5 - GRID / 2) - 0.5, 0),
+    Math.max(Math.abs(y + 0.5 - GRID / 2) - 0.5, 0),
+  ) < WELL_CELLS;
 const at = (x: number, y: number) => y * GRID + x;
 const inside = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID && y < GRID;
 
@@ -124,9 +138,9 @@ class Painter {
   }
   /** The board: a gradient from light (top left) to deep (bottom right) in three bands with a soft wobble. */
   board(tones: readonly [RunColorKey, RunColorKey, RunColorKey], phase = 0) {
-    this.paint(disc(CX, CY, BOARD_R), (x, y) => {
+    this.paint(inWell, (x, y) => {
       const t =
-        ((x + 0.5 - CX) * 0.5 + (y + 0.5 - CY) * 0.86) / BOARD_R +
+        ((x + 0.5 - CX) * 0.5 + (y + 0.5 - CY) * 0.86) / GRADIENT_R +
         0.13 * Math.sin(0.55 * x + 0.35 * y + phase);
       return t < -0.2 ? tones[0] : t < 0.4 ? tones[1] : tones[2];
     });
@@ -138,7 +152,7 @@ class Painter {
       [cx - 0.3 * s, cy - 0.2 * s, 2.1 * s],
       [cx + 1.7 * s, cy + 0.5 * s, 1.6 * s],
     ];
-    const board = disc(CX, CY, BOARD_R);
+    const board = inWell;
     this.paint(
       (x, y) =>
         board(x, y) &&
@@ -345,53 +359,117 @@ function paintDonut(): Painter {
 
 const GROUPS_CUPCAKE: GroupDef[] = [
   { tones: ["outline"] },
-  { tones: ["cream", "pale"] },
+  { tones: ["cream"] },
   { tones: ["pinkLight", "pink", "pinkDark"], rep: "pink" },
   { tones: ["blue", "blueDark"], rep: "blue" },
-  { tones: ["red", "redDark"], rep: "red" },
+  { tones: ["redLight", "red", "redDark"], rep: "red" },
   { tones: ["butter1", "butter2", "butter3"], rep: "butter2" },
+  { tones: ["leaf", "leafDark"], rep: "leaf" },
 ];
 
 function paintCupcake(): Painter {
   const p = new Painter(GROUPS_CUPCAKE);
   p.board(["butter1", "butter2", "butter3"], 0.6);
-  p.cloud(6.2, 21.8, 1.1);
-  p.cloud(21.8, 22.4, 1.15);
-  // the paper cup: wide stripes
+  // The silhouette, row by row: how many cubes each side of the middle line (a cherry, three frosting swirls that step outward, a cup).
+  // prettier-ignore
+  const half: Record<number, number> = {
+    5: 2, 6: 3, 7: 4, 8: 4, 9: 3,
+    10: 5, 11: 5, 12: 6,
+    13: 7, 14: 8, 15: 8, 16: 9,
+    17: 10, 18: 10, 19: 11, 20: 11,
+    21: 9, 22: 9, 23: 8, 24: 7, 25: 6,
+  };
+  const body = (x: number, y: number) => Math.abs(x + 0.5 - CX) < (half[y] ?? 0);
+  // the paper cup: a dark rim, then wide blue and cream stripes (centred, two cubes wide)
   p.paint(
-    (x, y) => y >= 17 && y <= 24 && Math.abs(x + 0.5 - CX) <= 8.6 - (y - 17) * 0.5,
-    (x) => (Math.floor((x - 4) / 2) % 2 === 0 ? "cream" : "blue"),
+    (x, y) => y >= 21 && body(x, y),
+    (x, y) =>
+      y === 21 || y === 25
+        ? "blueDark"
+        : Math.floor((Math.abs(x + 0.5 - CX) + 1) / 2) % 2 === 0
+          ? "cream"
+          : "blue",
     true,
   );
-  // three frosting tiers, then the cherry, each a lit dome
-  const tier = (cy: number, rx: number, ry: number) =>
+  // three frosting swirls, each a lit dome; a cream ribbon runs along the lower row of each
+  const tier = (rows: readonly [number, number], cy: number, rx: number, ry: number) =>
     p.paint(
-      ellipse(CX, cy, rx, ry),
-      (x, y) =>
-        pick(dome(x, y, CX, cy, rx, ry) ?? 0, ["pinkLight", "pink", "pinkDark"], 0.55, 0.22),
+      (x, y) => y >= rows[0] && y <= rows[1] && body(x, y),
+      (x, y) => {
+        const dx = x + 0.5 - CX;
+        const w = half[y] ?? 0;
+        // the ribbon: the whole lower row, and a swirl that climbs the left side
+        if (y === rows[1] && Math.abs(dx) < w - 1.5) return "cream";
+        if (y === rows[1] - 1 && dx < -2 && dx > -(w - 2.5)) return "cream";
+        if (y === rows[1] - 1 && dx > 2.5) return "pinkDark";
+        const v = dome(x, y, CX, cy, rx, ry) ?? light(0, 0.5, 0.4);
+        return pick(v, ["pinkLight", "pink", "pinkDark"], 0.8, 0.42);
+      },
       true,
     );
-  tier(14.8, 9.4, 3.8);
-  tier(11.5, 7.0, 3.4);
-  tier(8.5, 4.7, 3.0);
+  tier([17, 20], 18.6, 11.5, 3.4);
+  tier([13, 16], 14.6, 9.5, 3.2);
+  tier([10, 12], 11.4, 6.5, 2.6);
+  // the cherry
   p.paint(
-    disc(CX, 5.3, 2.8),
-    (x, y) => ((dome(x, y, CX, 5.3, 2.8, 2.8) ?? 0) > 0.45 ? "red" : "redDark"),
+    (x, y) => y <= 9 && body(x, y),
+    (x, y) => {
+      const v = dome(x, y, CX, 7.2, 4.0, 2.9) ?? 0;
+      return v > 0.6 ? "redLight" : v > 0.3 ? "red" : "redDark";
+    },
     true,
   );
   p.outline();
-  p.bar(12, 4, 2, false, "cream");
+  // sprinkles: runs of two cubes that lie on the frosting
   for (const [x, y, c] of [
-    [8, 14, "blue"],
-    [12, 15, "cream"],
-    [17, 14, "blue"],
-    [10, 11, "cream"],
-    [16, 11, "blue"],
-    [13, 8, "cream"],
-    [19, 15, "cream"],
+    [11, 11, "butter3"],
+    [15, 10, "blue"],
+    [9, 14, "blue"],
+    [13, 14, "butter3"],
+    [17, 15, "butter3"],
+    [7, 18, "butter3"],
+    [11, 17, "blue"],
+    [16, 18, "blue"],
+    [19, 19, "butter3"],
+    [9, 19, "blue"],
   ] as const)
     // prettier-ignore
     p.bar(x, y, 2, false, c);
+  // the stem and the leaf, drawn cube by cube (thin, so not outlined)
+  const cube = (cells: ReadonlyArray<readonly [number, number]>, name: RunColorKey) =>
+    p.paint(
+      (x, y) => cells.some(([cx, cy]) => cx === x && cy === y),
+      () => name,
+    );
+  cube(
+    [
+      [14, 4],
+      [15, 3],
+      [16, 3],
+    ],
+    "outline",
+  );
+  cube(
+    [
+      [18, 2],
+      [19, 2],
+      [17, 3],
+      [18, 3],
+      [19, 3],
+      [20, 3],
+      [18, 4],
+      [19, 4],
+    ],
+    "leaf",
+  );
+  cube(
+    [
+      [19, 3],
+      [20, 3],
+      [19, 4],
+    ],
+    "leafDark",
+  );
   return p;
 }
 
