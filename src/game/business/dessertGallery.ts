@@ -259,36 +259,46 @@ function paintCookie(): Painter {
   p.board(["sky1", "sky2", "sky3"]);
   p.cloud(6.2, 21.4, 1.2);
   p.cloud(21.8, 22.4, 1.25);
-  const R = 9.7;
-  const bite = disc(19.9, 7.0, 2.4);
-  const body = wavy(14, 13.7, (a) => R + 0.22 * Math.sin(5 * a + 0.6));
+  // A big round cookie with a bite out of the top right, a lit upper left, a crisp darker edge, chunky chips and a few crumbs.
+  const R = 10.6;
+  const cy = 14.4;
+  const bite = disc(20.9, 7.6, 2.7);
+  const body = wavy(CX, cy, (a) => R + 0.28 * Math.sin(5 * a + 0.6));
   p.paint(
     (x, y) => body(x, y) && !bite(x, y),
     (x, y) => {
-      const dx = (x + 0.5 - 14) / R;
-      const dy = (y + 0.5 - 13.7) / R;
+      const dx = (x + 0.5 - CX) / R;
+      const dy = (y + 0.5 - cy) / R;
       const d2 = Math.min(1, dx * dx + dy * dy);
       const v =
         light(dx * 0.9, dy * 0.9, Math.sqrt(1 - d2 * 0.8)) + 0.05 * Math.sin(x * 0.9 + y * 0.5);
-      if (v > 0.92 && d2 > 0.42) return "cream";
-      return v > 0.64 ? "yellow" : v > 0.42 ? "gold" : v > 0.14 ? "orange" : "orangeDark";
+      if (v > 1.0 && d2 > 0.5) return "cream";
+      return v > 0.7 ? "yellow" : v > 0.46 ? "gold" : v > 0.16 ? "orange" : "orangeDark";
     },
     true,
   );
   p.outline();
   // chocolate chips: a chunk with a lit top and left, well inside the cookie
   for (const [x, y, w, h] of [
-    [10, 7, 4, 3],
-    [17, 6, 4, 3],
-    [20, 12, 4, 3],
-    [7, 12, 4, 3],
-    [13, 12, 4, 3],
-    [11, 18, 4, 3],
-    [18, 17, 4, 3],
-    [7, 18, 3, 3],
+    [9, 8, 3, 3],
+    [14, 6, 3, 2],
+    [12, 11, 3, 3],
+    [17, 12, 3, 3],
+    [7, 14, 3, 2],
+    [21, 15, 2, 3],
+    [10, 17, 3, 3],
+    [15, 18, 3, 3],
+    [19, 19, 3, 2],
+    [12, 22, 3, 2],
   ] as const)
     // prettier-ignore
     p.chip(x, y, w, h, "chipLight", "chip");
+  // pale crumbs on the board, beside the cookie
+  for (const [x, y] of [
+    [24, 21],
+    [2, 10],
+  ] as const)
+    p.bar(x, y, 2, false, "pale");
   return p;
 }
 /** True when a cell holds the outline tone. */
@@ -308,9 +318,10 @@ function paintDonut(): Painter {
   p.board(["mint1", "mint2", "mint3"], 1.7);
   p.cloud(6.2, 21.6, 1.2);
   p.cloud(21.8, 22.2, 1.25);
-  const cy = 13.7;
-  const Rin = 3.3;
-  const outer = wavy(CX, cy, (a) => 10.3 + 0.22 * Math.sin(4 * a + 0.5));
+  // A big donut: a puffy ring of dough, pink icing with a wavy drip edge, a small hole, and a spread of sprinkles.
+  const cy = 14.2;
+  const Rin = 3.4;
+  const outer = wavy(CX, cy, (a) => 11.1 + 0.12 * Math.sin(4 * a + 0.5));
   const ring = (
     x: number,
     y: number,
@@ -327,33 +338,41 @@ function paintDonut(): Painter {
   };
   p.paint(
     (x, y) => outer(x, y) && !disc(CX, cy, Rin)(x, y),
-    (x, y) => ring(x, y, Rin, 10.3, ["dough1", "dough", "doughDark"]),
+    (x, y) => ring(x, y, Rin, 11.1, ["dough1", "dough", "doughDark"]),
     true,
   );
   const icing = wavy(
     CX,
     cy,
-    (a) => 8.4 + 0.9 * Math.sin(3 * a + 0.7) + 0.4 * Math.sin(6 * a + 2.2),
+    (a) => 9.2 + 0.9 * Math.sin(3 * a + 0.7) + 0.5 * Math.sin(7 * a + 2.2),
   );
   p.paint(
-    (x, y) => icing(x, y) && !disc(CX, cy, 4.8)(x, y),
-    (x, y) => ring(x, y, 4.8, 8.8, ["pinkLight", "pink", "pinkDark"]),
+    (x, y) => icing(x, y) && !disc(CX, cy, 4.5)(x, y),
+    (x, y) => ring(x, y, 4.5, 9.6, ["pinkLight", "pink", "pinkDark"]),
     true,
   );
   p.outline();
+  // sprinkles: runs of two cubes on the icing, in three colours
   for (const [x, y, v, c] of [
-    [9, 8, 0, "blue"],
-    [17, 7, 1, "cream"],
-    [20, 11, 0, "blue"],
-    [19, 18, 1, "blue"],
-    [13, 20, 0, "cream"],
-    [8, 17, 1, "cream"],
-    [10, 11, 0, "cream"],
-    [16, 20, 0, "blue"],
+    [8, 7, 0, "blue"],
+    [13, 5, 1, "cream"],
+    [18, 6, 0, "blue"],
+    [21, 9, 1, "cream"],
+    [6, 12, 1, "blue"],
+    [22, 14, 0, "cream"],
+    [7, 17, 0, "cream"],
+    [21, 19, 1, "blue"],
+    [10, 21, 1, "blue"],
+    [17, 22, 0, "cream"],
+    [13, 9, 0, "cream"],
+    [16, 8, 1, "blue"],
+    [9, 11, 1, "cream"],
+    [19, 12, 0, "blue"],
+    [10, 19, 0, "cream"],
+    [18, 19, 1, "cream"],
   ] as const)
     // prettier-ignore
     p.bar(x, y, 2, v === 1, c);
-  p.bar(8, 12, 3, true, "cream");
   return p;
 }
 
@@ -487,38 +506,50 @@ function paintCone(): Painter {
   p.board(["lilac1", "lilac2", "lilac3"], 2.4);
   p.cloud(6.2, 21.6, 1.1);
   p.cloud(21.8, 22.4, 1.15);
-  // the waffle cone, point down, with a grid of darker bars
+  // A big waffle cone, point down, with a grid of darker bars, topped by a lit scoop of strawberry with a ruffled skirt and a cherry.
   p.paint(
-    (x, y) => y >= 12 && y <= 25 && Math.abs(x + 0.5 - CX) <= (6.6 * (25.4 - y)) / 11.4 + 0.5,
+    (x, y) => y >= 15 && y <= 26 && Math.abs(x + 0.5 - CX) <= (8.2 * (26.4 - y)) / 11.4 + 0.5,
     (x, y) => {
-      const lit = (x + 0.5 - CX) / 7;
+      const lit = (x + 0.5 - CX) / 8;
       const base: RunColorKey = lit < -0.3 ? "coneLight" : lit < 0.35 ? "cone" : "coneDark";
       return ((x - y + 40) >> 1) % 2 === 0 ? (base === "coneLight" ? "cone" : "coneDark") : base;
     },
     true,
   );
-  // two scoops of strawberry with a ruffled skirt, lit domes
-  const scoop = disc(CX, 9.6, 5.5);
-  const skirt = ellipse(CX, 13.4, 6.6, 2.0);
+  const scoop = disc(CX, 11.0, 6.7);
+  const skirt = ellipse(CX, 15.4, 8.6, 2.3);
   p.paint(
     (x, y) => scoop(x, y) || skirt(x, y),
     (x, y) => {
       const v = Math.max(
-        dome(x, y, CX, 9.6, 5.5, 5.5) ?? -9,
-        (dome(x, y, CX, 13.4, 6.6, 2.0) ?? -9) - 0.12,
+        dome(x, y, CX, 11.0, 6.7, 6.7) ?? -9,
+        (dome(x, y, CX, 15.4, 8.6, 2.3) ?? -9) - 0.12,
       );
       return pick(v, ["pinkLight", "pink", "pinkDark"], 0.58, 0.24);
     },
     true,
   );
+  // the cherry on top
+  p.paint(
+    (x, y) => ellipse(CX, 4.4, 3.2, 3.0)(x, y),
+    (x, y) => {
+      const v = dome(x, y, CX, 4.4, 3.2, 3.0) ?? 0;
+      return v > 0.82 ? "cream" : "red";
+    },
+    true,
+  );
   p.outline();
+  // sprinkles on the scoop and the skirt
   for (const [x, y, v, c] of [
-    [9, 8, 0, "cream"],
-    [16, 7, 1, "red"],
-    [12, 10, 0, "red"],
-    [17, 11, 0, "cream"],
-    [8, 12, 1, "red"],
-    [13, 13, 0, "cream"],
+    [10, 9, 0, "cream"],
+    [16, 9, 1, "red"],
+    [12, 11, 0, "red"],
+    [18, 12, 0, "cream"],
+    [8, 13, 1, "red"],
+    [14, 14, 0, "cream"],
+    [11, 16, 0, "red"],
+    [17, 16, 0, "cream"],
+    [20, 14, 1, "red"],
   ] as const)
     // prettier-ignore
     p.bar(x, y, 2, v === 1, c);
