@@ -499,7 +499,7 @@ export function Shop({
                 // Restaurant Ingredients: a shorter banner so the Plan ahead panel is on
                 // screen (audit 2026-10-08: it sat below the fold).
                 className={cn(
-                  "block w-full object-cover object-top land:!h-[72px] land:object-[center_35%]",
+                  "block w-full object-cover object-top land:!h-[72px] land:object-[center_35%] land:[@media(min-height:520px)]:!h-[168px] land:[@media(min-height:520px)]:object-[center_20%]",
                   RESTAURANT_MODE && category === "ingredients" ? "h-[96px]" : "h-[168px]",
                 )}
               />

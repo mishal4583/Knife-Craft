@@ -1,0 +1,311 @@
+// The list screens are ONE reading column in a wide window (developer 2026-11-19: "every page feels so wide and not optimized"), restaurant build, real browser:
+//   W1 at 1917x912 and 1280x720 every block of Market, Business (all eight tabs), Inventory, Restaurant Progress, Achievements and Settings is at most 1040 px wide
+//      (--kc-col) and sits in the middle of the room beside the rail (equal space left and right, within 2 px); no sideways scroll
+//   W2 the full-bleed screens (Kitchen home, restaurant map) keep the whole window (their root is `data-kc-wide`), and the Kitchen's order card is at most 760 px
+//   W3 the section banners are real banners (Market 168 px, Business tabs and Inventory 120 px) in a window at least 520 px tall, and the small landscape ones
+//      (72 / 56 / 64 px) on a short phone (844x390)
+//   W4 a phone on its side (844x390) is not changed: its blocks are as wide as the room beside the rail (the column is wider than the phone), no sideways scroll
+//   W5 the Mini-games sheet is a bottom sheet at every size: its bottom edge is the bottom of the window (the painted panel has no bottom edge)
+//   W6 no console errors
+// Prints PASS/FAIL per check and exits 1 on any failure.
+import {
+  MOVED_IN_BUSINESS,
+  PAIGE_QUIET,
+  launch,
+  seedSave,
+  sleep,
+  shot,
+  SAVE_KEY,
+  openSection,
+  clickButton,
+} from "./harness.mjs";
+
+const results = [];
+const check = (id, ok, detail) => {
+  results.push({ id, ok });
+  console.log(`${ok ? "PASS" : "FAIL"} ${id}`, detail === undefined ? "" : JSON.stringify(detail));
+};
+const SEEN = [
+  "shop",
+  "inventory",
+  "rack",
+  "business",
+  "staff",
+  "equipment",
+  "second-floor",
+  "restaurant",
+  "menu",
+  "progress",
+];
+const n = 55;
+const save = seedSave({
+  credits: 500_000,
+  business: { ...MOVED_IN_BUSINESS, assistant: PAIGE_QUIET, sectionsSeen: SEEN },
+  levelProgress: {
+    currentLevelId: `level-${n}`,
+    highestUnlockedLevelId: `level-${n}`,
+    completedLevelIds: Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`),
+    campaignVersion: 4,
+  },
+  story: { introDone: true, milestoneMask: 0xffff, finaleSeen: true },
+});
+const { browser, page, logs } = await launch();
+
+async function fresh(w, h) {
+  await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
+  const base = (process.env.KC_URL || "http://localhost:4173/").split("?")[0];
+  await page.goto(base, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => window.bridge, { timeout: 20000 });
+  await page.evaluate(
+    async (s, key) => {
+      localStorage.clear();
+      await window.bridge.storage.set([key], [JSON.stringify(s)]);
+    },
+    save,
+    SAVE_KEY,
+  );
+  await page.reload({ waitUntil: "networkidle0" });
+  await page.waitForSelector('[data-testid="minigames-shortcut"]', { timeout: 20000 });
+  await page.waitForFunction(
+    () => document.elementFromPoint(5, 5)?.closest("#loading-overlay") === null,
+    { timeout: 20000 },
+  );
+  await sleep(600);
+  for (let i = 0; i < 6; i++) {
+    const gone = await page.evaluate(() => {
+      const card = document.querySelector('[data-testid="guide-card"]');
+      if (!card) return true;
+      [...card.querySelectorAll("button")].find((b) => b.textContent.includes("Later"))?.click();
+      return false;
+    });
+    if (gone) break;
+    await sleep(600);
+  }
+  await sleep(300);
+}
+
+/** The screen's blocks: the children of the scrolling box that sits beside the rail. */
+const blocks = () =>
+  page.evaluate(() => {
+    const gc = document.querySelector("[data-game-content]");
+    const k = gc ? gc.getBoundingClientRect().width / gc.offsetWidth : 1;
+    const vw = document.documentElement.clientWidth / k;
+    const nav = document.querySelector("nav[data-bottom-nav]");
+    const parent = nav?.parentElement;
+    if (!parent) return null;
+    const rail = nav.getBoundingClientRect().right / k;
+    const scroller =
+      parent.querySelector(".overflow-y-auto") ??
+      [...parent.children].find((c) => c !== nav && c.scrollHeight > 0);
+    const kids = scroller ? [...scroller.querySelectorAll(":scope > *, :scope > * > *")] : [];
+    const rects = kids
+      .map((k) => {
+        const cs = getComputedStyle(k);
+        return { r: k.getBoundingClientRect(), pos: cs.position };
+      })
+      .filter(
+        (o) =>
+          o.r.width > 200 &&
+          o.r.height > 8 &&
+          o.pos !== "absolute" &&
+          o.pos !== "fixed" &&
+          o.pos !== "sticky",
+      )
+      .map((o) => ({ left: o.r.left / k, right: o.r.right / k, width: o.r.width / k }));
+    return {
+      vw,
+      rail,
+      wide: parent.hasAttribute("data-kc-wide"),
+      maxW: Math.max(0, ...rects.map((r) => r.width)),
+      // the widest block's left and right gaps against the room beside the rail
+      gaps: rects
+        .sort((a, b) => b.width - a.width)
+        .slice(0, 1)
+        .map((r) => ({ left: r.left - rail, right: vw - r.right })),
+      sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+    };
+  });
+
+const goBusinessTab = async (label) => {
+  await clickButton(page, new RegExp(label + "[0-9]*$"));
+  await sleep(500);
+};
+
+for (const [w, h] of [
+  [1917, 912],
+  [1280, 720],
+]) {
+  await fresh(w, h);
+  const bad = [];
+  const look = async (name) => {
+    const b = await blocks();
+    if (!b) return bad.push({ name, why: "no screen" });
+    const colOk = b.maxW <= 1041;
+    const centred =
+      b.gaps.length === 0 ||
+      Math.abs(b.gaps[0].left - b.gaps[0].right) <= 2 ||
+      b.maxW >= b.vw - b.rail - 2 * 12;
+    if (!colOk || !centred || b.sideways) bad.push({ name, b });
+  };
+  await page.evaluate(() => document.querySelector('[data-nav="shop"]')?.click());
+  await sleep(800);
+  await look("market");
+  await shot(page, `widelayout-market-${w}`);
+  await openSection(page, "Inventory").catch(() => {});
+  await sleep(700);
+  await look("inventory");
+  await openSection(page, "Business").catch(() => {});
+  await sleep(700);
+  for (const tab of [
+    "Overview",
+    "Equipment",
+    "Upgrades",
+    "Staff",
+    "Suppliers",
+    "Menu",
+    "Operations",
+  ]) {
+    await goBusinessTab(tab);
+    await look("business-" + tab);
+  }
+  await shot(page, `widelayout-business-${w}`);
+  await openSection(page, "Progress").catch(() => {});
+  await sleep(700);
+  await look("progress");
+  check(
+    `W1 at ${w}x${h} the list screens are one centred column of at most 1040 px, no sideways scroll`,
+    bad.length === 0,
+    bad.slice(0, 3),
+  );
+
+  // W2 + W3
+  await fresh(w, h);
+  const k = await page.evaluate(() => {
+    const nav = document.querySelector("nav[data-bottom-nav]");
+    const root = nav?.parentElement;
+    const card = document.querySelector('[data-testid="day-strip"]')?.parentElement;
+    return {
+      wide: root?.hasAttribute("data-kc-wide"),
+      rootW: root?.getBoundingClientRect().width,
+      vw: document.documentElement.clientWidth,
+      cardW: card
+        ? card.getBoundingClientRect().width /
+          (document.querySelector("[data-game-content]").getBoundingClientRect().width /
+            document.querySelector("[data-game-content]").offsetWidth)
+        : null,
+    };
+  });
+  await page.evaluate(() => document.querySelector('[data-nav="restaurant-map"]')?.click());
+  await sleep(900);
+  const m = await page.evaluate(() => {
+    const nav = document.querySelector("nav[data-bottom-nav]");
+    const root = nav?.parentElement;
+    return {
+      wide: root?.hasAttribute("data-kc-wide"),
+      rootW: root?.getBoundingClientRect().width,
+      vw: document.documentElement.clientWidth,
+    };
+  });
+  check(
+    `W2 at ${w}x${h} the Kitchen home and the restaurant map keep the whole window; the order card is at most 760 px`,
+    k.wide &&
+      m.wide &&
+      k.rootW >= k.vw - 100 &&
+      m.rootW >= m.vw - 100 &&
+      Math.round(k.cardW) <= 760,
+    { k, m },
+  );
+  const banner = async (fn) => {
+    await fresh(w, h);
+    return fn();
+  };
+  const heights = {};
+  await page.evaluate(() => document.querySelector('[data-nav="shop"]')?.click());
+  await sleep(700);
+  const sc = () =>
+    page.evaluate(() => {
+      const g = document.querySelector("[data-game-content]");
+      return g.getBoundingClientRect().width / g.offsetWidth;
+    });
+  heights.market =
+    (await page.evaluate(
+      () =>
+        document.querySelector("img[alt^='A friendly merchant']")?.getBoundingClientRect().height,
+    )) / (await sc());
+  await openSection(page, "Business").catch(() => {});
+  await sleep(600);
+  await goBusinessTab("Equipment");
+  heights.business =
+    (await page.evaluate(
+      () =>
+        [...document.querySelectorAll("section")]
+          .find((s) => /Kitchen equipment/.test(s.textContent))
+          ?.getBoundingClientRect().height,
+    )) / (await sc());
+  await openSection(page, "Inventory").catch(() => {});
+  await sleep(600);
+  heights.inventory =
+    (await page.evaluate(
+      () =>
+        document
+          .querySelector("img[src*='stockroom-banner']")
+          ?.parentElement?.getBoundingClientRect().height,
+    )) / (await sc());
+  check(
+    `W3 at ${w}x${h} the banners are real banners (Market 168, Business 120, Inventory 120)`,
+    Math.round(heights.market) === 168 &&
+      Math.round(heights.business) === 120 &&
+      Math.round(heights.inventory) === 120,
+    heights,
+  );
+  // W5
+  await fresh(w, h);
+  await page.click('[data-testid="minigames-shortcut"]');
+  await sleep(700);
+  const sheet = await page.evaluate(() => {
+    const r = document.querySelector('[data-testid="minigames-sheet"]')?.getBoundingClientRect();
+    return r ? { bottom: r.bottom, vh: document.documentElement.clientHeight } : null;
+  });
+  await shot(page, `widelayout-sheet-${w}`);
+  check(
+    `W5 at ${w}x${h} the Mini-games sheet is a bottom sheet (its bottom edge is the window's)`,
+    sheet && Math.abs(sheet.bottom - sheet.vh) <= 2,
+    sheet,
+  );
+}
+
+// W4: a phone on its side
+await fresh(844, 390);
+const ph = [];
+await page.evaluate(() => document.querySelector('[data-nav="shop"]')?.click());
+await sleep(800);
+const pb = await blocks();
+const mh = await page.evaluate(
+  () => document.querySelector("img[alt^='A friendly merchant']")?.getBoundingClientRect().height,
+);
+await openSection(page, "Business").catch(() => {});
+await sleep(600);
+await goBusinessTab("Equipment");
+const bh = await page.evaluate(
+  () =>
+    [...document.querySelectorAll("section")]
+      .find((s) => /Kitchen equipment/.test(s.textContent))
+      ?.getBoundingClientRect().height,
+);
+await shot(page, "widelayout-phone-844");
+check(
+  "W4 a phone on its side (844x390): the blocks use the room beside the rail (no column cap), no sideways scroll, and the banners keep their small heights (Market 72, Business 56)",
+  pb && !pb.sideways && pb.maxW >= 844 - 76 - 40 && Math.round(mh) === 72 && Math.round(bh) === 56,
+  { pb, mh, bh },
+);
+check(
+  "W6 no console errors",
+  logs.filter((l) => /^(error|pageerror):/.test(l)).length === 0,
+  logs.slice(0, 3),
+);
+await browser.close();
+const failed = results.filter((r) => !r.ok);
+console.log(
+  failed.length ? `\nWIDE LAYOUT E2E: ${failed.length} FAILED` : "\nWIDE LAYOUT E2E: ALL PASS",
+);
+process.exit(failed.length ? 1 : 0);

@@ -977,7 +977,7 @@ export function SecondFloorView({
 
       {!open && firstGuide ? (
         <div
-          className="absolute bottom-[88px] left-2 right-2 z-20 rounded-2xl border-2 border-copper/50 bg-ivory/95 p-3 shadow-lg"
+          className="absolute bottom-[88px] left-2 right-2 z-20 rounded-2xl border-2 border-copper/50 bg-ivory/95 p-3 shadow-lg land:bottom-3 land:left-1/2 land:right-auto land:w-[min(760px,calc(100%-24px))] land:-translate-x-1/2"
           data-testid="floor-first-machine"
           data-stage={firstGuide.stage}
         >

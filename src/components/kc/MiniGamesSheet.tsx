@@ -68,10 +68,11 @@ export function MiniGamesSheet({
 
   return (
     <div
-      className="absolute inset-0 z-40 flex items-end justify-center bg-walnut-dark/60 backdrop-blur-[2px] land:items-center"
+      className="absolute inset-0 z-40 flex items-end justify-center bg-walnut-dark/60 backdrop-blur-[2px]"
       onClick={onClose}
       data-testid="minigames-backdrop"
     >
+      {/* The painted panel (sheet-panel.webp) has NO bottom edge: it is a bottom sheet. It stays one at every size (landscape included, developer 2026-11-19), flush with the bottom of the window, never a floating card with an open bottom. */}
       <section
         ref={sheetRef}
         role="dialog"
@@ -81,10 +82,10 @@ export function MiniGamesSheet({
         data-art={panel ? "1" : "0"}
         onClick={(e) => e.stopPropagation()}
         className={cn(
-          "anim-up relative flex max-h-[90%] w-full max-w-[560px] flex-col rounded-t-[26px] px-4 pb-3 shadow-[0_-8px_28px_rgba(34,18,8,0.45)] land:max-h-[96%] land:max-w-[780px] land:rounded-[26px]",
+          "anim-up relative flex max-h-[90%] w-full max-w-[560px] flex-col rounded-t-[26px] px-4 pb-3 shadow-[0_-8px_28px_rgba(34,18,8,0.45)] land:max-h-[92%] land:max-w-[780px]",
           panel
             ? "pt-[18px] land:pt-[14px]"
-            : "border border-b-0 border-[#f3d9a9] bg-[linear-gradient(160deg,#fff9e9_0%,#fff0d0_55%,#f6dfb5_100%)] pt-3 land:border-b",
+            : "border border-b-0 border-[#f3d9a9] bg-[linear-gradient(160deg,#fff9e9_0%,#fff0d0_55%,#f6dfb5_100%)] pt-3",
         )}
       >
         {panel ? (

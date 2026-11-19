@@ -110,7 +110,7 @@ export function BusinessRefrigerator({
   return (
     <div className="space-y-3">
       <section
-        className="relative isolate h-[88px] overflow-hidden rounded-[20px] border border-walnut/20 bg-walnut-dark shadow-soft sm:h-[96px] land:!h-[56px]"
+        className="relative isolate h-[88px] overflow-hidden rounded-[20px] border border-walnut/20 bg-walnut-dark shadow-soft sm:h-[96px] land:!h-[56px] land:[@media(min-height:520px)]:!h-[120px]"
         aria-label="Commercial kitchen equipment"
       >
         <img

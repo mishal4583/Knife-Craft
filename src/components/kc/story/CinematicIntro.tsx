@@ -21,6 +21,7 @@ import scene3B from "@/assets/story/intro-3b-repair.webp";
 import scene3C from "@/assets/story/intro-3c-restore.webp";
 import scene4 from "@/assets/story/intro-4-chef.webp";
 import scene5 from "@/assets/story/intro-5-first-order.webp";
+import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
 
 /**
  * CINEMATIC_INTRO — plays the opening film (introCinematic.ts) over the
@@ -217,6 +218,8 @@ export function CinematicIntro({ onDone }: { onDone: (reason: StoryEndReason) =>
       }
       onClick={onTap}
     >
+      {/* The story scenes are painted only as portrait pictures: in a wide window the intro keeps its original 9:16 size (developer 2026-11-19; landscape versions: docs/planning/LANDSCAPE-PART3-STORY-LOADING-SECONDFLOOR-CODEX-PROMPTS-2026-11-19.md). */}
+      <PortraitOnly />
       {layers.map((i) => (
         <CinematicImage
           key={INTRO_SCENES[i]!.id}

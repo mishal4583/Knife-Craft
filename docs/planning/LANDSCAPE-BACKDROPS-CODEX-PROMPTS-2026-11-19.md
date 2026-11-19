@@ -126,6 +126,137 @@ patches of old brick, a lamp, a shelf with a copper pot, jars and ivy, a wooden 
 pans and jars, a window with soft light, a hanging herb bunch, the counter continuing. The centre column stays calm (the game draws the fridge there).
 ```
 
+## Part 2: the six Kitchen home pictures and the six Restaurant map surroundings
+
+Add to the reference table: `reference\backdrop-kitchen-01-humble.png` to `-06-grand.png` (the six Kitchen home pictures, 810 x 1440, from `src\assets\kitchen\skin-01.webp` to `skin-06.webp`), `reference\map-restaurant-01-humble.png` to `-06-grand.png` (the six restaurant maps, 864 x 1296, from `public\restaurant-map\kitchen-upgrade-map-<stage>.webp`), and the two looks to match: `reference\look-kitchen-landscape.png` and `reference\look-restaurant-dining-landscape.png`. Send the six of a set in ONE conversation so the progression from humble to grand stays consistent.
+
+### 11. `LS-kitchen-01-humble.png` (Kitchen home, Humble Kitchen)
+```
+Extend the attached Kitchen picture `backdrop-kitchen-01-humble.png` (Humble Kitchen: bare, worn and simple: plain tools, little decor, plain wood, a few plants). Same rule as above: the portrait picture stays unchanged in the centre column (x 656 to 1264); paint the SAME kitchen
+continuing left and right at the SAME level of richness (do not make a humble kitchen fancy or a grand one bare). Left and right: more of the same room, in the same style as the attached
+landscape kitchen `look-kitchen-landscape.png` (window light and plants on one side, a dining room glimpsed through an arch on the other, more shelves, jars, baskets, a stove and counter that
+continue along the bottom). The game puts a ranking card and a gift card at the top left, a wallet and four round buttons at the top right and a wide order card along the bottom: keep the top
+and bottom 14 % calmer, with no important detail.
+```
+
+### 12. `LS-kitchen-02-growing.png` (Kitchen home, Growing Kitchen)
+```
+Extend the attached Kitchen picture `backdrop-kitchen-02-growing.png` (Growing Kitchen: a little more equipment and cheer). Same rule as above: the portrait picture stays unchanged in the centre column (x 656 to 1264); paint the SAME kitchen
+continuing left and right at the SAME level of richness (do not make a humble kitchen fancy or a grand one bare). Left and right: more of the same room, in the same style as the attached
+landscape kitchen `look-kitchen-landscape.png` (window light and plants on one side, a dining room glimpsed through an arch on the other, more shelves, jars, baskets, a stove and counter that
+continue along the bottom). The game puts a ranking card and a gift card at the top left, a wallet and four round buttons at the top right and a wide order card along the bottom: keep the top
+and bottom 14 % calmer, with no important detail.
+```
+
+### 13. `LS-kitchen-03-established.png` (Kitchen home, Established Kitchen)
+```
+Extend the attached Kitchen picture `backdrop-kitchen-03-established.png` (Established Kitchen: a well-equipped working kitchen with a pot rack and a knife strip). Same rule as above: the portrait picture stays unchanged in the centre column (x 656 to 1264); paint the SAME kitchen
+continuing left and right at the SAME level of richness (do not make a humble kitchen fancy or a grand one bare). Left and right: more of the same room, in the same style as the attached
+landscape kitchen `look-kitchen-landscape.png` (window light and plants on one side, a dining room glimpsed through an arch on the other, more shelves, jars, baskets, a stove and counter that
+continue along the bottom). The game puts a ranking card and a gift card at the top left, a wallet and four round buttons at the top right and a wide order card along the bottom: keep the top
+and bottom 14 % calmer, with no important detail.
+```
+
+### 14. `LS-kitchen-04-neighborhood-cafe.png` (Kitchen home, Neighborhood Cafe)
+```
+Extend the attached Kitchen picture `backdrop-kitchen-04-neighborhood-cafe.png` (Neighborhood Cafe: a warm cafe kitchen, more copper, more shelves, more food on display). Same rule as above: the portrait picture stays unchanged in the centre column (x 656 to 1264); paint the SAME kitchen
+continuing left and right at the SAME level of richness (do not make a humble kitchen fancy or a grand one bare). Left and right: more of the same room, in the same style as the attached
+landscape kitchen `look-kitchen-landscape.png` (window light and plants on one side, a dining room glimpsed through an arch on the other, more shelves, jars, baskets, a stove and counter that
+continue along the bottom). The game puts a ranking card and a gift card at the top left, a wallet and four round buttons at the top right and a wide order card along the bottom: keep the top
+and bottom 14 % calmer, with no important detail.
+```
+
+### 15. `LS-kitchen-05-flourishing-cafe.png` (Kitchen home, Flourishing Cafe)
+```
+Extend the attached Kitchen picture `backdrop-kitchen-05-flourishing-cafe.png` (Flourishing Cafe: rich and busy, abundant produce and cookware, brass and lanterns). Same rule as above: the portrait picture stays unchanged in the centre column (x 656 to 1264); paint the SAME kitchen
+continuing left and right at the SAME level of richness (do not make a humble kitchen fancy or a grand one bare). Left and right: more of the same room, in the same style as the attached
+landscape kitchen `look-kitchen-landscape.png` (window light and plants on one side, a dining room glimpsed through an arch on the other, more shelves, jars, baskets, a stove and counter that
+continue along the bottom). The game puts a ranking card and a gift card at the top left, a wallet and four round buttons at the top right and a wide order card along the bottom: keep the top
+and bottom 14 % calmer, with no important detail.
+```
+
+### 16. `LS-kitchen-06-grand.png` (Kitchen home, Grand Kitchen)
+```
+Extend the attached Kitchen picture `backdrop-kitchen-06-grand.png` (Grand Kitchen: the most lavish: gleaming copper, a full pot rack, abundant food, many lamps). Same rule as above: the portrait picture stays unchanged in the centre column (x 656 to 1264); paint the SAME kitchen
+continuing left and right at the SAME level of richness (do not make a humble kitchen fancy or a grand one bare). Left and right: more of the same room, in the same style as the attached
+landscape kitchen `look-kitchen-landscape.png` (window light and plants on one side, a dining room glimpsed through an arch on the other, more shelves, jars, baskets, a stove and counter that
+continue along the bottom). The game puts a ranking card and a gift card at the top left, a wallet and four round buttons at the top right and a wide order card along the bottom: keep the top
+and bottom 14 % calmer, with no important detail.
+```
+
+### 17. `LS-restaurant-01-humble.png` (Restaurant map, Humble Kitchen)
+```
+RESTAURANT MAP VARIANT OF THE RULE: the attached picture `map-restaurant-01-humble.png` (864 x 1296) is a top-down map of the whole restaurant. Place it in the exact middle of the canvas, scaled uniformly
+to 1080 pixels tall, so it is 720 pixels wide and covers x = 600 to x = 1320. KEEP THAT COLUMN PIXEL-FOR-PIXEL THE SAME: every room, table, person, light and label position unchanged (the game
+puts tap areas on it). Paint the dining room of the Humble Kitchen stage continuing left and right of it (x 0 to 600 and x 1320 to 1920), seen from above at an angle like the attached
+`look-restaurant-dining-landscape.png`: tables and chairs, plants, a window wall with soft daylight, floor tiles and rugs, lamps; at the SAME level of richness as this stage's map (bare, worn and simple: plain tools, little decor, plain wood, a few plants).
+No people, no text, no copy or mirror of the map. Seams invisible; the top and bottom 14 % calm (buttons and a card sit there).
+```
+
+### 18. `LS-restaurant-02-growing.png` (Restaurant map, Growing Kitchen)
+```
+RESTAURANT MAP VARIANT OF THE RULE: the attached picture `map-restaurant-02-growing.png` (864 x 1296) is a top-down map of the whole restaurant. Place it in the exact middle of the canvas, scaled uniformly
+to 1080 pixels tall, so it is 720 pixels wide and covers x = 600 to x = 1320. KEEP THAT COLUMN PIXEL-FOR-PIXEL THE SAME: every room, table, person, light and label position unchanged (the game
+puts tap areas on it). Paint the dining room of the Growing Kitchen stage continuing left and right of it (x 0 to 600 and x 1320 to 1920), seen from above at an angle like the attached
+`look-restaurant-dining-landscape.png`: tables and chairs, plants, a window wall with soft daylight, floor tiles and rugs, lamps; at the SAME level of richness as this stage's map (a little more equipment and cheer).
+No people, no text, no copy or mirror of the map. Seams invisible; the top and bottom 14 % calm (buttons and a card sit there).
+```
+
+### 19. `LS-restaurant-03-established.png` (Restaurant map, Established Kitchen)
+```
+RESTAURANT MAP VARIANT OF THE RULE: the attached picture `map-restaurant-03-established.png` (864 x 1296) is a top-down map of the whole restaurant. Place it in the exact middle of the canvas, scaled uniformly
+to 1080 pixels tall, so it is 720 pixels wide and covers x = 600 to x = 1320. KEEP THAT COLUMN PIXEL-FOR-PIXEL THE SAME: every room, table, person, light and label position unchanged (the game
+puts tap areas on it). Paint the dining room of the Established Kitchen stage continuing left and right of it (x 0 to 600 and x 1320 to 1920), seen from above at an angle like the attached
+`look-restaurant-dining-landscape.png`: tables and chairs, plants, a window wall with soft daylight, floor tiles and rugs, lamps; at the SAME level of richness as this stage's map (a well-equipped working kitchen with a pot rack and a knife strip).
+No people, no text, no copy or mirror of the map. Seams invisible; the top and bottom 14 % calm (buttons and a card sit there).
+```
+
+### 20. `LS-restaurant-04-neighborhood-cafe.png` (Restaurant map, Neighborhood Cafe)
+```
+RESTAURANT MAP VARIANT OF THE RULE: the attached picture `map-restaurant-04-neighborhood-cafe.png` (864 x 1296) is a top-down map of the whole restaurant. Place it in the exact middle of the canvas, scaled uniformly
+to 1080 pixels tall, so it is 720 pixels wide and covers x = 600 to x = 1320. KEEP THAT COLUMN PIXEL-FOR-PIXEL THE SAME: every room, table, person, light and label position unchanged (the game
+puts tap areas on it). Paint the dining room of the Neighborhood Cafe stage continuing left and right of it (x 0 to 600 and x 1320 to 1920), seen from above at an angle like the attached
+`look-restaurant-dining-landscape.png`: tables and chairs, plants, a window wall with soft daylight, floor tiles and rugs, lamps; at the SAME level of richness as this stage's map (a warm cafe kitchen, more copper, more shelves, more food on display).
+No people, no text, no copy or mirror of the map. Seams invisible; the top and bottom 14 % calm (buttons and a card sit there).
+```
+
+### 21. `LS-restaurant-05-flourishing-cafe.png` (Restaurant map, Flourishing Cafe)
+```
+RESTAURANT MAP VARIANT OF THE RULE: the attached picture `map-restaurant-05-flourishing-cafe.png` (864 x 1296) is a top-down map of the whole restaurant. Place it in the exact middle of the canvas, scaled uniformly
+to 1080 pixels tall, so it is 720 pixels wide and covers x = 600 to x = 1320. KEEP THAT COLUMN PIXEL-FOR-PIXEL THE SAME: every room, table, person, light and label position unchanged (the game
+puts tap areas on it). Paint the dining room of the Flourishing Cafe stage continuing left and right of it (x 0 to 600 and x 1320 to 1920), seen from above at an angle like the attached
+`look-restaurant-dining-landscape.png`: tables and chairs, plants, a window wall with soft daylight, floor tiles and rugs, lamps; at the SAME level of richness as this stage's map (rich and busy, abundant produce and cookware, brass and lanterns).
+No people, no text, no copy or mirror of the map. Seams invisible; the top and bottom 14 % calm (buttons and a card sit there).
+```
+
+### 22. `LS-restaurant-06-grand.png` (Restaurant map, Grand Kitchen)
+```
+RESTAURANT MAP VARIANT OF THE RULE: the attached picture `map-restaurant-06-grand.png` (864 x 1296) is a top-down map of the whole restaurant. Place it in the exact middle of the canvas, scaled uniformly
+to 1080 pixels tall, so it is 720 pixels wide and covers x = 600 to x = 1320. KEEP THAT COLUMN PIXEL-FOR-PIXEL THE SAME: every room, table, person, light and label position unchanged (the game
+puts tap areas on it). Paint the dining room of the Grand Kitchen stage continuing left and right of it (x 0 to 600 and x 1320 to 1920), seen from above at an angle like the attached
+`look-restaurant-dining-landscape.png`: tables and chairs, plants, a window wall with soft daylight, floor tiles and rugs, lamps; at the SAME level of richness as this stage's map (the most lavish: gleaming copper, a full pot rack, abundant food, many lamps).
+No people, no text, no copy or mirror of the map. Seams invisible; the top and bottom 14 % calm (buttons and a card sit there).
+```
+
+## Part 3: the audit of every other screen (2026-11-19): what else needs a landscape picture
+
+**Needs NEW pictures (below): the 7 intro story scenes, the loading screen, the Second Floor (9 pictures).**
+
+**Reuses pictures from Part 2, no extra art:**
+- The **cutting scene** draws the same six Kitchen pictures as its backdrop (`Preparation` `kitchenArt`, 810 x 1440 cropped wide today): the six `LS-kitchen-*` pictures serve it too.
+- The **service floor** (the dining-room view when a guest arrives or is served) can show the six `LS-restaurant-*` pictures dimmed behind its view instead of the blurred crop.
+
+**Needs nothing:** every list screen (Market, Business, Inventory, Progress, Settings and so on: no full-screen picture), Prep Rush (drawn in code), the Restoration reveal (a small card), the people
+and Paige cutouts (objects, not rooms), the section banners (cropped bars), the 18 cleaning rooms (they already have landscape art).
+
+**Cannot be fixed with a picture:** the six cooking-clip videos and the oven bread film are portrait VIDEOS; they keep playing at their own shape in the middle of the window over the kitchen picture.
+A landscape version would have to be a new video, which is outside what Codex makes here.
+
+Reference PNGs for this part, in `reference\`: `backdrop-story-1-key.png`, `-2-kitchen`, `-3a-clean`, `-3b-repair`, `-3c-restore`, `-4-chef`, `-5-first-order` (941 x 1672 each, from `src\assets\story\intro-*.webp`),
+`backdrop-loading-screen.png` (576 x 1024, from `public\loading\bg.webp`) and `map-second-floor.png` (864 x 1535, from `public\restaurant-map\second-floor.webp`).
+
+**The nine Part 3 prompts are in their own file, ready to paste:** `docs/planning/LANDSCAPE-PART3-STORY-LOADING-SECONDFLOOR-CODEX-PROMPTS-2026-11-19.md`.
+
 ## Checklist (run it on EVERY picture before moving on)
 
 1. The file name is exact, the size is exactly 1920 x 1080, opaque PNG.

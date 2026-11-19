@@ -89,6 +89,14 @@ import {
   popularityStars,
   restaurantProgress,
 } from "@/game/progression/restaurantProgress";
+import { landscapeSectionArt } from "@/game/landscapeArt";
+import { useLandscape } from "@/components/kc/game/layoutMode";
+
+/** The Business hero's picture: the 16:9 restaurant painting in landscape (the 1080 x 608 overview picture is blurred and soft when stretched over a wide card). */
+const overviewArt = (landscape: boolean): string =>
+  landscape
+    ? landscapeSectionArt("restaurant")
+    : `${import.meta.env.BASE_URL}business/business-overview.webp`;
 
 export type AdvanceDayResult = {
   spoiledQuantity: number;
@@ -538,10 +546,11 @@ function RestaurantHealth({
   needsAttention: number;
   onAttention: () => void;
 }) {
+  const landscape = useLandscape();
   return (
     <div className="relative isolate min-h-[190px] overflow-hidden rounded-[26px] border border-walnut-dark/50 bg-walnut-dark shadow-lift">
       <img
-        src={`${import.meta.env.BASE_URL}business/business-overview.webp`}
+        src={overviewArt(landscape)}
         alt=""
         aria-hidden="true"
         className="absolute inset-0 h-full w-full select-none object-cover object-center"
@@ -856,6 +865,7 @@ function MoneyBreakdown({ pnl }: { pnl: DailyPnL }) {
  */
 /** The campaign restaurant's day: its services (done / to come) and the money it has made since it opened. */
 function CampaignDayCard({ save, go }: { save: SaveData; go: (s: ScreenId) => void }) {
+  const landscape = useLandscape();
   const d = restaurantDayOf(save);
   const next = restaurantLevelOf(save.levelProgress);
   const services = todaysServices(save, next);
@@ -866,7 +876,7 @@ function CampaignDayCard({ save, go }: { save: SaveData; go: (s: ScreenId) => vo
       data-testid="campaign-day"
     >
       <img
-        src={`${import.meta.env.BASE_URL}business/business-overview.webp`}
+        src={overviewArt(landscape)}
         alt=""
         aria-hidden="true"
         className="absolute inset-0 h-full w-full select-none object-cover object-center"

@@ -318,7 +318,7 @@ export function Kitchen({
   );
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-cream">
+    <div data-kc-wide className="relative h-full w-full overflow-hidden bg-cream">
       <KitchenBackground skin={equippedUpgrade.asset} />
       {/* The day clock (restaurant build): the light of the next service's time of day,
           night at closing — an opacity-only tint over the same art (dayClock.ts). */}
@@ -592,7 +592,7 @@ export function Kitchen({
 
       {/* Today's Order — collapsed by default so it keeps the kitchen visible;
           details and the order board expand on demand. */}
-      <div className="absolute inset-x-0 bottom-[104px] z-20 px-6 land:bottom-3 land:left-4 land:right-[84px] land:mx-auto land:max-w-[640px] land:px-0">
+      <div className="absolute inset-x-0 bottom-[104px] z-20 px-6 land:bottom-3 land:left-[92px] land:right-[92px] land:!mx-auto land:!max-w-[760px] land:px-0">
         {clock ? (
           <p
             data-testid="day-strip"

@@ -113,6 +113,7 @@ function check(id: string, ok: unknown) {
     "src/components/kc/sauce/SauceStationGame.tsx",
     "src/components/kc/restaurant/FridgeCheckGame.tsx",
     "src/components/kc/restaurant/WashUpSink.tsx",
+    "src/components/kc/story/CinematicIntro.tsx",
   ];
   const landscapeOk = [
     "src/components/kc/Kitchen.tsx",
@@ -124,10 +125,36 @@ function check(id: string, ok: unknown) {
     "src/components/kc/restaurantMap/RestaurantMapView.tsx",
   ];
   check(
-    "F5 the nine screens with only a portrait painting carry <PortraitOnly />; the screens with landscape art or none do not",
+    "F5 the ten screens with only a portrait painting (nine games and the sink, and the intro) carry <PortraitOnly />; the screens with landscape art or none do not",
     tagged.every((f) => /<PortraitOnly \/>/.test(read(f))) &&
       landscapeOk.every((f) => !/<PortraitOnly \/>/.test(read(f))) &&
       !fs.existsSync(path.join(ROOT, "src/components/kc/game/FloorSides.tsx")),
+  );
+}
+{
+  // RULE CHANGE 2026-11-19 (developer: "every page feels so wide and not optimized"): in landscape the list screens are ONE centred reading column (--kc-col), the
+  // full-bleed screens opt out with `data-kc-wide`, and the section banners are real banners in a window at least 520 px tall.
+  const css = read("src/styles.css");
+  const router = read("src/ScreensRouter.tsx");
+  const kitchen = read("src/components/kc/Kitchen.tsx");
+  check(
+    "F6 landscape list screens are one centred column; the Kitchen home and the maps keep the whole window; the banners and the Mini-games sheet fit a laptop window",
+    /--kc-col: 1040px;/.test(css) &&
+      /:has\(> nav\[data-bottom-nav\]\):not\(\[data-kc-wide\]\)/.test(css) &&
+      /max-width: var\(--kc-col\)/.test(css) &&
+      (router.match(/data-kc-wide/g) ?? []).length === 2 &&
+      /<div data-kc-wide className="relative h-full w-full overflow-hidden bg-cream">/.test(
+        kitchen,
+      ) &&
+      /land:!max-w-\[760px\]/.test(kitchen) &&
+      /land:\[@media\(min-height:520px\)\]:!h-\[120px\]/.test(
+        read("src/components/kc/business/BusinessSectionBanner.tsx"),
+      ) &&
+      /land:\[@media\(min-height:520px\)\]:!h-\[120px\]/.test(
+        read("src/components/kc/business/BusinessRefrigerator.tsx"),
+      ) &&
+      /land:\[@media\(min-height:520px\)\]:!h-\[168px\]/.test(read("src/components/kc/Shop.tsx")) &&
+      !/land:items-center/.test(read("src/components/kc/MiniGamesSheet.tsx").slice(0, 3200)),
   );
 }
 console.log(failures === 0 ? "\nFULL SCREEN QA: ALL PASS" : `\nFULL SCREEN QA: ${failures} FAIL`);

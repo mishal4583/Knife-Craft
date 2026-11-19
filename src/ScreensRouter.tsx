@@ -404,7 +404,7 @@ export function ScreensRouter({
             <ScreenReveal screenKey={screen}>
               {screen === "restaurant-map" ? (
                 <Suspense fallback={<RestaurantLoading go={routeGo} active="restaurant-map" />}>
-                  <div className="relative h-full w-full overflow-hidden bg-[#f7edd7]">
+                  <div data-kc-wide className="relative h-full w-full overflow-hidden bg-[#f7edd7]">
                     <RestaurantMap
                       className="restaurant-map-production"
                       playerLevel={restaurantLevelOf(save.levelProgress)}
@@ -495,7 +495,7 @@ export function ScreensRouter({
               ) : null}
               {screen === "second-floor" ? (
                 <Suspense fallback={<RestaurantLoading go={routeGo} active="restaurant-map" />}>
-                  <div className="relative h-full w-full overflow-hidden bg-[#f7edd7]">
+                  <div data-kc-wide className="relative h-full w-full overflow-hidden bg-[#f7edd7]">
                     <SecondFloorView
                       save={save}
                       playerLevel={restaurantLevelOf(save.levelProgress)}

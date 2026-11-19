@@ -157,7 +157,7 @@ export function KitchenUpgrades({
         </Panel>
       </div>
 
-      <div className={cn("grid grid-cols-2 gap-3 pt-4", !embedded && "px-4")}>
+      <div className={cn("grid grid-cols-2 land:grid-cols-3 gap-3 pt-4", !embedded && "px-4")}>
         {KITCHEN_UPGRADE_CATALOG.map((u) => {
           const uState: KitchenUpgradeState = getKitchenUpgradeState(u.id, save);
           const locked = uState === "locked";

@@ -1512,6 +1512,25 @@ html.kc-reduced-motion .kc-clean-sheen {
   padding-bottom: 1.5rem;
 }
 
+/* ONE READING COLUMN in a wide window (developer 2026-11-19: "every page feels so wide and not optimized"). The list screens (Market, Business, Inventory, Progress,
+   Settings, Recipes ...) are one scrolling box beside the rail; its blocks used to run edge to edge, so on a laptop or a desktop a name sat at the far left and its
+   button 1,500 px away, bars and buttons were as wide as the window, and pictures were stretched. In landscape every block of that box is at most --kc-col wide and
+   centred in the room beside the rail. A phone on its side (under ~850 px) is narrower than the column, so nothing changes there. Floating buttons (More, Map) are
+   absolutely or fixed positioned and are left alone. The full-bleed screens (the Kitchen home, the restaurant map, the Second Floor) mark their root
+   `data-kc-wide`: they are pictures with the controls laid over them, not lists, and keep the whole window. */
+:root {
+  --kc-col: 1040px;
+}
+[data-orient="landscape"]
+  :has(> nav[data-bottom-nav]):not([data-kc-wide])
+  > :not(nav[data-bottom-nav])
+  > :not([class*="absolute"], [class*="fixed"], [class*="sticky"]) {
+  width: 100%;
+  max-width: var(--kc-col);
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* Phone landscape, the cutting (Preparation): the scene is laid out for a
    portrait canvas (PreparationScene sizes the food by the width), so its
    canvas stays portrait — as wide as 0.912 × the height, 20% taller than the
