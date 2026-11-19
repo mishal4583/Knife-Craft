@@ -77,9 +77,6 @@ export function InfoTip({
       if (btn.current?.contains(t) || bubble.current?.contains(t)) return;
       close();
     };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
-    };
     // A scroll moves the bubble with its ⓘ; it closes once the ⓘ leaves the screen.
     const onScroll = () => {
       const r = coin.current?.getBoundingClientRect();
@@ -88,7 +85,6 @@ export function InfoTip({
     };
     window.addEventListener(OPEN_EVENT, onOther);
     document.addEventListener("pointerdown", onDown, true);
-    document.addEventListener("keydown", onKey);
     window.addEventListener("scroll", onScroll, true);
     window.addEventListener("resize", close);
     // Second pass once the bubble's height is known (flip above when needed).
@@ -97,7 +93,6 @@ export function InfoTip({
       cancelAnimationFrame(raf);
       window.removeEventListener(OPEN_EVENT, onOther);
       document.removeEventListener("pointerdown", onDown, true);
-      document.removeEventListener("keydown", onKey);
       window.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("resize", close);
     };

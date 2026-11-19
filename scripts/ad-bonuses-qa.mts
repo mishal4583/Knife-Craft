@@ -350,8 +350,8 @@ check(
   const inter = fn.indexOf("maybeShowInterstitial(");
   const bonus = fn.indexOf('openAdBonus("level_double"');
   check(
-    "E3 at a level's end the interstitial is decided first; the Level bonus is offered only when it didn't show (a declined bonus never costs the break its interstitial)",
-    inter > 0 && bonus > inter && /if \(!interstitial\.show && !wasReplay\)/.test(fn),
+    "E3 at a level's end the interstitial is requested first (the Bridge decides if it shows: Playgama step 7, 2026-11-19); the Level bonus is then offered after it, opt-in",
+    inter > 0 && bonus > inter && /if \(!wasReplay\)/.test(fn) && !/interstitial\.show/.test(fn),
     { inter, bonus },
   );
 }

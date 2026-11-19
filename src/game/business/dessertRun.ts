@@ -74,6 +74,18 @@ export const RUN_TIERS: readonly RunTier[] = [
   { id: 4, fromLevel: 65, lanes: 5, min: 3, spread: 7, narrow: 1 },
 ];
 
+/**
+ * How hard the plates of each tier are, as the careful player's `hardness` (see `ratePlate`: 0 = always won with room to spare, 1 = never won).
+ * Developer 2026-11-19: the windows rise tier by tier, so Level 65 is harder than Level 20 whatever picture it deals. `make-dessert-seeds.mts` keeps
+ * only plates inside the window and `dessert-run-qa` checks the shipped ones against it.
+ */
+export const RUN_HARDNESS: Record<number, readonly [number, number]> = {
+  1: [0, 0.1],
+  2: [0.02, 0.25],
+  3: [0.06, 0.35],
+  4: [0.12, 0.5],
+};
+
 export function runTierForLevel(level: number): RunTier {
   return [...RUN_TIERS].reverse().find((tier) => level >= tier.fromLevel) ?? RUN_TIERS[0]!;
 }
@@ -547,4 +559,69 @@ export function runDeckProblem(state: RunState, tier: RunTier): string | null {
     if (sum !== per[k]) return `colour ${k}: waiters carry ${sum}, the dessert has ${per[k]}`;
   }
   return null;
+}
+
+/* ---------- rating: how hard a plate is for a careful player ---------- */
+
+/**
+ * A careful player (developer 2026-11-19: "ensure and increase the quality of the levels"): whenever a spot is free it taps a random lane whose front
+ * waiter can fetch something right now (a lane with no live front only when none has one). It never plans ahead, so a plate is hard when this
+ * player jams on it. Deterministic for a seed and a `salt`.
+ */
+export function playCareful(state: RunState, salt: number, maxSteps = 200_000) {
+  const rand = makeSeededRand((state.total * 2654435761 + salt * 7919) >>> 0);
+  let steps = 0;
+  while (state.phase === "play" && steps < maxSteps) {
+    if (state.spots.indexOf(null) >= 0 && state.lanes.some((lane) => lane.length > 0)) {
+      const open = state.lanes.map((lane, i) => (lane.length ? i : -1)).filter((i) => i >= 0);
+      const live = open.filter((i) => reachableCells(state, state.lanes[i]![0]!.k).length > 0);
+      const from = live.length ? live : open;
+      tapLane(state, from[Math.floor(rand() * from.length)]!);
+      for (let k = 0; k < 20; k++) {
+        stepRun(state, STEP, 1);
+        steps++;
+      }
+      continue;
+    }
+    stepRun(state, STEP, 1);
+    steps++;
+  }
+  return { won: state.phase === "won", peak: state.peakWaiting, seconds: state.time };
+}
+
+export type PlateRating = {
+  /** Share of careful rounds won, 0..1. */
+  win: number;
+  /** Mean most-waiters-blocked-at-once over the rounds (3 stars need 2 or fewer). */
+  peak: number;
+  /** Share of rounds won with three stars. */
+  stars3: number;
+  /** 0 = every careful round is won with room to spare, 1 = none is. */
+  hardness: number;
+};
+
+/** Plays `bots` careful rounds on a plate and rates it. The same plate always gets the same rating. */
+export function ratePlate(
+  dessertId: DessertId,
+  seed: number,
+  tier: RunTier,
+  bots = 12,
+): PlateRating {
+  let won = 0;
+  let peak = 0;
+  let stars3 = 0;
+  for (let salt = 1; salt <= bots; salt++) {
+    const r = playCareful(makeRun(dessertId, seed, tier), salt);
+    if (r.won) won++;
+    if (r.won && r.peak <= 2) stars3++;
+    peak += r.peak;
+  }
+  const win = won / bots;
+  const meanPeak = peak / bots;
+  return {
+    win,
+    peak: meanPeak,
+    stars3: stars3 / bots,
+    hardness: Math.min(1, 1 - win + Math.max(0, meanPeak - 2.5) * 0.02),
+  };
 }

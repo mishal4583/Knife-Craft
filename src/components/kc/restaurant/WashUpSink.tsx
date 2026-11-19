@@ -878,9 +878,6 @@ export function WashUpSink({
         aria-modal="true"
         role="dialog"
         className="absolute inset-0 text-ivory"
-        onKeyDown={(event) => {
-          if (event.key === "Escape") onClose();
-        }}
       >
         {/* the whole screen is the sink: the painted portrait picture when it exists, a dark-wood backdrop otherwise */}
         {hasBackdrop ? (

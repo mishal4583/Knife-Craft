@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { SaveData } from "@/game/SaveManager";
 import { InfoTip } from "@/components/kc/common/InfoTip";
+import { StageSides } from "@/components/kc/common/StageSides";
 import { TurnUprightCard } from "@/components/kc/common/TurnUprightCard";
 import { useTurnUpright } from "@/components/kc/common/useTurnUpright";
 import { dessertRunFor } from "@/game/business/dessertRunContent";
@@ -53,7 +54,6 @@ export function DessertRunGame({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<RunState | null>(null);
   const viewRef = useRef({
-    peek: null as number | null,
     hoverLane: null as number | null,
     pressedLane: null as number | null,
     hintOn: true,
@@ -73,7 +73,6 @@ export function DessertRunGame({
     const state = makeRun(pick.dessertId, pick.seed, pick.tier);
     stateRef.current = state;
     const view = viewRef.current;
-    view.peek = null;
     view.hoverLane = null;
     view.pressedLane = null;
     view.hintOn = true;
@@ -134,7 +133,6 @@ export function DessertRunGame({
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         const drawView: DrawView = {
           now,
-          peek: view.peek,
           hoverLane: view.hoverLane,
           hintOn: view.hintOn,
           shake: view.shake,
@@ -182,7 +180,6 @@ export function DessertRunGame({
     const view = viewRef.current;
     view.pressedLane = lane;
     view.hoverLane = lane;
-    view.peek = lane === null ? null : state.lanes[lane]![0]!.k;
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -191,8 +188,6 @@ export function DessertRunGame({
     const view = viewRef.current;
     const lane = laneUnder(e);
     view.hoverLane = lane;
-    if (view.pressedLane === null) view.peek = lane === null ? null : state.lanes[lane]![0]!.k;
-    else view.peek = lane === view.pressedLane ? state.lanes[lane]![0]!.k : null;
   };
   const onUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const state = stateRef.current;
@@ -207,13 +202,11 @@ export function DessertRunGame({
       }
     }
     view.pressedLane = null;
-    view.peek = null;
     view.hoverLane = laneUnder(e);
   };
   const onCancel = () => {
     const view = viewRef.current;
     view.pressedLane = null;
-    view.peek = null;
     view.hoverLane = null;
   };
 
@@ -229,6 +222,7 @@ export function DessertRunGame({
       data-dessert={pick.dessertId}
       data-phase={phase}
     >
+      <StageSides src={artUrl("backdrop")} stage={STAGE} />
       <div
         className="relative mx-auto"
         style={{

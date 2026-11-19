@@ -2200,7 +2200,6 @@ export function App() {
     setBusinessServiceSession(null);
     maybeShowInterstitial(
       `business-day:${withFine.business.calendar.businessDay}`,
-      withFine.levelProgress.completedLevelIds.length,
       AD_PLACEMENT.businessDayEnd,
     );
     return {
@@ -3391,19 +3390,15 @@ export function App() {
       setReplayFailure(null);
       return;
     }
-    // The interstitial comes first (the policy decides: 3 levels done, 150 s apart). Only
-    // when it can't show is a first clear offered "+50%" for an ad (ads/adBonuses.ts), so
-    // the two never stack and a declined bonus never costs the break its interstitial.
-    // The sheet waits for Level Complete's card.
-    const interstitial = maybeShowInterstitial(
-      `level-finish:${level.id}:${playSessionRef.current.id}`,
-      finalSave.levelProgress.completedLevelIds.length,
-    );
+    // The interstitial is requested first and the Bridge decides if and when it really shows (developer 2026-11-19, Playgama Bridge step 7: the game
+    // adds no timer of its own). The first clear's "+50%" offer for an ad (ads/adBonuses.ts) is opt-in and follows either way: the sheet waits for
+    // Level Complete's card, and the player sees it once any interstitial has closed.
+    maybeShowInterstitial(`level-finish:${level.id}:${playSessionRef.current.id}`);
     // FLOOD (developer 2026-11-02): a first clear sends a surge of guests upstairs. The free part lands on the Pickup
     // Counter at once; the ad adds the bigger part. Players without a machine keep the plain "+50%" offer.
     const flood = wasReplay ? null : floodAfterLevel(level);
     if (!wasReplay) hypeAfterLevel(finalSave, level);
-    if (!interstitial.show && !wasReplay) {
+    if (!wasReplay) {
       const shown =
         !!flood &&
         flood.adExtra > 0 &&
@@ -4989,7 +4984,6 @@ export function App() {
               if (playSessionRef.current.completed) {
                 maybeShowInterstitial(
                   `${sessionMode === "campaign" ? "level-finish" : `${sessionMode}-exit`}:${activeLevel.id}:${playSessionRef.current.id}`,
-                  save.levelProgress.completedLevelIds.length,
                 );
               }
               setSessionMode("campaign");

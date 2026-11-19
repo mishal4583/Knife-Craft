@@ -176,6 +176,11 @@ for (const [w, h] of SIZES) {
 for (const [w, h] of [
   [390, 844],
   [1024, 768],
+  [1280, 720],
+  [1920, 1080],
+  [800, 800],
+  [768, 1024],
+  [1000, 800],
 ]) {
   await view(w, h);
   await sleep(700);
@@ -183,17 +188,14 @@ for (const [w, h] of [
   sizeRows.push({ w, h, orient: l.orient, frame: l.frame });
 }
 check(
-  // Rule changed (developer 2026-11-16, "make it full screen without leaving any space"): an upright phone fills the screen too; only a wide window
-  // (a tablet, a desktop) keeps the 9:16 frame.
-  "1 a phone on its side fills the screen (landscape); an upright phone fills it too; a tablet keeps the 9:16 frame",
-  sizeRows.every((r) =>
-    r.w > r.h && r.h < 640
-      ? r.orient === "landscape" && Math.abs(r.frame.w - r.w) <= 2 && Math.abs(r.frame.h - r.h) <= 2
-      : r.w < 640
-        ? r.orient === "portrait" &&
-          Math.abs(r.frame.w - r.w) <= 2 &&
-          Math.abs(r.frame.h - r.h) <= 2
-        : r.orient === "portrait" && Math.abs(r.frame.w / r.frame.h - 540 / 960) < 0.01,
+  // RULE CHANGE (developer 2026-11-19, Playgama 1.6.1 / 1.6.8, YouTube Playables Design 1): every window is filled edge to edge, whatever its shape (it used to
+  // keep a framed 9:16 column on a tablet or a desktop). The layout is landscape from an aspect ratio of 1.3, portrait below it.
+  "1 every window shape fills the screen (no frame, no bars): a phone on its side, an upright phone, a tablet, a square window, a desktop; landscape from 1.3",
+  sizeRows.every(
+    (r) =>
+      Math.abs(r.frame.w - r.w) <= 2 &&
+      Math.abs(r.frame.h - r.h) <= 2 &&
+      r.orient === (r.w / r.h >= 1.3 ? "landscape" : "portrait"),
   ),
   sizeRows,
 );
@@ -263,12 +265,19 @@ await boot(
     story: { introDone: true, milestoneMask: 0, finaleSeen: false },
   }),
 );
-await clickButton(page, /Prepare$/);
-await sleep(900);
-await clickButton(
-  page,
-  /^((?:OPEN THE RESTAURANT|🚪 Open restaurant)|(?:START SERVICE|🔥 Start service))$/,
-);
+// The way into the cutting (2026-11-19): Kitchen -> See all orders -> Prepare -> the order's "Start cooking".
+const pressButton = (src) =>
+  page.evaluate((s) => {
+    const r = new RegExp(s, "i");
+    const b = [...document.querySelectorAll("button")].find((x) => r.test(x.textContent.trim()));
+    b?.click();
+    return !!b;
+  }, src);
+await clickButton(page, /^See all orders/);
+await sleep(1000);
+await pressButton("^(Prepare|Replay)$");
+await sleep(2500);
+await pressButton("Start cooking");
 await page
   .waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
     timeout: 30000,

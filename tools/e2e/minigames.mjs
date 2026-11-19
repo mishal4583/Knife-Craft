@@ -7,7 +7,7 @@
 //   M4 Kitchen Dispatch the same
 //   M5 Fridge Check (free play) the same
 //   M6 Car Park the same
-//   M7 the sheet closes with its button, with Escape and with a tap outside
+//   M7 the sheet closes with its button and with a tap outside, and ignores Escape
 //   M8 five phone sizes: the sheet inside the screen, no sideways scroll, every tile and button 48 px
 //   M9 the button never covers the Next customer card, and the Kitchen's other buttons still open
 //   M10 no console errors
@@ -229,19 +229,26 @@ await openSheet();
 await page.click('[data-testid="minigames-close"]');
 await sleep(300);
 const c1 = !(await page.$(SHEET));
+// RULE CHANGE 2026-11-19 (Playgama 1.5.2: the game does not use the Esc key): Escape no longer closes the sheet, so it must leave it open.
 await openSheet();
 await page.keyboard.press("Escape");
 await sleep(300);
-const c2 = !(await page.$(SHEET));
+const c2 = !!(await page.$(SHEET));
+await page.click('[data-testid="minigames-close"]');
+await sleep(300);
 await openSheet();
 await page.mouse.click(195, 30); // above the sheet: the dim backdrop
 await sleep(300);
 const c3 = !(await page.$(SHEET));
-check("M7 the sheet closes with its button, with Escape and with a tap outside", c1 && c2 && c3, {
-  c1,
-  c2,
-  c3,
-});
+check(
+  "M7 the sheet closes with its button and with a tap outside, and ignores Escape",
+  c1 && c2 && c3,
+  {
+    c1,
+    c2,
+    c3,
+  },
+);
 
 // M8
 for (const [w, h] of [

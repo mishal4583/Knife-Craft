@@ -10,10 +10,9 @@
  *     idempotent by transaction id, daily cap, claimed state derived from ledger.
  *  C. Persistence through Bridge storage: commit → save → re-read → reload.
  *  D. Ledger: reconciles; recent rewarded-ad entries survive trimming.
- *  E. Interstitial gate (Playgama monetization guide): none before 3 completed
- *     levels, then any natural break once 150 s (inside the recommended
- *     120–240 s) have passed since the last ad; duplicates, ad-active,
- *     unavailable; the Bridge config (120 s floor, one placement per ad spot).
+ *  E. Interstitial gate (Playgama Bridge Required step 7, RULE CHANGE 2026-11-19): the game keeps no timer or counter of its own; every natural
+ *     break asks the Bridge, which decides when an ad shows; duplicates, ad-active, unavailable; the Bridge config (the platform's default delay, one
+ *     placement per ad spot).
  *  H. Level messages: level_started / level_paused / level_resumed /
  *     level_completed with { world, level }, each once, never outside a level.
  *  F. Production safety (source scan).
@@ -140,8 +139,6 @@ import {
   verifyReplayBonusCommit,
 } from "../src/game/ads/replayBonus.ts";
 import {
-  INTERSTITIAL_COOLDOWN_MS,
-  INTERSTITIAL_MIN_COMPLETED_LEVELS,
   decideInterstitial,
   type InterstitialPolicyState,
 } from "../src/game/ads/interstitialPolicy.ts";
@@ -510,56 +507,30 @@ Date.now = realDateNow;
 }
 
 // ===== E: interstitial gate =====
+// RULE CHANGE (developer 2026-11-19, Playgama Bridge Required step 7): the game adds NO timer or counter of its own (it used to wait for 3 completed
+// levels and 150 s between ads). The Bridge decides when an ad shows; the gate only stops mistakes: a repeated transition, another ad in the way, no ads API.
 {
   const fresh = (): InterstitialPolicyState => ({ handled: new Set() });
-  const base = {
-    completedLevels: 20,
-    now: 10_000_000,
-    lastAdSettledAt: 0,
-    adActive: false,
-    available: true,
-  };
-  // A session of natural breaks: ad, then 10 s / 100 s / 150 s / 200 s after it.
+  const base = { adActive: false, available: true };
   let st = fresh();
   const shows: boolean[] = [];
-  let lastAd = 0;
-  for (const [i, gap] of [
-    [1, 0],
-    [2, 10_000],
-    [3, 100_000],
-    [4, 150_000],
-    [5, 10_000],
-    [6, 200_000],
-  ] as const) {
-    const now = base.now + i * 1_000_000;
-    const r = decideInterstitial(st, {
-      ...base,
-      transitionId: `t${i}`,
-      now,
-      lastAdSettledAt: gap === 0 ? 0 : lastAd === 0 ? 0 : now - gap,
-    });
+  for (let i = 1; i <= 6; i++) {
+    const r = decideInterstitial(st, { ...base, transitionId: `t${i}` });
     st = r.state;
     shows.push(r.decision.show);
-    if (r.decision.show) lastAd = now;
   }
   assert(
-    JSON.stringify(shows) === JSON.stringify([true, false, false, true, false, true]) &&
-      INTERSTITIAL_COOLDOWN_MS === 150_000 &&
-      INTERSTITIAL_COOLDOWN_MS >= 120_000 &&
-      INTERSTITIAL_COOLDOWN_MS <= 240_000,
-    "E: past the first levels, any natural break shows an interstitial once 150 s (Playgama's 120–240 s range) have passed since the last ad",
+    JSON.stringify(shows) === JSON.stringify([true, true, true, true, true, true]),
+    "E: every natural break asks the Bridge for an interstitial, however soon after the last one and however few levels are done (the Bridge's own delay decides)",
   );
-  st = fresh();
-  const byLevels: boolean[] = [];
-  for (let i = 0; i <= 3; i++) {
-    const r = decideInterstitial(st, { ...base, completedLevels: i, transitionId: `e${i}` });
-    st = r.state;
-    byLevels.push(r.decision.show);
-  }
+  const policySource = read("src/game/ads/interstitialPolicy.ts")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/.*$/gm, "");
   assert(
-    JSON.stringify(byLevels) === JSON.stringify([false, false, false, true]) &&
-      INTERSTITIAL_MIN_COMPLETED_LEVELS === 3,
-    "E2: no interstitial before 3 Campaign levels are completed (the intro and first levels stay ad-free); the first natural break after that may show one",
+    !/Date\.now|performance\.now|setTimeout|COOLDOWN|MIN_COMPLETED|completedLevels|lastAdSettled/.test(
+      policySource,
+    ),
+    "E2: the policy has no clock, no timer, no level counter and no cooldown of its own (Playgama: 'do not add your own timers or counters')",
   );
   st = fresh();
   const dup1 = decideInterstitial(st, { ...base, transitionId: "same" });
@@ -570,15 +541,6 @@ Date.now = realDateNow;
       (dup2.decision as { reason: string }).reason === "duplicate",
     "E3: the same transition (re-render, repeat click, back/forward) is handled once",
   );
-  const cd = decideInterstitial(fresh(), {
-    ...base,
-    transitionId: "c",
-    lastAdSettledAt: base.now - INTERSTITIAL_COOLDOWN_MS + 1000,
-  });
-  assert(
-    !cd.decision.show && (cd.decision as { reason: string }).reason === "cooldown",
-    "E4: cooldown since the last ad of any kind (never straight after a rewarded ad)",
-  );
   const act = decideInterstitial(fresh(), { ...base, transitionId: "a", adActive: true });
   const un = decideInterstitial(fresh(), { ...base, transitionId: "u", available: false });
   assert(
@@ -587,7 +549,7 @@ Date.now = realDateNow;
   );
   const cfg = JSON.parse(read("public/playgama-bridge-config.json")) as {
     advertisement: {
-      minimumDelayBetweenInterstitial: number;
+      minimumDelayBetweenInterstitial?: number;
       interstitial: { placementFallback: string; placements: Array<{ id: string }> };
       rewarded: { placementFallback: string; placements: Array<{ id: string }> };
     };
@@ -599,7 +561,7 @@ Date.now = realDateNow;
       .sort()
       .join();
   assert(
-    ad.minimumDelayBetweenInterstitial === 120 &&
+    ad.minimumDelayBetweenInterstitial === undefined &&
       ad.interstitial.placementFallback === INTERSTITIAL_PLACEMENT &&
       ad.rewarded.placementFallback === REWARDED_PLACEMENT &&
       ids(ad.interstitial.placements) ===
@@ -758,7 +720,7 @@ Date.now = realDateNow;
   );
   assert(/if \(isFinale\) return;/.test(app), "F10: nothing ad-related around the Campaign Finale");
   assert(
-    /`business-day:\$\{[^`]*\}`,\s*[^,]+,\s*AD_PLACEMENT\.businessDayEnd,/.test(app) &&
+    /`business-day:\$\{[^`]*\}`,\s*AD_PLACEMENT\.businessDayEnd,/.test(app) &&
       /requestRewardedAd\(newRushRestockRewardId\(\), AD_PLACEMENT\.rushRestock\)/.test(app),
     "F11: the Business-day interstitial uses 'business_day_end' and Rush Restock uses 'rush_restock'",
   );

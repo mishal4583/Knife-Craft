@@ -1,6 +1,6 @@
 /**
- * AUDIO QA — the synthesized sound (finishing plan W3, developer 2026-10-12).
- * AudioManager.ts, run against a fake Web Audio context.
+ * AUDIO QA — the game's sound (finishing plan W3, developer 2026-10-12). RULE CHANGE (developer 2026-11-19, Playgama 3.3.2): the sound is RECORDED
+ * files (public/audio, docs/AUDIO-CREDITS.md), no longer synthesized in code. AudioManager.ts, run against a fake Web Audio context and a fake fetch.
  *
  *  S  Every named effect exists and plays through the effects bus; a gap
  *     guard stops a burst of one name.
@@ -8,9 +8,8 @@
  *     platform's pause covers a hidden page — preflight forbids our own Page
  *     Visibility use), during an ad or with Sound off; music never starts
  *     before a user gesture or with Music off.
- *  M  Music: one loop only, however often the mood changes; it stops when it
- *     must; node creation per bar is bounded (nothing accumulates when quiet);
- *     its choices are seeded.
+ *  M  Music: one recorded loop only, however often the mood changes; it stops when it must; the loop is one source (nothing accumulates).
+ *  Y  Nothing is synthesized: no oscillator, no generated noise, no convolver in the sound code; every effect is a recording or a note played from one.
  *  W  Wiring: the existing hooks play the sounds; the Music toggle uses the
  *     existing settings.music key (no new save field).
  *
@@ -37,6 +36,7 @@ const param = () => ({
   value: 0,
   setValueAtTime() {},
   exponentialRampToValueAtTime() {},
+  linearRampToValueAtTime() {},
   cancelScheduledValues() {},
   setTargetAtTime(v: number) {
     this.value = v;
@@ -62,20 +62,22 @@ class FakeCtx {
     return node({ type: "lowpass", frequency: param(), Q: param() });
   }
   createBufferSource() {
-    return node({ buffer: null });
+    return node({ buffer: null, loop: false, playbackRate: param() });
   }
-  // The music's chain (developer 2026-11-08): a soft reverb and a gentle limiter.
-  createConvolver() {
-    return node({ buffer: null });
-  }
-  createDynamicsCompressor() {
-    return node({ threshold: param(), ratio: param(), attack: param(), release: param() });
+  // the recordings: a fetched file is decoded into a stand-in buffer
+  decodeAudioData(_bytes: unknown, ok: (b: unknown) => void) {
+    ok({ duration: 1 });
   }
   createBuffer(_c: number, len: number) {
     return { getChannelData: () => new Float32Array(len) };
   }
 }
 const g = globalThis as unknown as Record<string, unknown>;
+let fetched = 0;
+g.fetch = async () => {
+  fetched++;
+  return { ok: true, arrayBuffer: async () => new ArrayBuffer(8) };
+};
 g.window = {
   AudioContext: FakeCtx,
   addEventListener: (t: string, fn: () => void) => (listeners[t] = fn),
@@ -85,11 +87,11 @@ const doc = { hidden: false, addEventListener: (t: string, fn: () => void) => (l
 g.document = doc;
 
 const { AudioManager, SFX } = await import("../src/game/AudioManager.ts");
+const { AUDIO_FILES } = await import("../src/game/audio/audioFiles.ts");
 const { PauseManager } = await import("../src/game/PauseManager.ts");
 const am = AudioManager as unknown as {
   ctx: FakeCtx | null;
-  musicTimer: unknown;
-  scheduleMusic(): void;
+  track: unknown;
 };
 
 console.log("S. Effects");
@@ -107,12 +109,27 @@ console.log("S. Effects");
   listeners.pointerdown?.();
   await new Promise((r) => setTimeout(r, 70));
   const names = Object.keys(SFX) as (keyof typeof SFX)[];
+  const ids = names.flatMap((n) =>
+    SFX[n].filter((x: { id?: string }) => x.id).map((x: { id?: string }) => x.id as string),
+  );
   assert(
     // Rule changed (developer 2026-11-03): Fridge Sort added five effects (pick, place, wrong, combo, tick) after the first ten.
     names.join() ===
       "tap,coin,till,bell,plate,delivery,lightsOff,squeak,levelComplete,story,sortPick,sortPlace,sortWrong,sortCombo,sortTick,carHorn" &&
-      names.every((n) => SFX[n].length > 0 && SFX[n].every((x) => x.gain > 0 && x.gain <= 0.1)),
-    "S1: sixteen named effects (ten + the five Fridge Sort ones + the Car Park horn, 2026-11-15), each short and quiet (gain ≤ 0.1)",
+      names.every(
+        (n) =>
+          SFX[n].length > 0 &&
+          SFX[n].every((x: { gain?: number }) => (x.gain ?? 1) > 0 && (x.gain ?? 1) <= 0.7),
+      ) &&
+      ids.every((id) => id in AUDIO_FILES),
+    "S1: sixteen named effects (ten + the five Fridge Sort ones + the Car Park horn, 2026-11-15), each a recording that exists in the audio list or a note played from a recorded voice, none louder than 0.7",
+  );
+  assert(
+    fetched >=
+      Object.keys(AUDIO_FILES).filter((k) => !k.startsWith("music-") && !k.startsWith("wash-"))
+        .length,
+    "S1b: after the first tap every effect's file is fetched once (the files are small); the music and the washing beds wait until they are wanted",
+    fetched,
   );
   const before = AudioManager.sfxCount;
   for (const n of names) AudioManager.playSfx(n);
@@ -148,11 +165,13 @@ console.log("G. Gating");
   );
   // The gesture happened in S0 (music waited for it there).
   AudioManager.setMusicMood("kitchen");
+  await wait(); // the loop's file is fetched and decoded first
   const beforeGesture = false;
   const afterGesture = AudioManager.musicPlaying;
   AudioManager.setUserMusicEnabled(false);
   const musicOff = AudioManager.musicPlaying;
   AudioManager.setUserMusicEnabled(true);
+  await wait();
   assert(
     !beforeGesture && afterGesture && !musicOff && AudioManager.musicPlaying,
     "G2: music never starts before a user gesture; the Music toggle stops and restarts it",
@@ -160,6 +179,7 @@ console.log("G. Gating");
   PauseManager.pause();
   const pausedMusic = AudioManager.musicPlaying;
   PauseManager.resume();
+  await wait();
   assert(
     !pausedMusic && AudioManager.musicPlaying,
     "G3: music stops while paused (a hidden page included) and comes back after",
@@ -174,45 +194,53 @@ console.log("G. Gating");
 console.log("M. Music");
 {
   const loops = AudioManager.musicLoopsStarted;
-  for (const m of ["cutting", "kitchen", "night", "kitchen", "cutting"] as const)
+  for (const m of ["cutting", "kitchen", "night", "kitchen", "cutting"] as const) {
     AudioManager.setMusicMood(m);
+    await new Promise((r) => setTimeout(r, 30));
+  }
   assert(
     AudioManager.musicLoopsStarted === loops && AudioManager.musicPlaying,
-    "M1: mood changes reuse the one running loop (never a second)",
+    "M1: mood changes crossfade into the new recording; the music never starts a second loop from silence",
   );
   AudioManager.setMusicMood("kitchen");
+  await new Promise((r) => setTimeout(r, 30));
   const ctx = am.ctx!;
   const n0 = created;
-  for (let i = 0; i < 40; i++) {
-    ctx.currentTime += 0.2;
-    am.scheduleMusic();
-  }
-  const perSecond = (created - n0) / 8;
+  for (let i = 0; i < 40; i++) ctx.currentTime += 0.2;
+  const whilePlaying = created - n0;
   AudioManager.setMusicMood("off");
   const n1 = created;
-  for (let i = 0; i < 40; i++) {
-    ctx.currentTime += 0.2;
-    am.scheduleMusic();
-  }
+  for (let i = 0; i < 40; i++) ctx.currentTime += 0.2;
   assert(
-    perSecond > 0 && perSecond < 60 && created === n1 && !AudioManager.musicPlaying,
-    "M2: a bounded number of short-lived nodes per second while playing; none at all when off",
-    { perSecond },
+    whilePlaying === 0 && created === n1 && !AudioManager.musicPlaying,
+    "M2: a playing loop is one source and creates nothing more as time passes; none at all when off",
+    { whilePlaying },
   );
-  // Rule changed (developer 2026-11-08): the kitchen-jazz loop is replaced by the relaxing generated score (music/relaxComposer.ts, seeded
-  // there; music-qa has the full checks). AudioManager's own music code plays it and builds the reverb from a seeded generator.
-  const src = read("src/game/AudioManager.ts");
-  const music = src.slice(
-    src.indexOf("private buildMusicChain"),
-    src.indexOf("private ensureContext"),
+  const tracks = ["music-loading", "music-kitchen", "music-cutting", "music-night"] as const;
+  assert(
+    tracks.every(
+      (t) => (AUDIO_FILES[t] as { loop?: boolean }).loop === true && AUDIO_FILES[t].seconds >= 20,
+    ),
+    "M3: each mood is a recorded loop (at least 20 s long, marked as a loop)",
+  );
+}
+
+console.log("Y. Nothing is synthesized (Playgama 3.3.2)");
+{
+  const sound = read("src/game/AudioManager.ts")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/.*$/gm, "");
+  assert(
+    !/createOscillator|createConvolver|createDynamicsCompressor|createPeriodicWave|getChannelData|noiseSource|createBuffer\((?!1, 1, 22050)/.test(
+      sound,
+    ),
+    "Y1: the sound code has no oscillator, no sample written by code (the one silent sample that opens iOS audio apart) and no reverb: it only plays recordings (gain, filter and playback-rate nodes)",
   );
   assert(
-    !/Math\.random/.test(music) &&
-      /seeded\(seed = 20261108\)|constructor\(seed = 20261108\)/.test(
-        read("src/game/music/relaxComposer.ts"),
-      ) &&
-      /seededRand\(7919/.test(src),
-    "M3: the music's choices are seeded (no Math.random in the score, the reverb or the playing)",
+    !fs.existsSync(
+      path.join(path.resolve(import.meta.dirname, ".."), "src/game/music/relaxComposer.ts"),
+    ),
+    "Y2: the score that was made note by note in code is gone",
   );
 }
 

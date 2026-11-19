@@ -191,13 +191,21 @@ assert(
     /canvas\.toBlob/.test(card),
   "C1: the card is drawn on its own 1080×1350 (4:5) canvas — not the game's — and a missing picture just leaves it out",
 );
+// RULE CHANGE (2026-11-19, YouTube Playables: no sharing UI): both kinds of sharing also need `sharingAllowed()` (false on the YouTube platform). The source is
+// compared with its whitespace collapsed, so the formatter's line breaks do not matter.
+const previewFlat = preview.replace(/\s+/g, " ");
 assert(
-  /typeof navigator\.share === "function" && !!navigator\.canShare\?\.\(\{ files: \[f\] \}\)/.test(
-    preview,
+  /sharingAllowed\(\) && !!f && typeof navigator\.share === "function" && !!navigator\.canShare\?\.\(\{ files: \[f\] \}\)/.test(
+    previewFlat,
   ) &&
-    /const canShareText = !canShareFile && typeof navigator\.share === "function"/.test(preview) &&
-    /\{canShareFile \|\| canShareText \? \(/.test(preview),
-  "C2: file sharing and text sharing are detected separately; Share appears only where one exists",
+    /const canShareText = !canShareFile && sharingAllowed\(\) && typeof navigator\.share === "function"/.test(
+      previewFlat,
+    ) &&
+    /\{canShareFile \|\| canShareText \? \(/.test(previewFlat) &&
+    /export const sharingAllowed = \(\): boolean => platformId\(\) !== "youtube"/.test(
+      code("src/game/PlayablesSDK.ts"),
+    ),
+  "C2: file sharing and text sharing are detected separately and are off on YouTube Playables; Share appears only where one exists",
 );
 assert(
   /name === "AbortError"\)\s*setStatus\(null\)/.test(preview) &&

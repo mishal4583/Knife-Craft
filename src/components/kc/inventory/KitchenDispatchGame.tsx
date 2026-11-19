@@ -9,6 +9,7 @@ import {
 } from "react";
 import type { SaveData } from "@/game/SaveManager";
 import { InfoTip } from "@/components/kc/common/InfoTip";
+import { StageSides } from "@/components/kc/common/StageSides";
 import { TurnUprightCard } from "@/components/kc/common/TurnUprightCard";
 import { useTurnUpright } from "@/components/kc/common/useTurnUpright";
 import {
@@ -441,6 +442,7 @@ export function KitchenDispatchGame({
         gates: round.board.gates.map((g) => [g.id, g.side, g.at, g.span, g.color]),
       })}
     >
+      <StageSides src={kdUrl("backdrop")} stage={KD_STAGE} />
       <div
         className="relative select-none [container-type:inline-size]"
         style={{

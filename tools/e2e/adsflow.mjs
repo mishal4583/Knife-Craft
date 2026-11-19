@@ -2,9 +2,9 @@
 // platform reports ads as unsupported):
 //   1. playing a campaign level sends level_started with { world, level }; the in-game Pause
 //      menu sends level_paused, Resume sends level_resumed; finishing sends level_completed once;
-//   2. with 3 levels already completed, finishing Level 4 shows the first interstitial at a
-//      natural break (after the level, never during it), with placement "level_completed";
-//   3. the next break straight after it shows no second ad (150 s cooldown).
+//   2. finishing a level asks the Bridge for an interstitial at a natural break (after the level, never during it), with placement "level_completed"
+//      (RULE CHANGE 2026-11-19: the game keeps no level counter or cooldown of its own; the Bridge decides when it really shows);
+//   3. leaving the level again is the same transition: no second request.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -164,7 +164,7 @@ check(
 );
 const a = await ads();
 check(
-  "2a the first interstitial comes after the level (4th completed), placement level_completed",
+  "2a the interstitial is requested after the level, placement level_completed",
   a.length === 1 && a[0].placement === "level_completed",
   a,
 );
@@ -172,7 +172,7 @@ check(
 // ---------- 3: the next break right after it: cooldown ----------
 await clickButton(page, /Back to (Kitchen|Orders)|Kitchen/);
 await sleep(800);
-check("3a no second interstitial within 150 s", (await ads()).length === 1, await ads());
+check("3a the same transition is never asked twice", (await ads()).length === 1, await ads());
 
 check("console has no errors", logs.filter((l) => /^error|pageerror/i.test(l)).length === 0, logs);
 save("adsflow-result.json", results);

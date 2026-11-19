@@ -329,6 +329,46 @@ try {
   assert.ok(rate[0] - rate[3] >= 0.25, "the tiers get harder");
   console.log("PASS F difficulty: tier 1 gentle, tier 4 hard, in between in order");
 
+  // ---- F2. Rated plates (developer 2026-11-19: "ensure and increase the quality of the levels") ------------------
+  // The seeds of a plate run easiest first, inside the tier's window (RUN_HARDNESS), and the windows rise tier by tier. Rating is slow
+  // (12 careful rounds a plate), so four seeds of every plate are re-rated here: the first, two in the middle and the last.
+  {
+    const tierMean: number[] = [];
+    for (const tier of RUN_TIERS) {
+      const [lo, hi] = run.RUN_HARDNESS[tier.id];
+      let sum = 0;
+      let count = 0;
+      for (const id of DESSERTS_BY_TIER[tier.id]) {
+        const seeds: number[] = DESSERT_RUN_SEEDS[`${id}-${tier.id}`];
+        let before = -1;
+        for (const at of [0, 20, 40, 59]) {
+          const rating = run.ratePlate(id as Id, seeds[at], tier, 12);
+          assert.ok(
+            rating.hardness >= lo - 1e-9 && rating.hardness <= hi + 1e-9,
+            `${id}-${tier.id} seed #${at}: hardness ${rating.hardness.toFixed(2)} is outside the tier's window ${lo}..${hi}`,
+          );
+          assert.ok(
+            rating.hardness >= before - 1e-9,
+            `${id}-${tier.id}: seeds run easiest first (#${at} is easier than the one before)`,
+          );
+          before = rating.hardness;
+          sum += rating.hardness;
+          count += 1;
+        }
+      }
+      tierMean.push(sum / count);
+    }
+    console.log(
+      "     careful-player hardness by tier:",
+      tierMean.map((m) => m.toFixed(2)).join(" / "),
+    );
+    for (let t = 1; t < tierMean.length; t++)
+      assert.ok(tierMean[t] > tierMean[t - 1] + 0.02, `tier ${t + 1} is harder than tier ${t}`);
+    console.log(
+      "PASS F2 ratings: every plate inside its tier's window, easiest first, and each tier harder than the last",
+    );
+  }
+
   // ---- G. Which plate a level gets -----------------------------------------------------------------
   {
     const a = content.dessertRunFor(18, 3);
@@ -346,6 +386,34 @@ try {
             "only proven seeds are dealt",
           );
         }
+    // the ramp: inside a tier a higher level gets later (harder) seeds, whatever the day and the round
+    for (const tier of RUN_TIERS) {
+      const { first, last } = content.tierLevels(tier);
+      const meanIndex = (level: number) => {
+        let sum = 0;
+        let n = 0;
+        for (let day = 1; day <= 9; day++)
+          for (let round = 0; round < 4; round++) {
+            const p = content.dessertRunFor(level, day, round);
+            sum += DESSERT_RUN_SEEDS[`${p.dessertId}-${p.tier.id}`].indexOf(p.seed);
+            n += 1;
+          }
+        return sum / n;
+      };
+      assert.ok(
+        meanIndex(last) > meanIndex(first) + 25,
+        `tier ${tier.id}: its last level is much later on the ramp than its first`,
+      );
+      let prev = -1;
+      for (let level = first; level <= last; level++) {
+        const m = meanIndex(level);
+        assert.ok(
+          m >= prev - 3,
+          `tier ${tier.id}: level ${level} is not easier than the level before`,
+        );
+        prev = m;
+      }
+    }
     console.log(
       "PASS G choice: the plate follows the level, the day and the round, from proven seeds only",
     );
@@ -409,6 +477,27 @@ try {
     }
     console.log(
       "PASS H layout: spots, plate, aisle and lane columns fit the 540 x 960 stage; lane targets are 48 px",
+    );
+  }
+
+  {
+    // developer 2026-11-19: the cubes served to a guest lay in a strip that climbed past the plate's rim; they lie inside its well now
+    const draw = readFileSync("src/components/kc/inventory/dessertRunDraw.ts", "utf8");
+    assert.ok(
+      /plateLayout\(state\.need\[j\]!\)/.test(draw) && !/q % 16/.test(draw),
+      "served cubes are laid by plateLayout inside the plate's well, not stacked in rows",
+    );
+    assert.ok(
+      /const GUEST_SIZE = 95/.test(draw) && /const RUNNER_SIZE = 72/.test(draw),
+      "guests 95 px (was 105) and the running waiter 72 px (was 62)",
+    );
+    const game = readFileSync("src/components/kc/inventory/DessertRunGame.tsx", "utf8");
+    assert.ok(
+      !/peek/.test(draw) && !/peek/.test(game),
+      "no colour highlight: pressing or hovering a waiter does not light up or dim the mosaic (developer 2026-11-19: turned off completely)",
+    );
+    console.log(
+      "PASS I plate: served cubes lie inside the plate; guests a little smaller, runners a little bigger",
     );
   }
 

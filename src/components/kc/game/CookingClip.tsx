@@ -23,6 +23,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AudioManager } from "@/game/AudioManager";
 import { PauseManager } from "@/game/PauseManager";
+import { LandscapeBackdrop } from "./LandscapeBackdrop";
 import type { DishKind } from "@/game/recipes/dishKind";
 import cookingWebm from "@/assets/video/chef-cooking.webm";
 import cookingMp4 from "@/assets/video/chef-cooking.mp4";
@@ -163,14 +164,9 @@ export function CookingClip({
         (playing && !leaving ? "opacity-100" : "pointer-events-none opacity-0")
       }
     >
-      {/* Phone landscape: the portrait film whole, in a centred 9:16 box over a soft copy
-          of its poster (cover would crop it to a strip); portrait unchanged. */}
-      <img
-        src={clip.poster}
-        alt=""
-        aria-hidden
-        className="absolute inset-0 hidden h-full w-full scale-110 object-cover opacity-60 blur-xl land:block"
-      />
+      {/* Landscape (a phone on its side, a desktop window): the portrait film whole, in a centred 9:16 box over the kitchen's own landscape painting, darkened
+          (cover would crop the film to a strip; a blurred copy of it is not allowed by YouTube Playables Design 1, 2026-11-19); portrait unchanged. */}
+      <LandscapeBackdrop section="kitchen" wash="dim" />
       <div className="absolute inset-0 land:left-1/2 land:right-auto land:aspect-[720/1280] land:-translate-x-1/2">
         <video
           ref={videoRef}

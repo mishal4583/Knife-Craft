@@ -169,12 +169,12 @@ console.log("D. Upright-only mini-games on a phone on its side");
     read("src/components/kc/common/useTurnUpright.ts") +
     read("src/components/kc/common/TurnUprightCard.tsx");
   assert(
-    /useLandscape\(\)/.test(card) &&
-      /held: landscape && !anyway/.test(card) &&
+    /isPhoneLandscape\(window\.innerWidth, window\.innerHeight\)/.test(card) &&
+      /held: phoneOnItsSide && !anyway/.test(card) &&
       /Turn your phone upright/.test(card) &&
       /Play anyway/.test(card) &&
       /min-h-12 flex-1/.test(card),
-    'D1: the card shows only on a phone on its side, until "Play anyway"; both buttons are 48 px',
+    'D1: the card shows only on a PHONE on its side (the real window, not the layout: a desktop window never sees it), until "Play anyway"; both buttons are 48 px',
   );
   const games = [
     ["src/components/kc/inventory/DessertRunGame.tsx", "dr-upright"],

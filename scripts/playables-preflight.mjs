@@ -132,6 +132,21 @@ if (indexHtml) {
     grepSrc(/document\.hidden|visibilitychange|document\.visibilityState/).length === 0,
   );
   check(
+    "No Esc key handling in our own source (Playgama 1.5.2: the browser keeps Esc for leaving full screen)",
+    grepSrc(/["']Escape["']|\bkeyCode\s*={2,3}\s*27\b/).length === 0,
+    grepSrc(/["']Escape["']|\bkeyCode\s*={2,3}\s*27\b/).join(", "),
+  );
+  check(
+    "No sound synthesized in code in our own source (Playgama 3.3.2: sound is recorded files, no oscillators)",
+    grepSrc(/createOscillator|createPeriodicWave|createConvolver/).length === 0,
+    grepSrc(/createOscillator|createPeriodicWave|createConvolver/).join(", "),
+  );
+  check(
+    "No sessionStorage or cookie in our own source (Playgama 3.2.1: progress and state only through the Bridge storage)",
+    grepSrc(/sessionStorage|document\.cookie/).length === 0,
+    grepSrc(/sessionStorage|document\.cookie/).join(", "),
+  );
+  check(
     "No screen-orientation lock in our own source",
     grepSrc(/orientation\s*\.\s*lock\s*\(/).length === 0,
   );

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { LayoutContext, isPhoneLandscape, LAND_MIN_H } from "./layoutMode";
+import { LayoutContext, fitLayout } from "./layoutMode";
 
 // The logical design canvas every screen/Phaser scene in this project is
 // authored against (see PreparationScene.ts, GameBridge.ts) — unchanged
@@ -9,86 +9,32 @@ const LOGICAL_W = 540;
 const LOGICAL_H = 960;
 
 /**
- * The narrowest width the UI is laid out for (the smallest phone it is
- * tested at). When the fitted frame is narrower — a phone rotated to
- * landscape, YouTube's rotate control, a small embed — the UI is laid out
- * at this width and the whole frame is scaled down to fit, so it shrinks
- * uniformly instead of clipping or squashing. Phaser's input reads the
- * canvas's on-screen box, so cutting stays accurate under the scale.
- */
-const MIN_LAYOUT_W = 320;
-
-/**
- * A phone held upright fills the WHOLE screen (developer 2026-11-16: "make it full screen without leaving any space"): below this window width, and
- * no wider than FILL_MAX_ASPECT, the frame is the viewport itself instead of the largest 540:960 box that fits, so a tall phone (9:20, 9:21) gets
- * no bars above and below. The screens lay out in real pixels, so they simply receive the extra height; the painted scenes cover it (SceneFill).
- * Wider windows (tablets, desktop) keep the framed 540:960 game.
- */
-const FILL_MAX_W = 640;
-const FILL_MAX_ASPECT = 0.75;
-
-/**
- * Contain-fit sizing — the same `scale = min(availW/W, availH/H)`
- * computation the YouTube Playables reference's own resize() example
- * uses, driven by `ResizeObserver` on the ACTUAL available box rather
- * than raw `window.innerWidth/innerHeight`.
+ * The window's own size, measured on the ACTUAL available box with a `ResizeObserver` (not raw `window.innerWidth/innerHeight`), plus the layout `fitLayout`
+ * gives it (layoutMode.ts): the same box is filled edge to edge at every shape, the UI laid out at `lw` x `lh` and scaled by `scale`.
  *
- * Why not the previous CSS `aspect-ratio` + `calc(100vw...)` approach:
- * that computed the box's height from the FULL viewport width, with no
- * way to account for GameShell's own `aside` panel (shown ≥768px) and
- * its flex gap sitting in the same row — at those widths the CSS-implied
- * box could exceed the space actually left after `aside`, and the outer
- * `overflow-hidden` wrapper would clip it. Measuring the real available
- * box (a `flex-1` sibling of `aside` — flexbox has already correctly
- * subtracted `aside`'s width/gap for us) removes that ambiguity entirely
- * and generalizes correctly to every aspect ratio, not just portrait.
+ * `ResizeObserver` (not `window.resize` alone) is the detection mechanism: it fires on any change to the observed element's own rendered box, including
+ * layout-driven changes some hosts don't emit a `resize` event for (e.g. certain fullscreen transitions — the YouTube Playables reference's own §7.2 lesson).
+ * `window.resize`/`orientationchange` listeners are kept too, as a zero-cost belt-and-suspenders — no polling timer, no second loop.
  *
- * `ResizeObserver` (not `window.resize` alone) is the detection
- * mechanism: it fires on any change to the observed element's own
- * rendered box, including layout-driven changes some hosts don't emit a
- * `resize` event for (e.g. certain fullscreen transitions — the
- * reference's own §7.2 lesson). `window.resize`/`orientationchange`
- * listeners are kept too, as a zero-cost belt-and-suspenders — no
- * polling timer, no second loop.
- *
- * Starts at the full logical size (a safe, always-non-zero default) so
- * nothing ever computes a 0x0 box before the first measurement — the
- * YouTube zero-viewport WebView case. `useLayoutEffect` (not
- * `useEffect`) so the very first real measurement happens before paint,
- * avoiding a one-frame flash at the wrong size.
+ * Starts at the full logical size (a safe, always-non-zero default) so nothing ever computes a 0x0 box before the first measurement — the YouTube
+ * zero-viewport WebView case. `useLayoutEffect` (not `useEffect`) so the very first real measurement happens before paint, avoiding a one-frame flash at the
+ * wrong size.
  */
-function useContainFit(logicalW: number, logicalH: number) {
+function useFillFit(logicalW: number, logicalH: number) {
   const ref = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ width: logicalW, height: logicalH });
-  // Phone landscape (developer 2026-10-22: "optimize the game for mobile landscape"):
-  // the game fills the whole screen instead of a shrunken 9:16 phone in the middle.
-  const [landscape, setLandscape] = useState(() =>
-    typeof window === "undefined" ? false : isPhoneLandscape(window.innerWidth, window.innerHeight),
-  );
+  const [box, setBox] = useState({ width: logicalW, height: logicalH });
+  const fit = fitLayout(box.width, box.height);
+  const landscape = fit.landscape;
 
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
 
     const measure = (w: number, h: number) => {
-      // A transient collapsed box (route swap, host mid-transition) —
-      // never let this compute a 0-sized game frame; keep the last good
-      // size and wait for the next real measurement, exactly like
-      // GameBridge's own `scale.min` floor does one layer down for the
-      // Phaser canvas itself.
+      // A transient collapsed box (route swap, host mid-transition) — never let this compute a 0-sized game frame; keep the last good size and wait for
+      // the next real measurement, exactly like GameBridge's own `scale.min` floor does one layer down for the Phaser canvas itself.
       if (w <= 0 || h <= 0) return;
-      const land = isPhoneLandscape(window.innerWidth, window.innerHeight);
-      setLandscape(land);
-      if (land) {
-        setSize({ width: w, height: h });
-        return;
-      }
-      if (window.innerWidth < FILL_MAX_W && w / h <= FILL_MAX_ASPECT) {
-        setSize({ width: w, height: h });
-        return;
-      }
-      const scale = Math.min(w / logicalW, h / logicalH);
-      setSize({ width: logicalW * scale, height: logicalH * scale });
+      setBox((old) => (old.width === w && old.height === h ? old : { width: w, height: h }));
     };
 
     measure(el.clientWidth, el.clientHeight);
@@ -117,45 +63,24 @@ function useContainFit(logicalW: number, logicalH: number) {
     else delete root.dataset["orient"];
   }, [landscape]);
 
-  return { ref, size, landscape };
+  return { ref, box, fit };
 }
 
 /**
- * Responsive playable container.
- *
- * Keeps the 540x960 logical composition's ASPECT RATIO intact (never
- * stretched independently in X/Y) while letting its on-screen SIZE
- * genuinely respond to the real available viewport at every aspect
- * ratio the Playables spec requires (9:32 through 32:9 and everything
- * between) — the largest box of that ratio that fits, centered, with
- * symmetric pillarbox (portrait-in-wide) or letterbox (wide-in-tall)
- * space around it, never cropped, never distorted. See useContainFit's
- * own doc for the sizing mechanism.
+ * Responsive playable container (developer 2026-11-19: it fills the window at every size and aspect ratio, never framed, never with empty bars: see
+ * `fitLayout`). The whole window is the game; a screen that is laid out smaller or larger than the window is scaled uniformly (never stretched in X or Y
+ * alone, never cropped).
  */
-export function GameShell({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
-  const { ref, size, landscape } = useContainFit(LOGICAL_W, LOGICAL_H);
-  // Below LAND_MIN_H the landscape UI is laid out at that height and scaled down,
-  // like MIN_LAYOUT_W in portrait (a 568×320 phone, a browser bar eating the height).
-  const landScale = landscape && size.height < LAND_MIN_H ? size.height / LAND_MIN_H : 1;
-  const contentStyle = landscape
-    ? landScale < 1
-      ? {
-          width: size.width / landScale,
-          height: LAND_MIN_H,
-          transform: `scale(${landScale})`,
-        }
-      : { width: "100%", height: "100%" }
-    : size.width >= MIN_LAYOUT_W
-      ? { width: "100%", height: "100%" }
-      : {
-          width: MIN_LAYOUT_W,
-          height: (size.height * MIN_LAYOUT_W) / size.width,
-          transform: `scale(${size.width / MIN_LAYOUT_W})`,
-        };
+export function GameShell({ children }: { children: ReactNode; aside?: ReactNode }) {
+  const { ref, box, fit } = useFillFit(LOGICAL_W, LOGICAL_H);
+  const scaled = Math.abs(fit.scale - 1) > 0.001;
+  const contentStyle = scaled
+    ? { width: fit.lw, height: fit.lh, transform: `scale(${fit.scale})` }
+    : { width: "100%", height: "100%" };
   return (
-    <LayoutContext.Provider value={landscape ? "landscape" : "portrait"}>
+    <LayoutContext.Provider value={fit.landscape ? "landscape" : "portrait"}>
       <div
-        className="fixed inset-0 overflow-hidden bg-[radial-gradient(120%_80%_at_50%_0%,#3E2819,#231710_70%)]"
+        className="fixed inset-0 overflow-hidden bg-[#231710]"
         // Playgama checklist: a long press (or right click) in the game never opens the
         // browser's menu; text fields keep theirs (paste).
         onContextMenu={(e) => {
@@ -167,47 +92,22 @@ export function GameShell({ children, aside }: { children: ReactNode; aside?: Re
           if ((e.target as HTMLElement).tagName === "IMG") e.preventDefault();
         }}
       >
-        {/* Phone-sized screens get the game edge to edge (no margin, border or
-          rounded corners); the framed "device" look is only for wider screens. */}
+        {/* The measuring box: the whole window (net of the notch's safe areas). The game fills it edge to edge. */}
         <div
-          className={
-            landscape
-              ? "flex h-full w-full items-stretch justify-center pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
-              : "flex h-full w-full items-center justify-center gap-6 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pt-[env(safe-area-inset-top)] sm:p-4"
-          }
+          ref={ref}
+          className="absolute inset-0 overflow-hidden pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pt-[env(safe-area-inset-top)]"
         >
-          {landscape ? null : aside}
-          {/* The measuring box — its own rendered size (via ResizeObserver
-            above) IS "the space actually available to the game", already
-            net of `aside`'s width and this row's gap/padding, courtesy of
-            ordinary flex layout. Never sized/styled itself beyond that;
-            the visible phone-frame lives entirely on the fixed-size child
-            below, centered inside it. */}
-          <div
-            ref={ref}
-            className="flex h-full min-h-0 w-full min-w-0 flex-1 items-center justify-center"
-          >
+          <div className="relative h-full w-full overflow-hidden">
+            {/* ONE wrapper at every size: switching between "children" and a wrapped tree when a resize or rotation crossed a layout boundary
+              changed the element tree, so React remounted the whole game (the cutting scene, the order, a served order's result panel).
+              Now a resize only changes this wrapper's size and scale. */}
             <div
-              className={
-                landscape
-                  ? "relative overflow-hidden"
-                  : "relative overflow-hidden sm:rounded-[clamp(0px,4vmin,34px)] sm:border-[3px] sm:border-[#241811] sm:shadow-[0_40px_80px_rgba(0,0,0,0.55)]"
-              }
-              style={{ width: size.width, height: size.height }}
+              data-game-content
+              data-orient={fit.landscape ? "landscape" : "portrait"}
+              className="absolute left-0 top-0 origin-top-left"
+              style={contentStyle}
             >
-              {/* ONE wrapper at every size: switching between "children" and a
-                wrapped tree when a resize or rotation crossed MIN_LAYOUT_W
-                changed the element tree, so React remounted the whole game
-                (the cutting scene, the order, a served order's result panel).
-                Now a resize only changes this wrapper's size and scale. */}
-              <div
-                data-game-content
-                data-orient={landscape ? "landscape" : "portrait"}
-                className="absolute left-0 top-0 origin-top-left"
-                style={contentStyle}
-              >
-                {children}
-              </div>
+              {children}
             </div>
           </div>
         </div>

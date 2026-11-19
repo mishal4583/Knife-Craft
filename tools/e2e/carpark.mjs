@@ -61,6 +61,11 @@ async function open(level, w = 390, h = 844, carPark) {
   );
   await page.reload({ waitUntil: "networkidle0" });
   await page.waitForSelector('[data-testid="car-park-game"] section button', { timeout: 20000 });
+  // the loading screen fades out over the game; a click before it is gone lands on the overlay (stale timing, 2026-11-19)
+  await page.waitForFunction(
+    () => document.elementFromPoint(5, 5)?.closest("#loading-overlay") === null,
+    { timeout: 20000 },
+  );
   await sleep(300);
 }
 const vehicles = () =>

@@ -88,8 +88,7 @@ const tab = (re) =>
         ?.click(),
     re.source,
   );
-// Close any day-result panel, then open Operations.
-await page.keyboard.press("Escape");
+// Open Operations (the game does not read the Esc key: Playgama 1.5.2).
 await tab(/Overview/);
 await sleep(800);
 // Overview's "Today's service" day card (BusinessDayCard).

@@ -31,6 +31,8 @@ try {
     START_BOOSTERS,
     crateTierFor,
     crateBoardFor,
+    crateTierAt,
+    gateCapacity,
     crateSeconds,
     crateStars,
     solveBoard,
@@ -181,6 +183,56 @@ try {
     };
     assert.ok(kinds(18) <= 3 && kinds(65) >= 5, `${kinds(18)} then ${kinds(65)}`);
   });
+  // RULE CHANGE (developer 2026-11-19: every mini-game climbs level by level like the rest, `difficultyRamp.ts`): crates, dark blocks, ingredients, waves
+  // and free crates move from one tier's values to the next tier's between their first levels. A9 builds boards for EVERY level.
+  check(
+    "A9: the ramp: on a tier's first level the numbers are the tier's own, nothing gets easier as the level rises, and every level's boards are solvable and meet the ramped numbers",
+    () => {
+      for (const t of CRATE_TIERS) {
+        const at = crateTierAt(t.from);
+        assert.deepEqual(
+          [at.bricks, at.colors, at.wallCells, at.minWaves, at.maxFree],
+          [t.bricks, t.colors, t.wallCells, t.minWaves, t.maxFree],
+          `tier ${t.from} is its own on its first level`,
+        );
+      }
+      let prev: any = null;
+      for (let level = 18; level <= 91; level++) {
+        const t = crateTierAt(level);
+        assert.ok(
+          t.colors <= gateCapacity(t),
+          `level ${level}: ${t.colors} ingredients fit ${gateCapacity(t)} doors`,
+        );
+        if (prev)
+          assert.ok(
+            t.bricks[0] >= prev.bricks[0] &&
+              t.bricks[1] >= prev.bricks[1] &&
+              t.colors >= prev.colors &&
+              t.wallCells[1] >= prev.wallCells[1] &&
+              t.minWaves >= prev.minWaves &&
+              t.maxFree <= prev.maxFree,
+            `level ${level} is not easier than level ${level - 1}`,
+          );
+        prev = t;
+        for (let seed = 1; seed <= 25; seed++) {
+          const board = crateBoardFor(level, seed);
+          const sol = solveBoard(board);
+          assert.ok(
+            sol.solvable &&
+              board.bricks.length >= t.bricks[0] &&
+              board.bricks.length <= t.bricks[1] &&
+              sol.waves.length >= t.minWaves &&
+              sol.free <= t.maxFree,
+            `level ${level} seed ${seed}: ${board.bricks.length} crates, ${sol.waves.length} waves, ${sol.free} free`,
+          );
+        }
+      }
+      assert.ok(
+        new Set([18, 20, 22, 24, 26].map((l) => crateTierAt(l).bricks[1])).size >= 3,
+        "Levels 18-26 really climb",
+      );
+    },
+  );
   check("A8: a board is built in under 800 ms (a phone), and tiers get harder, not easier", () => {
     for (const level of [18, 28, 45, 65]) {
       const t0 = performance.now();

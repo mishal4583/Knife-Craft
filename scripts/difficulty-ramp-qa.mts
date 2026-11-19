@@ -12,6 +12,13 @@
  */
 import fs from "node:fs";
 import { rampBetween, rampOf } from "../src/game/business/difficultyRamp.ts";
+import {
+  SAUCE_TIERS,
+  tierAt as sauceTier,
+  tierNumberAt as sauceTierNumber,
+} from "../src/game/business/sauceStation.ts";
+import { CAR_PARK_TIERS, carParkTierAt } from "../src/game/business/carPark.ts";
+import { CRATE_TIERS, crateTierAt } from "../src/game/business/crateDispatch.ts";
 import { DIFFICULTY, difficultyAt } from "../src/game/business/fridgeSort.ts";
 import { TIERS, tierAt as stockTier } from "../src/game/business/stockroomSort.ts";
 import { INSPECTION_TIERS } from "../src/game/business/deliveryInspection.ts";
@@ -90,6 +97,79 @@ console.log("B. The games");
       nonDecreasing(ck.map((t) => t.minBin)) &&
       nonDecreasing(ck.map((t) => t.minUse)),
     "B5: the Fridge Check's deck (cards, Bin, Use next) equals the tier on its first level and never shrinks",
+  );
+}
+
+console.log(
+  "B2. The Sauce Station, the Car Park and Unload the Van (developer 2026-11-19: every mini-game climbs level by level)",
+);
+{
+  assert(
+    SAUCE_TIERS.every((t) => {
+      const s = sauceTier(t.from);
+      return (
+        s.cap === t.cap &&
+        s.timeMs === t.timeMs &&
+        s.tastes === t.tastes &&
+        s.tolerance === t.tolerance &&
+        s.oilLimit === t.oilLimit &&
+        s.bottles === t.bottles &&
+        s.window === t.window
+      );
+    }),
+    "S1: on every tier's first level the Sauce Station is exactly the tier's own numbers",
+  );
+  const sauceLv = levels.filter((l) => l >= 7);
+  assert(
+    nonDecreasing(sauceLv.map((l) => sauceTier(l).cap)) &&
+      nonDecreasing(sauceLv.map((l) => -sauceTier(l).timeMs)) &&
+      nonDecreasing(sauceLv.map((l) => -sauceTier(l).tolerance)) &&
+      nonDecreasing(sauceLv.map((l) => -sauceTier(l).oilLimit)) &&
+      nonDecreasing(sauceLv.map((l) => sauceTier(l).bottles)) &&
+      nonDecreasing(sauceLv.map((l) => -sauceTier(l).window)) &&
+      nonDecreasing(sauceLv.map((l) => -sauceTier(l).tastes)),
+    "S2: the Sauce Station never gets easier as the level rises (clock, tolerance, oil limit, window, Taste looks only shrink; bowl and bottles only grow)",
+  );
+  assert(
+    distinct(levels.filter((l) => l >= 7 && l <= 39).map((l) => sauceTier(l).timeMs)) >= 6 &&
+      sauceTierNumber(7) === 1 &&
+      sauceTierNumber(39) === 1 &&
+      sauceTierNumber(40) === 2 &&
+      sauceTierNumber(91) === 4,
+    "S3: Levels 7-39 climb (the clock was one flat 90 s) and the tier numbers are unchanged",
+  );
+  const same = (a: any, b: any, keys: string[]) =>
+    keys.every((k) => JSON.stringify(a[k]) === JSON.stringify(b[k]));
+  assert(
+    CAR_PARK_TIERS.every((t) =>
+      same(carParkTierAt(t.from), t, ["minVehicles", "maxVehicles", "minFree", "maxFree", "chain"]),
+    ) &&
+      CRATE_TIERS.every((t) =>
+        same(crateTierAt(t.from), t, ["bricks", "colors", "wallCells", "minWaves", "maxFree"]),
+      ),
+    "P1: on every tier's first level the Car Park and Unload the Van are exactly the tier's own numbers",
+  );
+  const cp = levels.filter((l) => l >= 15).map(carParkTierAt);
+  const cr = levels.filter((l) => l >= 18).map(crateTierAt);
+  assert(
+    nonDecreasing(cp.map((t) => t.minVehicles)) &&
+      nonDecreasing(cp.map((t) => t.maxVehicles)) &&
+      nonDecreasing(cp.map((t) => -t.minFree)) &&
+      nonDecreasing(cp.map((t) => -t.maxFree)) &&
+      nonDecreasing(cp.map((t) => t.chain)) &&
+      nonDecreasing(cr.map((t) => t.bricks[0])) &&
+      nonDecreasing(cr.map((t) => t.bricks[1])) &&
+      nonDecreasing(cr.map((t) => t.colors)) &&
+      nonDecreasing(cr.map((t) => t.wallCells[1])) &&
+      nonDecreasing(cr.map((t) => t.minWaves)) &&
+      nonDecreasing(cr.map((t) => -t.maxFree)),
+    "P2: the Car Park and Unload the Van never get easier as the level rises",
+  );
+  assert(
+    distinct(levels.filter((l) => l >= 15 && l <= 31).map((l) => carParkTierAt(l).maxVehicles)) >=
+      4 &&
+      distinct(levels.filter((l) => l >= 18 && l <= 44).map((l) => crateTierAt(l).bricks[1])) >= 3,
+    "P3: the Car Park's Levels 15-31 and the Van's Levels 18-44 really climb (they were two flat lots)",
   );
 }
 

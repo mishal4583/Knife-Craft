@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { sharingAllowed } from "@/game/PlayablesSDK";
 import { MOMENT_KIND_LABEL, type KitchenMoment } from "@/game/kitchenMoments";
 import { cardBlob, cardFileName, drawMomentCard } from "./momentCard";
 import { KButton } from "../common/primitives";
@@ -57,14 +58,19 @@ export function MomentPreview({
   const canShareFile = (() => {
     const f = file();
     try {
-      return !!f && typeof navigator.share === "function" && !!navigator.canShare?.({ files: [f] });
+      return (
+        sharingAllowed() &&
+        !!f &&
+        typeof navigator.share === "function" &&
+        !!navigator.canShare?.({ files: [f] })
+      );
     } catch {
       return false;
     }
   })();
   // Detected separately: a platform that shares text but not files gets the
   // card's line (the image stays a Save image away).
-  const canShareText = !canShareFile && typeof navigator.share === "function";
+  const canShareText = !canShareFile && sharingAllowed() && typeof navigator.share === "function";
 
   async function share() {
     const f = canShareFile ? file() : null;

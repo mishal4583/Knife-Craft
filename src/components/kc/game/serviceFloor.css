@@ -364,3 +364,48 @@
   transform: translate(-50%, calc(-100% - 7cqw));
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
 }
+
+/* A wide stage (developer 2026-11-19): the painting goes on to the sides, mirrored copy after copy, instead of a blurred cover: no empty or blurred side
+   areas. Hidden while the stage is no wider than the crop (a phone), where the blurred backdrop above still fills the tall bands. */
+.sf .sf-sides {
+  display: none;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.sf .sf-tile {
+  position: relative;
+  flex: none;
+  height: 100%;
+  aspect-ratio: 518 / 622;
+  overflow: hidden;
+}
+.sf .sf-tile--flip {
+  transform: scaleX(-1);
+}
+@container (min-aspect-ratio: 5 / 6) {
+  .sf .sf-backdrop {
+    display: none;
+  }
+  .sf .sf-sides {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    /* a little darker than the view: the mirrored copies are scenery, not the stage */
+    filter: brightness(0.75);
+  }
+  /* the outer tiles dim a little towards the edges of the window, like the view's own vignette */
+  .sf .sf-sides::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to right,
+      rgba(20, 12, 8, 0.45),
+      transparent 28%,
+      transparent 72%,
+      rgba(20, 12, 8, 0.45)
+    );
+  }
+}

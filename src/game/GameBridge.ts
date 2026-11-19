@@ -152,6 +152,35 @@ export class GameBridge {
       },
     });
 
+    // The shell lays the UI out at one size and scales it with CSS to fill the window (GameShell / fitLayout, developer 2026-11-19). Phaser's RESIZE mode
+    // measures its parent with getBoundingClientRect(), which includes that CSS scale, so on a window where the scale is not 1 the canvas came out
+    // scale x too big (the board cut off at 1920 x 1080). Measure the parent's LAYOUT box instead (clientWidth / clientHeight ignore transforms); the
+    // canvas's own on-screen box is still read for input, which is what keeps the pointer accurate under the scale.
+    const scaleManager = this.game.scale as unknown as {
+      parent: HTMLElement | null;
+      parentSize: { width: number; height: number; setSize(w: number, h: number): void };
+      canvas: HTMLCanvasElement | null;
+      canvasBounds: { x: number; y: number };
+      getParentBounds(): boolean;
+      refresh(): void;
+    };
+    scaleManager.getParentBounds = function (this: typeof scaleManager) {
+      const parent = this.parent;
+      if (!parent) return false;
+      const w = parent.clientWidth;
+      const h = parent.clientHeight;
+      if (this.parentSize.width !== w || this.parentSize.height !== h) {
+        this.parentSize.setSize(w, h);
+        return true;
+      }
+      if (this.canvas) {
+        const rect = this.canvas.getBoundingClientRect();
+        if (rect.x !== this.canvasBounds.x || rect.y !== this.canvasBounds.y) return true;
+      }
+      return false;
+    };
+    scaleManager.refresh();
+
     // Phaser wires its own document.hidden/visibilitychange/blur/focus
     // handlers on construction (Game#onHidden calls this.loop.pause(),
     // no config flag disables it in this version) — a second, competing

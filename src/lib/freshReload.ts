@@ -7,7 +7,6 @@
  * every reload. Loading the page under a different query string cannot be answered from that copy, so the browser gets the current
  * index.html and the current chunk names. The save lives in Bridge storage, not in the URL, so nothing is lost.
  */
-const KEY = "kc-fresh-reload";
 const AUTO_EVERY_MS = 60_000;
 
 /** True for the errors a lazily loaded screen throws when its file is missing or the network dropped. */
@@ -19,18 +18,14 @@ export function isChunkLoadError(error: unknown): boolean {
 }
 
 /**
- * Loads the page again under a new query string. Automatic callers (`force` false) do it at most once a minute, so a chunk that is
+ * Loads the page again under a new query string. Automatic callers (`force` false) do it at most once a minute (the last try is read back from the `fresh` parameter of the address), so a chunk that is
  * really missing cannot loop; the button the player taps (`force` true) always does it. Returns whether it navigated.
  */
 export function reloadFresh(force = false): boolean {
-  try {
-    const last = Number(window.sessionStorage.getItem(KEY) ?? 0);
-    if (!force && Date.now() - last < AUTO_EVERY_MS) return false;
-    window.sessionStorage.setItem(KEY, String(Date.now()));
-  } catch {
-    if (!force) return false; // no storage to remember the last try: never loop on our own
-  }
   const url = new URL(window.location.href);
+  // The time of the last try lives in the page's own `fresh` parameter (no sessionStorage, cookie or other storage: Playgama 3.2.1).
+  const last = Number(url.searchParams.get("fresh") ?? 0);
+  if (!force && Number.isFinite(last) && Date.now() - last < AUTO_EVERY_MS) return false;
   url.searchParams.set("fresh", String(Date.now()));
   window.location.replace(url.toString());
   return true;

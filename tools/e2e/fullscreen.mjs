@@ -3,7 +3,7 @@
 //   F1 an upright phone (320 x 568 up to 430 x 932, including the tall 9:20 ones) gets a game frame that IS the viewport: no bars above, below or beside
 //   F2 the Kitchen's cards (rank, daily gift, kitchen strip) are not squeezed by the wallet row: each is wide enough to read (>= 150 px) and clear of the shortcut column
 //   F3 the bottom bar sits on the bottom edge of the screen and nothing scrolls sideways
-//   F4 a tablet (768 x 1024) keeps the framed 9:16 game
+//   F4 a tablet (768 x 1024) fills the window too (RULE CHANGE 2026-11-19: no framed 9:16 column, no empty bars)
 //   F5 Dessert Run (?dessertRun=18) fills a tall phone: its root reaches the top, bottom and side edges
 //   F6 no console errors
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -128,10 +128,12 @@ await boot(page, save);
 await settle();
 const tablet = await frame();
 check(
-  "F4 a tablet keeps the framed 9:16 game",
+  "F4 a tablet fills the whole window: the frame IS the viewport",
   !!tablet.frame &&
-    Math.abs(tablet.frame[2] / tablet.frame[3] - 540 / 960) < 0.02 &&
-    tablet.frame[0] > 0,
+    Math.abs(tablet.frame[0]) <= 1 &&
+    Math.abs(tablet.frame[1]) <= 1 &&
+    Math.abs(tablet.frame[2] - 768) <= 1 &&
+    Math.abs(tablet.frame[3] - 1024) <= 1,
   tablet,
 );
 

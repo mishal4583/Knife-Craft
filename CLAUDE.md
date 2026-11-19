@@ -35,7 +35,9 @@ status line in HANDOFF; this file changes only when a RULE changes.
 - **Stack:** React 19 + Vite + TypeScript + Tailwind v4; Phaser 3.90 for
   the cutting (the lazy `Preparation` chunk).
 - **Screen:** portrait first, logical 540×960. An upright phone (window under 640 px wide, no wider than 3:4) gets the WHOLE screen, no bars
-  (developer 2026-11-16; `GameShell` `FILL_MAX_W`); wider windows keep the contain-fit 9:16 frame.
+  (developer 2026-11-16; `GameShell` `FILL_MAX_W`). **Every other window is filled edge to edge too, never framed and never with empty or blurred
+  bars** (developer 2026-11-19, Playgama 1.6.1 / 1.6.8, YouTube Playables Design 1): `fitLayout` (`kc/game/layoutMode.ts`) lays the UI out at a logical
+  size and `GameShell` scales it to the window; landscape layout from aspect 1.3, portrait below (`layout-fit-qa`).
 - **Content:** 91 campaign levels in 13 chapters (148 until the developer's campaign plan of 2026-11-07: fewer, richer levels, chicken
   at Level 6, steak 15, salmon 16; data in `levels/campaignPlan.ts`, numbering in `levels/campaignSelection.ts`), Market, Inventory,
   Restaurant (Economy V3), Achievements, story. Every one of the 221 dishes stays in the Menu.
@@ -64,8 +66,10 @@ status line in HANDOFF; this file changes only when a RULE changes.
 - **Saves:** through Bridge storage, key `knifecraft_save`. Plain
   localStorage only when there is no Bridge.
 - **Interstitials:** only at natural breaks, via
-  `src/game/ads/interstitialPolicy.ts`. None before 3 completed levels, then
-  ≥ 150 s apart.
+  `src/game/ads/interstitialPolicy.ts`. The game keeps NO timer or counter
+  of its own (Playgama Bridge step 7, developer 2026-11-19): it asks at every
+  natural break and the Bridge decides when an ad shows (config: the
+  platform's default delay).
 - **Rewarded ads:** Replay Bonus, Rush Restock, the Pre-Service Check
   covers, the day's Cleaner (`day_cleaner`, developer 2026-10-17) and the
   six ad bonuses (`ads/adBonuses.ts`, developer 2026-10-18: floating cash,
@@ -115,6 +119,8 @@ npm run preflight; npx vite preview         # :4173 for browser tests
 Release zip: the CONTENTS of `dist/` →
 `releases/KnifeCraft-Playgama-v<version>.zip` (gitignored), with
 `index.html` and `playgama-bridge-config.json` at the zip root.
+**Build the zip with Python's `zipfile` (deflate, forward slashes), NEVER PowerShell `Compress-Archive`** (2026-11-19: the same `dist/` zipped with
+`Compress-Archive` was refused by Playgama with BRIDGE_NOT_INITIALIZED; zipped with `zipfile` it PASSED, Bridge 2.4.3 FOUND).
 
 ## 5. QA AND GATES
 
@@ -267,8 +273,12 @@ Release zip: the CONTENTS of `dist/` →
   that teaches the technique. It never commits a cut or touches scoring.
 - **Knives:** every knife is drawn by `scenes/knifeProfile.ts`. The cut
   rules are in `docs/KNIFE_RULES.md`.
-- **Audio:** synthesized only (`AudioManager.ts`, seeded music); no Page
-  Visibility API (preflight).
+- **Audio:** RECORDED files only, never sound made in code (Playgama 3.3.2,
+  developer 2026-11-19): `public/audio/*.mp3`, built by
+  `scripts/make-audio-assets.py` from CC0 recordings (`docs/AUDIO-CREDITS.md`),
+  played by `AudioManager.ts` (no oscillator, no generated noise: `audio-qa`
+  Y1); every new sound is a licensed recording with its credit line. No Page
+  Visibility API, no Esc key, no sessionStorage or cookies (preflight).
 
 ## 10. UI
 

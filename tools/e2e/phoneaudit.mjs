@@ -31,6 +31,10 @@ const VIEWPORTS = [
   [844, 390],
   [932, 430],
 ];
+// --sizes=1280x720,800x800 audits other window shapes (desktop, tablet, square) instead of the nine phone sizes (2026-11-19: the game now fills every window).
+const SIZES = (process.argv.find((a) => a.startsWith("--sizes=")) ?? "").slice(8);
+if (SIZES)
+  VIEWPORTS.splice(0, VIEWPORTS.length, ...SIZES.split(",").map((s) => s.split("x").map(Number)));
 const SHOTS = process.argv.includes("--shots");
 const ONLY = (process.argv.find((a) => a.startsWith("--only=")) ?? "")
   .slice(7)
@@ -324,7 +328,7 @@ for (const [name, seed, act] of SCREENS) {
       for (const c of m.small) note(name, "SMALL", c.el, vp, c.size);
       for (const c of m.tiny) note(name, "TINY-TEXT", c.el, vp, `${c.size}px "${c.text}"`);
       for (const s of m.stuck) note(name, "STUCK", s, vp);
-      if (SHOTS && ((w === 844 && h === 390) || (w === 390 && h === 844)))
+      if (SHOTS && (SIZES || (w === 844 && h === 390) || (w === 390 && h === 844)))
         await shot(page, `phone-${name}-${vp}`);
       // "Play anyway" must lift the upright card and leave the game on screen
       if (await page.evaluate(() => !!document.querySelector('[data-testid$="-upright"]'))) {
@@ -346,7 +350,7 @@ for (const [name, seed, act] of SCREENS) {
         for (const c of m2.small) note(play, "SMALL", c.el, vp, c.size);
         for (const c of m2.tiny) note(play, "TINY-TEXT", c.el, vp, `${c.size}px "${c.text}"`);
         for (const s of m2.stuck) note(play, "STUCK", s, vp);
-        if (SHOTS && ((w === 844 && h === 390) || (w === 390 && h === 844)))
+        if (SHOTS && (SIZES || (w === 844 && h === 390) || (w === 390 && h === 844)))
           await shot(page, `phone-${name}-play-${vp}`);
       }
     } catch (error) {

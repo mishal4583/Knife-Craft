@@ -13,7 +13,6 @@ import {
   STAGE,
   TABLES,
   cellHex,
-  isExposed,
   isWaiting,
   spotCenter,
   type RunState,
@@ -29,8 +28,6 @@ import { FRAME, waiterSheet, type RunArt } from "./dessertRunArt";
 
 export type DrawView = {
   now: number;
-  /** Colour index of a held waiter: its cubes light up, the rest dim. */
-  peek: number | null;
   /** The lane under the finger, if any. */
   hoverLane: number | null;
   hintOn: boolean;
@@ -280,6 +277,44 @@ function drawFrame(
   );
 }
 
+/** The guests are drawn 95 px tall (105 before), with the bottom of the picture on the table. */
+const GUEST_SIZE = 95;
+const GUEST_BOTTOM = 579;
+/** The running waiter is drawn 72 px tall (62 before, developer 2026-11-18). */
+const RUNNER_SIZE = 72;
+/**
+ * The cream well of a guest's plate, in stage pixels from the plate's centre (the picture is 84 x 42 and its well measures 63 x 27.6).
+ * Served cubes are laid on a lattice inside it, middle first, as small as it takes to hold every cube the guest will be served.
+ */
+const WELL_RX = 30;
+const WELL_RY = 12.6;
+const layouts = new Map<number, { size: number; cells: { x: number; y: number }[] }>();
+function plateLayout(need: number) {
+  const key = Math.max(1, Math.round(need));
+  const hit = layouts.get(key);
+  if (hit) return hit;
+  let out = { size: 2, cells: [{ x: 0, y: 0 }] };
+  for (let size = 4; size >= 1.6; size -= 0.05) {
+    const cells: { x: number; y: number; d: number }[] = [];
+    const rx = WELL_RX - size / 2;
+    const ry = WELL_RY - size / 2;
+    for (let iy = -Math.ceil(ry / size); iy <= Math.ceil(ry / size); iy++)
+      for (let ix = -Math.ceil(rx / size); ix <= Math.ceil(rx / size); ix++) {
+        const x = ix * size;
+        const y = iy * size;
+        const d = Math.hypot(x / rx, y / ry);
+        if (d <= 1) cells.push({ x, y, d });
+      }
+    if (cells.length >= key || size <= 1.65) {
+      cells.sort((a, b) => a.d - b.d || a.y - b.y || a.x - b.x);
+      out = { size, cells };
+      break;
+    }
+  }
+  layouts.set(key, out);
+  return out;
+}
+
 export function drawRun(ctx: CanvasRenderingContext2D, state: RunState, view: DrawView) {
   const { now, art } = view;
   const img = art?.images;
@@ -347,8 +382,19 @@ export function drawRun(ctx: CanvasRenderingContext2D, state: RunState, view: Dr
     const { p, row } = mood(j);
     if (img?.guests) {
       const cell = img.guests.naturalWidth / 4;
-      const size = 105;
-      ctx.drawImage(img.guests, j * cell, row * cell, cell, cell, g.x - size / 2, 474, size, size);
+      // 95 px (was 105, developer 2026-11-18: a little smaller); the picture's bottom stays where it was, so they still sit behind the table
+      const size = GUEST_SIZE;
+      ctx.drawImage(
+        img.guests,
+        j * cell,
+        row * cell,
+        cell,
+        cell,
+        g.x - size / 2,
+        GUEST_BOTTOM - size,
+        size,
+        size,
+      );
     } else drawPlainGuest(ctx, g.x, g.y, p, j);
   });
   // the table's front (cloth and legs) over the guests, so they sit IN their chairs, behind the table top
@@ -381,24 +427,26 @@ export function drawRun(ctx: CanvasRenderingContext2D, state: RunState, view: Dr
       ctx.lineWidth = 3;
       ctx.stroke();
     }
+    // the served cubes lie INSIDE the plate's cream well, filled from the middle outwards (they used to stack up past its rim)
+    const lay = plateLayout(state.need[j]!);
     state.served[j]!.forEach((k, i) => {
-      const q = Math.min(i, 111);
+      const c = lay.cells[Math.min(i, lay.cells.length - 1)]!;
       drawCube(
         ctx,
-        g.x - 29 + (q % 16) * 3.7,
-        GUEST_PLATE_Y - 6 - Math.floor(q / 16) * 3.7,
-        4.2,
+        g.x + c.x - lay.size / 2,
+        GUEST_PLATE_Y + c.y - lay.size / 2,
+        lay.size + 0.3,
         hexOfK(k),
       );
     });
     if (p >= 1) {
       const bob = Math.sin(now / 200 + j) * 3;
-      if (img?.sparkle) ctx.drawImage(img.sparkle, g.x + 18, 466 + bob, 30, 30);
+      if (img?.sparkle) ctx.drawImage(img.sparkle, g.x + 16, 474 + bob, 30, 30);
       else {
         ctx.fillStyle = "#e8514a";
         ctx.font = `800 20px ${FONT}`;
         ctx.textAlign = "center";
-        ctx.fillText("♥", g.x, 500 + bob);
+        ctx.fillText("♥", g.x, 506 + bob);
       }
     }
   });
@@ -414,7 +462,6 @@ export function drawRun(ctx: CanvasRenderingContext2D, state: RunState, view: Dr
   }
 
   // ---- the dessert
-  const dim = view.peek != null;
   const dprK = ctx.getTransform().a || 1;
   // The cubes are cut by the plate's round well, so the ones at the edge follow its shape (the board holds every cube that meets the circle).
   ctx.save();
@@ -431,8 +478,6 @@ export function drawRun(ctx: CanvasRenderingContext2D, state: RunState, view: Dr
     const y = Math.floor((ORIGIN.y + row * CELL) * dprK) / dprK;
     const x2 = Math.floor((ORIGIN.x + (col + 1) * CELL) * dprK) / dprK;
     const y2 = Math.floor((ORIGIN.y + (row + 1) * CELL) * dprK) / dprK;
-    const match = view.peek != null && k === view.peek && isExposed(state.ext, i);
-    ctx.globalAlpha = dim && k !== view.peek ? 0.32 : 1;
     // The tile's box is whole device pixels; its sprite is blitted 1:1, so the right edge of one tile is the left
     // edge of the next and nothing can show or blur between them.
     ctx.drawImage(
@@ -442,18 +487,6 @@ export function drawRun(ctx: CanvasRenderingContext2D, state: RunState, view: Dr
       x2 - x,
       y2 - y,
     );
-    if (match) {
-      ctx.globalAlpha = 0.6 + 0.4 * Math.sin(now / 130);
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = 2.5;
-      rr(ctx, x - 0.5, y - 0.5, CELL + 0.5, CELL + 0.5, 4);
-      ctx.stroke();
-    } else if (dim && k === view.peek) {
-      ctx.globalAlpha = 0.55;
-      ctx.fillStyle = "rgba(0,0,0,.35)";
-      rr(ctx, x, y, CELL - 0.6, CELL - 0.6, 4);
-      ctx.fill();
-    }
   }
   ctx.globalAlpha = 1;
   // a soft shade just inside the rim, so the mosaic sits down in the dish
@@ -474,16 +507,26 @@ export function drawRun(ctx: CanvasRenderingContext2D, state: RunState, view: Dr
       ? frameOf(art, "run", spot.k, spot.hex, step, 1)
       : frameOf(art, "run", spot.k, spot.hex, 2 + step, 0);
     if (f) {
-      const size = 62;
+      const size = RUNNER_SIZE;
       drawFrame(ctx, f, run.x, run.y + 14, size);
-      if (carrying) drawCube(ctx, run.x - 6, run.y - 12, 12, hexOfK(run.carry));
+      // the cube rides ON the tray: in the carrying frames the tray is held at the chest, 0.58 of the picture's height above the feet and a hair right of the middle
+      if (carrying)
+        drawCube(
+          ctx,
+          run.x + size * 0.035 - 7,
+          run.y + 14 - size * 0.58 - 10,
+          14,
+          hexOfK(run.carry),
+        );
     } else drawPlainWaiter(ctx, run.x, run.y, 34, spot.hex, carrying ? hexOfK(run.carry) : null);
   });
   for (const f of state.flights) {
     const g = GUESTS[f.guest]!;
     const x = CART.x + (g.x - CART.x) * f.t;
     const y = CART.y + (GUEST_PLATE_Y - CART.y) * f.t - Math.sin(Math.PI * f.t) * 36;
-    drawCube(ctx, x - 6, y - 6, 12, hexOfK(f.k));
+    // it shrinks on the way, so it lands on the plate as the small cube that lies there
+    const fs = 12 - 7 * f.t;
+    drawCube(ctx, x - fs / 2, y - fs / 2, fs, hexOfK(f.k));
   }
 
   // ---- standby spots

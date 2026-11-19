@@ -1,4 +1,5 @@
 /** Car Park — deterministic, solvable shared-lot puzzle. It never changes money or stock. */
+import { rampOf } from "./difficultyRamp";
 import type { SaveData } from "../SaveManager";
 import { playDayOf } from "./playDay";
 import { addHype } from "../restaurant/secondFloor";
@@ -141,11 +142,26 @@ function rngFor(seed: number) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-const tierAt = (level: number): CarParkTier => {
-  let tier = CAR_PARK_TIERS[0]!;
-  for (const next of CAR_PARK_TIERS) if (level >= next.from) tier = next;
-  return tier;
+/**
+ * The tier a level plays, RAMPED (developer 2026-11-19: "make sure the levels of every mini-game match the rest of the game"; the rule is
+ * `difficultyRamp.ts`): the number of vehicles, how few are free at the start and the length of the chain move smoothly from one tier's values to the
+ * next tier's over the levels between them (Levels 22-31 were one flat 8-10 vehicle lot). On a tier's first level the numbers are exactly the tier's
+ * own and nothing gets easier as the level rises. The lot's size and the vehicle lengths stay the tier's own. `car-park-qa` A9 builds lots for every level.
+ */
+export const carParkTierAt = (level: number): CarParkTier => {
+  let i = 0;
+  for (let k = 0; k < CAR_PARK_TIERS.length; k++) if (level >= CAR_PARK_TIERS[k]!.from) i = k;
+  const here = CAR_PARK_TIERS[i]!;
+  return {
+    ...here,
+    minVehicles: rampOf(CAR_PARK_TIERS, level, (t) => t.minVehicles),
+    maxVehicles: rampOf(CAR_PARK_TIERS, level, (t) => t.maxVehicles),
+    minFree: rampOf(CAR_PARK_TIERS, level, (t) => t.minFree),
+    maxFree: rampOf(CAR_PARK_TIERS, level, (t) => t.maxFree),
+    chain: rampOf(CAR_PARK_TIERS, level, (t) => t.chain),
+  };
 };
+const tierAt = carParkTierAt;
 /** A cell as one number (the lot is at most 16 wide), which keeps the generator fast on a phone. */
 const cellKey = (x: number, y: number) => y * 16 + x;
 const cells = (v: CarParkVehicle): number[] =>

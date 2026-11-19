@@ -12,6 +12,7 @@
  * Every sauce is DEFINED by a reference recipe and its target colour and thickness are computed from that recipe, so every sauce can be made exactly
  * (the QA also searches it). State lives in `business.sauceStation` (optional; absent = nothing done yet) read through `sauceStationOf`.
  */
+import { rampOf, rampOfExact } from "./difficultyRamp";
 import type { SaveData } from "../SaveManager";
 import { playDayOf } from "./playDay";
 import { addHype } from "../restaurant/secondFloor";
@@ -629,12 +630,32 @@ export const SAUCE_TIERS: readonly SauceTier[] = [
     window: 0.1,
   },
 ];
+/**
+ * The tier a level plays, RAMPED (developer 2026-11-19: "make sure the levels of every mini-game match the rest of the game"; the rule is
+ * `difficultyRamp.ts`, 2026-11-11): the clock, the colour tolerance, the oil limit, the fill window, the bottles and the bowl move smoothly from
+ * one tier's value to the next tier's over the levels between them, so Levels 7-39 are no longer one flat 90 s round. On a tier's first level
+ * every number is exactly the tier's own, and nothing ever gets easier as the level rises (`difficulty-ramp-qa` S1-S3). The Taste looks stay
+ * the tier's own until a tier with a finite count follows (the first tier tastes without limit).
+ */
 export function tierAt(level: number): SauceTier {
-  let t = SAUCE_TIERS[0]!;
-  for (const x of SAUCE_TIERS) if (level >= x.from) t = x;
-  return t;
+  let i = 0;
+  for (let k = 0; k < SAUCE_TIERS.length; k++) if (level >= SAUCE_TIERS[k]!.from) i = k;
+  return {
+    from: SAUCE_TIERS[i]!.from,
+    cap: rampOf(SAUCE_TIERS, level, (t) => t.cap),
+    timeMs: rampOf(SAUCE_TIERS, level, (t) => t.timeMs / 1000) * 1000,
+    tastes: rampOfExact(SAUCE_TIERS, level, (t) => t.tastes, 0),
+    tolerance: rampOfExact(SAUCE_TIERS, level, (t) => t.tolerance, 2),
+    oilLimit: rampOfExact(SAUCE_TIERS, level, (t) => t.oilLimit, 2),
+    bottles: rampOf(SAUCE_TIERS, level, (t) => t.bottles),
+    window: rampOfExact(SAUCE_TIERS, level, (t) => t.window, 3),
+  };
 }
-export const tierNumberAt = (level: number): number => SAUCE_TIERS.indexOf(tierAt(level)) + 1;
+export const tierNumberAt = (level: number): number => {
+  let n = 1;
+  for (let k = 0; k < SAUCE_TIERS.length; k++) if (level >= SAUCE_TIERS[k]!.from) n = k + 1;
+  return n;
+};
 
 // ── Blending (the whisk and the spoon) ───────────────────────────────────────
 

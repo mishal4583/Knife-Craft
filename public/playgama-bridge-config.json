@@ -1,6 +1,5 @@
 {
     "advertisement": {
-        "minimumDelayBetweenInterstitial": 120,
         "interstitial": {
             "placementFallback": "level_completed",
             "placements": [

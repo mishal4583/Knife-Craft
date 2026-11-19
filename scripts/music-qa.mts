@@ -1,17 +1,17 @@
 /**
- * MUSIC QA (developer 2026-11-08: "add music while loading the game and add background music, soothing or relaxing, that can engage the
- * player for longer hours, and make sure we don't face any copyright issue").
- *   C  copyright: no audio file anywhere in the game, no audio element, no downloaded sound; the score is made by src/game/music/
- *      relaxComposer.ts from plain scales and chord cycles and a seeded generator, with the reasons written in the file
- *   P  the piece: the same seed gives the same piece; it is slow and soft; every note is in range and in the key; it never repeats
- *      over a long session (key moves, new chord cycles, rests); the loudest moment is bounded
+ * MUSIC AND SOUND-FILE QA.
+ * Developer 2026-11-08: "add music while loading the game and add background music, soothing or relaxing ... and make sure we don't face any copyright issue".
+ * RULE CHANGE (developer 2026-11-19, Playgama 3.3.2): that score was made in code; Playgama does not accept sound synthesized in code, so the game now ships
+ * RECORDED, CC0 audio (public/audio). The copyright promise is kept the other way: every file comes from a CC0 source that is named in docs/AUDIO-CREDITS.md.
+ *   C  the files: the list in audioFiles.ts and the folder agree, every file is a real mp3, the sizes are bounded, the music tracks are loops, and
+ *      every source is credited with its licence page; the sound code plays only files from the game's own folder
  *   L  loading: the loading mood exists and plays before the save is there; the loading screen says "tap for music" until the first tap
+ * (The earlier P section, which checked the generated piece note by note, is gone with the generator.)
  * Run: npx tsx scripts/music-qa.mts
  */
 import fs from "node:fs";
 import path from "node:path";
-import { CYCLES, MOOD_SETTINGS, RelaxComposer } from "../src/game/music/relaxComposer.ts";
-import type { MoodName } from "../src/game/music/relaxComposer.ts";
+import { AUDIO_FILES } from "../src/game/audio/audioFiles.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const read = (p: string) => fs.readFileSync(path.join(ROOT, p), "utf8");
@@ -24,196 +24,68 @@ function assert(cond: unknown, msg: string, detail?: unknown) {
   }
 }
 
-function walk(dir: string, out: string[] = []): string[] {
-  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (["node_modules", ".git", "dist", "releases", "NPC Assets", "Covers"].includes(e.name))
-      continue;
-    const p = path.join(dir, e.name);
-    if (e.isDirectory()) walk(p, out);
-    else out.push(p);
-  }
-  return out;
-}
-
-console.log("C. No copyright risk: nothing recorded, nothing copied");
+console.log("C. The recorded files");
 {
-  const AUDIO = /\.(mp3|ogg|oga|wav|flac|aac|m4a|opus|mid|midi)$/i;
-  const files = [...walk(path.join(ROOT, "src")), ...walk(path.join(ROOT, "public"))].filter((f) =>
-    AUDIO.test(f),
-  );
-  assert(files.length === 0, "C1: no sound file in src/ or public/ (the game ships none)", files);
-  const code = walk(path.join(ROOT, "src"))
-    .filter((f) => /\.(ts|tsx)$/.test(f))
-    .map((f) => ({ f, t: fs.readFileSync(f, "utf8") }));
-  const media = code.filter(({ t }) =>
-    /new Audio\(|<audio[\s>]|decodeAudioData|createMediaElementSource/.test(t),
-  );
+  const dir = path.join(ROOT, "public/audio");
+  const onDisk = fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith(".mp3"))
+    .sort();
+  const listed = Object.values(AUDIO_FILES)
+    .map((v) => path.basename(v.file))
+    .sort();
   assert(
-    media.length === 0,
-    "C2: nothing loads or decodes a sound (no Audio element, no decodeAudioData)",
-    media.map((m) => m.f),
+    JSON.stringify(onDisk) === JSON.stringify(listed) && onDisk.length >= 30,
+    "C1: the audio list (src/game/audio/audioFiles.ts) and public/audio hold the same files",
+    { onDisk: onDisk.length, listed: listed.length },
   );
-  const remote = code.filter(({ t }) =>
-    /(soundcloud|freesound|youtube\.com\/watch|spotify|\.mp3)/i.test(t),
-  );
-  assert(
-    remote.length === 0,
-    "C3: no link to a music site or a track",
-    remote.map((m) => m.f),
-  );
-  const src = read("src/game/music/relaxComposer.ts");
-  assert(
-    /COPYRIGHT/.test(src) &&
-      /nothing here is recorded, sampled, downloaded or copied/i.test(src) &&
-      /random walk/.test(src),
-    "C4: the score's file says why it is original (made from scales, chord cycles and a random walk)",
-  );
-  assert(
-    !/Math\.random/.test(src) && !/Date\.now|performance\.now/.test(src),
-    "C5: the score uses no Math.random and no clock (seeded: the same piece every time)",
-  );
-  const am = read("src/game/AudioManager.ts");
-  assert(
-    !/fetch\(|XMLHttpRequest|<source/.test(am),
-    "C6: AudioManager fetches nothing (the preflight's no-network rule)",
-  );
-}
-
-console.log("P. The piece");
-{
-  const run = (n: number, mood: MoodName = "kitchen") => {
-    const c = new RelaxComposer();
-    return Array.from({ length: n }, () => c.nextBar(mood));
-  };
-  const a = run(64);
-  const b = run(64);
-  assert(
-    JSON.stringify(a) === JSON.stringify(b),
-    "P1: the same seed gives the same piece, note for note",
-  );
-  assert(
-    JSON.stringify(a) !==
-      JSON.stringify(
-        Array.from(
-          { length: 64 },
-          (
-            (c) => () =>
-              c.nextBar("kitchen")
-          )(new RelaxComposer(7)),
-        ),
-      ),
-    "P2: another seed gives another piece",
-  );
-  for (const mood of Object.keys(MOOD_SETTINGS) as MoodName[]) {
-    const s = MOOD_SETTINGS[mood];
-    assert(s.bpm >= 50 && s.bpm <= 66, `P3 ${mood}: slow (${s.bpm} beats a minute)`);
+  const bad: string[] = [];
+  let total = 0;
+  for (const f of onDisk) {
+    const b = fs.readFileSync(path.join(dir, f));
+    total += b.length;
+    // an mp3 starts with an ID3 tag or a frame sync (0xFF 0xE0+)
+    const real =
+      (b[0] === 0x49 && b[1] === 0x44 && b[2] === 0x33) ||
+      (b[0] === 0xff && (b[1]! & 0xe0) === 0xe0);
+    const music = f.startsWith("music-");
+    if (!real) bad.push(`${f}: not an mp3`);
+    if (!music && b.length > 40 * 1024) bad.push(`${f}: an effect over 40 KB`);
+    if (music && (b.length < 150 * 1024 || b.length > 1800 * 1024))
+      bad.push(`${f}: a track outside 150 KB - 1.8 MB`);
   }
-  const bars = run(400);
-  const bad = bars.flatMap((p) =>
-    p.events.filter(
-      (e) =>
-        e.gain <= 0 ||
-        e.gain > 0.09 ||
-        e.dur <= 0 ||
-        e.at < 0 ||
-        e.at >= 6 ||
-        (e.voice === "pluck" && (e.midi < 72 || e.midi > 91)) ||
-        (e.voice === "pad" && (e.midi < 57 || e.midi > 76)) ||
-        (e.voice === "bass" && (e.midi < 36 || e.midi > 47)) ||
-        (e.voice === "bell" && (e.midi < 84 || e.midi > 91)),
+  assert(
+    bad.length === 0 && total < 6 * 1024 * 1024,
+    `C2: every file is a real mp3, effects are small, tracks are bounded; ${(total / 1024 / 1024).toFixed(1)} MB in all (limit 6 MB; YouTube's initial bundle is 30 MB and these load after the first tap)`,
+    bad,
+  );
+  const tracks = ["music-loading", "music-kitchen", "music-cutting", "music-night"] as const;
+  assert(
+    tracks.every(
+      (t) => (AUDIO_FILES[t] as { loop?: boolean }).loop === true && AUDIO_FILES[t].seconds >= 20,
     ),
+    "C3: the four moods are loops of at least 20 s",
+  );
+  const credits = read("docs/AUDIO-CREDITS.md");
+  const fetchScript = read("scripts/fetch-audio-sources.py");
+  const pages = [
+    ...fetchScript.matchAll(/"(https:\/\/(?:opengameart\.org|kenney\.nl)\/[^"]+)"\)/g),
+  ].map((m) => m[1]!);
+  const missing = [...new Set(pages)].filter((p) => !credits.includes(p));
+  assert(
+    pages.length >= 8 && missing.length === 0 && /CC0/.test(credits),
+    "C4: every source the files come from is credited with its licence page, and the licence is CC0",
+    missing,
+  );
+  const sound = read("src/game/AudioManager.ts");
+  assert(
+    !/https?:\/\//.test(sound.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "")) &&
+      /baseUrl\(\)/.test(sound),
+    "C5: the sound code fetches only files from the game's own folder (the preflight's no-outside-call rule)",
   );
   assert(
-    bad.length === 0,
-    "P4: every note is soft, short enough and inside its voice's range",
-    bad.slice(0, 3),
-  );
-  // Melody notes belong to the key's pentatonic scale.
-  const out = bars.flatMap((p) =>
-    p.events
-      .filter((e) => e.voice === "pluck" || e.voice === "bell")
-      .filter(
-        (e) => !([0, 2, 4, 7, 9] as number[]).includes((((e.midi - (48 + p.key)) % 12) + 12) % 12),
-      ),
-  );
-  assert(
-    out.length === 0,
-    "P5: every melody note and chime is in the key's pentatonic scale (nothing sour)",
-    out.slice(0, 3),
-  );
-  // Loudness: the most that can sound at once (pads, bass, notes and their tails) stays under one half.
-  let worst = 0;
-  for (let i = 0; i < bars.length; i++) {
-    // Voices of the bar before can still ring into this one.
-    const here = [
-      ...(bars[i - 1]?.events ?? []).map((e) => ({ ...e, at: e.at - 4 })),
-      ...bars[i]!.events,
-    ];
-    for (let t = 0; t < 4; t += 0.25) {
-      const sum = here
-        // A struck note (pluck, chime) is loud only in its first beat and a half; a pad or the bass holds its level.
-        .filter(
-          (e) =>
-            e.at <= t &&
-            t < e.at + (e.voice === "pluck" || e.voice === "bell" ? Math.min(e.dur, 1.5) : e.dur),
-        )
-        .reduce((m, e) => m + e.gain, 0);
-      worst = Math.max(worst, sum);
-    }
-  }
-  assert(
-    worst < 0.5,
-    `P6: all voices together never exceed ${worst.toFixed(2)} (< 0.5, then the music fader and a limiter)`,
-    worst,
-  );
-  const keys = new Set(bars.map((p) => p.key));
-  const cyclesUsed = new Set(bars.map((p) => p.degree + ":" + (p.bar % 4)));
-  assert(
-    keys.size >= 4,
-    `P7: over 400 bars (~${Math.round((400 * 4 * 60) / 64 / 60)} minutes) the key moves to ${keys.size} different keys`,
-    [...keys],
-  );
-  assert(
-    cyclesUsed.size >= 12,
-    "P8: many chords and chord cycles are used, not one loop",
-    cyclesUsed.size,
-  );
-  const bar16 = bars.slice(0, 16).map((p) => p.chord.join());
-  const repeats = bars.slice(16).filter(
-    (_, i) =>
-      i % 16 === 0 &&
-      bars
-        .slice(i + 16, i + 32)
-        .map((p) => p.chord.join())
-        .join("|") === bar16.join("|"),
-  );
-  assert(repeats.length === 0, "P9: the first sixteen bars do not come back later");
-  const melodyBars = bars.filter((p) => p.events.some((e) => e.voice === "pluck")).length;
-  assert(
-    melodyBars > 120 && melodyBars < 330,
-    `P10: the melody rests: ${melodyBars} of 400 bars have notes (the start and every eighth bar are rests)`,
-  );
-  assert(
-    bars[0]!.events.every((e) => e.voice !== "pluck") &&
-      bars[1]!.events.every((e) => e.voice !== "pluck"),
-    "P11: it opens with the pad alone (the first two bars)",
-  );
-  assert(
-    JSON.stringify(CYCLES[0]) === "[0,4,5,3]" && bars[0]!.key === 0,
-    "P12: it starts as I-V-vi-IV in C, every time (the loading music always opens the same way)",
-  );
-  const cut = run(200, "cutting");
-  assert(
-    !cut.some((p) => p.events.some((e) => e.voice === "bell")),
-    "P13: no chimes while cutting",
-  );
-  const sparse = (m: MoodName) =>
-    run(200, m)
-      .flatMap((p) => p.events)
-      .filter((e) => e.voice === "pluck").length;
-  assert(
-    sparse("cutting") < sparse("kitchen") && sparse("night") < sparse("kitchen"),
-    "P14: cutting and Closing Time have fewer notes than the Kitchen",
+    !fs.existsSync(path.join(ROOT, "src/game/music/relaxComposer.ts")),
+    "C6: the score that was made note by note in code is gone (Playgama 3.3.2)",
   );
 }
 
@@ -222,8 +94,8 @@ console.log("L. Loading music");
   const am = read("src/game/AudioManager.ts");
   const app = read("src/App.tsx");
   assert(
-    /"loading"/.test(read("src/game/music/relaxComposer.ts")) && /loading: /.test(am),
-    "L1: the loading mood exists with its own level",
+    /loading: "music-loading"/.test(am) && /loading: /.test(am),
+    "L1: the loading mood exists with its own recording and level",
   );
   assert(
     /!save\s*\?\s*"loading"/.test(app),
@@ -235,7 +107,7 @@ console.log("L. Loading music");
   );
   assert(
     /data-testid="loading-music-hint"/.test(app) && /tap for music/.test(app),
-    "L4: until the first tap the loading screen says '🎵 tap for music'",
+    "L4: until the first tap the loading screen says 'tap for music'",
   );
 }
 

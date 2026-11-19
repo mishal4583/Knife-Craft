@@ -28,6 +28,7 @@ import {
   carParkDue,
   finishCarPark,
   generateLot,
+  carParkTierAt,
   isLotCleared,
   leave,
   lotFor,
@@ -124,6 +125,63 @@ console.log("A. Every lot is solvable, and as hard as its tier");
     ),
   );
   assert(lots.size >= 38, "A9: different seeds are different lots, not mirrored copies", lots.size);
+}
+
+// RULE CHANGE (developer 2026-11-19: every mini-game climbs level by level like the rest, `difficultyRamp.ts`): vehicles, free vehicles and the chain
+// move from one tier's values to the next tier's between their first levels.
+console.log("A+. The ramp between tiers");
+{
+  const bad: string[] = [];
+  for (const t of CAR_PARK_TIERS) {
+    const at = carParkTierAt(t.from);
+    if (
+      at.minVehicles !== t.minVehicles ||
+      at.maxVehicles !== t.maxVehicles ||
+      at.minFree !== t.minFree ||
+      at.maxFree !== t.maxFree ||
+      at.chain !== t.chain
+    )
+      bad.push(`tier ${t.from} is not its own on its first level`);
+  }
+  let prev: ReturnType<typeof carParkTierAt> | null = null;
+  const steps = Math.max(6, Math.floor(SEEDS / 50)); // 10 lots a level at the default 500 seeds
+  for (let level = 15; level <= 91; level++) {
+    const t = carParkTierAt(level);
+    if (
+      prev &&
+      (t.minVehicles < prev.minVehicles ||
+        t.maxVehicles < prev.maxVehicles ||
+        t.minFree > prev.minFree ||
+        t.maxFree > prev.maxFree ||
+        t.chain < prev.chain)
+    )
+      bad.push(`level ${level} is easier than level ${level - 1}`);
+    prev = t;
+    for (let seed = 1; seed <= steps; seed++) {
+      const lot = generateLot(level, seed);
+      const free = lot.vehicles.filter((v) => blockersFor(lot, v).length === 0).length;
+      if (
+        solve(lot)?.length !== lot.vehicles.length ||
+        lot.vehicles.length < t.minVehicles ||
+        lot.vehicles.length > t.maxVehicles ||
+        free < t.minFree ||
+        free > t.maxFree ||
+        chainOf(lot) < t.chain
+      )
+        bad.push(
+          `level ${level} seed ${seed}: ${lot.vehicles.length} vehicles, ${free} free, chain ${chainOf(lot)}`,
+        );
+    }
+  }
+  assert(
+    bad.length === 0,
+    "A10: every level 15-91 builds solvable lots that meet the ramped numbers, and no level is easier than the one before",
+    bad.slice(0, 5),
+  );
+  assert(
+    new Set([15, 17, 19, 21].map((l) => carParkTierAt(l).maxVehicles)).size >= 3,
+    "A11: Levels 15-21 really climb (it was one lot of 5-6 vehicles)",
+  );
 }
 
 console.log("B. The moves");

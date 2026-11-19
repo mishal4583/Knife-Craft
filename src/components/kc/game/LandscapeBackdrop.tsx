@@ -3,7 +3,7 @@ import { useLandscape } from "./layoutMode";
 
 /**
  * A screen's landscape backdrop: the section's 16:9 painting behind the
- * content, under a soft paper wash so text stays readable. Renders nothing in
+ * content, under a soft paper wash so text stays readable. (No blur anywhere: YouTube Playables Design 1 allows no blurred side areas, 2026-11-19.) Renders nothing in
  * portrait (the screen keeps its own look there).
  */
 export function LandscapeBackdrop({
@@ -22,7 +22,7 @@ export function LandscapeBackdrop({
         src={landscapeSectionArt(section)}
         alt=""
         decoding="async"
-        className={`absolute inset-0 h-full w-full object-cover ${wash === "dim" ? "scale-105 blur-[3px]" : ""}`}
+        className={`absolute inset-0 h-full w-full object-cover ${wash === "dim" ? "scale-105" : ""}`}
         draggable={false}
       />
       {wash === "dim" ? (

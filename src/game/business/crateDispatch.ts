@@ -15,6 +15,8 @@
  * the save.
  */
 
+import { rampBetween } from "./difficultyRamp";
+
 export const CRATE_FIRST_LEVEL = 18;
 /**
  * The colour keys of the crates and their doors. (The names are the game's first, when a colour WAS one ingredient. Since 2026-11-18 a board
@@ -216,6 +218,36 @@ export function crateTierFor(level: number): DispatchTier {
   let tier = CRATE_TIERS[0]!;
   for (const next of CRATE_TIERS) if (level >= next.from) tier = next;
   return tier;
+}
+/** How many doors of this tier's width fit round the frame (one cell between two doors on a side): the most ingredients a grid can show. */
+export const gateCapacity = (t: Pick<DispatchTier, "cols" | "rows" | "span">) =>
+  2 * Math.floor((t.cols + 1) / (t.span + 1)) + 2 * Math.floor((t.rows + 1) / (t.span + 1));
+
+/**
+ * The tier a level plays, RAMPED (developer 2026-11-19: "make sure the levels of every mini-game match the rest of the game"; the rule is
+ * `difficultyRamp.ts`): the number of crates, the dark blocks, the ingredients, the waves a board needs and how few crates are free at the start move
+ * smoothly from one tier's values to the next tier's over the levels between them (Levels 18-27 used to be one flat 5-6 crate board). On a tier's first
+ * level the numbers are exactly the tier's own and nothing gets easier as the level rises. The board's size, the crate shapes and the door width stay the
+ * tier's own (they change the look of the board); the ingredients stop at what the grid has room for doors for (`gateCapacity`: the 6 x 6 board shows 4).
+ * `crate-dispatch-qa` A9 builds boards for every level and checks them against the ramped numbers.
+ */
+export function crateTierAt(level: number): DispatchTier {
+  const here = crateTierFor(level);
+  const next = CRATE_TIERS[CRATE_TIERS.indexOf(here) + 1];
+  if (!next) return here;
+  const at = (pick: (t: DispatchTier) => number) =>
+    rampBetween(level, here.from, next.from, pick(here), pick(next));
+  return {
+    ...here,
+    bricks: [at((t) => t.bricks[0]), at((t) => t.bricks[1])],
+    colors: Math.min(
+      at((t) => t.colors),
+      gateCapacity(here),
+    ),
+    wallCells: [at((t) => t.wallCells[0]), at((t) => t.wallCells[1])],
+    minWaves: at((t) => t.minWaves),
+    maxFree: at((t) => t.maxFree),
+  };
 }
 export const crateTierIndex = (level: number) => CRATE_TIERS.indexOf(crateTierFor(level)) + 1;
 
@@ -480,7 +512,10 @@ function buildOnce(tier: DispatchTier, rand: () => number): CrateBoard | null {
 
 /** A board that can be won, for a level and a seed. Same level and seed, same board. */
 export function crateBoardFor(level: number, seed: number): CrateBoard {
-  const tier = crateTierFor(level);
+  return crateBoardForTier(crateTierAt(level), level, seed);
+}
+/** The same, for an explicit tier (the ramped tier of a level; the QA also builds boards for hand-made tiers). */
+export function crateBoardForTier(tier: DispatchTier, level: number, seed: number): CrateBoard {
   let fallback: CrateBoard | null = null;
   for (let attempt = 0; attempt < 240; attempt++) {
     const rand = rngFor(seed * 31 + attempt * 7919 + 17);

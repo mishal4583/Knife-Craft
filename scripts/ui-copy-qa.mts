@@ -160,10 +160,10 @@ console.log("I. The InfoTip itself");
     /aria-expanded=\{open\}/.test(tip) &&
       /OPEN_EVENT/.test(tip) &&
       /"pointerdown"/.test(tip) &&
-      /"Escape"/.test(tip) &&
+      !/"Escape"/.test(tip) &&
       /"scroll", onScroll, true/.test(tip) &&
       /r\.bottom < 0 \|\| r\.top > window\.innerHeight\) close\(\)/.test(tip),
-    "I2: aria-expanded; one bubble at a time; closes on a tap outside and Escape; follows a scroll, closing once its ⓘ is off screen",
+    "I2: aria-expanded; one bubble at a time; closes on a tap outside and never reads the Esc key (RULE CHANGE 2026-11-19, Playgama 1.5.2: the game does not use Esc); follows a scroll, closing once its ⓘ is off screen",
   );
   assert(
     /createPortal\(/.test(tip) && /document\.body/.test(tip) && /scale\(\$\{pos\?\.scale/.test(tip),

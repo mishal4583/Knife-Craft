@@ -248,7 +248,9 @@ console.log("D. The snag screen");
   assert(
     lib.includes('searchParams.set("fresh"') &&
       lib.includes("AUTO_EVERY_MS = 60_000") &&
-      lib.includes("if (!force && Date.now() - last < AUTO_EVERY_MS) return false;"),
+      // RULE CHANGE (2026-11-19, Playgama 3.2.1: no sessionStorage): the time of the last try is read back from the address's own `fresh` parameter
+      lib.includes("if (!force && Number.isFinite(last) && Date.now() - last < AUTO_EVERY_MS)") &&
+      !/sessionStorage/.test(lib.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "")),
     "D3: the fresh load changes the query string (so a cached index.html cannot answer) and an automatic one runs at most once a minute",
   );
 }

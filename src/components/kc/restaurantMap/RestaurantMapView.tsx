@@ -244,12 +244,6 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
                   maxLength={RESTAURANT_NAME_MAX}
                   value={restaurantNameDraft}
                   onChange={(event) => setRestaurantNameDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Escape') {
-                      event.preventDefault();
-                      setIsEditingRestaurantName(false);
-                    }
-                  }}
                 />
               </form>
             ) : (

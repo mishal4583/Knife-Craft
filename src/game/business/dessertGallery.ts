@@ -604,5 +604,5 @@ export const DESSERTS_BY_TIER: Record<DessertTier, readonly DessertId[]> = {
   1: ["cookie", "donut"],
   2: ["donut", "cupcake"],
   3: ["cupcake", "cone"],
-  4: ["donut", "cupcake"],
+  4: ["cone", "cupcake", "donut"],
 };

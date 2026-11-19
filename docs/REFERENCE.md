@@ -81,7 +81,7 @@ create a second engine, and do not duplicate existing systems.
 
 - React 19 + Vite + TypeScript + Tailwind v4, Phaser 3.90 for the cutting
   gameplay (lazy-loaded `Preparation` chunk).
-- Portrait-first (9:16 logical 540×960). Since 2026-11-16 an upright phone (window < 640 px wide, aspect ≤ 3:4) is given the WHOLE viewport by `GameShell` (no bars on tall 9:20 phones; safe-area padding for the notch); tablets and desktop keep the contain-fit 9:16 frame. Fixed-shape painted scenes (the cleaning room, the service floor) fill the rest with their own painting, blurred and BEHIND them. Suites: `scripts/full-screen-qa.mts`, `tools/e2e/fullscreen.mjs`.
+- Portrait-first (9:16 logical 540×960). Since 2026-11-16 an upright phone (window < 640 px wide, aspect ≤ 3:4) is given the WHOLE viewport by `GameShell` (no bars on tall 9:20 phones; safe-area padding for the notch); **since 2026-11-19 EVERY window is filled edge to edge** (Playgama 1.6.1 / 1.6.8, YouTube Playables Design 1): `fitLayout` (`kc/game/layoutMode.ts`, pure) lays the UI out at a logical size and `GameShell` scales it to the window with one uniform CSS scale: an upright phone at its own size; aspect >= 1.3 the LANDSCAPE layout (`land:` variants, `<html data-orient="landscape">`) at most 720 tall; anything else the portrait layout at most 768 wide and at least 600 tall. No 9:16 frame, no bezel, no side tagline. Phaser measures its parent's layout box (`GameBridge`, not the scaled one). Dessert Run and Unload the Van carry their room to the sides (`common/StageSides.tsx`, mirrored backdrop), the service floor too (`game/FloorSides.tsx`); nothing is blurred in a side area. The "turn your phone" card is for a PHONE on its side only (`useTurnUpright`). Suites: `scripts/layout-fit-qa.mts`, `scripts/full-screen-qa.mts`, `tools/e2e/fullscreen.mjs`, `tools/e2e/landscape.mjs`, `tools/e2e/phoneaudit.mjs --sizes=WxH,...`.
 - 91 campaign levels (13 chapters; the campaign plan of 2026-11-07, below), Market (knives, boards, suppliers,
   ingredients, Blacksmith, supplies), Restaurant Progress, Business Mode
   (Economy V3), opening story + milestones + finale.
@@ -119,10 +119,10 @@ create a second engine, and do not duplicate existing systems.
   Bridge exists). Outside Playgama the Bridge runs a local "mock" platform
   whose storage is backed by localStorage.
 - Ads (Playgama monetization guide + Bridge docs): interstitials only at
-  natural breaks through `src/game/ads/interstitialPolicy.ts` — none before
-  3 completed levels, then any natural break once 150 s (the guide's
-  120–240 s) have passed since the last ad of any kind; the config's
-  `minimumDelayBetweenInterstitial` is 120. Rewarded = the Replay Bonus
+  natural breaks through `src/game/ads/interstitialPolicy.ts` — every natural
+  break asks the Bridge, which decides when an ad shows (since 2026-11-19 the
+  game has no level counter and no cooldown of its own: Playgama Bridge Required
+  step 7); the config keeps the platform's default delay. Rewarded = the Replay Bonus
   (`src/game/ads/replayBonus.ts`), Business Rush Restock and the
   Pre-Service Check covers (missing stock / supplies, from L10 —
   `restaurant/serviceCover.ts`), granted only when Bridge reports the
@@ -295,7 +295,7 @@ once). Restaurant browser tests run on the normal build, classic ones on a
   `restaurantmenu.mjs`, `marketsecondfloor.mjs`)
   `achievement-rewards-qa` (browser:
   `tools/e2e/restaurant*.mjs`).
-- Campaign / UX: `story-intro-qa`, `story-pause-qa`, `story-legacy-qa`, `audio-qa`,
+- Campaign / UX: `story-intro-qa`, `story-pause-qa`, `story-legacy-qa`, `audio-qa`, `layout-fit-qa`, `emoji-icons-qa` (browser: `tools/e2e/emojiicons.mjs`),
   `campaign-paid-orders-qa`, `level-ux-qa`, `coaching-qa`,
   `knife-stroke-qa`, `cut-rules-qa`, `lazy-load-qa`, `unused-assets-qa`,
   `playables-ads-qa`, `playgama-telemetry-qa`, `ad-bonuses-qa`.
@@ -344,9 +344,12 @@ Focused suites (`npx tsx scripts/<name>.mts`):
     classic Business Mode hire is unchanged (free).
 
 - `story-intro-qa` — intro pacing, Skip story, story save semantics.
-- `audio-qa` — the synthesized sound (W3): the ten named effects, the shared
+- `emoji-icons-qa` — emoji drawn as icons (Playgama 4.3.2, 2026-11-19): the map `lib/emojiIcons.ts` (real icons only, no wrong picture), the conversion `lib/emoji-jsx/convert.ts`, the build's JSX runtime and the loop guard (the icon's hidden text is made with `createElement`), coverage >= 85 %. Browser: `emojiicons.mjs` (icons drawn, sized to their text, inside the window, no raw mapped emoji left, five window sizes).
+- `layout-fit-qa` — `fitLayout`: every window shape filled with one uniform scale, bounds, phones untouched, the mode from the aspect ratio, total for 1..8000 px.
+- `audio-qa` — the sound (W3), recorded files since 2026-11-19: the sixteen named effects, the shared
   gate (platform audio, pause, ad, Sound off), music only after a
-  gesture and with Music on, one loop, bounded nodes, seeded score, wiring.
+  gesture and with Music on, one recorded loop, nothing synthesized (Y1), wiring.
+- `music-qa` — the audio files: list and folder agree, real mp3s, bounded sizes, every source credited as CC0 (`docs/AUDIO-CREDITS.md`), the loading music.
 - `story-legacy-qa` — the story for Levels 121–250 and THE LAST PAGE (§9):
   the approved text, a fresh 0 → 250 run (every beat once, in order), the
   catch-up rule (saves at 120/145/150/170/200/249), once-only after
@@ -2149,9 +2152,11 @@ finaleSeen }` — no new fields. QA `story-legacy-qa`; browser
   silent while paused (the platform's pause covers a hidden page — preflight
   forbids our own Page Visibility use), during an ad or with platform audio
   off. Settings: Sound and Music toggles (the existing `settings.music` key).
-  **Music since 2026-11-08:** the kitchen-jazz loop is replaced by a relaxing, never-repeating generated score (`music/relaxComposer.ts`, pure and seeded;
-  moods loading / kitchen / cutting / night / off; loading music while the save loads, from the first tap or at once when the page already had one; no sound
-  file, no sample, original by construction: see HANDOFF). Tests: `music-qa`, `audio-qa`; e2e `music.mjs`.
+  **Sound since 2026-11-19 (Playgama 3.3.2):** the sound is RECORDED, CC0 audio (`public/audio`, `scripts/fetch-audio-sources.py` + `scripts/make-audio-assets.py`,
+  `src/game/audio/audioFiles.ts`, credits in `docs/AUDIO-CREDITS.md`); `AudioManager` only plays files (a tonal recording is a voice played at the note wanted by its
+  playback rate; the cuts are real knife recordings, darkened by a low-pass for the wet ingredients). Music: four recorded loops, one per mood (loading / kitchen /
+  cutting / night / off), crossfaded; loading music while the save loads, from the first tap or at once when the page already had one. The generated score
+  (`music/relaxComposer.ts`, 2026-11-08) and every oscillator are gone. Tests: `music-qa`, `audio-qa`; e2e `music.mjs`.
 
 - **Delivery Inspection (2026-11-08):** `business/deliveryInspection.ts` + `inventory/DeliveryInspectionGame.tsx`: find the NOT FRESH ingredients in the waiting delivery's crate (tap = flag, drag = look behind, magnifier from tier 3, 4 s off for a wrong flag). One round per basket, at most 5 a day; a hired Prep Cook has a "does it" button in the game (no reward). Hype + Sharp Eye pins only (no money, no stock, no ledger). State `business.deliveryInspection`. Art in `public/business/inspection/` (`scripts/make-inspection-assets.py`). Tests: `delivery-inspection-qa`; e2e `deliveryinspection.mjs`.
 - **Sauce Station (2026-11-09):** `business/sauceStation.ts` + `sauceColor.ts` + `components/kc/sauce/*`: from Level 7 (was 23 until 2026-11-10), 3 rounds a day; pour pantry items to match a target colour and thickness, blend by circling the whisk in the green zone (a dressing poured too fast splits), then bottle the batch (hold to pour, release at the fill line). Hype + Saucier pins + the 24-bottle Sauce Shelf only (no money, no stock, no ledger); a hired Prep Cook has a "does it" button (no reward). State `business.sauceStation` (mastered bitmask, best, stars, perfect, rounds, streak, day, today, howto). Art in `public/business/sauce/` (`scripts/make-sauce-assets.py`, which also writes `sauceSheets.ts`). Tests: `sauce-station-qa`; e2e `saucestation.mjs`. Details: HANDOFF and `docs/planning/SAUCE-STATION-MINIGAME-PLAN-2026-11-08.md`.

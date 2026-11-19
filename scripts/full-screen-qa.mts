@@ -2,11 +2,12 @@
  * FULL SCREEN QA (developer 2026-11-16: "optimize these screens for all type of screen size and try to make it full screen without leaving any
  * space"). Source guards for the rule; the real-browser proof is tools/e2e/fullscreen.mjs.
  *
- *  F1 GameShell gives an upright phone (window under 640 px wide, no wider than 3:4) the whole viewport instead of the largest 540:960 box, keeps the
- *     contain-fit for wider windows, and pads for the notch (safe-area insets)
+ *  F1 GameShell gives EVERY window the whole viewport (RULE CHANGE 2026-11-19, Playgama 1.6.1 / 1.6.8, YouTube Playables Design 1: no empty bars): an upright
+ *     phone at its own size, anything else laid out by `fitLayout` and scaled to fill; no 9:16 frame, no border, no side tagline; the notch is padded
  *  F2 the Kitchen's top HUD stacks (wallet row on top, cards under it) and short screens drop only decorative bits
- *  F3 the painted scenes with a fixed shape (the cleaning room, the service floor) fill what they do not cover with the same painting, blurred
- *     and behind (never over the room: a live filter over the painting made it shiver on an iPhone)
+ *  F3 the painted scenes with a fixed shape (the cleaning room, the service floor) fill what they do not cover with the same painting, behind (never over
+ *     the room: a live filter over the painting made it shiver on an iPhone); on a WIDE stage the service floor continues its painting to the sides, mirrored
+ *     (RULE CHANGE 2026-11-19: no blurred side areas, YouTube Playables Design 1)
  *  F4 the Sauce Station's pantry tiles stay full touch targets (>= 48 px) and its short-screen layout is compact
  *
  * Run: npx tsx scripts/full-screen-qa.mts
@@ -27,14 +28,15 @@ function check(id: string, ok: unknown) {
 
 {
   const shell = read("src/components/kc/game/GameShell.tsx");
+  const fit = read("src/components/kc/game/layoutMode.ts");
   check(
-    "F1 an upright phone fills the viewport; wider windows keep the contain-fit; the notch is padded",
-    /const FILL_MAX_W = 640;/.test(shell) &&
-      /const FILL_MAX_ASPECT = 0\.75;/.test(shell) &&
-      /window\.innerWidth < FILL_MAX_W && w \/ h <= FILL_MAX_ASPECT[\s\S]{0,80}setSize\(\{ width: w, height: h \}\)/.test(
-        shell,
-      ) &&
-      /const scale = Math\.min\(w \/ logicalW, h \/ logicalH\);/.test(shell) &&
+    "F1 every window is filled edge to edge by fitLayout (no contain-fit frame, no bezel, no side tagline); an upright phone keeps its own size; the notch is padded",
+    /export const FILL_MAX_W = 640;/.test(fit) &&
+      /export const FILL_MAX_ASPECT = 0\.75;/.test(fit) &&
+      /export function fitLayout/.test(fit) &&
+      /fitLayout\(box\.width, box\.height\)/.test(shell) &&
+      !/Math\.min\(w \/ logicalW, h \/ logicalH\)/.test(shell) &&
+      !/sm:rounded|sm:border|shadow-\[0_40px/.test(shell) &&
       /pt-\[env\(safe-area-inset-top\)\]/.test(shell) &&
       /pb-\[env\(safe-area-inset-bottom\)\]/.test(shell),
   );
@@ -70,11 +72,14 @@ function check(id: string, ok: unknown) {
   const backdrop = room.indexOf('data-testid="cleaning-backdrop"');
   const stage = room.indexOf('data-testid="cleaning-stage"');
   check(
-    "F3 the cleaning room and the service floor fill the rest of the screen with their own painting, blurred and behind",
+    "F3 the cleaning room fills the rest of the screen with its own painting behind it (no blur); the service floor does too, and on a wide stage continues its painting to the sides, mirrored",
     backdrop > 0 &&
       backdrop < stage &&
       /object-cover/.test(room.slice(backdrop - 400, backdrop)) &&
-      /blur\(14px\)/.test(room.slice(backdrop - 400, backdrop + 200)) &&
+      !/blur\(/.test(room.slice(backdrop - 400, backdrop + 200)) &&
+      /<FloorSides mapUrl=\{mapUrl\} \/>/.test(floor) &&
+      /\.sf \.sf-sides \{/.test(css) &&
+      /@container \(min-aspect-ratio: 5 \/ 6\)/.test(css) &&
       /className="sf-backdrop"/.test(floor) &&
       floor.indexOf('className="sf-backdrop"') < floor.indexOf('className="sf-view"') &&
       /\.sf \.sf-backdrop \{[\s\S]{0,300}blur\(12px\)/.test(css) &&

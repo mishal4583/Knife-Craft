@@ -319,6 +319,14 @@ export function onPlatformResume(cb: () => void): void {
   resumeCallbacks.add(cb);
 }
 
+/** The host platform's id from the Bridge (`youtube`, `playgama`, ...), or "" when there is no Bridge. */
+export function platformId(): string {
+  return typeof bridgeInstance?.platform.id === "string" ? bridgeInstance.platform.id : "";
+}
+
+/** YouTube Playables forbids in-game sharing prompts (certification, Design 6.1), so a share button is hidden there. */
+export const sharingAllowed = (): boolean => platformId() !== "youtube";
+
 export function isAudioEnabled(): boolean {
   return bridgeInstance ? !!bridgeInstance.platform.isAudioEnabled : true;
 }

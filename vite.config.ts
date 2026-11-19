@@ -14,10 +14,15 @@ export default defineConfig({
   // of a subpath while "./assets/..." always resolves (§39/§41).
   base: "./",
   resolve: {
-    alias: { "@": `${process.cwd()}/src` },
+    // "emoji-jsx" is the game's own JSX runtime (src/lib/emoji-jsx): React's, plus a drawn icon in place of an emoji (Playgama 4.3.2).
+    alias: { "@": `${process.cwd()}/src`, "emoji-jsx": `${process.cwd()}/src/lib/emoji-jsx` },
   },
   server: { host: "::", port: 8080 },
-  plugins: [tailwindcss(), tsConfigPaths({ projects: ["./tsconfig.json"] }), viteReact()],
+  plugins: [
+    tailwindcss(),
+    tsConfigPaths({ projects: ["./tsconfig.json"] }),
+    viteReact({ jsxImportSource: "emoji-jsx" }),
+  ],
   build: {
     outDir: "dist",
     assetsDir: "assets",

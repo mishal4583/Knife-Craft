@@ -27,3 +27,33 @@ export function rampOf<T extends { from: number }>(
   if (!next) return pick(here);
   return rampBetween(level, here.from, next.from, pick(here), pick(next));
 }
+
+/** Like `rampBetween`, but keeps `places` decimals (a clock in seconds, a tolerance of 1.3 to 1.1, a window of 0.25 to 0.18). */
+export function rampBetweenExact(
+  level: number,
+  from: number,
+  to: number,
+  a: number,
+  b: number,
+  places = 2,
+): number {
+  if (!(to > from)) return a;
+  const t = Math.min(1, Math.max(0, (level - from) / (to - from)));
+  const k = 10 ** places;
+  return Math.round((a + (b - a) * t) * k) / k;
+}
+
+/** `rampOf` for a number with decimals. A value that is not finite (a game's "always") stays the tier's own until the next tier. */
+export function rampOfExact<T extends { from: number }>(
+  tiers: readonly T[],
+  level: number,
+  pick: (t: T) => number,
+  places = 2,
+): number {
+  let i = 0;
+  for (let k = 0; k < tiers.length; k++) if (level >= tiers[k]!.from) i = k;
+  const here = tiers[i]!;
+  const next = tiers[i + 1];
+  if (!next || !Number.isFinite(pick(here)) || !Number.isFinite(pick(next))) return pick(here);
+  return rampBetweenExact(level, here.from, next.from, pick(here), pick(next), places);
+}
