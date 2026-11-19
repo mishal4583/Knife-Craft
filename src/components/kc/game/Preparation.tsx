@@ -102,6 +102,8 @@ import { dollars } from "@/game/money";
 import { withRequiredPeelSteps } from "@/game/prepStepGuards";
 import type { PreparationStep } from "@/game/levels/levelTypes";
 import kitchenBg from "@/assets/kitchen-bg.jpg";
+import { landscapeKitchenArt } from "@/game/landscapeArt";
+import { useLandscape } from "./layoutMode";
 
 /** Inserts any Peel step a must-peel ingredient is missing, so no session can soft-lock (see prepStepGuards.ts). The HUD and the scene both index this same list. */
 function completableSteps(steps: readonly PreparationStep[]): PreparationStep[] {
@@ -171,6 +173,7 @@ export function Preparation({
   onNextLevel,
   specials,
   kitchenArt,
+  kitchenSkin,
   floor,
   ovenCooking,
 }: {
@@ -318,6 +321,8 @@ export function Preparation({
    * cutting-screen painting, unchanged.
    */
   kitchenArt?: string;
+  /** The built kitchen's skin id: in a wide window the cutting scene uses that kitchen's landscape painting (developer 2026-11-20). */
+  kitchenSkin?: string;
   /**
    * Transformation Phase B (restaurant build, service orders): the dining
    * room the customer walks into (ServiceFloor) — the built stage's map
@@ -327,6 +332,7 @@ export function Preparation({
   /** Transformation Phase C (restaurant build): the interactive oven replaces the cooking film for its recipes (ovenStep.ts). */
   ovenCooking?: boolean;
 }) {
+  const landscape = useLandscape();
   // The single source of "what does this session look like" — a real
   // level's own fields, or the equivalent ones derived from the active
   // recipe (recipeId doubles as SaveData.recipeProgress's key either
@@ -1121,7 +1127,7 @@ export function Preparation({
   return (
     <div className="kc-prep relative h-full w-full overflow-hidden bg-cream">
       <img
-        src={kitchenArt ?? kitchenBg}
+        src={landscape ? landscapeKitchenArt(kitchenSkin ?? "skin-01") : (kitchenArt ?? kitchenBg)}
         alt="Warm café kitchen with copper pans, herbs and morning light"
         width={540}
         height={960}

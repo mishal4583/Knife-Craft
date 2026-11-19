@@ -35,6 +35,12 @@
     -->
     <link rel="preload" as="image" href="./loading/logo.webp" fetchpriority="high" />
     <link rel="preload" as="image" href="./loading/bar-frame.webp" fetchpriority="high" />
+    <link
+      rel="preload"
+      as="image"
+      href="./landscape-art/loading.webp"
+      media="(min-aspect-ratio: 13/10)"
+    />
     <style>
       html,
       body {
@@ -51,6 +57,16 @@
         background: #2b1a0e;
         pointer-events: auto; /* taps never reach the game under it (it may be mounted already) */
         transition: opacity 0.4s ease;
+      }
+      /* A wide window (developer 2026-11-20): the loading room painted to both sides of the 9:16 column (landscape-art/loading.webp, its centre is the column's own picture,
+         dimmed to a well). A phone held upright never asks for it. */
+      @media (min-aspect-ratio: 13/10) {
+        #boot-splash {
+          background: #2b1a0e url("./landscape-art/loading.webp") center / cover no-repeat;
+        }
+        #boot-splash .bs-stage {
+          box-shadow: 0 0 60px 18px rgba(18, 10, 5, 0.6);
+        }
       }
       #boot-splash.leaving {
         pointer-events: none;

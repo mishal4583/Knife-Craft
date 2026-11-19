@@ -116,6 +116,20 @@ const isNineSixteen = (f) =>
   // as large as fits: it touches the window's top and bottom, or its left and right
   (Math.abs(f.h - f.vh) < 1.5 || Math.abs(f.w - f.vw) < 1.5);
 
+/** The landscape room behind a framed stage (developer 2026-11-20): loaded, 1440 x 810, and the right picture. */
+const shellArt = () =>
+  page.evaluate(async () => {
+    const i = document.querySelector('[data-testid="shell-art"]');
+    if (!i) return null;
+    if (!i.complete)
+      await new Promise((r) => {
+        i.onload = r;
+        i.onerror = r;
+        setTimeout(r, 4000);
+      });
+    return { w: i.naturalWidth, h: i.naturalHeight, src: i.getAttribute("src") };
+  });
+
 async function openGame(id, testId) {
   await page.click(BTN);
   await sleep(500);
@@ -155,11 +169,13 @@ const GAMES = [
   ["sauce", "sauce-station", null],
 ];
 const p2 = [];
+const artSeen = [];
 for (const [id, testId, backId] of GAMES) {
   await open(saveAt(91), 1280, 720);
   if (id === "dessert-run") await shot(page, "portraitonly-kitchen-1280");
   const opened = await openGame(id, testId);
   const f = await frame();
+  artSeen.push({ id, art: await shellArt() });
   await shot(page, `portraitonly-${id}-1280`);
   let backOk = true;
   let back = null;
@@ -176,6 +192,26 @@ check(
   "P2 Dessert Run, Unload the Van, Fridge Check, Car Park and Sauce Station are the centred 9:16 box at 1280x720; after Back (Dessert Run, the Van) the Kitchen fills the window again",
   p2.every((r) => r.ok),
   p2.filter((r) => !r.ok),
+);
+check(
+  "P6 each framed mini-game paints its own landscape room behind the stage (1440 x 810, the right file)",
+  artSeen.length === 5 &&
+    artSeen.every(
+      (r) =>
+        r.art &&
+        r.art.w === 1440 &&
+        r.art.h === 810 &&
+        r.art.src.includes(
+          {
+            "dessert-run": "dessert-run",
+            "kitchen-dispatch": "unload-the-van",
+            "fridge-check": "fridge-check",
+            "car-park": "car-park",
+            sauce: "sauce-mix",
+          }[r.id],
+        ),
+    ),
+  artSeen,
 );
 // one game at 1920x1080 too
 await open(saveAt(91), 1920, 1080);

@@ -37,6 +37,7 @@ import { FcArt, FoodPicture, InspectionCard, SHELF_LIFE_GUIDE, fcUrl } from "./F
 import { FridgeCheckHowTo } from "./FridgeCheckHowTo";
 import { clock, fsUrl } from "../inventory/sort/sortUtils";
 import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
+import { landscapeGameArt } from "@/game/landscapeArt";
 
 /**
  * FRIDGE CHECK — the screen of the closing-night inspection (rules: restaurant/fridgeCheck.ts, plan: docs/planning/FRIDGE-CHECK-MINIGAME-PLAN-2026-11-06.md).
@@ -525,7 +526,7 @@ function Round({
       data-answered={answered}
       data-tier={tierNumberAt(level)}
     >
-      <PortraitOnly />
+      <PortraitOnly art={landscapeGameArt("fridge-check")} />
       {/* HUD */}
       <div className="flex items-center gap-2 px-3 pt-3">
         <button

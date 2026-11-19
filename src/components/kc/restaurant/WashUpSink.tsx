@@ -50,6 +50,7 @@ import { SupplyIcon } from "../common/SupplyIcon";
 import { CleaningFx } from "../business/cleaning/cleaningFx";
 import { paintStain, stainReach } from "../business/cleaning/dirtArt";
 import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
+import { landscapeGameArt } from "@/game/landscapeArt";
 
 const WIDTH = DISH_SCENE.width;
 const HEIGHT = DISH_SCENE.height;
@@ -874,7 +875,7 @@ export function WashUpSink({
       className="absolute inset-0 z-[110] overflow-hidden bg-[#2a170c]"
       data-testid="wash-up-sink"
     >
-      <PortraitOnly />
+      <PortraitOnly art={landscapeGameArt("dishwashing")} />
       <section
         aria-label="Wash-up"
         aria-modal="true"

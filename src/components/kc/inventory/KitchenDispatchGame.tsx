@@ -40,6 +40,7 @@ import {
 } from "./kitchenDispatchDraw";
 import { kdUrl, loadKdArt, type KdArt } from "./kitchenDispatchArt";
 import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
+import { landscapeGameArt } from "@/game/landscapeArt";
 
 type Phase = "play" | "won" | "lost";
 const NOTICE_MS = 1700;
@@ -443,7 +444,7 @@ export function KitchenDispatchGame({
         gates: round.board.gates.map((g) => [g.id, g.side, g.at, g.span, g.color]),
       })}
     >
-      <PortraitOnly />
+      <PortraitOnly art={landscapeGameArt("unload-the-van")} />
       <StageSides src={kdUrl("backdrop")} stage={KD_STAGE} />
       <div
         className="relative select-none [container-type:inline-size]"

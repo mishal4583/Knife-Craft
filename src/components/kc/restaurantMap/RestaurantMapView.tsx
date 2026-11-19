@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useUnlockText } from "../navLevel";
+import { landscapeMapArt } from "@/game/landscapeArt";
 import { LandscapeBackdrop } from '@/components/kc/game/LandscapeBackdrop';
 import {
   DEFAULT_RESTAURANT_NAME,
@@ -149,7 +150,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
       aria-label="KnifeCraft Restaurant Interactive Map"
     >
       {/* Phone landscape: the dining room painting around the map. */}
-      <LandscapeBackdrop section="restaurant" wash="dim" />
+      <LandscapeBackdrop section="restaurant" wash="none" art={landscapeMapArt(stage ?? stageOfImage(kitchenMapImage))} />
       {/* Map Toolbar / View Controls */}
       <div className="restaurant-map-toolbar" role="toolbar" aria-label="Map View Controls">
         <div className="map-legend-pills">

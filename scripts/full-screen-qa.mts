@@ -37,7 +37,7 @@ function check(id: string, ok: unknown) {
       // RULE CHANGE 2026-11-19 (developer: screens with only portrait art go back to their original size): the shell asks `fitLayout` with `portraitOnly`; the 9:16
       // box exists ONLY for those screens (`fit.frame`), never as the window's default frame
       /fitLayout\(box\.width, box\.height, portraitOnly\)/.test(shell) &&
-      /usePortraitOnlyActive\(\)/.test(shell) &&
+      /usePortraitOnly\(\)/.test(shell) &&
       !/Math\.min\(w \/ logicalW, h \/ logicalH\)/.test(shell) &&
       !/sm:rounded|sm:border/.test(shell) &&
       /pt-\[env\(safe-area-inset-top\)\]/.test(shell) &&
@@ -102,6 +102,7 @@ function check(id: string, ok: unknown) {
 {
   // RULE CHANGE 2026-11-19 (developer: "find all the areas that can't be converted to landscape because there are no landscape assets and make them back to the
   // original size"): every screen painted only as a portrait stage marks itself `<PortraitOnly />`, so the shell keeps it at its original 9:16 size in a wide window.
+  // RULE CHANGE 2026-11-20: the tag now carries the screen's landscape room (`art`), checked by landscape-art-qa; the intro story has its own landscape scenes and is no longer tagged.
   // A screen with a landscape painting or none (Kitchen, Market, Business, Inventory, the cleaning rooms, the cutting scene) must NOT carry it.
   const tagged = [
     "src/components/kc/inventory/DessertRunGame.tsx",
@@ -113,7 +114,6 @@ function check(id: string, ok: unknown) {
     "src/components/kc/sauce/SauceStationGame.tsx",
     "src/components/kc/restaurant/FridgeCheckGame.tsx",
     "src/components/kc/restaurant/WashUpSink.tsx",
-    "src/components/kc/story/CinematicIntro.tsx",
   ];
   const landscapeOk = [
     "src/components/kc/Kitchen.tsx",
@@ -125,9 +125,9 @@ function check(id: string, ok: unknown) {
     "src/components/kc/restaurantMap/RestaurantMapView.tsx",
   ];
   check(
-    "F5 the ten screens with only a portrait painting (nine games and the sink, and the intro) carry <PortraitOnly />; the screens with landscape art or none do not",
-    tagged.every((f) => /<PortraitOnly \/>/.test(read(f))) &&
-      landscapeOk.every((f) => !/<PortraitOnly \/>/.test(read(f))) &&
+    "F5 the nine screens with a portrait stage (eight games and the sink) carry <PortraitOnly />; the screens with landscape art or none do not",
+    tagged.every((f) => /<PortraitOnly\b/.test(read(f))) &&
+      landscapeOk.every((f) => !/<PortraitOnly\b/.test(read(f))) &&
       !fs.existsSync(path.join(ROOT, "src/components/kc/game/FloorSides.tsx")),
   );
 }

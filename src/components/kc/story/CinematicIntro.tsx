@@ -21,7 +21,8 @@ import scene3B from "@/assets/story/intro-3b-repair.webp";
 import scene3C from "@/assets/story/intro-3c-restore.webp";
 import scene4 from "@/assets/story/intro-4-chef.webp";
 import scene5 from "@/assets/story/intro-5-first-order.webp";
-import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
+import { landscapeStoryArt } from "@/game/landscapeArt";
+import { useLandscape } from "@/components/kc/game/layoutMode";
 
 /**
  * CINEMATIC_INTRO — plays the opening film (introCinematic.ts) over the
@@ -70,6 +71,11 @@ type View = { step: number; outro: boolean; skip: boolean };
 
 export function CinematicIntro({ onDone }: { onDone: (reason: StoryEndReason) => void }) {
   const timeline = useMemo(() => introTimeline(), []);
+  // A wide window shows each scene's landscape painting (developer 2026-11-20); the portrait one stays on a phone held upright.
+  const landscape = useLandscape();
+  const landscapeRef = useRef(landscape);
+  landscapeRef.current = landscape;
+  const sceneSrc = (id: IntroSceneId) => (landscape ? landscapeStoryArt(id) : SCENE_IMAGES[id]);
   const [loaded, setLoaded] = useState<boolean[]>(() => INTRO_SCENES.map(() => false));
   const [view, setView] = useState<View>({ step: 0, outro: false, skip: false });
   const [paused, setPaused] = useState(false);
@@ -125,7 +131,7 @@ export function CinematicIntro({ onDone }: { onDone: (reason: StoryEndReason) =>
       const scene = INTRO_SCENES[i];
       if (!scene || !alive) return;
       const img = new Image();
-      img.src = SCENE_IMAGES[scene.id];
+      img.src = landscapeRef.current ? landscapeStoryArt(scene.id) : SCENE_IMAGES[scene.id];
       const done = () => {
         if (!alive) return;
         setLoaded((prev) => prev.map((v, j) => v || j === i));
@@ -218,13 +224,11 @@ export function CinematicIntro({ onDone }: { onDone: (reason: StoryEndReason) =>
       }
       onClick={onTap}
     >
-      {/* The story scenes are painted only as portrait pictures: in a wide window the intro keeps its original 9:16 size (developer 2026-11-19; landscape versions: docs/planning/LANDSCAPE-PART3-STORY-LOADING-SECONDFLOOR-CODEX-PROMPTS-2026-11-19.md). */}
-      <PortraitOnly />
       {layers.map((i) => (
         <CinematicImage
           key={INTRO_SCENES[i]!.id}
           scene={INTRO_SCENES[i]!}
-          src={SCENE_IMAGES[INTRO_SCENES[i]!.id]}
+          src={sceneSrc(INTRO_SCENES[i]!.id)}
           pushToGameplay={view.outro && i === lastScene}
         />
       ))}

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { LayoutContext, fitLayout } from "./layoutMode";
-import { usePortraitOnlyActive } from "./portraitOnlyStore";
+import { usePortraitOnly } from "./portraitOnlyStore";
 
 // The logical design canvas every screen/Phaser scene in this project is
 // authored against (see PreparationScene.ts, GameBridge.ts) — unchanged
@@ -73,7 +73,7 @@ function useFillFit(logicalW: number, logicalH: number, portraitOnly: boolean) {
  * alone, never cropped).
  */
 export function GameShell({ children }: { children: ReactNode; aside?: ReactNode }) {
-  const portraitOnly = usePortraitOnlyActive();
+  const { active: portraitOnly, art: stageArt } = usePortraitOnly();
   const { ref, box, fit } = useFillFit(LOGICAL_W, LOGICAL_H, portraitOnly);
   const scaled = Math.abs(fit.scale - 1) > 0.001;
   const contentStyle = scaled
@@ -107,11 +107,25 @@ export function GameShell({ children }: { children: ReactNode; aside?: ReactNode
             {/* ONE wrapper at every size: switching between "children" and a wrapped tree when a resize or rotation crossed a layout boundary
               changed the element tree, so React remounted the whole game (the cutting scene, the order, a served order's result panel).
               Now a resize only changes this wrapper's size and scale. */}
+            {/* The room round a framed stage (developer 2026-11-20): the landscape picture of the screen, across the whole window, behind the 9:16 stage. Only while the
+              stage is framed (a wide window); its centre is a dark well the stage sits in. */}
+            {fit.frame && stageArt ? (
+              <img
+                key={stageArt}
+                src={stageArt}
+                alt=""
+                aria-hidden="true"
+                data-testid="shell-art"
+                decoding="async"
+                draggable={false}
+                className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover"
+              />
+            ) : null}
             {/* The frame is the whole window, or (a portrait-only screen in a wide window, see `fitLayout`) the original 9:16 box in the middle with dark bars
               round it. Same element either way, so switching never remounts. `contain` makes it the containing block of `fixed` overlays inside it. */}
             <div
               data-game-frame={fit.frame ? "framed" : "full"}
-              className={`absolute overflow-hidden ${fit.frame ? "shadow-[0_40px_80px_rgba(0,0,0,0.55)]" : ""}`}
+              className={`absolute overflow-hidden ${fit.frame ? "shadow-[0_0_60px_18px_rgba(18,10,5,0.6)]" : ""}`}
               style={
                 fit.frame
                   ? {

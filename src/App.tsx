@@ -4399,6 +4399,10 @@ export function App() {
     save && save.equippedKitchenUpgradeId !== "humble-kitchen"
       ? KITCHEN_SKIN_SRC[kitchenUpgradeOrDefault(save.equippedKitchenUpgradeId).asset]
       : undefined;
+  // the built kitchen's skin, for its landscape painting in a wide window (developer 2026-11-20)
+  const cuttingKitchenSkin = save
+    ? kitchenUpgradeOrDefault(save.equippedKitchenUpgradeId).asset
+    : undefined;
   // Phase 3 (C/D): what an order may get — a Kitchen Chaos event (never
   // Levels 1–10) and a special ingredient variant; the scene adds "never
   // while a technique is being taught" (coaching.ts) to both. In the
@@ -4950,6 +4954,7 @@ export function App() {
             }
             knife={equippedKnife}
             {...(cuttingKitchenArt ? { kitchenArt: cuttingKitchenArt } : {})}
+            {...(cuttingKitchenSkin ? { kitchenSkin: cuttingKitchenSkin } : {})}
             {...(RESTAURANT_MODE
               ? {
                   // Phase B: the customer's walk in the built stage's dining room.
@@ -4994,6 +4999,7 @@ export function App() {
             previousBest={previousBest}
             knife={equippedKnife}
             {...(cuttingKitchenArt ? { kitchenArt: cuttingKitchenArt } : {})}
+            {...(cuttingKitchenSkin ? { kitchenSkin: cuttingKitchenSkin } : {})}
             board={equippedBoard}
           />
         ) : (

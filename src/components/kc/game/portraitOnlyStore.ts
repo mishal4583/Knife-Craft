@@ -1,12 +1,18 @@
 import { useSyncExternalStore } from "react";
 
 /**
- * The count of mounted portrait-only screens (see `PortraitOnly.tsx`). A counter, not a flag, so two screens mounted for a moment while one replaces
- * another never leave the shell in the wrong mode.
+ * The portrait-only screens that are mounted (see `PortraitOnly.tsx`), each with the landscape picture to show round its stage (or none). A list, not a flag, so two
+ * screens mounted for a moment while one replaces another never leave the shell in the wrong mode; the latest one decides the picture.
  */
-let mounted = 0;
+type Entry = { art: string | null };
+let entries: Entry[] = [];
+let snapshot: { active: boolean; art: string | null } = { active: false, art: null };
 const listeners = new Set<() => void>();
-const emit = () => listeners.forEach((l) => l());
+const emit = () => {
+  const last = entries[entries.length - 1];
+  snapshot = { active: entries.length > 0, art: last?.art ?? null };
+  listeners.forEach((l) => l());
+};
 const subscribe = (l: () => void) => {
   listeners.add(l);
   return () => {
@@ -14,17 +20,22 @@ const subscribe = (l: () => void) => {
   };
 };
 
-/** A portrait-only screen came on (+1) or went away (-1). */
-export function countPortraitOnly(delta: 1 | -1) {
-  mounted += delta;
+/** A portrait-only screen came on; returns what to call when it goes away. */
+export function registerPortraitOnly(art: string | null): () => void {
+  const e: Entry = { art };
+  entries = [...entries, e];
   emit();
+  return () => {
+    entries = entries.filter((x) => x !== e);
+    emit();
+  };
 }
 
-/** True while any portrait-only screen is on. */
-export function usePortraitOnlyActive(): boolean {
+/** Whether any portrait-only screen is on, and the picture to put behind its stage. */
+export function usePortraitOnly(): { active: boolean; art: string | null } {
   return useSyncExternalStore(
     subscribe,
-    () => mounted > 0,
-    () => false,
+    () => snapshot,
+    () => snapshot,
   );
 }

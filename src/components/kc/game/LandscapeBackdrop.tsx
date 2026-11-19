@@ -9,8 +9,11 @@ import { useLandscape } from "./layoutMode";
 export function LandscapeBackdrop({
   section,
   wash = "paper",
+  art,
 }: {
   section: LandscapeSection;
+  /** A picture of its own (a kitchen stage's dining room, the Second Floor) instead of the section's painting. */
+  art?: string;
   /** "paper": a light wash for list screens; "dim": a dark, soft frame around a map; "none": as is. */
   wash?: "paper" | "dim" | "none";
 }) {
@@ -19,7 +22,7 @@ export function LandscapeBackdrop({
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 -z-0 overflow-hidden">
       <img
-        src={landscapeSectionArt(section)}
+        src={art ?? landscapeSectionArt(section)}
         alt=""
         decoding="async"
         className={`absolute inset-0 h-full w-full object-cover ${wash === "dim" ? "scale-105" : ""}`}

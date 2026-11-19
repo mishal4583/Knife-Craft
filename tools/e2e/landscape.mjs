@@ -228,10 +228,7 @@ await page.evaluate(() => document.querySelector('[data-nav="restaurant-map"]')?
 await sleep(1500);
 const mapArt = await page.evaluate(() =>
   [...document.querySelectorAll("img")].some(
-    (i) =>
-      /landscape-art\/sections\/restaurant\.webp/.test(i.src) &&
-      i.complete &&
-      i.naturalWidth > 1000,
+    (i) => /landscape-art\/map\/[a-z-]+\.webp/.test(i.src) && i.complete && i.naturalWidth > 1000,
   ),
 );
 await view(390, 844);
@@ -240,7 +237,8 @@ const mapArtPortrait = await page.evaluate(() =>
   [...document.querySelectorAll("img")].some((i) => /landscape-art\//.test(i.src)),
 );
 check(
-  "3 the map sits on the landscape restaurant painting (landscape only)",
+  // RULE CHANGE 2026-11-20 (developer: the Codex landscape pictures): the map sits on its kitchen stage's own dining room (landscape-art/map/<stage>.webp), not the one shared painting
+  "3 the map sits on its stage's landscape dining room (landscape only)",
   mapArt && !mapArtPortrait,
   { mapArt, mapArtPortrait },
 );

@@ -11,6 +11,8 @@ import thumb04 from "@/assets/kitchen/thumbs/skin-04.webp";
 import thumb05 from "@/assets/kitchen/thumbs/skin-05.webp";
 import thumb06 from "@/assets/kitchen/thumbs/skin-06.webp";
 import type { KitchenSkinId } from "@/game/kitchen/kitchenUpgradeTypes";
+import { landscapeKitchenArt } from "@/game/landscapeArt";
+import { useLandscape } from "@/components/kc/game/layoutMode";
 
 /** Exported for Phase 5's restoration reveal (RestorationReveal.tsx), which shows two of them. */
 export const KITCHEN_SKIN_SRC: Record<KitchenSkinId, string> = {
@@ -52,13 +54,22 @@ export function KitchenBackground({
   /** A small preview: loads the 240px copy, lazily. The full-screen backdrop loads eagerly at high priority (it's the first thing a returning player sees). */
   thumb?: boolean;
 }) {
+  // A wide window shows the kitchen's own landscape painting (developer 2026-11-20): the portrait skin cover-cropped there was zoomed and soft.
+  const landscape = useLandscape();
+  const wide = landscape && !thumb;
   return (
     <img
-      key={skin}
-      src={thumb ? KITCHEN_SKIN_THUMB_SRC[skin] : KITCHEN_SKIN_SRC[skin]}
+      key={wide ? `${skin}-land` : skin}
+      src={
+        thumb
+          ? KITCHEN_SKIN_THUMB_SRC[skin]
+          : wide
+            ? landscapeKitchenArt(skin)
+            : KITCHEN_SKIN_SRC[skin]
+      }
       alt="The player's café kitchen"
-      width={thumb ? 240 : 1080}
-      height={thumb ? 427 : 1920}
+      width={thumb ? 240 : wide ? 1440 : 1080}
+      height={thumb ? 427 : wide ? 810 : 1920}
       loading={thumb ? "lazy" : "eager"}
       decoding="async"
       fetchPriority={thumb ? "low" : "high"}
