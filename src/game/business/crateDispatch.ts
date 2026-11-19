@@ -163,6 +163,14 @@ const S12 = [
 const S123 = [...S12, [1, 3], [3, 1]] as const;
 const S1234 = [...S123, [1, 2], [2, 1], [2, 3], [3, 2]] as const;
 
+const S12345 = [...S1234, [3, 3]] as const;
+
+/**
+ * The board grows with the level (developer 2026-11-19: "gradually add more crates, more rows and columns; right now all levels feel the same"): 5 x 5 from Level
+ * 18, 6 x 6 from 28, 7 x 7 from 46 and 8 x 8 from 66, and a new step of crates, dark blocks, doors or waves about every five levels (`crateTierAt` ramps the numbers
+ * level by level between the steps; the last step is Level 91, so no stretch of levels stays flat). The grid never goes past 8 x 8: the frame is one square and a cell
+ * is 36 px on a 390 px phone there. A board is never filled more than about two thirds, so a crate can always be moved.
+ */
 export const CRATE_TIERS: readonly DispatchTier[] = [
   {
     from: 18,
@@ -177,40 +185,148 @@ export const CRATE_TIERS: readonly DispatchTier[] = [
     maxFree: 4,
   },
   {
+    from: 23,
+    cols: 5,
+    rows: 5,
+    bricks: [6, 7],
+    colors: 3,
+    wallCells: [3, 3],
+    sizes: S12,
+    span: 2,
+    minWaves: 4,
+    maxFree: 3,
+  },
+  {
     from: 28,
     cols: 6,
     rows: 6,
-    bricks: [8, 9],
+    bricks: [7, 8],
     colors: 4,
-    wallCells: [3, 5],
+    wallCells: [3, 4],
     sizes: S123,
     span: 3,
     minWaves: 4,
     maxFree: 3,
   },
   {
-    from: 45,
-    cols: 7,
-    rows: 7,
-    bricks: [9, 10],
-    colors: 5,
-    wallCells: [4, 6],
-    sizes: S1234,
+    from: 34,
+    cols: 6,
+    rows: 6,
+    bricks: [8, 9],
+    colors: 4,
+    wallCells: [4, 5],
+    sizes: S123,
     span: 3,
     minWaves: 5,
     maxFree: 3,
   },
   {
-    from: 65,
-    cols: 7,
-    rows: 7,
-    bricks: [11, 12],
-    colors: 6,
-    wallCells: [5, 7],
+    from: 40,
+    cols: 6,
+    rows: 6,
+    bricks: [9, 10],
+    colors: 4,
+    wallCells: [4, 5],
     sizes: S1234,
     span: 3,
     minWaves: 6,
-    maxFree: 2,
+    maxFree: 3,
+  },
+  {
+    from: 46,
+    cols: 7,
+    rows: 7,
+    bricks: [10, 10],
+    colors: 5,
+    wallCells: [4, 6],
+    sizes: S1234,
+    span: 3,
+    minWaves: 6,
+    maxFree: 3,
+  },
+  {
+    from: 52,
+    cols: 7,
+    rows: 7,
+    bricks: [11, 11],
+    colors: 5,
+    wallCells: [5, 7],
+    sizes: S1234,
+    span: 3,
+    minWaves: 7,
+    maxFree: 3,
+  },
+  {
+    from: 58,
+    cols: 7,
+    rows: 7,
+    bricks: [12, 12],
+    colors: 6,
+    wallCells: [6, 7],
+    sizes: S1234,
+    span: 3,
+    minWaves: 8,
+    maxFree: 3,
+  },
+  {
+    from: 66,
+    cols: 8,
+    rows: 8,
+    bricks: [12, 12],
+    colors: 6,
+    wallCells: [6, 8],
+    sizes: S12345,
+    span: 3,
+    minWaves: 8,
+    maxFree: 3,
+  },
+  {
+    from: 72,
+    cols: 8,
+    rows: 8,
+    bricks: [13, 13],
+    colors: 7,
+    wallCells: [7, 9],
+    sizes: S12345,
+    span: 3,
+    minWaves: 9,
+    maxFree: 3,
+  },
+  {
+    from: 78,
+    cols: 8,
+    rows: 8,
+    bricks: [14, 14],
+    colors: 7,
+    wallCells: [8, 10],
+    sizes: S12345,
+    span: 3,
+    minWaves: 9,
+    maxFree: 3,
+  },
+  {
+    from: 84,
+    cols: 8,
+    rows: 8,
+    bricks: [15, 15],
+    colors: 8,
+    wallCells: [8, 10],
+    sizes: S12345,
+    span: 3,
+    minWaves: 9,
+    maxFree: 3,
+  },
+  {
+    from: 91,
+    cols: 8,
+    rows: 8,
+    bricks: [15, 16],
+    colors: 8,
+    wallCells: [9, 10],
+    sizes: S12345,
+    span: 3,
+    minWaves: 9,
+    maxFree: 3,
   },
 ];
 
@@ -487,7 +603,7 @@ function buildOnce(tier: DispatchTier, rand: () => number): CrateBoard | null {
     for (let c = 0; c < colors.length && !best; c++) {
       const color = c === 0 ? deal[n]! : colors[(colors.indexOf(deal[n]!) + c) % colors.length]!;
       let found = 0;
-      for (let tries = 0; tries < 80 && found < 10; tries++) {
+      for (let tries = 0; tries < 200 && found < 30; tries++) {
         const [w, h] = tier.sizes[Math.floor(rand() * tier.sizes.length)]!;
         const x = Math.floor(rand() * (tier.cols - w + 1));
         const y = Math.floor(rand() * (tier.rows - h + 1));
@@ -500,7 +616,7 @@ function buildOnce(tier: DispatchTier, rand: () => number): CrateBoard | null {
         const withIt: CrateBoard = { ...board, bricks: [...board.bricks, brick] };
         const after = board.bricks.filter((b) => canExit(withIt, b)).length;
         // prefer a crate that holds up others (so the board needs thinking) and one that has a way to go
-        const score = (before - after) * 3 + Math.min(steps, 6) * 0.5 + rand() * 0.8;
+        const score = (before - after) * 5 + Math.min(steps, 6) * 0.5 + rand() * 0.8;
         if (!best || score > best.score) best = { brick, score };
       }
     }
@@ -517,15 +633,25 @@ export function crateBoardFor(level: number, seed: number): CrateBoard {
 /** The same, for an explicit tier (the ramped tier of a level; the QA also builds boards for hand-made tiers). */
 export function crateBoardForTier(tier: DispatchTier, level: number, seed: number): CrateBoard {
   let fallback: CrateBoard | null = null;
-  for (let attempt = 0; attempt < 240; attempt++) {
+  let fallbackMiss = Infinity;
+  // a bigger, fuller grid is harder to build to the tier's numbers, so it gets more tries (about 1 board in 60 needs more than 240 on 8 x 8)
+  const attempts = tier.cols >= 8 ? 600 : tier.cols >= 7 ? 400 : 240;
+  for (let attempt = 0; attempt < attempts; attempt++) {
     const rand = rngFor(seed * 31 + attempt * 7919 + 17);
     const board = buildOnce(tier, rand);
     if (!board) continue;
     const sol = solveBoard(board);
     if (!sol.solvable) continue;
-    fallback = board;
-    if (sol.waves.length >= tier.minWaves && sol.free <= tier.maxFree)
-      return { ...board, foods: foodsFor(level, seed) };
+    // how far this board is from the tier's numbers (0 = meets them); the closest one is kept if none meets them
+    const miss =
+      Math.max(0, tier.minWaves - sol.waves.length) +
+      Math.max(0, sol.free - tier.maxFree) +
+      (sol.free < 1 ? 1 : 0);
+    if (miss < fallbackMiss) {
+      fallback = board;
+      fallbackMiss = miss;
+    }
+    if (miss === 0) return { ...board, foods: foodsFor(level, seed) };
   }
   if (fallback) return { ...fallback, foods: foodsFor(level, seed) };
   // cannot happen with these tiers (the QA builds hundreds of boards); a tiny sure board keeps the screen alive

@@ -77,15 +77,28 @@ try {
   });
 
   console.log("A. Every board can be won, and fits its tier");
-  check("A1: four tiers from Level 18 / 28 / 45 / 65, never below the first", () => {
-    assert.deepEqual(
-      CRATE_TIERS.map((t: { from: number }) => t.from),
-      [18, 28, 45, 65],
-    );
-    assert.equal(crateTierFor(1).from, 18);
-    assert.equal(crateTierFor(44).from, 28);
-    assert.equal(crateTierFor(91).from, 65);
-  });
+  // RULE CHANGE (developer 2026-11-19: "gradually add more crates, more rows and columns, all levels feel the same"): thirteen steps instead of four, the grid
+  // grows 5x5 (L18) -> 6x6 (L28) -> 7x7 (L46) -> 8x8 (L66), the last step is Level 91 so no stretch of levels is flat.
+  check(
+    "A1: thirteen steps from Level 18 to 91, the grid growing 5 -> 6 -> 7 -> 8, never below the first",
+    () => {
+      assert.deepEqual(
+        CRATE_TIERS.map((t: { from: number }) => t.from),
+        [18, 23, 28, 34, 40, 46, 52, 58, 66, 72, 78, 84, 91],
+      );
+      assert.deepEqual(
+        [18, 28, 46, 66].map((l) => crateTierFor(l).cols),
+        [5, 6, 7, 8],
+      );
+      assert.ok(
+        CRATE_TIERS.every((t: any) => t.cols === t.rows && t.cols <= 8),
+        "square, at most 8 x 8",
+      );
+      assert.equal(crateTierFor(1).from, 18);
+      assert.equal(crateTierFor(44).from, 40);
+      assert.equal(crateTierFor(91).from, 91);
+    },
+  );
   const SEEDS = 150;
   CRATE_TIERS.forEach((tier: any, index: number) => {
     check(
@@ -181,7 +194,10 @@ try {
         );
       return most;
     };
-    assert.ok(kinds(18) <= 3 && kinds(65) >= 5, `${kinds(18)} then ${kinds(65)}`);
+    assert.ok(
+      kinds(18) <= 3 && kinds(65) >= 5 && kinds(91) >= 7,
+      `${kinds(18)}, ${kinds(65)} then ${kinds(91)}`,
+    );
   });
   // RULE CHANGE (developer 2026-11-19: every mini-game climbs level by level like the rest, `difficultyRamp.ts`): crates, dark blocks, ingredients, waves
   // and free crates move from one tier's values to the next tier's between their first levels. A9 builds boards for EVERY level.
@@ -234,7 +250,7 @@ try {
     },
   );
   check("A8: a board is built in under 800 ms (a phone), and tiers get harder, not easier", () => {
-    for (const level of [18, 28, 45, 65]) {
+    for (const level of [18, 28, 46, 66, 91]) {
       const t0 = performance.now();
       for (let s = 0; s < 5; s++) crateBoardFor(level, 99 + s);
       assert.ok(
@@ -247,9 +263,9 @@ try {
       for (let s = 1; s <= 40; s++) w += solveBoard(crateBoardFor(level, s)).waves.length;
       return w / 40;
     };
-    const m = [18, 28, 45, 65].map(mean);
+    const m = [18, 28, 46, 66, 91].map(mean);
     assert.ok(
-      m[0] < m[1] && m[1] < m[2] && m[2] < m[3],
+      m[0] < m[1] && m[1] < m[2] && m[2] < m[3] && m[3] <= m[4],
       `waves per tier ${m.map((x) => x.toFixed(1))}`,
     );
   });
@@ -373,7 +389,7 @@ try {
   check(
     "C1: following each crate's own path with dragBrick clears every board of every tier (20 each)",
     () => {
-      for (const level of [18, 28, 45, 65])
+      for (const level of [18, 28, 46, 66, 91])
         for (let seed = 1; seed <= 20; seed++) {
           let round = startRound(level, seed);
           for (let guard = 0; guard < 60 && !roundCleared(round); guard++) {
@@ -411,7 +427,7 @@ try {
         seedState = (Math.imul(seedState, 1664525) + 1013904223) >>> 0;
         return seedState / 4294967296;
       };
-      for (const level of [18, 28, 45, 65])
+      for (const level of [18, 28, 46, 66, 91])
         for (let seed = 1; seed <= 15; seed++) {
           const start = startRound(level, seed);
           let round = { ...start, undos: 999 };
@@ -613,7 +629,7 @@ try {
     () => {
       const used = new Map<string, Set<string>>();
       for (let seed = 1; seed <= 60; seed++)
-        for (const level of [18, 28, 45, 65]) {
+        for (const level of [18, 28, 46, 66, 91]) {
           const board = crateBoardFor(level, seed);
           assert.deepEqual(board.foods, foodsFor(level, seed), "same level and seed, same foods");
           for (const key of CRATE_INGREDIENTS) {
@@ -634,7 +650,7 @@ try {
     "Z2b: ONE door per food on a board: every door shows a different food, every crate shows the food of its own door, and no two foods share a door",
     () => {
       for (let seed = 1; seed <= 60; seed++)
-        for (const level of [18, 28, 45, 65]) {
+        for (const level of [18, 28, 46, 66, 91]) {
           const board = crateBoardFor(level, seed);
           const doorFoods = board.gates.map((g: { color: string }) => foodOf(board, g.color));
           assert.equal(new Set(doorFoods).size, board.gates.length, "two doors show the same food");

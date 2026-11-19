@@ -52,11 +52,15 @@ export const RUN_PALETTE = {
   lilac3: "#8F77E6",
   leaf: "#6CCB45",
   leafDark: "#3E9A33",
+  syrupLight: "#D8581C",
+  syrup: "#A8341A",
+  syrupDark: "#6E1F12",
 } as const;
 export type RunColorKey = keyof typeof RUN_PALETTE;
 
-export type DessertId = "cookie" | "donut" | "cupcake" | "cone";
-export type DessertTier = 1 | 2 | 3 | 4;
+export type DessertId =
+  "cookie" | "donut" | "cupcake" | "cone" | "macaron" | "pancakes" | "cakeslice" | "lollipop";
+export type DessertTier = 1 | 2 | 3 | 4 | 5 | 6;
 export type Dessert = {
   id: DessertId;
   name: string;
@@ -192,6 +196,19 @@ class Painter {
       }
     for (const i of join) this.t[i] = o;
   }
+  /** Outline cubes around a region (its own edge, whatever else is painted there), for a picture made of several things stacked. */
+  rim(has: (x: number, y: number) => boolean) {
+    const o = this.f("outline");
+    const edge: number[] = [];
+    for (let y = 0; y < GRID; y++)
+      for (let x = 0; x < GRID; x++)
+        if (has(x, y) && (!has(x - 1, y) || !has(x + 1, y) || !has(x, y - 1) || !has(x, y + 1)))
+          edge.push(at(x, y));
+    for (const i of edge) {
+      this.t[i] = o;
+      this.subject[i] = 1;
+    }
+  }
   private plain(x: number, y: number) {
     return inside(x, y) && this.t[at(x, y)]! >= 0 && this.t[at(x, y)] !== this.f("outline");
   }
@@ -214,7 +231,8 @@ class Painter {
     const tone = new Uint8Array(GRID * GRID);
     for (let i = 0; i < this.t.length; i++) {
       const f = this.t[i]!;
-      if (f < 0) continue;
+      // a cube the plate's round well does not show is not a cube (a plate or a berry may stick out past the rim)
+      if (f < 0 || !inWell(i % GRID, Math.floor(i / GRID))) continue;
       group[i] = this.groupOf[f]!;
       tone[i] = this.indexIn[f]!;
     }
@@ -556,6 +574,264 @@ function paintCone(): Painter {
   return p;
 }
 
+/* ---------- the second gallery (developer 2026-11-19: "levels easy to hard, and make the mosaic beautiful": eight pictures instead of four) ---------- */
+
+const GROUPS_MACARON: GroupDef[] = [
+  { tones: ["outline"] },
+  { tones: ["cream", "pale"] },
+  { tones: ["pinkLight", "pink", "pinkDark"], rep: "pink" },
+  { tones: ["mint1", "mint2", "mint3"], rep: "mint2" },
+  { tones: ["lilac1", "lilac2", "lilac3"], rep: "lilac2" },
+];
+
+/** Three macarons stacked, lilac at the bottom, mint in the middle, pink on top: a domed shell, a scalloped cream, a ruffled foot. */
+function paintMacaron(): Painter {
+  const p = new Painter(GROUPS_MACARON);
+  p.board(["mint1", "mint2", "mint3"], 0.9);
+  // One macaron is 11 rows: a domed shell (4), the cream (3) and a footed shell (4).
+  const macaron = (
+    y0: number,
+    hw: number,
+    tones: readonly [RunColorKey, RunColorKey, RunColorKey],
+  ) => {
+    const half = [-4.2, -2, -0.8, 0, -1.7, -2.3, -1.7, 0, -0.3, -1.1, -2.6].map((d) => hw + d);
+    const has = (x: number, y: number) => {
+      const w = half[y - y0];
+      return w !== undefined && Math.abs(x + 0.5 - CX) < w;
+    };
+    p.paint(
+      has,
+      (x, y) => {
+        const r = y - y0;
+        const dx = x + 0.5 - CX;
+        if (r <= 3) {
+          const v = dome(x, y, CX, y0 + 4.4, hw, 4.6) ?? 0.2;
+          return v > 0.8 ? tones[0] : v > 0.36 ? tones[1] : tones[2];
+        }
+        if (r <= 6) return r === 5 && Math.floor(dx + 40) % 3 === 0 ? "pale" : "cream";
+        const v = dome(x, y, CX, y0 + 6.4, hw, 4.6) ?? 0.2;
+        return r === 10 ? tones[2] : v > 0.62 ? tones[0] : v > 0.2 ? tones[1] : tones[2];
+      },
+      true,
+    );
+    p.rim(has);
+  };
+  macaron(13, 10.4, ["lilac1", "lilac2", "lilac3"]);
+  macaron(3, 10.0, ["pinkLight", "pink", "pinkDark"]);
+  // a little sparkle on each shell
+  for (const [x, y] of [
+    [9, 5],
+    [10, 6],
+    [10, 15],
+    [11, 16],
+  ] as const)
+    p.bar(x, y, 2, false, "cream");
+  p.bar(3, 22, 2, false, "pale");
+  p.bar(23, 3, 2, true, "pale");
+  return p;
+}
+
+const GROUPS_PANCAKES: GroupDef[] = [
+  { tones: ["outline"] },
+  { tones: ["cream", "pale"] },
+  { tones: ["dough1", "dough", "doughDark"], rep: "dough" },
+  { tones: ["syrupLight", "syrup", "syrupDark"], rep: "syrup" },
+  { tones: ["butter1", "butter2", "butter3"], rep: "butter2" },
+  { tones: ["blue", "blueDark"], rep: "blue" },
+  { tones: ["sky1", "sky2", "sky3"], rep: "sky2" },
+];
+
+/** A stack of three golden pancakes on a plate, a pat of butter, syrup running down the side, and blueberries. */
+function paintPancakes(): Painter {
+  const p = new Painter(GROUPS_PANCAKES);
+  p.board(["sky1", "sky2", "sky3"], 0.4);
+  p.cloud(5.4, 21.4, 1.1);
+  p.cloud(22.4, 22.6, 1.1);
+  const slab = (cy: number, rx: number) => (x: number, y: number) =>
+    ellipse(CX, cy, rx, 2.7)(x, y) ||
+    ellipse(CX, cy + 2.4, rx, 2.7)(x, y) ||
+    (y >= cy && y <= cy + 2.4 && Math.abs(x + 0.5 - CX) < rx);
+  const plate = ellipse(CX, 23.2, 12.2, 2.8);
+  p.paint(plate, (_x, y) => (y < 22.4 ? "cream" : "pale"), true);
+  p.rim(plate);
+  for (const [cy, rx] of [
+    [18.3, 10.2],
+    [14.6, 9.6],
+    [10.9, 9.0],
+  ] as const) {
+    const has = slab(cy, rx);
+    p.paint(
+      has,
+      (x, y) => {
+        const top = y < cy + 1.0;
+        const edge = Math.abs(x + 0.5 - CX) > rx - 1.4;
+        if (top) return edge ? "dough" : (x + y) % 5 === 0 ? "dough" : "dough1";
+        return y > cy + 3.2 ? "doughDark" : edge ? "doughDark" : "dough";
+      },
+      true,
+    );
+    p.rim(has);
+  }
+  const cap = ellipse(CX, 10.2, 7.4, 2.3);
+  p.paint(cap, (_x, y) => (y < 9.6 ? "syrupLight" : "syrup"), true);
+  for (const [x, len] of [
+    [7, 3],
+    [10, 5],
+    [14, 3],
+    [17, 6],
+    [20, 4],
+  ] as const)
+    for (let j = 0; j < len; j++)
+      p.paint(
+        (cx, cy) => cy === 11 + j && (cx === x || cx === x + 1) && p.has(cx, cy),
+        () => (j === len - 1 ? "syrupDark" : "syrup"),
+        true,
+      );
+  const pat = (x: number, y: number) => x >= 12 && x <= 16 && y >= 6 && y <= 9;
+  p.paint(pat, (_x, y) => (y === 6 ? "butter1" : y === 9 ? "butter3" : "butter2"), true);
+  p.rim(pat);
+  for (const [x, y] of [
+    [3, 21],
+    [23, 20],
+    [6, 23],
+  ] as const)
+    p.paint(
+      (cx, cy) => cx >= x && cx <= x + 1 && cy >= y && cy <= y + 1,
+      (cx, cy) => (cx === x && cy === y ? "blue" : "blueDark"),
+      true,
+    );
+  return p;
+}
+
+const GROUPS_CAKESLICE: GroupDef[] = [
+  { tones: ["outline"] },
+  { tones: ["cream", "pale"] },
+  { tones: ["chipLight", "chip"], rep: "chip" },
+  { tones: ["pinkLight", "pink", "pinkDark"], rep: "pink" },
+  { tones: ["redLight", "red", "redDark"], rep: "red" },
+  { tones: ["leaf", "leafDark"], rep: "leaf" },
+  { tones: ["lilac1", "lilac2", "lilac3"], rep: "lilac2" },
+];
+
+/** A slice of three-layer chocolate cake with pink cream between the layers, a swirl of cream on top, and a strawberry. */
+function paintCakeSlice(): Painter {
+  const p = new Painter(GROUPS_CAKESLICE);
+  p.board(["lilac1", "lilac2", "lilac3"], 1.2);
+  p.cloud(5.4, 21.6, 1.1);
+  p.cloud(22.6, 22.6, 1.1);
+  const plate = ellipse(CX, 22.4, 11.8, 2.3);
+  p.paint(plate, (_x, y) => (y < 22.4 ? "cream" : "pale"), true);
+  const body = (x: number, y: number) => x >= 6 && x <= 21 && y >= 11 && y <= 21;
+  p.paint(
+    body,
+    (x, y) => {
+      if (y === 11) return "pinkLight";
+      if (y <= 13) return x <= 7 ? "chipLight" : "chip";
+      if (y === 14) return "pinkLight";
+      if (y === 15) return "pink";
+      if (y <= 18) return x <= 7 ? "chipLight" : "chip";
+      if (y === 19) return "pinkLight";
+      if (y === 20) return "pink";
+      return x <= 7 ? "chipLight" : "chip";
+    },
+    true,
+  );
+  p.paint(
+    (x, y) =>
+      y >= 8 &&
+      y <= 10 &&
+      x >= 7 &&
+      x <= 20 &&
+      (y === 10 || Math.abs(x - 13.5) < 3.8 + (y - 8) * 2.6),
+    (_x, y) => (y === 8 ? "cream" : y === 9 ? "pinkLight" : "pale"),
+    true,
+  );
+  p.paint(
+    ellipse(13.5, 6.2, 3.7, 3.4),
+    (x, y) => {
+      const v = dome(x, y, 13.5, 6.2, 3.7, 3.4) ?? 0;
+      return v > 0.78 ? "redLight" : v > 0.3 ? "red" : "redDark";
+    },
+    true,
+  );
+  p.outline();
+  p.paint(
+    (x, y) => y === 2 && (x === 13 || x === 14),
+    () => "leafDark",
+  );
+  p.paint(
+    (x, y) => y === 3 && x >= 11 && x <= 16,
+    (x) => (x < 14 ? "leaf" : "leafDark"),
+  );
+  for (const [x, y] of [
+    [9, 12],
+    [14, 12],
+    [18, 12],
+    [11, 17],
+    [17, 17],
+    [8, 21],
+  ] as const)
+    p.bar(x, y, 2, false, x < 12 ? "pale" : "cream");
+  return p;
+}
+
+const GROUPS_LOLLIPOP: GroupDef[] = [
+  { tones: ["outline"] },
+  { tones: ["cream", "pale"] },
+  { tones: ["redLight", "red", "redDark"], rep: "red" },
+  { tones: ["butter1", "butter2", "butter3"], rep: "butter2" },
+  { tones: ["leaf", "leafDark"], rep: "leaf" },
+  { tones: ["blue", "blueDark"], rep: "blue" },
+  { tones: ["lilac1", "lilac2", "lilac3"], rep: "lilac2" },
+  { tones: ["pinkLight", "pink", "pinkDark"], rep: "pink" },
+  { tones: ["mint1", "mint2", "mint3"], rep: "mint2" },
+];
+
+/** A big swirl lollipop: a rainbow spiral wound out from the middle, a glossy highlight, a stick and a bow. */
+function paintLollipop(): Painter {
+  const p = new Painter(GROUPS_LOLLIPOP);
+  p.board(["mint1", "mint2", "mint3"], 2.0);
+  p.cloud(5.2, 22.0, 1.1);
+  p.cloud(22.6, 22.6, 1.1);
+  p.paint(
+    (x, y) => (x === 13 || x === 14) && y >= 17 && y <= 25,
+    (x) => (x === 13 ? "cream" : "pale"),
+    true,
+  );
+  const cy = 11.6;
+  const R = 9.5;
+  // five colours wound round the middle in one spiral arm each, every colour lit on its upper left and shaded on its lower right
+  const sets: ReadonlyArray<readonly [RunColorKey, RunColorKey, RunColorKey]> = [
+    ["redLight", "red", "redDark"],
+    ["butter1", "butter2", "butter3"],
+    ["leaf", "leaf", "leafDark"],
+    ["blue", "blue", "blueDark"],
+    ["pinkLight", "pink", "pinkDark"],
+  ];
+  p.paint(
+    disc(CX, cy, R),
+    (x, y) => {
+      const dx = x + 0.5 - CX;
+      const dy = y + 0.5 - cy;
+      const r = Math.hypot(dx, dy);
+      const a = Math.atan2(dy, dx) / (Math.PI * 2);
+      const band = Math.floor((((r / 2.1 - a * 5) % 5) + 10) % 5);
+      const lit = -0.6 * dx - 0.5 * dy;
+      const set = sets[band]!;
+      return lit > 6.2 ? set[0] : lit < -6.4 ? set[2] : set[1];
+    },
+    true,
+  );
+  p.outline();
+  p.bar(7, 6, 2, false, "cream");
+  p.bar(6, 8, 2, true, "cream");
+  const bow = (x: number, y: number) =>
+    y >= 21 && y <= 23 && ((x >= 9 && x <= 12) || (x >= 15 && x <= 18) || x === 13 || x === 14);
+  p.paint(bow, (_x, y) => (y === 21 ? "lilac1" : y === 22 ? "lilac2" : "lilac3"), true);
+  p.rim(bow);
+  return p;
+}
+
 /** Each picture is painted once; `build()` hands out fresh group grids, `tones()` the shared tone grid. */
 function dessert(
   id: DessertId,
@@ -595,14 +871,20 @@ export const DESSERTS: Record<DessertId, Dessert> = {
   donut: dessert("donut", "Pink Glazed Donut", "Donut", 1, paintDonut),
   cupcake: dessert("cupcake", "Cherry Cupcake", "Cupcake", 2, paintCupcake),
   cone: dessert("cone", "Strawberry Ice Cream", "Ice cream", 3, paintCone),
+  macaron: dessert("macaron", "Macaron Tower", "Macarons", 1, paintMacaron),
+  pancakes: dessert("pancakes", "Maple Pancakes", "Pancakes", 2, paintPancakes),
+  cakeslice: dessert("cakeslice", "Strawberry Chocolate Cake", "Cake", 3, paintCakeSlice),
+  lollipop: dessert("lollipop", "Rainbow Lollipop", "Lollipop", 4, paintLollipop),
 };
 
 export const DESSERT_ORDER: readonly DessertId[] = ["cookie", "donut", "cupcake", "cone"];
 
 /** The desserts a tier serves, in rotation. A higher tier may also serve a lower tier's easiest dessert. */
 export const DESSERTS_BY_TIER: Record<DessertTier, readonly DessertId[]> = {
-  1: ["cookie", "donut"],
-  2: ["donut", "cupcake"],
-  3: ["cupcake", "cone"],
-  4: ["cone", "cupcake", "donut"],
+  1: ["cookie", "macaron", "donut"],
+  2: ["donut", "cupcake", "pancakes"],
+  3: ["pancakes", "cone", "cupcake"],
+  4: ["cakeslice", "cone", "pancakes"],
+  5: ["cakeslice", "lollipop", "macaron"],
+  6: ["lollipop", "cakeslice", "macaron"],
 };

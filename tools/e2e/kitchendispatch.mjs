@@ -10,7 +10,7 @@
 //   K6 pause: Resume, Restart and Leave; the clock stands still; Resume closes the card
 //   K7 dragging every crate to its gate wins: stars, moves, Next dispatch and Leave
 //   K8 doing nothing until the clock runs out: Time is up, Try again is the same counter with the full clock
-//   K9 five phone sizes x tiers 1 and 4: no sideways scroll, every button 48 px, the stage inside the screen
+//   K9 five phone sizes x Levels 18, 46 and 91 (5x5, 7x7, 8x8): no sideways scroll, every button 48 px, the stage inside the screen
 //   K10 Back leaves the game
 //   K11 no console errors
 // Screenshots: out/kitchendispatch-*.png. Prints PASS/FAIL per check and exits 1 on any failure.
@@ -432,7 +432,7 @@ for (const [w, h] of [
   [430, 900],
   [768, 1024],
 ]) {
-  for (const level of [18, 65]) {
+  for (const level of [18, 46, 91]) {
     await open(level, w, h);
     const m = await page.evaluate(() => {
       const c = document.querySelector('[data-testid="kd-canvas"]').getBoundingClientRect();
@@ -460,8 +460,9 @@ for (const [w, h] of [
         m.right <= m.iw + 1,
       m,
     );
-    if (level === 65 && w === 320) await shot(page, "kitchendispatch-65-320");
-    if (level === 65 && w === 390) await shot(page, "kitchendispatch-65-390");
+    if (level === 91 && w === 320) await shot(page, "kitchendispatch-91-320");
+    if (level === 91 && w === 390) await shot(page, "kitchendispatch-91-390");
+    if (level === 46 && w === 390) await shot(page, "kitchendispatch-46-390");
   }
 }
 

@@ -7,7 +7,7 @@ export type DessertRunPick = { tier: RunTier; dessertId: DessertId; seed: number
 /** The campaign's last level: the top tier's ramp ends here. */
 export const RUN_LAST_LEVEL = 91;
 /** How far a day or a round may move a level's plate along the ramp (seeds either side). */
-export const RAMP_JITTER = 4;
+export const RAMP_JITTER = 2;
 
 /** The first and the last player level a tier is played at. Tier 1 starts where the game opens. */
 export function tierLevels(tier: RunTier): { first: number; last: number } {

@@ -69,21 +69,25 @@ export type RunTier = {
 
 export const RUN_TIERS: readonly RunTier[] = [
   { id: 1, fromLevel: 18, lanes: 3, min: 8, spread: 14, narrow: 0.5 },
-  { id: 2, fromLevel: 28, lanes: 3, min: 6, spread: 14, narrow: 0.75 },
-  { id: 3, fromLevel: 45, lanes: 4, min: 4, spread: 10, narrow: 0.9 },
-  { id: 4, fromLevel: 65, lanes: 5, min: 3, spread: 7, narrow: 1 },
+  { id: 2, fromLevel: 30, lanes: 3, min: 6, spread: 14, narrow: 0.75 },
+  { id: 3, fromLevel: 42, lanes: 4, min: 5, spread: 12, narrow: 0.85 },
+  { id: 4, fromLevel: 54, lanes: 4, min: 4, spread: 10, narrow: 0.9 },
+  { id: 5, fromLevel: 66, lanes: 5, min: 3, spread: 8, narrow: 0.95 },
+  { id: 6, fromLevel: 78, lanes: 5, min: 3, spread: 7, narrow: 1 },
 ];
 
 /**
  * How hard the plates of each tier are, as the careful player's `hardness` (see `ratePlate`: 0 = always won with room to spare, 1 = never won).
- * Developer 2026-11-19: the windows rise tier by tier, so Level 65 is harder than Level 20 whatever picture it deals. `make-dessert-seeds.mts` keeps
- * only plates inside the window and `dessert-run-qa` checks the shipped ones against it.
+ * Developer 2026-11-19: six steps (about one every twelve levels) whose windows rise one after the other and meet, so a level is harder than the one
+ * before it whatever picture it deals. `make-dessert-seeds.mts` keeps only plates inside the window and `dessert-run-qa` checks the shipped ones against it.
  */
 export const RUN_HARDNESS: Record<number, readonly [number, number]> = {
-  1: [0, 0.1],
-  2: [0.02, 0.25],
-  3: [0.06, 0.35],
-  4: [0.12, 0.5],
+  1: [0, 0.06],
+  2: [0.04, 0.15],
+  3: [0.1, 0.24],
+  4: [0.18, 0.33],
+  5: [0.27, 0.42],
+  6: [0.36, 0.55],
 };
 
 export function runTierForLevel(level: number): RunTier {

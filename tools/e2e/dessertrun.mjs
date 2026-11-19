@@ -7,7 +7,7 @@
 //   D3 pause: Resume, Restart, Leave; play stands still; Resume closes the card
 //   D4 a jam offers Try again and Leave; Try again is the same plate from the start (only when a round jams)
 //   D5 a winning round shows stars, how many waited, Next dessert and Leave (some plate is won by careless play)
-//   D6 five phone sizes x tiers 1 and 4: no sideways scroll, every header button 48 px, the stage inside the screen
+//   D6 five phone sizes x Levels 18, 54 and 91 (3, 4 and 5 lanes): no sideways scroll, every header button 48 px, the stage inside the screen
 //   D7 Back leaves the game
 //   D8 no console errors
 // Screenshots: out/dessertrun-*.png. Prints PASS/FAIL per check and exits 1 on any failure.
@@ -200,10 +200,9 @@ while (tries < 8 && !won) {
 }
 if (!won) check("D5 some careless round is won", false, { tries });
 if (!sawJam) {
-  // A jam is rare on tier 1; Level 65 (five lanes, pancakes) jams often under careless play.
-  await open(65);
+  // A jam is rare on tier 1; Level 91 (five lanes, the hardest plates) jams often under careless play.
+  await open(91);
   await setSpeed(4);
-  const dessert65 = await attr("dessert");
   for (let t = 0; t < 6 && !sawJam; t += 1) {
     const phase = await carelessUntilResult(5);
     if (phase === "jam") {
@@ -213,6 +212,8 @@ if (!sawJam) {
         restart: await page.$('[data-testid="dr-restart"]').then(Boolean),
         leave: await page.$('[data-testid="dr-leave"]').then(Boolean),
       };
+      // the plate that jammed (a won round before it moves on to the next plate, so the one read at the start may be an older one)
+      const jammedDessert = await attr("dessert");
       await page.click('[data-testid="dr-restart"]');
       await sleep(500);
       const again = {
@@ -226,7 +227,7 @@ if (!sawJam) {
           d4.leave &&
           again.phase === "play" &&
           again.served === 0 &&
-          again.dessert === dessert65,
+          again.dessert === jammedDessert,
         { d4, again },
       );
     } else if (phase === "won") {
@@ -234,7 +235,7 @@ if (!sawJam) {
       await sleep(400);
     } else break;
   }
-  if (!sawJam) check("D4 a careless round at Level 65 jams within six plates", false, {});
+  if (!sawJam) check("D4 a careless round at Level 91 jams within six plates", false, {});
 }
 
 // D6
@@ -245,7 +246,7 @@ for (const [w, h] of [
   [430, 900],
   [768, 1024],
 ]) {
-  for (const level of [18, 65]) {
+  for (const level of [18, 54, 91]) {
     await open(level, w, h);
     const m = await page.evaluate(() => {
       const c = document.querySelector('[data-testid="dr-canvas"]').getBoundingClientRect();
@@ -273,7 +274,7 @@ for (const [w, h] of [
         m.right <= m.iw + 1,
       m,
     );
-    if (level === 65 && w === 320) await shot(page, "dessertrun-65-320");
+    if (level === 91 && w === 320) await shot(page, "dessertrun-91-320");
   }
 }
 

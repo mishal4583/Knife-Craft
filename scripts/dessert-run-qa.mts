@@ -22,22 +22,25 @@ try {
   );
   const { RUN_TIERS, STEP } = run;
   const { DESSERTS, DESSERTS_BY_TIER, RUN_PALETTE, GRID } = gallery;
-  type Id = "cookie" | "donut" | "cupcake" | "cone";
+  type Id =
+    "cookie" | "donut" | "cupcake" | "cone" | "macaron" | "pancakes" | "cakeslice" | "lollipop";
 
   // ---- A. Tiers ----------------------------------------------------------------------------------
-  assert.equal(RUN_TIERS.length, 4);
+  // RULE CHANGE (developer 2026-11-19: "plan the levels easy to hard as they level up, and make the mosaic beautiful"): six steps instead of four, a plate
+  // every twelve levels or so, eight pictures instead of four.
+  assert.equal(RUN_TIERS.length, 6);
   assert.deepEqual(
     RUN_TIERS.map((t: { fromLevel: number }) => t.fromLevel),
-    [18, 28, 45, 65],
+    [18, 30, 42, 54, 66, 78],
   );
   assert.deepEqual(
     RUN_TIERS.map((t: { lanes: number }) => t.lanes),
-    [3, 3, 4, 5],
+    [3, 3, 4, 4, 5, 5],
   );
   assert.equal(run.runTierForLevel(17).id, 1, "below Level 18 still reads the first tier");
-  assert.equal(run.runTierForLevel(44).id, 2);
-  assert.equal(run.runTierForLevel(91).id, 4);
-  console.log("PASS A tiers: Levels 18 / 28 / 45 / 65, lanes 3 / 3 / 4 / 5");
+  assert.equal(run.runTierForLevel(41).id, 2);
+  assert.equal(run.runTierForLevel(91).id, 6);
+  console.log("PASS A tiers: Levels 18 / 30 / 42 / 54 / 66 / 78, lanes 3 / 3 / 4 / 4 / 5 / 5");
 
   // ---- B. The gallery ----------------------------------------------------------------------------
   assert.equal(GRID, 28, "a 28 x 28 grid: smooth silhouettes, like the developer's reference");
@@ -91,7 +94,16 @@ try {
   }
   assert.deepEqual(
     cubes,
-    { cookie: 568, donut: 568, cupcake: 568, cone: 568 },
+    {
+      cookie: 568,
+      donut: 568,
+      cupcake: 568,
+      cone: 568,
+      macaron: 568,
+      pancakes: 568,
+      cakeslice: 568,
+      lollipop: 568,
+    },
     // RULE CHANGE (developer 2026-11-18: the cubes at the edge follow the plate's round shape): the board holds every cube that meets the plate's
     // well circle (WELL_R), 568, was a 500-cube staircase disc that stopped short of the rim.
     "every picture fills the whole plate well, 568 cubes",
@@ -104,7 +116,7 @@ try {
         `${id} is not harder than tier ${tier.id}`,
       );
   console.log(
-    "PASS B gallery: 4 pixel-art desserts, 5 to 9 colour groups each (several tones inside a group), outline first, cube counts",
+    "PASS B gallery: 8 pixel-art desserts, 5 to 9 colour groups each (several tones inside a group), outline first, cube counts",
     JSON.stringify(cubes),
   );
 
@@ -325,9 +337,9 @@ try {
     rate.map((r) => `${Math.round(r * 100)}%`).join(" / "),
   );
   assert.ok(rate[0] >= 0.7, "tier 1 is gentle: careless play wins most plates");
-  assert.ok(rate[3] <= 0.5, "tier 4 is not won by careless play");
-  assert.ok(rate[0] - rate[3] >= 0.25, "the tiers get harder");
-  console.log("PASS F difficulty: tier 1 gentle, tier 4 hard, in between in order");
+  assert.ok(rate[5] <= 0.5, "tier 6 is not won by careless play");
+  assert.ok(rate[0] - rate[5] >= 0.25, "the tiers get harder");
+  console.log("PASS F difficulty: tier 1 gentle, tier 6 hard, in between in order");
 
   // ---- F2. Rated plates (developer 2026-11-19: "ensure and increase the quality of the levels") ------------------
   // The seeds of a plate run easiest first, inside the tier's window (RUN_HARDNESS), and the windows rise tier by tier. Rating is slow
