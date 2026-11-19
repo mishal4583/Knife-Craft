@@ -14,7 +14,6 @@ import { GuestPoses } from "../restaurantMap/GuestPoses";
 import { TableCash } from "../common/TableCash";
 import { cashSpotBeside } from "@/game/restaurant/tableCash";
 import "./serviceFloor.css";
-import { FloorSides } from "./FloorSides";
 
 const pct = (n: number) => `${Math.round(n * 100) / 100}%`;
 const at = (p: FloorPoint): CSSProperties => {
@@ -74,7 +73,6 @@ export function DiningCashView({
   return (
     <div className="sf relative h-full w-full bg-walnut-dark" data-testid="dining-cash-view">
       <div className="sf-stage relative h-full min-h-0">
-        <FloorSides mapUrl={mapUrl} />
         <div className="sf-view touch-none" aria-hidden="true">
           <img className="sf-map" src={mapUrl} alt="" draggable={false} />
           <div className="sf-dim" />

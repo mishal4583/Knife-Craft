@@ -16,6 +16,7 @@ import {
   type CarParkVehicle,
 } from "@/game/business/carPark";
 import type { SaveData } from "@/game/SaveManager";
+import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
 
 type Phase = "playing" | "paused" | "failed" | "won";
 const art = (name: string) => `${import.meta.env.BASE_URL}business/carpark/${name}.webp`;
@@ -237,6 +238,7 @@ export function CarParkGame({
       className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#46372c] text-[#442716] land:grid land:grid-cols-[1fr_1.5fr_1fr] land:grid-rows-[auto_auto_1fr]"
       data-testid="car-park-game"
     >
+      <PortraitOnly />
       <img
         src={art("car-park-backdrop")}
         alt=""

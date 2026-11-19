@@ -68,6 +68,7 @@ import {
   ToolInBowl,
   Vessel,
 } from "./SauceParts";
+import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
 
 /**
  * SAUCE STATION — the screen (rules: business/sauceStation.ts, plan: docs/planning/SAUCE-STATION-MINIGAME-PLAN-2026-11-08.md).
@@ -733,6 +734,7 @@ function Round({
       data-bottle={bIndex}
       data-recipe={sauce.recipe.map(([id, n]) => `${id}:${n}`).join(",")}
     >
+      <PortraitOnly />
       <SauceStyles />
       {/* HUD */}
       <div className="flex items-center gap-2 px-3 pt-3 land:pt-1.5">

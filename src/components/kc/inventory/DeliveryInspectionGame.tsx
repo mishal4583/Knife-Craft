@@ -44,6 +44,7 @@ import { Art, Plaque, SortButton, StarBar } from "./sort/SortParts";
 import { clock } from "./sort/sortUtils";
 import { BlendedMark, MarkArt, MarkerArt, PinArt } from "./inspection/InspectionParts";
 import { inspUrl, useArt, useMarkers } from "./inspection/inspectionArt";
+import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
 
 /**
  * DELIVERY INSPECTION — the screen (rules: business/deliveryInspection.ts, plan: docs/planning/DELIVERY-INSPECTION-MINIGAME-PLAN-2026-11-08.md).
@@ -523,6 +524,7 @@ function Round({
       data-found={found.size}
       data-tier={crate.tier}
     >
+      <PortraitOnly />
       <style>{`
         @keyframes insp-shake{0%,100%{translate:0}20%{translate:-5px}40%{translate:5px}60%{translate:-4px}80%{translate:3px}}
         .insp-shake{animation:insp-shake .42s ease-in-out}

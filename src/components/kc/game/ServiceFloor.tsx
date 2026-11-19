@@ -33,7 +33,6 @@ import { TableCash } from "../common/TableCash";
 import { cashSpotBeside } from "@/game/restaurant/tableCash";
 import { AUTO_SERVE_MS } from "@/game/restaurant/prepCookAuto";
 import "./serviceFloor.css";
-import { FloorSides } from "./FloorSides";
 
 /**
  * The dining room around a service order (Transformation Phase B): the
@@ -268,7 +267,6 @@ export function ServiceFloor({
         <div className="sf-backdrop" aria-hidden="true">
           <img className="sf-map" src={mapUrl} alt="" draggable={false} />
         </div>
-        <FloorSides mapUrl={mapUrl} />
         <div className="sf-view" aria-hidden="true">
           <img className="sf-map" src={mapUrl} alt="" draggable={false} />
           <div className="sf-dim" />

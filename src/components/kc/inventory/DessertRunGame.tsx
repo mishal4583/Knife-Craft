@@ -16,6 +16,7 @@ import {
 } from "@/game/business/dessertRun";
 import { drawRun, laneAt, type DrawView } from "./dessertRunDraw";
 import { artUrl, loadRunArt, type RunArt } from "./dessertRunArt";
+import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
 
 const SPEEDS = [1, 2, 4] as const;
 const NOTICE_MS = 1400;
@@ -222,6 +223,7 @@ export function DessertRunGame({
       data-dessert={pick.dessertId}
       data-phase={phase}
     >
+      <PortraitOnly />
       <StageSides src={artUrl("backdrop")} stage={STAGE} />
       <div
         className="relative mx-auto"

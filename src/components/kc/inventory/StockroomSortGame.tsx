@@ -29,6 +29,7 @@ import {
 } from "@/game/business/stockroomSort";
 import { Art, Plaque, SortButton, StarBar } from "./sort/SortParts";
 import { clock, fsUrl } from "./sort/sortUtils";
+import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
 
 /**
  * STOCKROOM SORT — the screen of the "Stock the shelves" mini-game (rules: business/stockroomSort.ts, plan: docs/planning/STOCKROOM-SORT-MINIGAME-PLAN-2026-11-06.md).
@@ -690,6 +691,7 @@ export function StockroomSortGame({
       data-stocked={stockedN}
       data-cubbies={board.cubbies.length}
     >
+      <PortraitOnly />
       {/* HUD: pause, clock and score on the painted wooden plaques (the same pieces as Fridge Sort) */}
       <div className="flex items-center gap-2 px-3 pt-3">
         <button

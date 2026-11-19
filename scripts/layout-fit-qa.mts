@@ -9,6 +9,8 @@
  *  C. Phones are untouched: an upright phone (under 640 wide, no wider than 3:4) and a phone on its side (under 640 tall) are laid out at their own size, scale 1.
  *  D. The mode: landscape from an aspect ratio of 1.3, portrait below it; 9:32 and 32:9 both work.
  *  E. Pure and total: no NaN, no zero, for every size from 1 to 8000 px; nothing outside it is read.
+ *  F. (RULE CHANGE 2026-11-19, developer: "screens with no landscape assets go back to the original size") a portrait-only screen is the centred 9:16 box in a
+ *     window that is not a phone; every other screen, and every phone, is filled as in A-D.
  *
  * Run: npx tsx scripts/layout-fit-qa.mts
  */
@@ -205,6 +207,68 @@ console.log("D. The mode follows the aspect ratio");
     nine.lw >= MIN_LAYOUT_W && thirtyTwo.landscape && thirtyTwo.lh <= LAND_TARGET_H,
     "D3: 9:32 and 32:9 both lay out",
     { nine, thirtyTwo },
+  );
+}
+
+console.log("F. Portrait-only screens keep their original size (developer 2026-11-19)");
+{
+  // RULE CHANGE 2026-11-19: a screen with only a portrait painting (the mini-games, the dishwashing sink) is not stretched to fill a wide window: it is the
+  // largest 9:16 box that fits, centred (`frame`). Everything else (phones, screens with landscape art or none) is as before.
+  const wide: Array<[number, number]> = SHAPES.filter(
+    ([w, h]) => !isPhoneLandscape(w, h) && !(w < FILL_MAX_W && w / h <= FILL_MAX_ASPECT),
+  );
+  const bad: unknown[] = [];
+  for (const [w, h] of wide) {
+    const f = fitLayout(w, h, true);
+    const fr = f.frame;
+    if (!fr) {
+      bad.push({ w, h, why: "no frame" });
+      continue;
+    }
+    const k = Math.min(w / 540, h / 960);
+    if (
+      Math.abs(fr.w - 540 * k) > 0.01 ||
+      Math.abs(fr.h - 960 * k) > 0.01 ||
+      Math.abs(fr.x - (w - fr.w) / 2) > 0.01 ||
+      Math.abs(fr.y - (h - fr.h) / 2) > 0.01 ||
+      f.landscape ||
+      Math.abs(f.lw * f.scale - fr.w) > 0.01 ||
+      Math.abs(f.lh * f.scale - fr.h) > 0.01 ||
+      fr.x < -0.01 ||
+      fr.y < -0.01 ||
+      fr.x + fr.w > w + 0.01 ||
+      fr.y + fr.h > h + 0.01
+    )
+      bad.push({ w, h, f });
+  }
+  assert(
+    bad.length === 0,
+    `F1: for the ${wide.length} windows that are not a phone, a portrait-only screen is the centred 9:16 box (540:960, as large as fits), portrait layout, inside the window`,
+    bad.slice(0, 3),
+  );
+  const keep = SHAPES.filter(
+    ([w, h]) => isPhoneLandscape(w, h) || (w < FILL_MAX_W && w / h <= FILL_MAX_ASPECT),
+  );
+  assert(
+    keep.every(([w, h]) => {
+      const a = fitLayout(w, h, true);
+      const b = fitLayout(w, h, false);
+      return a.frame === null && JSON.stringify(a) === JSON.stringify(b);
+    }),
+    "F2: a phone (upright or on its side) is laid out the same for a portrait-only screen: it keeps the whole screen",
+  );
+  assert(
+    SHAPES.every(([w, h]) => fitLayout(w, h, false).frame === null),
+    "F3: every other screen (not portrait-only) fills the window: no frame at any shape",
+  );
+  const narrow = fitLayout(500, 420, true);
+  assert(
+    narrow.frame !== null &&
+      Math.abs(narrow.lw - MIN_LAYOUT_W) < 0.01 &&
+      narrow.scale < 1 &&
+      !narrow.landscape,
+    "F4: a very short window that is not a phone: the 9:16 box is under 320 wide, so it is laid out at 320 and scaled down",
+    narrow,
   );
 }
 

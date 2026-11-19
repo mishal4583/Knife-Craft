@@ -1,0 +1,279 @@
+// Screens with only a portrait painting keep their ORIGINAL size (developer 2026-11-19: "find all the areas that can't be converted to landscape because there are
+// no landscape assets and make them back to the original size; only keep the areas that need no asset in landscape"), restaurant build, real browser:
+//   P1 at 1280 x 720 and 1920 x 1080 the Kitchen, Market and Business fill the window (data-game-frame="full"): they need no portrait painting
+//   P2 at 1280 x 720 each mini-game that has only a portrait stage (Dessert Run, Unload the Van, Fridge Check, Car Park, Sauce Station) is the centred 9:16 box
+//      (data-game-frame="framed", 9:16 to within a pixel, centred, inside the window) and goes back to filling the window when closed (no remount: the Kitchen is the same one)
+//   P3 the dishwashing sink (Pre-Service Check > Wash) is the 9:16 box too
+//   P4 an upright phone (390 x 844) is NOT framed in a mini-game: it keeps the whole screen, and a phone on its side (844 x 390) is not framed either
+//   P5 no console errors
+// Prints PASS/FAIL per check and exits 1 on any failure.
+import {
+  MOVED_IN_BUSINESS,
+  PAIGE_QUIET,
+  launch,
+  seedSave,
+  sleep,
+  shot,
+  SAVE_KEY,
+  openSection,
+  openShortcut,
+  clickButton,
+} from "./harness.mjs";
+
+const results = [];
+const check = (id, ok, detail) => {
+  results.push({ id, ok });
+  console.log(`${ok ? "PASS" : "FAIL"} ${id}`, detail === undefined ? "" : JSON.stringify(detail));
+};
+
+const SEEN = [
+  "shop",
+  "inventory",
+  "rack",
+  "business",
+  "staff",
+  "equipment",
+  "second-floor",
+  "restaurant",
+  "menu",
+  "progress",
+];
+const saveAt = (n, extra = {}) =>
+  seedSave({
+    credits: 500_000,
+    business: { ...MOVED_IN_BUSINESS, assistant: PAIGE_QUIET, sectionsSeen: SEEN, ...extra },
+    levelProgress: {
+      currentLevelId: `level-${n}`,
+      highestUnlockedLevelId: `level-${n}`,
+      completedLevelIds: Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`),
+      campaignVersion: 4,
+    },
+    story: { introDone: true, milestoneMask: 0xffff, finaleSeen: true },
+  });
+
+const { browser, page, logs } = await launch();
+const BTN = '[data-testid="minigames-shortcut"]';
+
+async function open(save, w, h) {
+  await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
+  const base = (process.env.KC_URL || "http://localhost:4173/").split("?")[0];
+  await page.goto(base, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => window.bridge, { timeout: 20000 });
+  await page.evaluate(
+    async (s, key) => {
+      localStorage.clear();
+      await window.bridge.storage.set([key], [JSON.stringify(s)]);
+    },
+    save,
+    SAVE_KEY,
+  );
+  await page.reload({ waitUntil: "networkidle0" });
+  await page.waitForSelector(BTN, { timeout: 20000 });
+  await page.waitForFunction(
+    () => document.elementFromPoint(5, 5)?.closest("#loading-overlay") === null,
+    { timeout: 20000 },
+  );
+  await sleep(500);
+  for (let i = 0; i < 6; i++) {
+    const gone = await page.evaluate(() => {
+      const card = document.querySelector('[data-testid="guide-card"]');
+      if (!card) return true;
+      [...card.querySelectorAll("button")].find((b) => b.textContent.includes("Later"))?.click();
+      return false;
+    });
+    if (gone) break;
+    await sleep(600);
+  }
+  await sleep(300);
+}
+
+/** The shell's frame against the window. */
+const frame = () =>
+  page.evaluate(() => {
+    const f = document.querySelector("[data-game-frame]");
+    const r = f?.getBoundingClientRect();
+    return {
+      mode: f?.getAttribute("data-game-frame") ?? null,
+      x: r?.left ?? 0,
+      y: r?.top ?? 0,
+      w: r?.width ?? 0,
+      h: r?.height ?? 0,
+      vw: document.documentElement.clientWidth,
+      vh: document.documentElement.clientHeight,
+      sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+    };
+  });
+const isFull = (f) => f.mode === "full" && f.w >= f.vw - 1 && f.h >= f.vh - 1;
+const isNineSixteen = (f) =>
+  f.mode === "framed" &&
+  Math.abs(f.w / f.h - 540 / 960) < 0.01 &&
+  Math.abs(f.x + f.w / 2 - f.vw / 2) < 1.5 &&
+  Math.abs(f.y + f.h / 2 - f.vh / 2) < 1.5 &&
+  f.x >= -1 &&
+  f.y >= -1 &&
+  f.x + f.w <= f.vw + 1 &&
+  f.y + f.h <= f.vh + 1 &&
+  // as large as fits: it touches the window's top and bottom, or its left and right
+  (Math.abs(f.h - f.vh) < 1.5 || Math.abs(f.w - f.vw) < 1.5);
+
+async function openGame(id, testId) {
+  await page.click(BTN);
+  await sleep(500);
+  await page.evaluate((i) => document.querySelector(`[data-testid="minigame-${i}"]`)?.click(), id);
+  await page.waitForSelector(`[data-testid="${testId}"]`, { timeout: 8000 }).catch(() => null);
+  await sleep(900);
+  return Boolean(await page.$(`[data-testid="${testId}"]`));
+}
+// ---------- P1: screens that need no portrait painting fill the window ----------
+const wideBad = [];
+for (const [w, h] of [
+  [1280, 720],
+  [1920, 1080],
+]) {
+  await open(saveAt(91), w, h);
+  const k = await frame();
+  if (!isFull(k)) wideBad.push({ w, h, screen: "kitchen", k });
+  for (const label of ["Market", "Business"]) {
+    await openSection(page, label).catch(() => {});
+    await sleep(900);
+    const f = await frame();
+    if (!isFull(f)) wideBad.push({ w, h, screen: label, f });
+  }
+}
+check(
+  "P1 the Kitchen, Market and Business fill the window at 1280x720 and 1920x1080 (landscape, no bars)",
+  wideBad.length === 0,
+  wideBad,
+);
+
+// ---------- P2: the mini-games with a portrait stage keep the original 9:16 size ----------
+const GAMES = [
+  ["dessert-run", "dessert-run-game", "dr-back"],
+  ["kitchen-dispatch", "kitchen-dispatch-game", "kd-back"],
+  ["fridge-check", "fridge-check", null],
+  ["car-park", "car-park-game", null],
+  ["sauce", "sauce-station", null],
+];
+const p2 = [];
+for (const [id, testId, backId] of GAMES) {
+  await open(saveAt(91), 1280, 720);
+  if (id === "dessert-run") await shot(page, "portraitonly-kitchen-1280");
+  const opened = await openGame(id, testId);
+  const f = await frame();
+  await shot(page, `portraitonly-${id}-1280`);
+  let backOk = true;
+  let back = null;
+  if (backId) {
+    // the game's own Back goes to the Kitchen, which fills the window again (the same shell, nothing remounted)
+    await page.click(`[data-testid="${backId}"]`);
+    await sleep(900);
+    back = await frame();
+    backOk = isFull(back) && Boolean(await page.$('[data-testid="kitchen-rank"]'));
+  }
+  p2.push({ id, opened, ok: opened && isNineSixteen(f) && backOk, f, back });
+}
+check(
+  "P2 Dessert Run, Unload the Van, Fridge Check, Car Park and Sauce Station are the centred 9:16 box at 1280x720; after Back (Dessert Run, the Van) the Kitchen fills the window again",
+  p2.every((r) => r.ok),
+  p2.filter((r) => !r.ok),
+);
+// one game at 1920x1080 too
+await open(saveAt(91), 1920, 1080);
+const big = await openGame("dessert-run", "dessert-run-game");
+const bigF = await frame();
+await shot(page, "portraitonly-dessert-run-1920");
+check(
+  "P2b the same at 1920x1080 (the box is as tall as the window)",
+  big && isNineSixteen(bigF),
+  bigF,
+);
+
+// ---------- P3: the dishwashing sink ----------
+const SINK = { "frying-pans": 1, "dinner-plates": 2 };
+// the same save as dishwashing.mjs (the old numbering, so Level 40 has no daily opening steps in front of the Pre-Service Check)
+const sinkSave = seedSave({
+  credits: 500_000,
+  business: {
+    ...MOVED_IN_BUSINESS,
+    supplies: {
+      stock: {
+        ...MOVED_IN_BUSINESS.supplies.stock,
+        "dinner-plates": { units: 24, costBasis: 2400 },
+        "dinner-forks": { units: 24, costBasis: 1200 },
+        "frying-pans": { units: 2, costBasis: 1868 },
+        "dish-soap": { units: 2, costBasis: 3000 },
+      },
+    },
+    restaurantSupplies: {
+      soapPct: 60,
+      cleanerPct: 60,
+      washing: 0,
+      dirty: SINK,
+      washedTotal: 100,
+      washedKitchen: 0,
+      used: {},
+      brokenTotal: 0,
+    },
+  },
+  levelProgress: {
+    currentLevelId: "level-40",
+    highestUnlockedLevelId: "level-40",
+    completedLevelIds: Array.from({ length: 39 }, (_, i) => `level-${i + 1}`),
+  },
+  story: { introDone: true, milestoneMask: 4095, finaleSeen: true },
+});
+await open(sinkSave, 1280, 720);
+// Business > Cleanliness > the Dishwashing card's Wash (the way dishwashing.mjs step 4 reaches the sink)
+await page.evaluate(() => document.querySelector('[data-nav="restaurant-map"]')?.click());
+await sleep(900);
+await openShortcut(page, "business");
+await sleep(700);
+await clickButton(page, /Cleanliness\d*$/).catch(() => {});
+await sleep(900);
+await page.evaluate(() =>
+  [
+    ...document.querySelectorAll(
+      '[data-testid="cleanliness-wash-up"] [data-testid="sink-wash"] button',
+    ),
+  ]
+    .find((b) => /Wash/.test(b.textContent))
+    ?.click(),
+);
+await sleep(1200);
+const sinkOpen = Boolean(await page.$('[data-testid="wash-up-sink"]'));
+const sinkF = await frame();
+await shot(page, "portraitonly-sink-1280");
+check(
+  "P3 the dishwashing sink is the centred 9:16 box at 1280x720",
+  sinkOpen && isNineSixteen(sinkF),
+  {
+    sinkOpen,
+    sinkF,
+  },
+);
+
+// ---------- P4: phones keep the whole screen ----------
+await open(saveAt(91), 390, 844);
+await openGame("dessert-run", "dessert-run-game");
+const up = await frame();
+await open(saveAt(91), 844, 390);
+await openGame("dessert-run", "dessert-run-game");
+const side = await frame();
+check(
+  "P4 an upright phone (390x844) and a phone on its side (844x390) keep the whole screen in a mini-game (no 9:16 box), no sideways scroll",
+  isFull(up) && isFull(side) && !up.sideways && !side.sideways,
+  { up, side },
+);
+
+check(
+  "P5 no console errors",
+  logs.filter((l) => /^(error|pageerror):/.test(l)).length === 0,
+  logs.slice(0, 3),
+);
+
+await browser.close();
+const failed = results.filter((r) => !r.ok);
+console.log(
+  failed.length ? `\nPORTRAIT ONLY E2E: ${failed.length} FAILED` : "\nPORTRAIT ONLY E2E: ALL PASS",
+);
+process.exit(failed.length ? 1 : 0);

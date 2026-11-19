@@ -3,7 +3,7 @@
  * space"). Source guards for the rule; the real-browser proof is tools/e2e/fullscreen.mjs.
  *
  *  F1 GameShell gives EVERY window the whole viewport (RULE CHANGE 2026-11-19, Playgama 1.6.1 / 1.6.8, YouTube Playables Design 1: no empty bars): an upright
- *     phone at its own size, anything else laid out by `fitLayout` and scaled to fill; no 9:16 frame, no border, no side tagline; the notch is padded
+ *     phone at its own size, anything else laid out by `fitLayout` and scaled to fill; the 9:16 frame is only for portrait-only screens (RULE CHANGE 2026-11-19); the notch is padded
  *  F2 the Kitchen's top HUD stacks (wallet row on top, cards under it) and short screens drop only decorative bits
  *  F3 the painted scenes with a fixed shape (the cleaning room, the service floor) fill what they do not cover with the same painting, behind (never over
  *     the room: a live filter over the painting made it shiver on an iPhone); on a WIDE stage the service floor continues its painting to the sides, mirrored
@@ -34,9 +34,12 @@ function check(id: string, ok: unknown) {
     /export const FILL_MAX_W = 640;/.test(fit) &&
       /export const FILL_MAX_ASPECT = 0\.75;/.test(fit) &&
       /export function fitLayout/.test(fit) &&
-      /fitLayout\(box\.width, box\.height\)/.test(shell) &&
+      // RULE CHANGE 2026-11-19 (developer: screens with only portrait art go back to their original size): the shell asks `fitLayout` with `portraitOnly`; the 9:16
+      // box exists ONLY for those screens (`fit.frame`), never as the window's default frame
+      /fitLayout\(box\.width, box\.height, portraitOnly\)/.test(shell) &&
+      /usePortraitOnlyActive\(\)/.test(shell) &&
       !/Math\.min\(w \/ logicalW, h \/ logicalH\)/.test(shell) &&
-      !/sm:rounded|sm:border|shadow-\[0_40px/.test(shell) &&
+      !/sm:rounded|sm:border/.test(shell) &&
       /pt-\[env\(safe-area-inset-top\)\]/.test(shell) &&
       /pb-\[env\(safe-area-inset-bottom\)\]/.test(shell),
   );
@@ -72,14 +75,15 @@ function check(id: string, ok: unknown) {
   const backdrop = room.indexOf('data-testid="cleaning-backdrop"');
   const stage = room.indexOf('data-testid="cleaning-stage"');
   check(
-    "F3 the cleaning room fills the rest of the screen with its own painting behind it (no blur); the service floor does too, and on a wide stage continues its painting to the sides, mirrored",
+    // RULE CHANGE 2026-11-19 (developer: portrait-only art goes back to its original size): the service floor has no landscape painting, so it is back to its
+    // original look, the blurred crop behind it, and no longer continues the painting mirrored to the sides
+    "F3 the cleaning room fills the rest of the screen with its own painting behind it (no blur); the service floor is back to its blurred backdrop (no mirrored sides)",
     backdrop > 0 &&
       backdrop < stage &&
       /object-cover/.test(room.slice(backdrop - 400, backdrop)) &&
       !/blur\(/.test(room.slice(backdrop - 400, backdrop + 200)) &&
-      /<FloorSides mapUrl=\{mapUrl\} \/>/.test(floor) &&
-      /\.sf \.sf-sides \{/.test(css) &&
-      /@container \(min-aspect-ratio: 5 \/ 6\)/.test(css) &&
+      !/FloorSides/.test(floor) &&
+      !/sf-sides/.test(css) &&
       /className="sf-backdrop"/.test(floor) &&
       floor.indexOf('className="sf-backdrop"') < floor.indexOf('className="sf-view"') &&
       /\.sf \.sf-backdrop \{[\s\S]{0,300}blur\(12px\)/.test(css) &&
@@ -93,6 +97,37 @@ function check(id: string, ok: unknown) {
     /h-\[clamp\(48px,9vh,84px\)\] flex-col/.test(sauce) &&
       /\[@media\(max-height:620px\)\]:h-10/.test(sauce) &&
       /\[@media\(max-height:620px\)\]:h-\[56px\]/.test(sauce),
+  );
+}
+{
+  // RULE CHANGE 2026-11-19 (developer: "find all the areas that can't be converted to landscape because there are no landscape assets and make them back to the
+  // original size"): every screen painted only as a portrait stage marks itself `<PortraitOnly />`, so the shell keeps it at its original 9:16 size in a wide window.
+  // A screen with a landscape painting or none (Kitchen, Market, Business, Inventory, the cleaning rooms, the cutting scene) must NOT carry it.
+  const tagged = [
+    "src/components/kc/inventory/DessertRunGame.tsx",
+    "src/components/kc/inventory/KitchenDispatchGame.tsx",
+    "src/components/kc/inventory/CarParkGame.tsx",
+    "src/components/kc/inventory/FridgeSortGame.tsx",
+    "src/components/kc/inventory/DeliveryInspectionGame.tsx",
+    "src/components/kc/inventory/StockroomSortGame.tsx",
+    "src/components/kc/sauce/SauceStationGame.tsx",
+    "src/components/kc/restaurant/FridgeCheckGame.tsx",
+    "src/components/kc/restaurant/WashUpSink.tsx",
+  ];
+  const landscapeOk = [
+    "src/components/kc/Kitchen.tsx",
+    "src/components/kc/Shop.tsx",
+    "src/components/kc/business/BusinessDashboard.tsx",
+    "src/components/kc/inventory/InventoryScreen.tsx",
+    "src/components/kc/business/AreaCleaningPrototype.tsx",
+    "src/components/kc/game/Preparation.tsx",
+    "src/components/kc/restaurantMap/RestaurantMapView.tsx",
+  ];
+  check(
+    "F5 the nine screens with only a portrait painting carry <PortraitOnly />; the screens with landscape art or none do not",
+    tagged.every((f) => /<PortraitOnly \/>/.test(read(f))) &&
+      landscapeOk.every((f) => !/<PortraitOnly \/>/.test(read(f))) &&
+      !fs.existsSync(path.join(ROOT, "src/components/kc/game/FloorSides.tsx")),
   );
 }
 console.log(failures === 0 ? "\nFULL SCREEN QA: ALL PASS" : `\nFULL SCREEN QA: ${failures} FAIL`);

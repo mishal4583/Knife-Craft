@@ -36,7 +36,9 @@ status line in HANDOFF; this file changes only when a RULE changes.
   the cutting (the lazy `Preparation` chunk).
 - **Screen:** portrait first, logical 540×960. An upright phone (window under 640 px wide, no wider than 3:4) gets the WHOLE screen, no bars
   (developer 2026-11-16; `GameShell` `FILL_MAX_W`). **Every other window is filled edge to edge too, never framed and never with empty or blurred
-  bars** (developer 2026-11-19, Playgama 1.6.1 / 1.6.8, YouTube Playables Design 1): `fitLayout` (`kc/game/layoutMode.ts`) lays the UI out at a logical
+  bars, EXCEPT a screen that has only a PORTRAIT painting** (the mini-game stages, the dishwashing sink): it keeps its original 9:16 size, centred with dark bars, because it
+  has no landscape picture (developer 2026-11-19, `<PortraitOnly />`, `docs/planning/LANDSCAPE-BACKDROPS-CODEX-PROMPTS-2026-11-19.md`; remove the tag when its landscape
+  picture arrives) (developer 2026-11-19, Playgama 1.6.1 / 1.6.8, YouTube Playables Design 1): `fitLayout` (`kc/game/layoutMode.ts`) lays the UI out at a logical
   size and `GameShell` scales it to the window; landscape layout from aspect 1.3, portrait below (`layout-fit-qa`).
 - **Content:** 91 campaign levels in 13 chapters (148 until the developer's campaign plan of 2026-11-07: fewer, richer levels, chicken
   at Level 6, steak 15, salmon 16; data in `levels/campaignPlan.ts`, numbering in `levels/campaignSelection.ts`), Market, Inventory,

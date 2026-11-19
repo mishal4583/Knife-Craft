@@ -33,6 +33,7 @@ import {
   type RoundEffects,
   type TargetId,
 } from "@/game/business/fridgeSort";
+import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
 
 /**
  * FRIDGE SORT — the screen of the "Fridge Sort" mini-game (rules: business/fridgeSort.ts, plan: docs/planning/FRIDGE-SORT-MINIGAME-PLAN-2026-11-03.md).
@@ -734,6 +735,7 @@ export function FridgeSortGame({
       data-tokens={round.tokens.length}
       data-left={crateLeft.length}
     >
+      <PortraitOnly />
       {/* HUD: pause, clock and score on the painted wooden plaques */}
       <div className="flex items-center gap-2 px-3 pt-2">
         <button

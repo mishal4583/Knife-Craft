@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { LayoutContext, fitLayout } from "./layoutMode";
+import { usePortraitOnlyActive } from "./portraitOnlyStore";
 
 // The logical design canvas every screen/Phaser scene in this project is
 // authored against (see PreparationScene.ts, GameBridge.ts) — unchanged
@@ -20,10 +21,10 @@ const LOGICAL_H = 960;
  * zero-viewport WebView case. `useLayoutEffect` (not `useEffect`) so the very first real measurement happens before paint, avoiding a one-frame flash at the
  * wrong size.
  */
-function useFillFit(logicalW: number, logicalH: number) {
+function useFillFit(logicalW: number, logicalH: number, portraitOnly: boolean) {
   const ref = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ width: logicalW, height: logicalH });
-  const fit = fitLayout(box.width, box.height);
+  const fit = fitLayout(box.width, box.height, portraitOnly);
   const landscape = fit.landscape;
 
   useLayoutEffect(() => {
@@ -72,7 +73,8 @@ function useFillFit(logicalW: number, logicalH: number) {
  * alone, never cropped).
  */
 export function GameShell({ children }: { children: ReactNode; aside?: ReactNode }) {
-  const { ref, box, fit } = useFillFit(LOGICAL_W, LOGICAL_H);
+  const portraitOnly = usePortraitOnlyActive();
+  const { ref, box, fit } = useFillFit(LOGICAL_W, LOGICAL_H, portraitOnly);
   const scaled = Math.abs(fit.scale - 1) > 0.001;
   const contentStyle = scaled
     ? { width: fit.lw, height: fit.lh, transform: `scale(${fit.scale})` }
@@ -80,7 +82,11 @@ export function GameShell({ children }: { children: ReactNode; aside?: ReactNode
   return (
     <LayoutContext.Provider value={fit.landscape ? "landscape" : "portrait"}>
       <div
-        className="fixed inset-0 overflow-hidden bg-[#231710]"
+        className={`fixed inset-0 overflow-hidden ${
+          fit.frame
+            ? "bg-[radial-gradient(120%_80%_at_50%_0%,#3E2819,#231710_70%)]"
+            : "bg-[#231710]"
+        }`}
         // Playgama checklist: a long press (or right click) in the game never opens the
         // browser's menu; text fields keep theirs (paste).
         onContextMenu={(e) => {
@@ -101,13 +107,35 @@ export function GameShell({ children }: { children: ReactNode; aside?: ReactNode
             {/* ONE wrapper at every size: switching between "children" and a wrapped tree when a resize or rotation crossed a layout boundary
               changed the element tree, so React remounted the whole game (the cutting scene, the order, a served order's result panel).
               Now a resize only changes this wrapper's size and scale. */}
+            {/* The frame is the whole window, or (a portrait-only screen in a wide window, see `fitLayout`) the original 9:16 box in the middle with dark bars
+              round it. Same element either way, so switching never remounts. `contain` makes it the containing block of `fixed` overlays inside it. */}
             <div
-              data-game-content
-              data-orient={fit.landscape ? "landscape" : "portrait"}
-              className="absolute left-0 top-0 origin-top-left"
-              style={contentStyle}
+              data-game-frame={fit.frame ? "framed" : "full"}
+              className={`absolute overflow-hidden ${fit.frame ? "shadow-[0_40px_80px_rgba(0,0,0,0.55)]" : ""}`}
+              style={
+                fit.frame
+                  ? {
+                      left: fit.frame.x,
+                      top: fit.frame.y,
+                      width: fit.frame.w,
+                      height: fit.frame.h,
+                      contain: "layout paint",
+                      borderRadius:
+                        fit.frame.w < box.width - 1 || fit.frame.h < box.height - 1
+                          ? "clamp(0px, 4vmin, 34px)"
+                          : undefined,
+                    }
+                  : { left: 0, top: 0, width: "100%", height: "100%" }
+              }
             >
-              {children}
+              <div
+                data-game-content
+                data-orient={fit.landscape ? "landscape" : "portrait"}
+                className="absolute left-0 top-0 origin-top-left"
+                style={contentStyle}
+              >
+                {children}
+              </div>
             </div>
           </div>
         </div>

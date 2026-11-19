@@ -32,7 +32,20 @@ export const PORTRAIT_MIN_H = 600;
 /** The narrowest width the portrait UI is laid out for (the smallest phone it is tested at). */
 export const MIN_LAYOUT_W = 320;
 
-export type Fit = { landscape: boolean; lw: number; lh: number; scale: number };
+/** Where the game sits when it is NOT the whole window: the largest 9:16 box that fits, centred, the rest left as dark bars (see `fitLayout`, `portraitOnly`). */
+export type Frame = { x: number; y: number; w: number; h: number };
+export type Fit = {
+  landscape: boolean;
+  lw: number;
+  lh: number;
+  scale: number;
+  /** null: the game fills the window. Set: the game is a framed 9:16 column (a screen that has only portrait art). */
+  frame: Frame | null;
+};
+
+/** The logical shape of the portrait game, the one every painted portrait stage is drawn for. */
+export const PORTRAIT_W = 540;
+export const PORTRAIT_H = 960;
 
 /**
  * HOW THE GAME FILLS A WINDOW (developer 2026-11-19, Playgama 1.6.1 / 1.6.8 and YouTube Playables Design 1: "fills the available area ... in a square window
@@ -42,25 +55,51 @@ export type Fit = { landscape: boolean; lw: number; lh: number; scale: number };
  *  - an upright phone: the screen at its own size, scale 1 (below MIN_LAYOUT_W wide it is laid out at that width and scaled down);
  *  - wider than LAND_ASPECT (a phone on its side, a desktop, a tablet turned): the LANDSCAPE layout at a height of at most LAND_TARGET_H, scaled up to fill;
  *  - anything else (a tablet upright, a square window): the portrait layout at most PORTRAIT_MAX_W wide and at least PORTRAIT_MIN_H tall, scaled to fill.
- * Pure, so `layout-fit-qa` can try every window shape.
+ *
+ * EXCEPTION (developer 2026-11-19: "find all the areas that can't be converted to landscape because there are no landscape assets and make them back to the
+ * original size; only keep the areas that need no asset in landscape"): a screen whose picture exists only as a PORTRAIT painting (the mini-game stages, the
+ * dishwashing sink, the service floor: `portraitOnly`) is NOT stretched, zoomed or mirrored to fill a wide window. It keeps its original size: the largest 9:16
+ * box that fits, centred, with dark bars round it (`frame`). A phone held upright still gets the whole screen, and a phone on its side (`isPhoneLandscape`)
+ * keeps the landscape layout those screens have always had (the upright-only mini-games cover it with their "turn your phone" card).
  */
-export function fitLayout(width: number, height: number): Fit {
+export function fitLayout(width: number, height: number, portraitOnly = false): Fit {
   if (!(width > 0) || !(height > 0))
-    return { landscape: false, lw: Math.max(0, width), lh: Math.max(0, height), scale: 1 };
+    return {
+      landscape: false,
+      lw: Math.max(0, width),
+      lh: Math.max(0, height),
+      scale: 1,
+      frame: null,
+    };
   const aspect = width / height;
+  const uprightPhone = width < FILL_MAX_W && aspect <= FILL_MAX_ASPECT;
+  if (portraitOnly && !uprightPhone && !isPhoneLandscape(width, height)) {
+    const k = Math.min(width / PORTRAIT_W, height / PORTRAIT_H);
+    const w = PORTRAIT_W * k;
+    const h = PORTRAIT_H * k;
+    // a frame narrower than the smallest layout is laid out at that width and scaled down, like an upright phone
+    const scale = w < MIN_LAYOUT_W ? w / MIN_LAYOUT_W : 1;
+    return {
+      landscape: false,
+      lw: w / scale,
+      lh: h / scale,
+      scale,
+      frame: { x: (width - w) / 2, y: (height - h) / 2, w, h },
+    };
+  }
   if (aspect >= LAND_ASPECT) {
     let scale = Math.max(1, height / LAND_TARGET_H);
     if (height / scale < LAND_MIN_H) scale = height / LAND_MIN_H;
-    return { landscape: true, lw: width / scale, lh: height / scale, scale };
+    return { landscape: true, lw: width / scale, lh: height / scale, scale, frame: null };
   }
-  if (width < FILL_MAX_W && aspect <= FILL_MAX_ASPECT) {
+  if (uprightPhone) {
     const scale = width < MIN_LAYOUT_W ? width / MIN_LAYOUT_W : 1;
-    return { landscape: false, lw: width / scale, lh: height / scale, scale };
+    return { landscape: false, lw: width / scale, lh: height / scale, scale, frame: null };
   }
   let scale = Math.max(1, width / PORTRAIT_MAX_W);
   if (height / scale < PORTRAIT_MIN_H) scale = height / PORTRAIT_MIN_H;
   if (width / scale < MIN_LAYOUT_W) scale = width / MIN_LAYOUT_W;
-  return { landscape: false, lw: width / scale, lh: height / scale, scale };
+  return { landscape: false, lw: width / scale, lh: height / scale, scale, frame: null };
 }
 
 export const LayoutContext = createContext<LayoutMode>("portrait");
