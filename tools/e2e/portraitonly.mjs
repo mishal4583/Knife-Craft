@@ -3,7 +3,7 @@
 //   P1 at 1280 x 720 and 1920 x 1080 the Kitchen, Market and Business fill the window (data-game-frame="full"): they need no portrait painting
 //   P2 at 1280 x 720 each mini-game that has only a portrait stage (Dessert Run, Unload the Van, Fridge Check, Car Park, Sauce Station) is the centred 9:16 box
 //      (data-game-frame="framed", 9:16 to within a pixel, centred, inside the window) and goes back to filling the window when closed (no remount: the Kitchen is the same one)
-//   P3 the dishwashing sink (Pre-Service Check > Wash) is the 9:16 box too
+//   P3 the dishwashing sink fills the window (RULE CHANGE 2026-11-20; it was the 9:16 box)
 //   P4 an upright phone (390 x 844) is NOT framed in a mini-game: it keeps the whole screen, and a phone on its side (844 x 390) is not framed either
 //   P5 no console errors
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -166,9 +166,8 @@ check(
 const GAMES = [
   ["dessert-run", "dessert-run-game", "dr-back"],
   ["kitchen-dispatch", "kitchen-dispatch-game", "kd-back"],
-  ["fridge-check", "fridge-check", null],
-  ["car-park", "car-park-game", null],
-  ["sauce", "sauce-station", null],
+  // RULE CHANGE 2026-11-20 (developer: "fix the games in landscape first"): Fridge Check, Car Park and the Sauce Station are landscape layouts now (they fill the window, see
+  // the `P2b` check below); only the two canvas puzzles keep the 9:16 stage
 ];
 const p2 = [];
 const artSeen = [];
@@ -191,13 +190,13 @@ for (const [id, testId, backId] of GAMES) {
   p2.push({ id, opened, ok: opened && isNineSixteen(f) && backOk, f, back });
 }
 check(
-  "P2 Dessert Run, Unload the Van, Fridge Check, Car Park and Sauce Station are the centred 9:16 box at 1280x720; after Back (Dessert Run, the Van) the Kitchen fills the window again",
+  "P2 Dessert Run and Unload the Van are the centred 9:16 box at 1280x720; after Back (Dessert Run, the Van) the Kitchen fills the window again",
   p2.every((r) => r.ok),
   p2.filter((r) => !r.ok),
 );
 check(
   "P6 each framed mini-game paints its own true landscape room behind the stage (1600 x 900, the right file; RULE CHANGE 2026-11-20: the new pictures)",
-  artSeen.length === 5 &&
+  artSeen.length === 2 &&
     artSeen.every(
       (r) =>
         r.art &&
@@ -207,13 +206,27 @@ check(
           {
             "dessert-run": "dessert-run",
             "kitchen-dispatch": "unload-the-van",
-            "fridge-check": "fridge-check",
-            "car-park": "car-park",
-            sauce: "sauce-station-mix",
           }[r.id],
         ),
     ),
   artSeen,
+);
+// RULE CHANGE 2026-11-20: the converted games and the sink fill the window (landscape layout, no 9:16 box) on their own wide room
+const fills = [];
+for (const [id, testId] of [
+  ["fridge-check", "fridge-check"],
+  ["car-park", "car-park-game"],
+  ["sauce", "sauce-station"],
+]) {
+  await open(saveAt(91), 1280, 720);
+  const opened = await openGame(id, testId);
+  const f = await frame();
+  fills.push({ id, opened, ok: opened && isFull(f), f });
+}
+check(
+  "P2b Fridge Check, Car Park and the Sauce Station fill a 1280x720 window (landscape layout, no 9:16 box)",
+  fills.every((r) => r.ok),
+  fills.filter((r) => !r.ok),
 );
 // one game at 1920x1080 too
 await open(saveAt(91), 1920, 1080);
@@ -282,8 +295,8 @@ const sinkOpen = Boolean(await page.$('[data-testid="wash-up-sink"]'));
 const sinkF = await frame();
 await shot(page, "portraitonly-sink-1280");
 check(
-  "P3 the dishwashing sink is the centred 9:16 box at 1280x720",
-  sinkOpen && isNineSixteen(sinkF),
+  "P3 the dishwashing sink fills a 1280x720 window (RULE CHANGE 2026-11-20: landscape layout on the wide sink picture, no 9:16 box)",
+  sinkOpen && isFull(sinkF),
   {
     sinkOpen,
     sinkF,

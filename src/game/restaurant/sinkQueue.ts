@@ -101,3 +101,49 @@ export const BASIN = {
 } as const;
 export const TAP = { x: 262, y: 220, w: 34, h: 128 } as const;
 export const HOSE = { x: 360, y: 236, w: 230, h: 230 } as const;
+
+/**
+ * THE WIDE SINK (developer 2026-11-20, `TL-game-dishwashing.png`, 1920 x 1080): in a landscape window the sink is the wide picture, covering the window, with its own layout.
+ * Every figure is a share of that 16:9 picture (`left`/`width` as well, because the controls form a column under the sink instead of filling the screen). The stage box is
+ * the basin and a little counter round it (the dish is bigger than the basin floor), the Up-next strip and the title sit on the wall to the left, and the status, the progress,
+ * the drying rack and the Done button are on the counter under the sink. The crop of a window that is not 16:9 comes mostly off the bottom, a little off the top, so the
+ * controls stay between 6 % and 90 % of the picture's height.
+ */
+export const SINK_LAYOUT_WIDE = {
+  stage: { left: 0.3, top: 0.25, width: 0.4, height: 0.33 },
+  hud: { left: 0.02, width: 0.27, top: 0.065, height: 0.085 },
+  strip: { left: 0.02, width: 0.27, top: 0.165, height: 0.12 },
+  status: { left: 0.3, width: 0.4, top: 0.585, height: 0.048 },
+  progress: { left: 0.3, width: 0.4, top: 0.64, height: 0.034 },
+  rack: { left: 0.3, width: 0.4, top: 0.675, height: 0.145 },
+  footer: { left: 0.3, width: 0.4, top: 0.825, height: 0.075 },
+} as const;
+
+/** The geometry the water, the tap and the hose are drawn with: the picture's own units. */
+export type SinkGeo = {
+  W: number;
+  H: number;
+  basin: {
+    box: { x: number; y: number; w: number; h: number };
+    polygon: readonly (readonly [number, number])[];
+  };
+  tap: { x: number; y: number; w: number; h: number };
+  hose: { x: number; y: number; w: number; h: number };
+};
+export const SINK_GEO_TALL: SinkGeo = { W: 540, H: 960, basin: BASIN, tap: TAP, hose: HOSE };
+/** Measured on the wide picture (1920 x 1080): the basin's inner outline, the mixer tap's spout and the pre-rinse hose's head. */
+export const SINK_GEO_WIDE: SinkGeo = {
+  W: 1920,
+  H: 1080,
+  basin: {
+    box: { x: 655, y: 305, w: 615, h: 240 },
+    polygon: [
+      [678, 314],
+      [1248, 312],
+      [1266, 534],
+      [658, 528],
+    ],
+  },
+  tap: { x: 931, y: 236, w: 34, h: 190 },
+  hose: { x: 1086, y: 255, w: 300, h: 270 },
+};

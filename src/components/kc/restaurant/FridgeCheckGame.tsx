@@ -36,7 +36,7 @@ import { Art, Plaque, SortButton, StarBar } from "../inventory/sort/SortParts";
 import { FcArt, FoodPicture, InspectionCard, SHELF_LIFE_GUIDE, fcUrl } from "./FridgeCheckParts";
 import { FridgeCheckHowTo } from "./FridgeCheckHowTo";
 import { clock, fsUrl } from "../inventory/sort/sortUtils";
-import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
+import { useLandscape } from "@/components/kc/game/layoutMode";
 import { landscapeGameArt } from "@/game/landscapeArt";
 
 /**
@@ -510,11 +510,13 @@ function Round({
       ? (card?.verdict ?? null)
       : null;
 
+  // LANDSCAPE (developer 2026-11-20): the wide cold room behind the game.
+  const wide = useLandscape();
   return (
     <div
-      className="absolute inset-0 z-[100] flex touch-none select-none flex-col overflow-hidden bg-[#0f1c24]"
+      className="absolute inset-0 z-[100] flex touch-none select-none flex-col overflow-hidden bg-[#0f1c24] [container-type:size] land:px-[max(0px,calc((100cqw-1000px)/2))]"
       style={{
-        backgroundImage: `url(${fcUrl("backdrop")})`,
+        backgroundImage: `url(${wide ? landscapeGameArt("fridge-check") : fcUrl("backdrop")})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
@@ -526,7 +528,6 @@ function Round({
       data-answered={answered}
       data-tier={tierNumberAt(level)}
     >
-      <PortraitOnly art={landscapeGameArt("fridge-check")} />
       {/* HUD */}
       <div className="flex items-center gap-2 px-3 pt-3">
         <button

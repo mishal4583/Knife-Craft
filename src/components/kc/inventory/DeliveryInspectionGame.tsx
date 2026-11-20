@@ -44,7 +44,7 @@ import { Art, Plaque, SortButton, StarBar } from "./sort/SortParts";
 import { clock } from "./sort/sortUtils";
 import { BlendedMark, MarkArt, MarkerArt, PinArt } from "./inspection/InspectionParts";
 import { inspUrl, useArt, useMarkers } from "./inspection/inspectionArt";
-import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
+import { useLandscape } from "@/components/kc/game/layoutMode";
 import { landscapeGameArt } from "@/game/landscapeArt";
 
 /**
@@ -372,6 +372,9 @@ function Round({
   const crateBack = useArt("crate-back");
   const crateFront = useArt("crate-front");
   const hasBackdrop = useArt("backdrop");
+  // LANDSCAPE (developer 2026-11-20: every game in full landscape): the wide room behind, the HUD in a column on the left, the crate in the middle at the window's height, the
+  // note and the magnifier in a column on the right. Portrait is as it was.
+  const wide = useLandscape();
   const markersArt = useMarkers();
   const glassArt = useArt("magnifier");
   const zOf = (it: CrateItem) => it.layer * 100 + it.id + (lift[it.id] ?? 0);
@@ -508,15 +511,21 @@ function Round({
 
   return (
     <div
-      className="absolute inset-0 z-[100] flex touch-none select-none flex-col overflow-hidden bg-[linear-gradient(180deg,#5b3a22,#3a2417)]"
+      className="absolute inset-0 z-[100] flex touch-none select-none flex-col overflow-hidden bg-[linear-gradient(180deg,#5b3a22,#3a2417)] [container-type:size] land:grid land:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] land:grid-rows-[auto_auto_1fr]"
       style={
-        hasBackdrop
+        wide
           ? {
-              backgroundImage: `url(${inspUrl("backdrop")})`,
+              backgroundImage: `url(${landscapeGameArt("delivery-inspection")})`,
               backgroundSize: "cover",
-              backgroundPosition: "center",
+              backgroundPosition: "center bottom",
             }
-          : undefined
+          : hasBackdrop
+            ? {
+                backgroundImage: `url(${inspUrl("backdrop")})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }
+            : undefined
       }
       data-testid="delivery-inspection"
       data-phase={phase}
@@ -525,7 +534,6 @@ function Round({
       data-found={found.size}
       data-tier={crate.tier}
     >
-      <PortraitOnly art={landscapeGameArt("delivery-inspection")} />
       <style>{`
         @keyframes insp-shake{0%,100%{translate:0}20%{translate:-5px}40%{translate:5px}60%{translate:-4px}80%{translate:3px}}
         .insp-shake{animation:insp-shake .42s ease-in-out}
@@ -533,7 +541,7 @@ function Round({
         .insp-pop{animation:insp-pop .22s ease-out}
       `}</style>
       {/* HUD */}
-      <div className="flex items-center gap-2 px-3 pt-3">
+      <div className="flex items-center gap-2 px-3 pt-3 land:col-start-1 land:row-start-1 land:px-5 land:pt-5">
         <button
           type="button"
           onClick={pause}
@@ -563,7 +571,7 @@ function Round({
           {live.toLocaleString("en-US")}
         </Plaque>
       </div>
-      <div className="px-4 pt-2">
+      <div className="px-4 pt-2 land:col-start-1 land:row-start-2 land:px-5 land:pt-3">
         <StarBar progress={progress} marks={STAR_MARKS} />
         <div className="mt-1.5 flex items-center gap-2 font-ui">
           <p
@@ -622,9 +630,9 @@ function Round({
       </div>
 
       {/* the crate */}
-      <div className="relative flex min-h-0 flex-1 items-center justify-center px-2 py-1">
+      <div className="relative flex min-h-0 flex-1 items-center justify-center px-2 py-1 land:col-start-2 land:row-span-3 land:row-start-1 land:h-full land:w-[min(calc(100cqh*1.25),max(48cqw,calc(100cqw-520px)))] land:flex-none land:px-0 land:py-3">
         <div
-          className="relative isolate w-full max-w-[500px]"
+          className="relative isolate w-full max-w-[500px] land:max-w-none"
           style={{ aspectRatio: `${CRATE_W} / ${CRATE_H}` }}
         >
           {/* back of the crate (the painted crate sits at the bottom of the area: the pile rises above its rim) */}
@@ -742,16 +750,16 @@ function Round({
       </div>
 
       {/* the Prep Cook watches; the magnifier */}
-      <div className="flex items-center gap-2 px-3 pb-3">
+      <div className="flex items-center gap-2 px-3 pb-3 land:col-start-3 land:row-span-3 land:row-start-1 land:flex-col land:items-stretch land:justify-center land:gap-4 land:px-5 land:pb-0">
         <img
           src={`${import.meta.env.BASE_URL}business/staff-portraits/prep-cook.webp`}
           alt=""
           draggable={false}
-          className="h-12 w-12 shrink-0 rounded-full border-2 border-[#e6b866] bg-[#3a2417] object-cover"
+          className="h-12 w-12 shrink-0 rounded-full border-2 border-[#e6b866] bg-[#3a2417] object-cover land:self-start"
         />
         <p
           className={cn(
-            "min-w-0 flex-1 rounded-xl px-2.5 py-1.5 font-ui text-[12.5px] font-extrabold leading-tight",
+            "min-w-0 flex-1 rounded-xl px-2.5 py-1.5 font-ui text-[12.5px] font-extrabold leading-tight land:flex-none land:px-4 land:py-3 land:text-[15px]",
             note?.tone === "bad"
               ? "bg-[#7a2a1d]/90 text-[#ffe1d6]"
               : note?.tone === "good"
@@ -777,7 +785,7 @@ function Round({
             disabled={lensMs <= 0 || phase !== "playing"}
             onClick={() => setLensOn((v) => !v)}
             className={cn(
-              "press grid h-12 w-14 shrink-0 place-items-center rounded-2xl border-2 text-[20px] disabled:opacity-40",
+              "press grid h-12 w-14 shrink-0 place-items-center rounded-2xl border-2 text-[20px] disabled:opacity-40 land:h-16 land:w-full",
               lensOn ? "border-[#ffd35a] bg-[#6b4a1a]" : "border-[#e6b866] bg-[#3a2417]",
             )}
           >
@@ -792,7 +800,7 @@ function Round({
       {/* ready */}
       {phase === "ready" && !guide ? (
         <div
-          className="absolute inset-x-0 bottom-[84px] z-30 grid place-items-center px-6"
+          className="absolute inset-x-0 bottom-[84px] z-30 grid place-items-center px-6 land:inset-y-0 land:bottom-0"
           data-testid="insp-ready"
         >
           <div className="w-full max-w-[320px] rounded-3xl border-2 border-[#e6b866] bg-[#f7edd7] p-4 text-center shadow-lift">

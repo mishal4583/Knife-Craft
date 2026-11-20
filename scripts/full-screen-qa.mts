@@ -107,18 +107,22 @@ function check(id: string, ok: unknown) {
   const tagged = [
     "src/components/kc/inventory/DessertRunGame.tsx",
     "src/components/kc/inventory/KitchenDispatchGame.tsx",
-    "src/components/kc/inventory/CarParkGame.tsx",
-    "src/components/kc/inventory/FridgeSortGame.tsx",
-    "src/components/kc/inventory/DeliveryInspectionGame.tsx",
-    "src/components/kc/inventory/StockroomSortGame.tsx",
-    "src/components/kc/sauce/SauceStationGame.tsx",
-    "src/components/kc/restaurant/FridgeCheckGame.tsx",
-    "src/components/kc/restaurant/WashUpSink.tsx",
   ];
   // RULE CHANGE 2026-11-20 (twice). First (developer: "why is the old portrait layout still in the centre?"): the first Codex pictures kept the portrait picture in their
   // middle, so for a while the Kitchen, the map and the Second Floor were tagged `<PortraitOnly wideOnly />`. Then the TRUE landscape pictures arrived
   // (docs/planning/LANDSCAPE-TRUE-PICTURES-CODEX-PROMPTS-2026-11-20.md) and those three screens are real landscape screens again: no tag.
+  // RULE CHANGE 2026-11-20 (developer: "why is this game not in full landscape mode"): Check the delivery has its own landscape layout (HUD left, crate in the middle, note and
+  // magnifier right, the wide room behind), so it no longer carries `<PortraitOnly />`; the other games follow one by one.
   const landscapeOk = [
+    // RULE CHANGE 2026-11-20 (developer: "fix the games in landscape first"): seven games and the sink are real landscape layouts on their wide room (no `<PortraitOnly />`);
+    // only Dessert Run and Unload the Van (a fixed 9:16 canvas puzzle) still keep the 9:16 stage
+    "src/components/kc/inventory/DeliveryInspectionGame.tsx",
+    "src/components/kc/inventory/StockroomSortGame.tsx",
+    "src/components/kc/inventory/FridgeSortGame.tsx",
+    "src/components/kc/inventory/CarParkGame.tsx",
+    "src/components/kc/sauce/SauceStationGame.tsx",
+    "src/components/kc/restaurant/FridgeCheckGame.tsx",
+    "src/components/kc/restaurant/WashUpSink.tsx",
     "src/components/kc/Kitchen.tsx",
     "src/ScreensRouter.tsx",
     "src/components/kc/restaurantMap/SecondFloorView.tsx",
@@ -130,7 +134,7 @@ function check(id: string, ok: unknown) {
     "src/components/kc/restaurantMap/RestaurantMapView.tsx",
   ];
   check(
-    "F5 the nine screens with a portrait stage (eight games and the sink) carry <PortraitOnly />; the screens with landscape art or none (the Kitchen, the maps, the Second Floor) do not",
+    "F5 the two canvas puzzles with a 9:16 stage (Dessert Run, Unload the Van) carry <PortraitOnly />; the seven landscape games and the sink do not; the screens with landscape art or none (the Kitchen, the maps, the Second Floor) do not",
     tagged.every((f) => /<PortraitOnly\b/.test(read(f))) &&
       landscapeOk.every((f) => !/<PortraitOnly\b/.test(read(f))) &&
       !fs.existsSync(path.join(ROOT, "src/components/kc/game/FloorSides.tsx")),

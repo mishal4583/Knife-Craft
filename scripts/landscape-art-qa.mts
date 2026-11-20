@@ -136,6 +136,10 @@ console.log("\nC. Mini-games and the sink");
   const files: Array<[string, string]> = [
     ["src/components/kc/inventory/DessertRunGame.tsx", 'landscapeGameArt("dessert-run")'],
     ["src/components/kc/inventory/KitchenDispatchGame.tsx", 'landscapeGameArt("unload-the-van")'],
+  ];
+  // RULE CHANGE 2026-11-20 (developer: "fix the games in landscape first"): these screens are real landscape layouts on their wide room: they paint it themselves (`landscapeGameArt`)
+  // and carry no `<PortraitOnly />`. Dessert Run and Unload the Van (fixed 9:16 canvas puzzles) still give their room to the framed stage.
+  const landscape: Array<[string, string]> = [
     ["src/components/kc/inventory/CarParkGame.tsx", 'landscapeGameArt("car-park")'],
     [
       "src/components/kc/sauce/SauceStationGame.tsx",
@@ -143,16 +147,23 @@ console.log("\nC. Mini-games and the sink");
     ],
     ["src/components/kc/restaurant/FridgeCheckGame.tsx", 'landscapeGameArt("fridge-check")'],
     ["src/components/kc/inventory/StockroomSortGame.tsx", 'landscapeGameArt("stockroom")'],
+    ["src/components/kc/inventory/FridgeSortGame.tsx", 'landscapeGameArt("fridge-sort")'],
+    ["src/components/kc/restaurant/WashUpSink.tsx", 'landscapeGameArt("dishwashing")'],
     [
       "src/components/kc/inventory/DeliveryInspectionGame.tsx",
       'landscapeGameArt("delivery-inspection")',
     ],
-    ["src/components/kc/inventory/FridgeSortGame.tsx", 'landscapeGameArt("fridge-sort")'],
-    ["src/components/kc/restaurant/WashUpSink.tsx", 'landscapeGameArt("dishwashing")'],
   ];
   assert(
+    landscape.every(([f, expr]) => read(f).includes(expr) && !/<PortraitOnly/.test(read(f))),
+    "C1c: seven games and the sink are landscape layouts on their wide room (no PortraitOnly)",
+    landscape
+      .filter(([f, e]) => !read(f).includes(e) || /<PortraitOnly/.test(read(f)))
+      .map(([f]) => f),
+  );
+  assert(
     files.every(([f, expr]) => read(f).includes(`<PortraitOnly art={${expr}} />`)),
-    "C1: the nine portrait-only screens each give their room; the Sauce Station by phase",
+    "C1: Dessert Run and Unload the Van (9:16 canvas puzzles) give their room to the framed stage",
     files.filter(([f, e]) => !read(f).includes(`<PortraitOnly art={${e}} />`)).map(([f]) => f),
   );
   const shell = read("src/components/kc/game/GameShell.tsx");

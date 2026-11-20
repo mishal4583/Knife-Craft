@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
-import { BASIN, TAP, HOSE } from "@/game/restaurant/sinkQueue";
+import { SINK_GEO_TALL, type SinkGeo } from "@/game/restaurant/sinkQueue";
 import { useWashArt, washUrl } from "./washArt";
 
 /**
@@ -13,12 +13,13 @@ import { useWashArt, washUrl } from "./washArt";
  */
 
 const pct = (v: number) => `${(v * 100).toFixed(3)}%`;
-const poly = BASIN.polygon
-  .map(
-    ([x, y]) =>
-      `${(((x - BASIN.box.x) / BASIN.box.w) * 100).toFixed(2)}% ${(((y - BASIN.box.y) / BASIN.box.h) * 100).toFixed(2)}%`,
-  )
-  .join(", ");
+const polyOf = (basin: SinkGeo["basin"]) =>
+  basin.polygon
+    .map(
+      ([x, y]) =>
+        `${(((x - basin.box.x) / basin.box.w) * 100).toFixed(2)}% ${(((y - basin.box.y) / basin.box.h) * 100).toFixed(2)}%`,
+    )
+    .join(", ");
 
 /** Five ambient bubbles at fixed places (no randomness): x, y as shares of the basin box, size in px, delay in s. */
 const BUBBLES = [
@@ -39,6 +40,7 @@ export function SinkAmbient({
   progress,
   reduced,
   active,
+  geo = SINK_GEO_TALL,
 }: {
   phase: "scrub" | "rinse" | "shine" | "leaving";
   /** The current piece's progress, 0-100 (scrubbing: it grows the suds; rinsing: it drains them). */
@@ -46,6 +48,8 @@ export function SinkAmbient({
   reduced: boolean;
   /** A piece is in the sink (the suds and the tap only matter then; the empty sink is calm). */
   active: boolean;
+  /** The picture's own units (the tall sink by default; the wide one in a landscape window). */
+  geo?: SinkGeo;
 }) {
   const water = useWashArt("water");
   const ripples = useWashArt("ripples");
@@ -80,11 +84,13 @@ export function SinkAmbient({
     return () => window.clearInterval(t);
   }, [rinsing, reduced]);
 
+  const { W, H, basin: BASIN, tap: TAP, hose: HOSE } = geo;
+  const poly = polyOf(BASIN);
   const basinBox: CSSProperties = {
-    left: pct(BASIN.box.x / 540),
-    top: pct(BASIN.box.y / 960),
-    width: pct(BASIN.box.w / 540),
-    height: pct(BASIN.box.h / 960),
+    left: pct(BASIN.box.x / W),
+    top: pct(BASIN.box.y / H),
+    width: pct(BASIN.box.w / W),
+    height: pct(BASIN.box.h / H),
   };
 
   return (
@@ -235,10 +241,10 @@ export function SinkAmbient({
         <span
           className={cn("absolute", !reduced && tap && "wash-tap")}
           style={{
-            left: pct((TAP.x - TAP.w / 2) / 540),
-            top: pct(TAP.y / 960),
-            width: pct(TAP.w / 540),
-            height: pct(TAP.h / 960),
+            left: pct((TAP.x - TAP.w / 2) / W),
+            top: pct(TAP.y / H),
+            width: pct(TAP.w / W),
+            height: pct(TAP.h / H),
             opacity: rinsing ? 0.95 : 0.55,
             ...(tap
               ? {
@@ -247,8 +253,8 @@ export function SinkAmbient({
                   backgroundRepeat: "no-repeat",
                 }
               : {
-                  width: pct(8 / 540),
-                  left: pct((TAP.x - 4) / 540),
+                  width: pct(8 / W),
+                  left: pct((TAP.x - 4) / W),
                   background:
                     "linear-gradient(90deg, transparent, rgba(200,235,250,0.8), transparent)",
                   borderRadius: 6,
@@ -262,10 +268,10 @@ export function SinkAmbient({
         <span
           className="absolute"
           style={{
-            left: pct((HOSE.x - HOSE.w / 2) / 540),
-            top: pct(HOSE.y / 960),
-            width: pct(HOSE.w / 540),
-            height: pct(HOSE.h / 960),
+            left: pct((HOSE.x - HOSE.w / 2) / W),
+            top: pct(HOSE.y / H),
+            width: pct(HOSE.w / W),
+            height: pct(HOSE.h / H),
             ...(spray
               ? {
                   backgroundImage: `url(${washUrl("rinse-spray")})`,

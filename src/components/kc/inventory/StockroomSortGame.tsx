@@ -29,7 +29,8 @@ import {
 } from "@/game/business/stockroomSort";
 import { Art, Plaque, SortButton, StarBar } from "./sort/SortParts";
 import { clock, fsUrl } from "./sort/sortUtils";
-import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
+import { useLandscape } from "@/components/kc/game/layoutMode";
+import { useWindowSize } from "@/components/kc/game/useWindowSize";
 import { landscapeGameArt } from "@/game/landscapeArt";
 
 /**
@@ -181,6 +182,8 @@ export function StockroomSortGame({
   const doneRef = useRef(false);
   const popKey = useRef(0);
   const rootRef = useRef<HTMLDivElement>(null);
+  const wide = useLandscape();
+  const viewport = useWindowSize();
   const idleTimer = useRef<number | null>(null);
 
   const state = stockroomSortOf(save);
@@ -502,6 +505,32 @@ export function StockroomSortGame({
   const hintOn = hintMode === "always" || (hintMode === "after-miss" && idle);
   const selPiece = selected ? (board.cubbies[selected.c]?.front[selected.slot] ?? null) : null;
   const dense = board.cubbies.length >= 8;
+  // LANDSCAPE (developer 2026-11-20: every game in full landscape): the shelf unit is four cubbies wide (not two) in the middle at the window's height, the HUD and the note in a
+  // column on the left, the wide room behind. Portrait is as it was.
+
+  // The unit's height is 0.22 of its width (top and plinth) plus 0.464 / columns of its width for each row of cubbies: pick the number of columns that makes the unit
+  // biggest in the space the window leaves it (a window is wider than tall, so more columns than the phone's two, but never a short strip).
+
+  const unitCols = (() => {
+    if (!wide) return 2;
+    const availW = Math.max(520, viewport.w - 620);
+    const availH = Math.max(300, viewport.h - 24);
+    let best = 2;
+    let bestW = 0;
+    for (let c = 2; c <= 6; c++) {
+      const w = Math.min(
+        availW,
+        availH / (0.22 + (0.464 / c) * Math.ceil(board.cubbies.length / c)),
+      );
+      if (w > bestW + 1) {
+        best = c;
+        bestW = w;
+      }
+    }
+    return best;
+  })();
+  const unitRows = Math.ceil(board.cubbies.length / unitCols);
+  const unitRatio = 0.22 + (0.464 / unitCols) * unitRows;
   const boards = boardsLeft(save, playerLevel);
   void tick;
   void setTick;
@@ -679,9 +708,9 @@ export function StockroomSortGame({
   return (
     <div
       ref={rootRef}
-      className="relative flex h-full w-full select-none flex-col overflow-hidden bg-[#1f2e22] touch-none"
+      className="relative flex h-full w-full select-none flex-col overflow-hidden bg-[#1f2e22] touch-none [container-type:size] land:grid land:grid-cols-[minmax(0,1fr)_auto_minmax(0,0.7fr)] land:grid-rows-[auto_auto_1fr]"
       style={{
-        backgroundImage: `url(${srUrl("backdrop")})`,
+        backgroundImage: `url(${wide ? landscapeGameArt("stockroom") : srUrl("backdrop")})`,
         backgroundSize: "cover",
         backgroundPosition: "center bottom",
       }}
@@ -692,9 +721,8 @@ export function StockroomSortGame({
       data-stocked={stockedN}
       data-cubbies={board.cubbies.length}
     >
-      <PortraitOnly art={landscapeGameArt("stockroom")} />
       {/* HUD: pause, clock and score on the painted wooden plaques (the same pieces as Fridge Sort) */}
-      <div className="flex items-center gap-2 px-3 pt-3">
+      <div className="flex items-center gap-2 px-3 pt-3 land:col-start-1 land:row-start-1 land:px-5 land:pt-5">
         <button
           type="button"
           onClick={pause}
@@ -724,7 +752,7 @@ export function StockroomSortGame({
           {live.toLocaleString("en-US")}
         </Plaque>
       </div>
-      <div className="px-4 pt-2">
+      <div className="px-4 pt-2 land:col-start-1 land:row-start-2 land:px-5 land:pt-3">
         {/* The star bar shares its row with Undo and Hint (developer 2026-11-13: the buttons had their own strip under the shelves, which
             took height from them). Undo is always free; Hint fades out with the level. */}
         <div className="flex items-center gap-1.5">
@@ -822,7 +850,7 @@ export function StockroomSortGame({
 
       {/* the shelf unit */}
       <div
-        className="mx-auto mt-1 min-h-0 w-full max-w-[460px] flex-1 overflow-y-auto px-3 pb-1 no-scrollbar"
+        className="mx-auto mt-1 min-h-0 w-full max-w-[460px] flex-1 overflow-y-auto px-3 pb-1 no-scrollbar land:col-start-2 land:row-span-3 land:row-start-1 land:mt-0 land:h-full land:w-[min(calc(100cqw-620px),calc(100cqh*1.7))] land:max-w-none land:py-3"
         style={{ containerType: "size" }}
       >
         {/* The whole unit fits the height it has (developer 2026-11-13: boards grew to six rows): its width follows the room, so a tall
@@ -830,13 +858,14 @@ export function StockroomSortGame({
         <div
           className="mx-auto"
           style={{
-            width: `min(100%, max(290px, calc((100cqh - 12px) / ${(0.22 + 0.232 * Math.ceil(board.cubbies.length / 2)).toFixed(3)})))`,
+            width: `min(100%, max(${wide ? 520 : 290}px, calc((100cqh - 12px) / ${unitRatio.toFixed(3)})))`,
           }}
           data-testid="stock-unit"
         >
           <SrArt name="unit-top" className="mx-auto block w-full" />
           <div
-            className={cn("grid grid-cols-2 gap-x-1.5", dense ? "gap-y-0" : "gap-y-1")}
+            className={cn("grid gap-x-1.5", dense ? "gap-y-0" : "gap-y-1")}
+            style={{ gridTemplateColumns: `repeat(${unitCols}, minmax(0, 1fr))` }}
             data-testid="stock-shelf"
           >
             {board.cubbies.map((_, c) => cubbyBox(c))}

@@ -68,7 +68,7 @@ import {
   ToolInBowl,
   Vessel,
 } from "./SauceParts";
-import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
+import { useLandscape } from "@/components/kc/game/layoutMode";
 import { landscapeGameArt } from "@/game/landscapeArt";
 
 /**
@@ -707,6 +707,8 @@ function Round({
     !productsOn || items.length <= 10
       ? "repeat(5, minmax(0, 1fr))"
       : "repeat(auto-fill, minmax(48px, 1fr))";
+  // LANDSCAPE (developer 2026-11-20): the wide kitchen behind the game's own landscape layout (the land: classes; mixing is two columns, bottling its own stage).
+  const wide = useLandscape();
   const showBackdrop = phase === "bottle" ? artBottle : art;
   // the two-column phone-landscape layout is for mixing; bottling keeps its own full-width stage
   const twoCol = phase !== "bottle" && phase !== "done";
@@ -716,13 +718,19 @@ function Round({
     <div
       className="absolute inset-0 z-[100] flex touch-none select-none flex-col overflow-hidden bg-[linear-gradient(180deg,#5b3a22,#3a2417)]"
       style={
-        showBackdrop
+        wide
           ? {
-              backgroundImage: `url(${sauceUrl(backdrop)})`,
+              backgroundImage: `url(${landscapeGameArt(phase === "bottle" ? "sauce-bottle" : "sauce-mix")})`,
               backgroundSize: "cover",
               backgroundPosition: "center",
             }
-          : undefined
+          : showBackdrop
+            ? {
+                backgroundImage: `url(${sauceUrl(backdrop)})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }
+            : undefined
       }
       data-testid="sauce-station"
       data-phase={phase}
@@ -735,7 +743,6 @@ function Round({
       data-bottle={bIndex}
       data-recipe={sauce.recipe.map(([id, n]) => `${id}:${n}`).join(",")}
     >
-      <PortraitOnly art={landscapeGameArt(phase === "bottle" ? "sauce-bottle" : "sauce-mix")} />
       <SauceStyles />
       {/* HUD */}
       <div className="flex items-center gap-2 px-3 pt-3 land:pt-1.5">

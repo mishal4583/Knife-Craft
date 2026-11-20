@@ -16,7 +16,7 @@ import {
   type CarParkVehicle,
 } from "@/game/business/carPark";
 import type { SaveData } from "@/game/SaveManager";
-import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
+import { useLandscape } from "@/components/kc/game/layoutMode";
 import { landscapeGameArt } from "@/game/landscapeArt";
 
 type Phase = "playing" | "paused" | "failed" | "won";
@@ -234,14 +234,15 @@ export function CarParkGame({
   }
   const hearts = [0, 1, 2].map((n) => n < CAR_PARK_STRIKES - honks);
 
+  // LANDSCAPE (developer 2026-11-20): the wide car park behind the game's own landscape layout (title and patience left, the lot in the middle, the tow right).
+  const wide = useLandscape();
   return (
     <main
       className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#46372c] text-[#442716] land:grid land:grid-cols-[1fr_1.5fr_1fr] land:grid-rows-[auto_auto_1fr]"
       data-testid="car-park-game"
     >
-      <PortraitOnly art={landscapeGameArt("car-park")} />
       <img
-        src={art("car-park-backdrop")}
+        src={wide ? landscapeGameArt("car-park") : art("car-park-backdrop")}
         alt=""
         draggable={false}
         className="absolute inset-0 h-full w-full object-cover"

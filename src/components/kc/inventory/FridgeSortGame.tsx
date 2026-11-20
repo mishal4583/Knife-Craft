@@ -33,7 +33,7 @@ import {
   type RoundEffects,
   type TargetId,
 } from "@/game/business/fridgeSort";
-import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
+import { useLandscape } from "@/components/kc/game/layoutMode";
 import { landscapeGameArt } from "@/game/landscapeArt";
 
 /**
@@ -214,6 +214,7 @@ export function FridgeSortGame({
   /** A drag just ended: the click the browser sends after it must not also select the token. */
   const draggedRef = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const wide = useLandscape();
   /** The fridge's own scroll box (the shelves) and the last pointer position while a piece is dragged. */
   const panelRef = useRef<HTMLDivElement>(null);
   const pointerRef = useRef<{ x: number; y: number } | null>(null);
@@ -721,12 +722,14 @@ export function FridgeSortGame({
     return rows.join(" ");
   })();
 
+  // LANDSCAPE (developer 2026-11-20): the wide room behind the game's own landscape layout (the land: classes: crate and basket side by side).
+
   return (
     <div
       ref={rootRef}
       className="relative flex h-full w-full select-none flex-col overflow-hidden bg-[#3b2a1d] touch-none"
       style={{
-        backgroundImage: `url(${fsUrl("kitchen-wall")})`,
+        backgroundImage: `url(${wide ? landscapeGameArt("fridge-sort") : fsUrl("kitchen-wall")})`,
         backgroundSize: "cover",
         backgroundPosition: "center bottom",
       }}
@@ -736,9 +739,8 @@ export function FridgeSortGame({
       data-tokens={round.tokens.length}
       data-left={crateLeft.length}
     >
-      <PortraitOnly art={landscapeGameArt("fridge-sort")} />
       {/* HUD: pause, clock and score on the painted wooden plaques */}
-      <div className="flex items-center gap-2 px-3 pt-2">
+      <div className="flex items-center gap-2 px-3 pt-2 land:w-[calc(50%-8px)] land:px-5 land:pt-4">
         <button
           type="button"
           onClick={pause}
@@ -769,8 +771,8 @@ export function FridgeSortGame({
         </Plaque>
       </div>
       {/* the star bar: the painted frame, a fill that grows with the score, and a star on each painted ring */}
-      <div className="px-4 pt-2">
-        <div className="land:mx-auto land:max-w-[340px]">
+      <div className="px-4 pt-2 land:w-[calc(50%-8px)] land:px-5">
+        <div className="land:max-w-[360px]">
           <StarBar progress={progress} marks={STAR_AT} />
         </div>
         <div className="mt-1 flex min-h-[34px] items-center gap-2 font-ui">

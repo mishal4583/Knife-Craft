@@ -255,7 +255,7 @@ export function ServiceFloor({
 
   return (
     <div
-      className="sf absolute inset-0 z-[65] flex flex-col bg-walnut-dark"
+      className="sf absolute inset-0 z-[65] flex flex-col bg-walnut-dark land:flex-row"
       data-testid="service-floor"
       data-wide={wide ? "" : undefined}
       data-mode={mode}
@@ -272,7 +272,7 @@ export function ServiceFloor({
       onClick={tapAnywhere}
     >
       <style>{keyframes}</style>
-      <div className="sf-stage relative min-h-0 flex-1">
+      <div className="sf-stage relative min-h-0 flex-1 land:min-w-0">
         {/* The same crop of the painting, enlarged, blurred and darkened, fills what the view does not cover (a tall or a wide phone): no empty bands
             (developer 2026-11-16). A still layer behind the view; no one is drawn on it. */}
         <div className="sf-backdrop" aria-hidden="true">
@@ -480,7 +480,7 @@ export function ServiceFloor({
         </div>
       </div>
       {mode === "arrive" ? (
-        <div className="relative z-10 rounded-t-[22px] border-t border-gold/40 bg-[linear-gradient(170deg,var(--color-ivory),var(--color-cream))] px-4 pb-4 pt-3 text-center shadow-lift">
+        <div className="relative z-10 rounded-t-[22px] border-t border-gold/40 bg-[linear-gradient(170deg,var(--color-ivory),var(--color-cream))] px-4 pb-4 pt-3 text-center shadow-lift land:flex land:w-[min(420px,38%)] land:min-w-[280px] land:flex-none land:flex-col land:justify-center land:overflow-y-auto land:rounded-none land:rounded-l-[22px] land:border-l land:border-t-0 land:px-6">
           <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.2em] text-copper">
             {state === "walking" ? (
               takeaway ? (
@@ -523,7 +523,7 @@ export function ServiceFloor({
           </div>
         </div>
       ) : (
-        <p className="relative z-10 pb-6 pt-2 text-center font-hand text-[17px] text-ivory/90">
+        <p className="relative z-10 pb-6 pt-2 text-center font-hand text-[17px] text-ivory/90 land:absolute land:inset-x-0 land:bottom-0 land:pb-5 land:text-[19px] land:[text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">
           {state === "reacting"
             ? takeaway
               ? `${customer.name} takes the bag`

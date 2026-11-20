@@ -371,10 +371,10 @@
   display: none;
 }
 .sf[data-wide] .sf-view {
-  --h: max(calc(100cqw * 9 / 16), calc(100cqh / 0.66));
+  --h: max(calc(100cqw * 9 / 16), calc(100cqh / 0.8));
   position: absolute;
   left: 50%;
-  top: calc(var(--h) * -0.12);
+  top: calc(var(--h) * -0.1);
   width: auto;
   height: var(--h);
   aspect-ratio: 16 / 9;

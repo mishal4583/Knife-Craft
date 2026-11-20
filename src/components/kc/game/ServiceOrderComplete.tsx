@@ -342,16 +342,18 @@ export function ServiceOrderComplete({
     <div
       className={`absolute inset-0 z-50 ${
         served && room
-          ? "flex flex-col bg-walnut-dark"
+          ? "flex flex-col bg-walnut-dark land:flex-row"
           : "grid place-items-center bg-walnut-dark/55 backdrop-blur-[3px]"
       }${hidden ? " hidden" : ""}`}
     >
-      {served && room ? <div className="relative min-h-0 flex-[0_0_40%]">{room}</div> : null}
+      {served && room ? (
+        <div className="relative min-h-0 flex-[0_0_40%] land:min-w-0 land:flex-1">{room}</div>
+      ) : null}
       <Panel
         tone="cream"
         className={
           served && room
-            ? "min-h-0 w-full flex-1 overflow-y-auto overscroll-contain rounded-b-none rounded-t-[22px] p-5 text-center [@media(max-height:640px)]:px-4 [@media(max-height:640px)]:py-3"
+            ? "min-h-0 w-full flex-1 overflow-y-auto overscroll-contain rounded-b-none rounded-t-[22px] p-5 text-center [@media(max-height:640px)]:px-4 [@media(max-height:640px)]:py-3 land:w-[min(460px,40%)] land:min-w-[300px] land:flex-none land:rounded-none land:rounded-l-[22px] land:p-6"
             : "anim-pop max-h-[calc(100%-12px)] w-[82%] land:max-w-[560px] overflow-y-auto overscroll-contain p-6 text-center [@media(max-height:640px)]:px-5 [@media(max-height:640px)]:py-4"
         }
       >
