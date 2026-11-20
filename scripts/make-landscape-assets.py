@@ -72,7 +72,9 @@ for src, dst, size in JOBS:
     im = Image.open(p).convert("RGB").resize(size, Image.LANCZOS)
     out = os.path.join(OUT, dst)
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    im.save(out, "WEBP", quality=80, method=6)
+    # the restaurant maps and the Second Floor are smooth painted gradients (developer 2026-11-21, the smoothed Codex set): a higher quality keeps them free of blocks and banding
+    q = 88 if dst.startswith("map-") or dst.startswith("second-floor") else 80
+    im.save(out, "WEBP", quality=q, method=6)
     kb = os.path.getsize(out)
     total += kb
     print(f"{dst:40s} {kb // 1024:4d} KB")

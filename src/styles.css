@@ -1704,6 +1704,15 @@ html.kc-reduced-motion .kc-clean-sheen {
   height: 100%;
   vertical-align: top;
 }
+.gi .gi-svg.gi-rim {
+  position: absolute;
+  inset: 0;
+  opacity: 0.9;
+}
+.gi .gi-svg.gi-top {
+  position: absolute;
+  inset: 0;
+}
 .gi .gi-img {
   display: inline-block;
   width: 100%;
@@ -1714,9 +1723,11 @@ html.kc-reduced-motion .kc-clean-sheen {
 }
 /* a painted picture (lib/paintedIcons.ts) is a little bigger than a line icon: it has to read as a picture, not a glyph */
 .gi.gi-pic {
-  width: 1.45em;
-  height: 1.45em;
-  vertical-align: -0.38em;
+  width: 1.4em;
+  height: 1.4em;
+  /* the picture's middle on the letters' middle (middle = the baseline plus half the x-height), and no taller line box than the text: it hangs out above and below instead of pushing the line apart */
+  vertical-align: middle;
+  margin-block: -0.25em;
 }
 .gi .gi-dot {
   display: inline-block;

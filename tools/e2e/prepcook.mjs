@@ -115,7 +115,8 @@ try {
   await sleep(3500);
   check(
     "P0 below the Prep Cook's level (30) a hired Prep Cook does not cut: by hand only",
-    (await has(/Start cooking/)) && !(await has(/Prep Cook cuts it/)),
+    // RULE CHANGE 2026-11-21: the card's button is styled "Start Cooking" (text-transform, as in the developer's mock-up), and `has` reads innerText, so the match ignores case
+    (await has(/Start cooking/i)) && !(await has(/Prep Cook cuts it/)),
   );
 
   // ---------- P1 not hired ----------

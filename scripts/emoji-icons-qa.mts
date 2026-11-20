@@ -17,6 +17,8 @@ import path from "node:path";
 import { isValidElement } from "react";
 import * as Lucide from "lucide-react";
 import { EMOJI_ICONS, iconFor, normalizeEmoji } from "../src/lib/emojiIcons.ts";
+import { PAINTED_ICON_FILES } from "../src/lib/paintedIconFiles.ts";
+import { ICON_RIM, iconColorFor, ICON_TABLE_HAS } from "../src/lib/iconColors.ts";
 import { TEXT_SAFE, convertChildren, withIcons } from "../src/lib/emoji-jsx/convert.ts";
 
 let failures = 0;
@@ -72,7 +74,8 @@ console.log("B. The conversion");
     { n: out?.length, text },
   );
   // RULE CHANGE 2026-11-20: a tomato has a painted picture now, so the example of an emoji with neither picture nor icon is an olive
-  const plain = "Locked, 12 left (olives 🫒)";
+  // RULE CHANGE 2026-11-21: the icon sheets are delivered (every emoji of the game has a painting), so the example of an emoji with neither picture nor icon is one the game never uses
+  const plain = "Locked, 12 left (evil eye 🧿)";
   assert(
     withIcons(plain) === null && convertChildren(plain) === plain,
     "B2: text with no mapped emoji is returned untouched, the very same string",
@@ -125,6 +128,58 @@ console.log("C. The runtime");
   assert(
     !/jsxImportSource/.test(tsconfig),
     "C5: the type checker and the QA scripts keep React's own runtime (the same, without the icons)",
+  );
+}
+
+console.log("E. Colour (developer 2026-11-21: no black icons)");
+{
+  const keys = Object.entries(EMOJI_ICONS)
+    .filter(([, v]) => "icon" in v)
+    .map(([k]) => k);
+  const colours = keys.map((k) => iconColorFor(k));
+  const unlisted = keys.filter((k) => !ICON_TABLE_HAS(k));
+  assert(
+    colours.every((c) => /^#[0-9a-f]{6}$/i.test(c) && c.toLowerCase() !== "#000000") &&
+      ICON_RIM.toLowerCase() !== colours[0]!.toLowerCase(),
+    `E1: every line icon (${keys.length}) has a real colour, never black, and the dark rim is a different colour`,
+  );
+  assert(
+    unlisted.length <= Math.ceil(keys.length * 0.12),
+    `E2: at most 12 % of the line icons use the default colour (${unlisted.length} of ${keys.length}: ${unlisted.join(" ")})`,
+  );
+  const src = read("src/components/kc/common/EmojiIcon.tsx");
+  assert(
+    /gi-rim/.test(src) && /iconColorFor\(/.test(src),
+    "E3: each line icon is drawn twice, a dark rim under the coloured stroke",
+  );
+}
+
+console.log("F. The painted icons (developer 2026-11-21: the Codex icon sheets)");
+{
+  const dir = path.join(ROOT, "public/icons");
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith(".webp"));
+  const mapped = Object.values(PAINTED_ICON_FILES);
+  const missing = mapped.filter((slug) => !files.includes(`${slug}.webp`));
+  const orphans = files.filter((f) => !mapped.includes(f.replace(/\.webp$/, "")));
+  assert(
+    missing.length === 0 && orphans.length === 0,
+    `F1: every mapped emoji has its file in public/icons/ and every file is used (${mapped.length} icons)`,
+    { missing, orphans },
+  );
+  const heavy = files.filter((f) => fs.statSync(path.join(dir, f)).size > 24 * 1024);
+  assert(heavy.length === 0, "F2: every painted icon is under 24 KB (128 x 128 webp)", heavy);
+  const rows = ["🍽", "✨", "🏆", "🔒", "🧑‍🍳", "☕", "🍟", "⭐", "★"];
+  assert(
+    rows.every((e) => {
+      const f = iconFor(e);
+      return f !== null && "picture" in f;
+    }),
+    "F3: the icons of the screenshots (plate, sparkles, trophy, lock, chef, coffee, fries, star) are painted pictures",
+  );
+  const sheetKeys = Object.keys(PAINTED_ICON_FILES);
+  assert(
+    sheetKeys.every((k) => k === normalizeEmoji(k)),
+    "F4: the keys are plain emoji (no variation selector, no skin tone)",
   );
 }
 

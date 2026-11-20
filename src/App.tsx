@@ -4554,7 +4554,7 @@ export function App() {
           const tickets = campaignServiceSession.tickets
             .slice(at + 1, Math.max(at + 1, required))
             .filter((_, j) => !takeawayAt(j + 1))
-            .map((r) => ({ emoji: r.emoji, name: r.name }));
+            .map((r) => ({ emoji: r.emoji, name: r.name, id: r.id }));
           const guests = isCompleted(campaignLevelForSession.id, save.levelProgress)
             ? []
             : customerQueue(save, campaignLevelForSession)
@@ -4562,7 +4562,7 @@ export function App() {
                   menuGuestsServed(save.levelProgress, campaignLevelForSession.id) +
                     (at >= required ? 1 : 0),
                 )
-                .map((c) => ({ emoji: c.recipe.emoji, name: c.recipe.name }));
+                .map((c) => ({ emoji: c.recipe.emoji, name: c.recipe.name, id: c.recipe.id }));
           // A party is made of the level's own orders, so it is always served, eats and leaves
           // together; the optional menu guests and the walk-in come after, as their own tables.
           return at < required ? tickets : guests;

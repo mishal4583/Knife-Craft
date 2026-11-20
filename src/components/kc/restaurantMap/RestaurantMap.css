@@ -2892,8 +2892,8 @@
   animation: none;
 }
 
-/* THE WIDE MAP (developer 2026-11-20): in a landscape window the stage is the 16:9 floor plan, sized by RestaurantMapView to cover the window (garden at the edges is
-   cropped, never a bar). Its position and size come from the view; percent coordinates inside it are of the 1920 x 1080 picture. */
+/* THE WIDE MAP (developer 2026-11-20): in a landscape window the stage is the 16:9 floor plan, sized by RestaurantMapView to FIT the window whole (2026-11-21: nothing is cropped, the
+   entrance and the garden are in view; the margins of a window that is not 16:9 carry the garden on, MapEdgeFill). Its position and size come from the view; percent coordinates inside it are of the 1920 x 1080 picture. */
 .restaurant-map-stage.is-wide {
   position: absolute;
   aspect-ratio: auto;

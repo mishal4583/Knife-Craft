@@ -1,6 +1,10 @@
 # Painted icons to replace the line icons (Codex prompts), 2026-11-20
 
+> **DONE 2026-11-21:** all 10 sheets were generated and integrated (`scripts/make-icon-assets.py`, `public/icons/`, `src/lib/paintedIconFiles.ts`). This file is kept for the prompts.
+
 **Developer's request (2026-11-20):** "use proper emojis or assets throughout the game, so check each and every page." The outline icons in the screenshots (the leaf, the drops, the fork and knife) are not broken emoji: since 2026-11-19 the game draws a Lucide LINE icon for every emoji, because Playgama rule 4.3.2 says the interface must not use emoji in place of icons. The developer chose **painted assets** (full-colour pictures in the game's own look). This file is the complete list and the Codex prompts.
+
+**Status 2026-11-21:** until these pictures exist every line icon is drawn COLOURED over a dark rim (`src/lib/iconColors.ts`), so nothing is black any more; this is the stopgap. When a sheet is delivered the matching icons switch to the painted picture by themselves (`paintedIcons.ts`, painted wins over line icon).
 
 ## What is already done in code
 
@@ -18,7 +22,7 @@
 ### Rules for every sheet
 
 - A transparent background (real alpha, no checkerboard, no white, no grey). One icon per grid cell, in the order listed, centred, filling about 80% of the cell, never touching the cell's edge, with empty space between icons.
-- Each cell is 512 x 512, so a sheet is (columns x 512) by (rows x 512). No grid lines, no numbers, no labels, no text, no watermarks.
+- Each cell is 400 x 400, so a sheet is 2000 x 2000 px (5 columns x 5 rows; a smaller sheet is cut to its own columns and rows). No grid lines, no numbers, no labels, no text, no watermarks.
 - The same light on every icon (from the upper left) and the same outline weight across the whole sheet.
 - The icon must read at 28 px: a simple bold silhouette first, detail second.
 - Keep the meaning of the original emoji exactly (the description says what to show); do not invent a different object.
@@ -97,12 +101,12 @@ Every page and data source that shows an icon waiting for a painting (the number
 
 ## The sheets
 
-### Sheet `money-paper`: Money, paper and business (25 icons, 5 x 5 cells, 2560 x 2560 px)
+### Sheet `money-paper`: Money, paper and business (25 icons, 5 x 5 cells, 2000 x 2000 px)
 
 Reference: the UI reference images above. Save as `Icon Sheets Assets/IS-money-paper.png`.
 
 ```
-Create ONE image, 2560 x 2560 px, on a fully transparent background: a sprite sheet of 25 separate game icons in a grid of 5 columns and 5 rows (each cell 512 x 512), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
+Create ONE image, 2000 x 2000 px, on a fully transparent background: a sprite sheet of 25 separate game icons in a grid of 5 columns and 5 rows (each cell 400 x 400), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
 
 Icons in reading order, left to right, top to bottom:
 1. 💵  a green dollar banknote
@@ -135,12 +139,12 @@ Style: Glossy casual-mobile-game icon style, EXACTLY like the attached reference
 Use the same outline weight, the same upper-left light and the same colour richness for every icon on the sheet. Match the attached reference images' look.
 ```
 
-### Sheet `signs-arrows`: Signs and arrows (25 icons, 5 x 5 cells, 2560 x 2560 px)
+### Sheet `signs-arrows`: Signs and arrows (25 icons, 5 x 5 cells, 2000 x 2000 px)
 
 Reference: the UI reference images above. Save as `Icon Sheets Assets/IS-signs-arrows.png`.
 
 ```
-Create ONE image, 2560 x 2560 px, on a fully transparent background: a sprite sheet of 25 separate game icons in a grid of 5 columns and 5 rows (each cell 512 x 512), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
+Create ONE image, 2000 x 2000 px, on a fully transparent background: a sprite sheet of 25 separate game icons in a grid of 5 columns and 5 rows (each cell 400 x 400), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
 
 Icons in reading order, left to right, top to bottom:
 1. 🔒  a closed padlock
@@ -173,12 +177,12 @@ Style: Glossy casual-mobile-game icon style, EXACTLY like the attached reference
 Use the same outline weight, the same upper-left light and the same colour richness for every icon on the sheet. Match the attached reference images' look.
 ```
 
-### Sheet `effects-time`: Effects, states and time (25 icons, 5 x 5 cells, 2560 x 2560 px)
+### Sheet `effects-time`: Effects, states and time (25 icons, 5 x 5 cells, 2000 x 2000 px)
 
 Reference: the UI reference images above. Save as `Icon Sheets Assets/IS-effects-time.png`.
 
 ```
-Create ONE image, 2560 x 2560 px, on a fully transparent background: a sprite sheet of 25 separate game icons in a grid of 5 columns and 5 rows (each cell 512 x 512), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
+Create ONE image, 2000 x 2000 px, on a fully transparent background: a sprite sheet of 25 separate game icons in a grid of 5 columns and 5 rows (each cell 400 x 400), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
 
 Icons in reading order, left to right, top to bottom:
 1. ★  a plain bright gold five-point star
@@ -211,12 +215,12 @@ Style: Glossy casual-mobile-game icon style, EXACTLY like the attached reference
 Use the same outline weight, the same upper-left light and the same colour richness for every icon on the sheet. Match the attached reference images' look.
 ```
 
-### Sheet `cleaning-repair`: Cleaning and repair (25 icons, 5 x 5 cells, 2560 x 2560 px)
+### Sheet `cleaning-repair`: Cleaning and repair (25 icons, 5 x 5 cells, 2000 x 2000 px)
 
 Reference: the UI reference images above. Save as `Icon Sheets Assets/IS-cleaning-repair.png`.
 
 ```
-Create ONE image, 2560 x 2560 px, on a fully transparent background: a sprite sheet of 25 separate game icons in a grid of 5 columns and 5 rows (each cell 512 x 512), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
+Create ONE image, 2000 x 2000 px, on a fully transparent background: a sprite sheet of 25 separate game icons in a grid of 5 columns and 5 rows (each cell 400 x 400), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
 
 Icons in reading order, left to right, top to bottom:
 1. 🧽  a yellow kitchen sponge with a green scouring side
@@ -249,12 +253,12 @@ Style: Glossy casual-mobile-game icon style, EXACTLY like the attached reference
 Use the same outline weight, the same upper-left light and the same colour richness for every icon on the sheet. Match the attached reference images' look.
 ```
 
-### Sheet `kitchen-containers`: Kitchen things and containers (25 icons, 5 x 5 cells, 2560 x 2560 px)
+### Sheet `kitchen-containers`: Kitchen things and containers (25 icons, 5 x 5 cells, 2000 x 2000 px)
 
 Reference: the UI reference images above. Save as `Icon Sheets Assets/IS-kitchen-containers.png`.
 
 ```
-Create ONE image, 2560 x 2560 px, on a fully transparent background: a sprite sheet of 25 separate game icons in a grid of 5 columns and 5 rows (each cell 512 x 512), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
+Create ONE image, 2000 x 2000 px, on a fully transparent background: a sprite sheet of 25 separate game icons in a grid of 5 columns and 5 rows (each cell 400 x 400), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
 
 Icons in reading order, left to right, top to bottom:
 1. 🔪  a chef's knife
@@ -287,12 +291,12 @@ Style: Glossy casual-mobile-game icon style, EXACTLY like the attached reference
 Use the same outline weight, the same upper-left light and the same colour richness for every icon on the sheet. Match the attached reference images' look.
 ```
 
-### Sheet `dishes`: Dishes and treats (25 icons, 5 x 5 cells, 2560 x 2560 px)
+### Sheet `dishes`: Dishes and treats (25 icons, 5 x 5 cells, 2000 x 2000 px)
 
 Reference: the food reference images above. Save as `Icon Sheets Assets/IS-dishes.png`.
 
 ```
-Create ONE image, 2560 x 2560 px, on a fully transparent background: a sprite sheet of 25 separate game icons in a grid of 5 columns and 5 rows (each cell 512 x 512), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
+Create ONE image, 2000 x 2000 px, on a fully transparent background: a sprite sheet of 25 separate game icons in a grid of 5 columns and 5 rows (each cell 400 x 400), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
 
 Icons in reading order, left to right, top to bottom:
 1. 🍗  a roast chicken drumstick
@@ -325,12 +329,12 @@ Style: Soft painted food style, EXACTLY like the attached reference pictures (ou
 Use the same outline weight, the same upper-left light and the same colour richness for every icon on the sheet. Match the attached reference images' look.
 ```
 
-### Sheet `people-roles`: People and roles (25 icons, 5 x 5 cells, 2560 x 2560 px)
+### Sheet `people-roles`: People and roles (25 icons, 5 x 5 cells, 2000 x 2000 px)
 
 Reference: the UI reference images above. Save as `Icon Sheets Assets/IS-people-roles.png`.
 
 ```
-Create ONE image, 2560 x 2560 px, on a fully transparent background: a sprite sheet of 25 separate game icons in a grid of 5 columns and 5 rows (each cell 512 x 512), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
+Create ONE image, 2000 x 2000 px, on a fully transparent background: a sprite sheet of 25 separate game icons in a grid of 5 columns and 5 rows (each cell 400 x 400), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
 
 Icons in reading order, left to right, top to bottom:
 1. 🧑‍🍳  a chef in a white hat and jacket (neutral)
@@ -363,12 +367,12 @@ Style: Glossy casual-mobile-game icon style, EXACTLY like the attached reference
 Use the same outline weight, the same upper-left light and the same colour richness for every icon on the sheet. Match the attached reference images' look.
 ```
 
-### Sheet `faces-hands`: Faces and hands (25 icons, 5 x 5 cells, 2560 x 2560 px)
+### Sheet `faces-hands`: Faces and hands (25 icons, 5 x 5 cells, 2000 x 2000 px)
 
 Reference: the UI reference images above. Save as `Icon Sheets Assets/IS-faces-hands.png`.
 
 ```
-Create ONE image, 2560 x 2560 px, on a fully transparent background: a sprite sheet of 25 separate game icons in a grid of 5 columns and 5 rows (each cell 512 x 512), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
+Create ONE image, 2000 x 2000 px, on a fully transparent background: a sprite sheet of 25 separate game icons in a grid of 5 columns and 5 rows (each cell 400 x 400), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
 
 Icons in reading order, left to right, top to bottom:
 1. 🙂  a slightly smiling face
@@ -401,12 +405,12 @@ Style: Glossy casual-mobile-game icon style, EXACTLY like the attached reference
 Use the same outline weight, the same upper-left light and the same colour richness for every icon on the sheet. Match the attached reference images' look.
 ```
 
-### Sheet `places-fun`: Places, vehicles and fun (25 icons, 5 x 5 cells, 2560 x 2560 px)
+### Sheet `places-fun`: Places, vehicles and fun (25 icons, 5 x 5 cells, 2000 x 2000 px)
 
 Reference: the UI reference images above. Save as `Icon Sheets Assets/IS-places-fun.png`.
 
 ```
-Create ONE image, 2560 x 2560 px, on a fully transparent background: a sprite sheet of 25 separate game icons in a grid of 5 columns and 5 rows (each cell 512 x 512), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
+Create ONE image, 2000 x 2000 px, on a fully transparent background: a sprite sheet of 25 separate game icons in a grid of 5 columns and 5 rows (each cell 400 x 400), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
 
 Icons in reading order, left to right, top to bottom:
 1. 🏠  a small house
@@ -439,12 +443,12 @@ Style: Glossy casual-mobile-game icon style, EXACTLY like the attached reference
 Use the same outline weight, the same upper-left light and the same colour richness for every icon on the sheet. Match the attached reference images' look.
 ```
 
-### Sheet `awards-nature`: Awards, nature and decoration (30 icons, 6 x 5 cells, 3072 x 2560 px)
+### Sheet `awards-nature`: Awards, nature and decoration (30 icons, 6 x 5 cells, 2400 x 2000 px)
 
 Reference: the UI reference images above. Save as `Icon Sheets Assets/IS-awards-nature.png`.
 
 ```
-Create ONE image, 3072 x 2560 px, on a fully transparent background: a sprite sheet of 30 separate game icons in a grid of 6 columns and 5 rows (each cell 512 x 512), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
+Create ONE image, 2400 x 2000 px, on a fully transparent background: a sprite sheet of 30 separate game icons in a grid of 6 columns and 5 rows (each cell 400 x 400), one icon per cell, centred, about 80% of the cell, never touching the cell edge. No text, no numbers, no grid lines.
 
 Icons in reading order, left to right, top to bottom:
 1. 🏆  a gold trophy cup

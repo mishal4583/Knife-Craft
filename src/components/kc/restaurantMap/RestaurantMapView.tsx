@@ -2,7 +2,8 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useUnlockText } from "../navLevel";
 import { landscapeMapArt } from "@/game/landscapeArt";
 import { useLandscape } from '@/components/kc/game/layoutMode';
-import { WIDE_NAMEBOARD, useBoxSize, wideCashTables, wideCover, wideZones } from './restaurantMapWide';
+import { WIDE_NAMEBOARD, useBoxSize, wideCashTables, wideFit, wideZones } from './restaurantMapWide';
+import { MapEdgeFill } from './MapEdgeFill';
 import { wideOf } from '@/game/restaurant/guestWalk';
 import {
   DEFAULT_RESTAURANT_NAME,
@@ -64,9 +65,9 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
   const stageId: KitchenMapArtStage = stage ?? stageOfImage(kitchenMapImage);
   const vp = useBoxSize(viewportRef, wide);
   const zones = useMemo(() => (wide ? wideZones(stageId) : RESTAURANT_MAP_DISPLAY_ZONES), [wide, stageId]);
-  // Cover the window with the 16:9 plan (the edges are garden): never a bar. Most of the crop comes off the bottom (garden and cobbles), a little off the top.
+  // The WHOLE 16:9 plan fits the window, nothing cropped (the entrance and the garden are in view); the margins of a window that is not 16:9 carry the garden on (MapEdgeFill).
   const wideBox = useMemo(
-    () => (wide && vp.w > 0 && vp.h > 0 ? wideCover(vp) : null),
+    () => (wide && vp.w > 0 && vp.h > 0 ? wideFit(vp) : null),
     [wide, vp],
   );
   const noticeTimerRef = useRef<number | null>(null);
@@ -148,7 +149,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging || zoomLevel <= 1) return;
     if (wide && wideBox) {
-      // keep the scaled plan covering the whole window
+      // keep the zoomed plan covering the window where it is larger than it; on an axis where it is still smaller (the margin) it stays centred
       const cx0 = wideBox.left + wideBox.sw / 2;
       const cy0 = wideBox.top + wideBox.sh / 2;
       const loX = vp.w - (zoomLevel * wideBox.sw) / 2 - cx0;
@@ -156,8 +157,8 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
       const loY = vp.h - (zoomLevel * wideBox.sh) / 2 - cy0;
       const hiY = (zoomLevel * wideBox.sh) / 2 - cy0;
       setPanOffset({
-        x: Math.max(Math.min(e.clientX - dragStartRef.current.x, hiX), loX),
-        y: Math.max(Math.min(e.clientY - dragStartRef.current.y, hiY), loY),
+        x: loX > hiX ? 0 : Math.max(Math.min(e.clientX - dragStartRef.current.x, hiX), loX),
+        y: loY > hiY ? 0 : Math.max(Math.min(e.clientY - dragStartRef.current.y, hiY), loY),
       });
       return;
     }
@@ -230,6 +231,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
+        {wide && wideBox ? <MapEdgeFill src={landscapeMapArt(stageId)} box={wideBox} vp={vp} /> : null}
         <div
           className={`restaurant-map-stage${wide ? ' is-wide' : ''}`}
           data-testid={wide ? 'wide-map-stage' : undefined}

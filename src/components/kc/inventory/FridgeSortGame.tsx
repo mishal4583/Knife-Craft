@@ -101,6 +101,9 @@ function noise(a: number, b: number): number {
  */
 const BASKET_RATIO = 560 / 254;
 const BASKET_CROP = (336 / 254) * 100;
+/** The landscape basket shows the WHOLE picture (560 x 336, its wooden base too): its box is the picture's shape, and the pieces' heights (percent of the cropped box above) shrink to match. */
+const WIDE_BASKET_RATIO = 560 / 336;
+const BASKET_BOX_SHARE = 254 / 336;
 
 /**
  * How far a drop may miss a shelf (developer 2026-11-07: "it is not going to the cabinet unless it is exact top of the cabinet"). The
@@ -902,20 +905,21 @@ export function FridgeSortGame({
 
           {/* the basket: every piece of the delivery lies mixed on the cloth. Its stool is cropped off and it sits low on the screen. */}
           <div
-            className="relative mx-auto mb-1 mt-1 w-[calc(100%-24px)] max-w-[360px] shrink-0 land:m-0 land:w-[min(100%,78cqh)] land:max-w-none land:[container-type:inline-size]"
-            style={{ aspectRatio: BASKET_RATIO }}
+            className="relative mx-auto mb-1 mt-1 w-[calc(100%-24px)] max-w-[360px] shrink-0 land:m-0 land:w-[min(100%,66cqh)] land:max-w-none land:[container-type:inline-size]"
+            style={{ aspectRatio: wide ? WIDE_BASKET_RATIO : BASKET_RATIO }}
             data-testid="sort-crate"
           >
-            {/* landscape: the basket stands on the cloth, so it is not flush with the screen's bottom: its cropped bottom edge is rounded into a belly and it gets a soft shadow */}
+            {/* landscape (developer 2026-11-21: "place the basket properly on the table cloth"): the WHOLE basket picture, its wooden base too, stands on the cloth with a soft shadow
+                under it; the cropped, bottom-flush basket is for the upright phone, where it sits on the screen's edge */}
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-x-[7%] -bottom-[3%] hidden h-[9%] rounded-[50%] bg-black/35 blur-md land:block"
+              className="pointer-events-none absolute inset-x-[3%] -bottom-[1%] hidden h-[8%] rounded-[50%] bg-black/45 blur-md land:block"
             />
-            <div className="pointer-events-none absolute inset-0 overflow-hidden land:[clip-path:inset(0_round_0_0_44%_44%/0_0_46%_46%)]">
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
               <Art
                 name="basket"
                 className="absolute inset-x-0 top-0 w-full object-fill"
-                style={{ height: `${BASKET_CROP}%` }}
+                style={{ height: wide ? "100%" : `${BASKET_CROP}%` }}
               />
             </div>
             {tokens.map((id, i) => {
@@ -964,7 +968,7 @@ export function FridgeSortGame({
                   )}
                   style={{
                     left: `${spot.x}%`,
-                    top: `${spot.y}%`,
+                    top: `${wide ? spot.y * BASKET_BOX_SHARE : spot.y}%`,
                     width: px(spot.size),
                     height: px(spot.size),
                     marginLeft: wide ? `calc(-0.5 * ${px(spot.size)})` : -spot.size / 2,
@@ -999,20 +1003,20 @@ export function FridgeSortGame({
               );
             })}
             {/* the basket's front: it covers the lower part of the pieces, so they sit INSIDE it */}
-            <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden land:[clip-path:inset(0_round_0_0_44%_44%/0_0_46%_46%)]">
+            <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
               <Art
                 name="basket"
                 className="absolute inset-x-0 top-0 w-full object-fill"
-                style={{ height: `${BASKET_CROP}%`, clipPath: "inset(56% 0 0 0)" }}
+                style={{ height: wide ? "100%" : `${BASKET_CROP}%`, clipPath: "inset(56% 0 0 0)" }}
               />
             </div>
             {crateLeft.length === 0 && phase !== "done" ? (
-              <span className="absolute inset-x-0 top-[28%] z-30 text-center font-ui text-[14px] font-extrabold text-walnut-dark">
+              <span className="absolute inset-x-0 top-[28%] z-30 text-center land:top-[21%] font-ui text-[14px] font-extrabold text-walnut-dark">
                 Empty ✓
               </span>
             ) : (
               <span
-                className="absolute bottom-[10%] left-1/2 z-40 -translate-x-1/2 rounded-full bg-walnut-dark/85 px-3 py-0.5 font-ui text-[12px] font-extrabold text-ivory land:border-2 land:border-[#d6a23c] land:bg-[#4a2c16] land:px-[3.6cqw] land:py-[.6cqw] land:text-[3.8cqw]"
+                className="absolute bottom-[10%] left-1/2 z-40 land:bottom-[32%] -translate-x-1/2 rounded-full bg-walnut-dark/85 px-3 py-0.5 font-ui text-[12px] font-extrabold text-ivory land:border-2 land:border-[#d6a23c] land:bg-[#4a2c16] land:px-[3.6cqw] land:py-[.6cqw] land:text-[3.8cqw]"
                 data-testid="sort-ready"
               >
                 {crateLeft.length} piece{crateLeft.length === 1 ? "" : "s"}
@@ -1023,7 +1027,10 @@ export function FridgeSortGame({
             phase === "ready" &&
             (fridgeSortOf(save).rounds ?? 0) === 0 &&
             !practice ? (
-              <PointerHand size={44} className="absolute left-[18%] top-[20%] z-40" />
+              <PointerHand
+                size={44}
+                className="absolute left-[18%] top-[20%] z-40 land:top-[15%]"
+              />
             ) : null}
           </div>
         </div>

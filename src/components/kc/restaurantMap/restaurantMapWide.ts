@@ -267,14 +267,15 @@ export function wideCashTables(
 }
 
 /**
- * The 16:9 plan covering a viewport (no bar, never): sized so the whole window is picture; most of the crop comes off the bottom (garden and cobbles), a little off
- * the top. Shared by the restaurant map and the Second Floor.
+ * The WHOLE 16:9 plan inside a viewport, nothing cropped (developer 2026-11-21: "make sure the entrance area and the outdoor area are included properly and do not crop any portion"):
+ * the largest 16:9 box that fits, centred. A window that is not 16:9 has margins on two sides; `MapEdgeFill` carries the garden on over them (never a bar). Shared by the restaurant map and
+ * the Second Floor. (It used to COVER the window and cropped up to 11 % off the bottom, the entrance and the garden.)
  */
-export function wideCover(vp: { w: number; h: number }) {
-  const k = Math.max(vp.w / 1920, vp.h / 1080);
+export function wideFit(vp: { w: number; h: number }) {
+  const k = Math.min(vp.w / 1920, vp.h / 1080);
   const sw = 1920 * k;
   const sh = sw / WIDE_MAP_RATIO;
-  return { sw, sh, left: (vp.w - sw) / 2, top: Math.min(0, (vp.h - sh) * 0.2) };
+  return { sw, sh, left: (vp.w - sw) / 2, top: (vp.h - sh) / 2 };
 }
 
 /** The size of an element, kept up to date (0 x 0 until measured, or while `active` is false). */

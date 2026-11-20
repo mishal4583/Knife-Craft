@@ -7,6 +7,7 @@ import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 import { InfoTip } from "@/components/kc/common/InfoTip";
 import type { SaveData } from "@/game/SaveManager";
 import { piecesWaiting } from "@/game/business/fridgeSort";
+import { loadMask, pickItem } from "./inspectionHit";
 import {
   CRATE_H,
   CRATE_ART_H,
@@ -151,6 +152,10 @@ function Round({
     [],
   );
   const [items, setItems] = useState<CrateItem[]>(() => crate.items.map((i) => ({ ...i })));
+  // the pictures' solid pixels are read once for the tap test (inspectionHit.ts); a picture still loading counts as a round shape until it is read
+  useEffect(() => {
+    for (const it of crate.items) loadMask(it.ingredient);
+  }, [crate]);
   const [lift, setLift] = useState<Record<number, number>>({});
   const [found, setFound] = useState<ReadonlySet<number>>(new Set());
   const [cleared, setCleared] = useState<ReadonlySet<number>>(new Set());
@@ -320,8 +325,25 @@ function Round({
 
   // ── dragging an ingredient aside ──
   const unit = () => (areaRef.current?.getBoundingClientRect().width ?? 500) / CRATE_W;
-  const onDown = (e: React.PointerEvent, it: CrateItem) => {
+  /**
+   * The ingredient the finger is really on (developer 2026-11-21): judged on the pictures' own solid pixels, topmost first, with the width of a fingertip allowed (`inspectionHit.ts`).
+   * The box under the finger only says where it landed; a round box in front of a half-hidden ingredient no longer steals the tap. Found pieces are skipped (they are leaving),
+   * so a tap goes through to what lay behind them.
+   */
+  const pick = (clientX: number, clientY: number): CrateItem | null => {
+    const rect = areaRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    return pickItem(
+      items.filter((x) => !gone.has(x.id) && !found.has(x.id)).map((x) => ({ item: x, z: zOf(x) })),
+      rect.width,
+      clientX - rect.left,
+      clientY - rect.top,
+    );
+  };
+  const onDown = (e: React.PointerEvent, _it: CrateItem) => {
     if (phase !== "playing" || doneRef.current) return;
+    const it = pick(e.clientX, e.clientY);
+    if (!it) return;
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     drag.current = { id: it.id, sx: e.clientX, sy: e.clientY, ox: it.x, oy: it.y, moved: false };
   };
@@ -351,10 +373,10 @@ function Round({
       ),
     );
   };
-  const onUp = (it: CrateItem) => {
+  const onUp = (_it: CrateItem) => {
     const d = drag.current;
     drag.current = null;
-    if (d && !d.moved) flag(it.id);
+    if (d && !d.moved) flag(d.id);
   };
 
   // ── what to draw ──

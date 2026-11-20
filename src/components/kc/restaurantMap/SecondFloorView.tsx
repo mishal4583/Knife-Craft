@@ -81,9 +81,10 @@ import {
   WIDE_SF_CASH_AT,
   WIDE_SF_ZONES,
   useBoxSize,
-  wideCover,
+  wideFit,
   wideGoldenSpot,
 } from "./restaurantMapWide";
+import { MapEdgeFill } from "./MapEdgeFill";
 import { FloorStaffFace } from "@/components/kc/common/FloorStaffFace";
 import { landscapeSecondFloorArt } from "@/game/landscapeArt";
 
@@ -216,7 +217,7 @@ export function SecondFloorView({
   const wide = useLandscape();
   const viewportRef = useRef<HTMLDivElement>(null);
   const vp = useBoxSize(viewportRef, wide);
-  const wideBox = useMemo(() => (wide && vp.w > 0 && vp.h > 0 ? wideCover(vp) : null), [wide, vp]);
+  const wideBox = useMemo(() => (wide && vp.w > 0 && vp.h > 0 ? wideFit(vp) : null), [wide, vp]);
   const zones = wide ? WIDE_SF_ZONES : ZONES;
   // The floor earns by the real clock: re-read it every few seconds while open.
   const [now, setNow] = useState(() => Date.now());
@@ -813,6 +814,9 @@ export function SecondFloorView({
       </div>
 
       <div className="restaurant-map-viewport" ref={viewportRef}>
+        {wide && wideBox ? (
+          <MapEdgeFill src={landscapeSecondFloorArt()} box={wideBox} vp={vp} />
+        ) : null}
         <div
           className={`restaurant-map-stage is-second-floor${wide ? " is-wide" : ""}`}
           style={

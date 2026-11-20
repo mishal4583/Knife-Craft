@@ -186,11 +186,16 @@ console.log("D. Wiring");
     ),
     "D5: App gives the floor in the restaurant build only, from the built kitchen stage",
   );
+  // RULE CHANGE 2026-11-21 (developer: "make the starting card like this image"): the card is OrderArrivalCard (the mock-up's); its "Start cooking" calls `finish` (`onStart={finish}`)
+  // and is at least 48 px tall in orderCard.css (it was a KButton), the rest of the rule is unchanged: a tap anywhere skips ahead, once.
   assert(
-    /onClick=\{finish\}/.test(view) &&
+    /onStart=\{finish\}/.test(view) &&
+      /onClick=\{tapAnywhere\}/.test(view) &&
       /done\.current/.test(view) &&
-      /min-h-|h-12|KButton/.test(view),
-    "D6: a tap anywhere skips ahead, once (a second tap does nothing); the button is a 48 px KButton",
+      /\.oc-start\s*\{[^}]*min-height: max\(48px/.test(
+        read("src/components/kc/game/orderCard.css"),
+      ),
+    "D6: a tap anywhere skips ahead, once (a second tap does nothing); the card's Start cooking calls it and is at least 48 px tall",
   );
 }
 

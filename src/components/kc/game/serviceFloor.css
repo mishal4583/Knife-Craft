@@ -216,6 +216,21 @@
   transform: translate(-50%, -50%);
 }
 
+/* a dish with its own painting: the picture is the plate (no white disc under it) */
+.sf .sf-plate--art {
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+}
+.sf .sf-plate-img {
+  width: 118%;
+  max-width: none;
+  height: auto;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+  pointer-events: none;
+}
+
 .sf .sf-plate--empty {
   opacity: 0.85;
   font-size: 14px;

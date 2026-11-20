@@ -12,6 +12,7 @@
 //   I11 Level 30 (tier 3): the magnifier button shows and the lens appears; a little dirt (decoy) exists and a tap on it is a wrong flag
 //   I11c (2026-11-16) a wrong tap on a harmless mark names it; I13 the guide is a chart of the real marks (NOT FRESH kinds, harmless ones)
 //   I12 no console errors
+//   I15 a tap on an ingredient behind another (the front one only a round box there) goes to the one behind (pixel-accurate taps, developer 2026-11-21)
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -503,6 +504,124 @@ check(
     /^Just .+: it's fine! −4 s$/.test(fineLabel.note ?? ""),
   fineLabel,
 );
+
+// I15 (developer 2026-11-21: "I clicked on the sweet potato behind and it picked the wrong item"): a tap is judged on the ingredients' own solid pixels, topmost first. Reproduces the
+// complaint on the real crate: a point where an ingredient BEHIND has solid pixels, the ingredient in front has none (it is only inside its round box) and no other ingredient is
+// there; a real mouse tap on it must go to the one behind (the old box test gave it to the one in front).
+const findBehind = () =>
+  page.evaluate(async () => {
+    const items = [...document.querySelectorAll('[data-testid="insp-item"]')].map((el) => {
+      const r = el.getBoundingClientRect();
+      const m = /rotate\((-?[\d.]+)deg\)/.exec(el.style.transform || "");
+      return {
+        el,
+        id: Number(el.dataset.id),
+        ing: el.querySelector("img[data-ingredient-icon]")?.dataset.ingredientIcon,
+        cx: r.left + r.width / 2,
+        cy: r.top + r.height / 2,
+        size: r.width,
+        tilt: m ? Number(m[1]) : 0,
+        z: Number(el.style.zIndex) || 0,
+      };
+    });
+    const alpha = {};
+    for (const ing of new Set(items.map((i) => i.ing).filter(Boolean))) {
+      const img = document.querySelector(`img[data-ingredient-icon="${ing}"]`);
+      if (!img || !img.complete) continue;
+      const c = document.createElement("canvas");
+      c.width = img.naturalWidth;
+      c.height = img.naturalHeight;
+      const g = c.getContext("2d");
+      g.drawImage(img, 0, 0);
+      alpha[ing] = { w: c.width, h: c.height, d: g.getImageData(0, 0, c.width, c.height).data };
+    }
+    const a = (it, x, y) => {
+      const m = alpha[it.ing];
+      if (!m) return 0;
+      const r = (-it.tilt * Math.PI) / 180;
+      const dx = x - it.cx;
+      const dy = y - it.cy;
+      const nx = (dx * Math.cos(r) - dy * Math.sin(r)) / it.size + 0.5;
+      const ny = (dx * Math.sin(r) + dy * Math.cos(r)) / it.size + 0.5;
+      if (nx < 0 || nx > 1 || ny < 0 || ny > 1) return 0;
+      return m.d[
+        (Math.min(m.h - 1, Math.floor(ny * m.h)) * m.w + Math.min(m.w - 1, Math.floor(nx * m.w))) *
+          4 +
+          3
+      ];
+    };
+    const clear = (it, x, y) => {
+      // no solid pixel of `it` within 22 px of the point (the game allows a fingertip of 14 px)
+      for (const rad of [0, 8, 16, 22])
+        for (let k = 0; k < (rad ? 10 : 1); k++) {
+          const ang = (k / 10) * Math.PI * 2;
+          if (a(it, x + Math.cos(ang) * rad, y + Math.sin(ang) * rad) >= 30) return false;
+        }
+      return true;
+    };
+    for (const B of items) {
+      if (!alpha[B.ing]) continue;
+      for (let gy = 0.15; gy <= 0.85; gy += 0.05)
+        for (let gx = 0.15; gx <= 0.85; gx += 0.05) {
+          const x = B.cx + (gx - 0.5) * B.size;
+          const y = B.cy + (gy - 0.5) * B.size;
+          if (a(B, x, y) < 200) continue;
+          const above = items.filter((o) => o !== B && o.z > B.z);
+          if (
+            !above.some(
+              (o) =>
+                o.cx - o.size / 2 < x &&
+                x < o.cx + o.size / 2 &&
+                o.cy - o.size / 2 < y &&
+                y < o.cy + o.size / 2,
+            )
+          )
+            continue;
+          if (!above.every((o) => clear(o, x, y))) continue;
+          const top = document.elementFromPoint(x, y);
+          if (!top || B.el.contains(top)) continue;
+          return {
+            x,
+            y,
+            id: B.id,
+            in: Number(top.closest('[data-testid="insp-item"]')?.dataset.id),
+          };
+        }
+    }
+    return null;
+  });
+let behind = null;
+for (const lvl of [30, 36, 42, 48, 54, 60, 66, 72]) {
+  await boot(page, saveAt(lvl));
+  await openInventory(page);
+  await openGame(page);
+  await start(page);
+  await sleep(600);
+  behind = await findBehind();
+  if (behind) break;
+}
+
+if (behind) {
+  await page.mouse.move(behind.x, behind.y);
+  await page.mouse.down();
+  await page.mouse.up();
+  await sleep(160);
+  const got = await page.evaluate(() => {
+    const e = [...document.querySelectorAll('[data-testid="insp-item"]')].find(
+      (i) => i.dataset.found === "1" || i.classList.contains("insp-shake"),
+    );
+    return e ? Number(e.dataset.id) : null;
+  });
+  check(
+    "I15 a tap on an ingredient BEHIND another, where the one in front is only a round box with no pixel there, goes to the one behind",
+    got === behind.id,
+    { behind, got },
+  );
+} else
+  check(
+    "I15 (no point in this crate where an ingredient behind is covered only by an empty box: nothing to prove here)",
+    true,
+  );
 
 // I13: the guide is a chart of the real marks: every NOT FRESH kind of the tier, and from tier 3 the harmless ones beside them
 await boot(page, saveAt(30));

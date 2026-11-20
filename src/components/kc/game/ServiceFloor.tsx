@@ -26,10 +26,10 @@ import {
 import { useLandscape } from "./layoutMode";
 import { landscapeDiningArt } from "@/game/landscapeArt";
 import type { QualityLabel } from "@/types/game";
-import { CustomerBust } from "@/components/kc/common/CustomerBust";
 import { GuestPoses } from "../restaurantMap/GuestPoses";
 import { ambientDiners } from "@/game/restaurant/ambientDiners";
-import { KButton } from "../common/primitives";
+import { dishArtUrl } from "@/game/dishArt";
+import { OrderArrivalCard } from "./OrderArrivalCard";
 import { TableCash } from "../common/TableCash";
 import { cashSpotBeside } from "@/game/restaurant/tableCash";
 import { AUTO_SERVE_MS } from "@/game/restaurant/prepCookAuto";
@@ -85,6 +85,28 @@ const FILE_GAP_MS = 380;
 /** How long the served customer takes to walk out before the served card opens. */
 const LEAVE_MS = 1300;
 
+/**
+ * A plate set on a table: the dish's own painting when it has one (`game/dishArt.ts`; the picture IS the plate, so the white disc is dropped), else the dish's icon on the white disc.
+ */
+function PlateFace({
+  emoji,
+  id,
+  className,
+}: {
+  emoji: string;
+  id: string | undefined;
+  className: string;
+}) {
+  const art = dishArtUrl(id);
+  return art ? (
+    <span className={`${className} sf-plate--art`}>
+      <img className="sf-plate-img" src={art} alt="" draggable={false} data-testid="sf-plate-art" />
+    </span>
+  ) : (
+    <span className={className}>{emoji}</span>
+  );
+}
+
 export function ServiceFloor({
   mode,
   stage,
@@ -110,7 +132,7 @@ export function ServiceFloor({
   customer: { id: string; name: string; avatarEmoji: string };
   /** The customer's own line for this order. */
   line: string;
-  dish: { emoji: string; name: string };
+  dish: { emoji: string; name: string; id?: string | undefined };
   /** The dish's real grade (deliver). */
   quality?: QualityLabel;
   reducedMotion: boolean;
@@ -238,25 +260,10 @@ export function ServiceFloor({
     `@keyframes sfgone${uid}{0%,85%{opacity:1}100%{opacity:0}}`;
   const sitting = state !== "walking";
   const face = quality ? REACTION_FACE[quality] : "🙂";
-  const bust = (
-    <CustomerBust
-      customerId={customer.id}
-      expression={
-        mode === "deliver"
-          ? quality === "Masterful" || quality === "Clean"
-            ? "delighted"
-            : "pleased"
-          : "neutral"
-      }
-      fallback={customer.avatarEmoji}
-      em={1.7}
-    />
-  );
-  const others = party.size - 1;
 
   return (
     <div
-      className="sf absolute inset-0 z-[65] flex flex-col bg-walnut-dark land:flex-row"
+      className="sf absolute inset-0 z-[65] flex flex-col bg-walnut-dark [container-type:size]"
       data-testid="service-floor"
       data-wide={wide ? "" : undefined}
       data-mode={mode}
@@ -305,7 +312,11 @@ export function ServiceFloor({
                 className="sf-layer"
                 style={at({ x: s.x, y: s.y - 3.5 * k }, g)}
               >
-                <span className="sf-plate sf-plate--small">{party.served[i]!.emoji}</span>
+                <PlateFace
+                  emoji={party.served[i]!.emoji}
+                  id={party.dishes[i]?.id}
+                  className="sf-plate sf-plate--small"
+                />
               </div>
             ) : null,
           )}
@@ -365,9 +376,11 @@ export function ServiceFloor({
                       g,
                     )}
                   >
-                    <span className="sf-plate">
-                      {takeaway ? "🛍️" : i === slot ? dish.emoji : party.held[i]!.emoji}
-                    </span>
+                    <PlateFace
+                      emoji={takeaway ? "🛍️" : i === slot ? dish.emoji : party.held[i]!.emoji}
+                      id={takeaway ? undefined : i === slot ? dish.id : party.dishes[i]?.id}
+                      className="sf-plate"
+                    />
                   </div>
                 ) : null,
               )
@@ -491,46 +504,27 @@ export function ServiceFloor({
         </div>
       </div>
       {mode === "arrive" ? (
-        <div className="relative z-10 rounded-t-[22px] border-t border-gold/40 bg-[linear-gradient(170deg,var(--color-ivory),var(--color-cream))] px-4 pb-4 pt-3 text-center shadow-lift land:flex land:w-[min(420px,38%)] land:min-w-[280px] land:flex-none land:flex-col land:justify-center land:overflow-y-auto land:rounded-none land:rounded-l-[22px] land:border-l land:border-t-0 land:px-6">
-          <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.2em] text-copper">
-            {state === "walking" ? (
-              takeaway ? (
-                "🚪 A takeaway customer"
-              ) : party.size > 1 ? (
-                `🚪 A party of ${party.size}`
-              ) : (
-                "🚪 A customer"
-              )
-            ) : takeaway ? (
-              <>
-                {bust} {customer.name} · 🥡 To go
-              </>
-            ) : (
-              <>
-                {bust} {customer.name}'s order{others > 0 ? ` · table of ${party.size}` : ""}
-              </>
-            )}
-          </p>
-          <p className="mt-1 font-display text-[20px] font-extrabold leading-tight text-walnut-dark">
-            {dish.emoji} {dish.name}
-          </p>
-          <p className="mt-1 line-clamp-2 font-hand text-[16px] leading-snug text-walnut/80">
-            “{line}”
-          </p>
-          <div className="mt-3">
-            <KButton full variant="copper" onClick={finish}>
-              🔪 Start cooking
-            </KButton>
-            {prepCook && sitting ? (
-              <div className="mt-2 flex gap-2" onClick={(e) => e.stopPropagation()}>
-                <KButton full variant="sage" onClick={prepCook.onCut}>
-                  👨‍🍳 Prep Cook cuts it
-                </KButton>
-                <KButton full variant={prepCook.auto ? "green" : "cream"} onClick={prepCook.onAuto}>
-                  {prepCook.auto ? "Auto: on" : "Auto: off"}
-                </KButton>
-              </div>
-            ) : null}
+        // THE STARTING CARD (developer 2026-11-21, his mock-up): centred over the dining room in a wide window; under the picture on an upright phone (compact, no plate)
+        <div
+          className={
+            wide
+              ? "pointer-events-none absolute inset-x-0 top-[4.5cqh] z-10 flex justify-center px-2"
+              : "relative z-10 flex justify-center px-2 pb-3 pt-1"
+          }
+        >
+          <div className={wide ? "pointer-events-auto" : ""}>
+            <OrderArrivalCard
+              state={state === "walking" ? "walking" : "seated"}
+              customerName={customer.name}
+              partySize={party.size}
+              takeaway={takeaway}
+              dish={dish}
+              line={line}
+              onStart={finish}
+              prepCook={prepCook && sitting ? prepCook : undefined}
+              compact={!wide}
+              size={wide ? "clamp(8px, min(2.4cqh, 1.4cqw), 30px)" : "clamp(8px, 2.5cqw, 15px)"}
+            />
           </div>
         </div>
       ) : (

@@ -304,7 +304,8 @@ const PARTY_WEIGHTS = [2, 4, 2, 2] as const;
 /** A party older than this is gone (a later service never continues it). */
 export const PARTY_FRESH_MS = 90_000;
 
-export type PartyDish = { emoji: string; name: string };
+/** A party member's dish: its icon and name, and (when known) its recipe id, so the plate on the table can show the dish's own painting (`game/dishArt.ts`). */
+export type PartyDish = { emoji: string; name: string; id?: string | undefined };
 
 function hashOf(s: string): number {
   let h = 0x811c9dc5;

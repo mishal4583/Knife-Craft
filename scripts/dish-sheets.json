@@ -1,0 +1,1205 @@
+[
+ {
+  "sheet": "DS-01",
+  "cols": 4,
+  "rows": 4,
+  "dishes": [
+   {
+    "id": "camp-garden-tomato-cucumber",
+    "name": "Garden Tomato & Cucumber Plate",
+    "emoji": "🥗"
+   },
+   {
+    "id": "camp-halved-potato-bowl",
+    "name": "Potato & Carrot Bowl",
+    "emoji": "🥔"
+   },
+   {
+    "id": "camp-garlic-bread",
+    "name": "Garlic Bread",
+    "emoji": "🍞"
+   },
+   {
+    "id": "camp-caprese-plate",
+    "name": "Caprese Plate",
+    "emoji": "🧀"
+   },
+   {
+    "id": "camp-tomato-basil-toast",
+    "name": "Tomato Basil Toast",
+    "emoji": "🍅"
+   },
+   {
+    "id": "camp-baguette-crostini-prep",
+    "name": "Baguette Crostini Prep",
+    "emoji": "🥖"
+   },
+   {
+    "id": "camp-mushroom-bruschetta",
+    "name": "Mushroom Bruschetta",
+    "emoji": "🍄"
+   },
+   {
+    "id": "camp-chicken-slice-intro",
+    "name": "Sliced Chicken Plate",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-simple-garden-salad",
+    "name": "Simple Garden Salad",
+    "emoji": "🥙"
+   },
+   {
+    "id": "camp-zucchini-garden-plate",
+    "name": "Zucchini Garden Plate",
+    "emoji": "🥒"
+   },
+   {
+    "id": "camp-onion-rings-basket",
+    "name": "Onion Rings Basket",
+    "emoji": "🧅"
+   },
+   {
+    "id": "camp-onion-two-ways",
+    "name": "Onion Two Ways",
+    "emoji": "🧅"
+   },
+   {
+    "id": "camp-bruschetta-for-the-house",
+    "name": "Bruschetta for the House",
+    "emoji": "🍞"
+   },
+   {
+    "id": "camp-eggplant-antipasto",
+    "name": "Eggplant Antipasto",
+    "emoji": "🍆"
+   },
+   {
+    "id": "camp-garden-minestrone-base",
+    "name": "Garden Minestrone Base",
+    "emoji": "🍲"
+   },
+   {
+    "id": "camp-italian-garden-plate",
+    "name": "Italian Garden Plate",
+    "emoji": "🇮🇹"
+   }
+  ]
+ },
+ {
+  "sheet": "DS-02",
+  "cols": 4,
+  "rows": 4,
+  "dishes": [
+   {
+    "id": "camp-beetroot-plate",
+    "name": "Beetroot & Orange Plate",
+    "emoji": "🥔"
+   },
+   {
+    "id": "camp-latin-pepper-batch-a",
+    "name": "Pepper Onion Plate",
+    "emoji": "🫑"
+   },
+   {
+    "id": "camp-avocado-plate",
+    "name": "Avocado & Lime Plate",
+    "emoji": "🥑"
+   },
+   {
+    "id": "camp-bruschetta-trio",
+    "name": "Bruschetta Trio",
+    "emoji": "🍞"
+   },
+   {
+    "id": "camp-caprese-skewers-batch",
+    "name": "Caprese Skewers Batch",
+    "emoji": "🍢"
+   },
+   {
+    "id": "camp-julienne-vegetable-medley",
+    "name": "Julienne Vegetable Medley",
+    "emoji": "🥗"
+   },
+   {
+    "id": "camp-zucchini-fennel-julienne",
+    "name": "Zucchini & Fennel with Lemon",
+    "emoji": "🥬"
+   },
+   {
+    "id": "camp-steak-slice-intro",
+    "name": "Sliced Ribeye Plate",
+    "emoji": "🥩"
+   },
+   {
+    "id": "camp-salmon-slice-intro",
+    "name": "Sliced Salmon Plate",
+    "emoji": "🐟"
+   },
+   {
+    "id": "camp-chicken-halve-slice",
+    "name": "Halved & Sliced Chicken",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-med-kiwi-watermelon",
+    "name": "Kiwi & Watermelon Fresh Plate",
+    "emoji": "🥝"
+   },
+   {
+    "id": "camp-steak-mushroom-cabbage",
+    "name": "Steak, Mushroom & Cabbage",
+    "emoji": "🥩"
+   },
+   {
+    "id": "camp-steak-slice-dice",
+    "name": "Sliced & Diced Steak",
+    "emoji": "🥩"
+   },
+   {
+    "id": "camp-french-salmon-asparagus",
+    "name": "Salmon & Asparagus",
+    "emoji": "🐟"
+   },
+   {
+    "id": "camp-salmon-cucumber-radish",
+    "name": "Salmon, Cucumber & Radish",
+    "emoji": "🐟"
+   },
+   {
+    "id": "camp-chicken-cabbage-carrot",
+    "name": "Chicken, Cabbage & Carrot",
+    "emoji": "🍗"
+   }
+  ]
+ },
+ {
+  "sheet": "DS-03",
+  "cols": 4,
+  "rows": 4,
+  "dishes": [
+   {
+    "id": "camp-chicken-julienne-cabbage",
+    "name": "Chicken & Cabbage Julienne",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-salmon-carrot-plate",
+    "name": "Salmon & Carrot Plate",
+    "emoji": "🐟"
+   },
+   {
+    "id": "camp-chicken-julienne-carrot-bowl",
+    "name": "Chicken Julienne Bowl",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-chicken-protein-branch",
+    "name": "Chicken Two Cuts",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-french-onion-base",
+    "name": "French Onion Base",
+    "emoji": "🧅"
+   },
+   {
+    "id": "camp-potato-veloute-base",
+    "name": "Potato Veloute Base",
+    "emoji": "🥔"
+   },
+   {
+    "id": "camp-chiffonade-herb-garnish",
+    "name": "Chiffonade Herb Garnish",
+    "emoji": "🌿"
+   },
+   {
+    "id": "camp-italian-basil-batch-b",
+    "name": "Basil Mozzarella Bowl",
+    "emoji": "🌿"
+   },
+   {
+    "id": "camp-rock-minced-garlic-herb",
+    "name": "Rock Minced Garlic",
+    "emoji": "🧄"
+   },
+   {
+    "id": "camp-mushroom-duxelles-prep",
+    "name": "Mushroom Duxelles Prep",
+    "emoji": "🍄"
+   },
+   {
+    "id": "camp-mushroom-garlic-saute-prep",
+    "name": "Mushroom & Garlic Saute Prep",
+    "emoji": "🍄"
+   },
+   {
+    "id": "camp-salmon-tofu-spinach",
+    "name": "Salmon, Tofu & Spinach",
+    "emoji": "🐟"
+   },
+   {
+    "id": "camp-spinach-fennel-chiffonade-plate",
+    "name": "Spinach & Fennel Chiffonade Plate",
+    "emoji": "🥬"
+   },
+   {
+    "id": "camp-celery-potato-prep",
+    "name": "Celery & Potato Prep",
+    "emoji": "🥔"
+   },
+   {
+    "id": "camp-julienne-trio-potato",
+    "name": "Julienne Vegetable Trio & Potato",
+    "emoji": "🥕"
+   },
+   {
+    "id": "camp-herb-butter-vegetable-plate",
+    "name": "Herb Butter Vegetable Plate",
+    "emoji": "🧈"
+   }
+  ]
+ },
+ {
+  "sheet": "DS-04",
+  "cols": 4,
+  "rows": 4,
+  "dishes": [
+   {
+    "id": "camp-potato-onion-gratin-prep",
+    "name": "Potato & Onion Gratin Prep",
+    "emoji": "🥔"
+   },
+   {
+    "id": "camp-celery-apple-remoulade-prep",
+    "name": "Celery & Apple Remoulade Prep",
+    "emoji": "🥬"
+   },
+   {
+    "id": "camp-fennel-celery-julienne",
+    "name": "Fennel & Celery Julienne",
+    "emoji": "🥬"
+   },
+   {
+    "id": "camp-radish-cucumber-namasu",
+    "name": "Radish & Cucumber Namasu",
+    "emoji": "🥕"
+   },
+   {
+    "id": "camp-asparagus-carrot-precision-plate",
+    "name": "Asparagus & Carrot Precision Plate",
+    "emoji": "🥕"
+   },
+   {
+    "id": "camp-three-herb-garnish",
+    "name": "Herb & Garlic Garnish",
+    "emoji": "🌱"
+   },
+   {
+    "id": "camp-onion-tomato-masala-base",
+    "name": "Onion Tomato Masala Base",
+    "emoji": "🍅"
+   },
+   {
+    "id": "camp-potato-curry-base",
+    "name": "Potato Curry Base",
+    "emoji": "🥔"
+   },
+   {
+    "id": "camp-garlic-curry-paste",
+    "name": "Garlic & Ginger Curry Paste",
+    "emoji": "🧄"
+   },
+   {
+    "id": "camp-mango-chutney-base",
+    "name": "Mango Chutney Base",
+    "emoji": "🥭"
+   },
+   {
+    "id": "camp-mango-onion-relish",
+    "name": "Mango Onion Relish",
+    "emoji": "🥭"
+   },
+   {
+    "id": "camp-pumpkin-coconut-curry",
+    "name": "Pumpkin & Coconut Curry",
+    "emoji": "🎃"
+   },
+   {
+    "id": "camp-pumpkin-curry-dice",
+    "name": "Pumpkin Curry Dice",
+    "emoji": "🎃"
+   },
+   {
+    "id": "camp-aromatic-garlic-smash",
+    "name": "Aromatic Garlic & Onion Base",
+    "emoji": "🧄"
+   },
+   {
+    "id": "camp-spinach-peapod-bowl",
+    "name": "Spinach & Pea Pod Bowl",
+    "emoji": "🥬"
+   },
+   {
+    "id": "camp-indian-tomato-3way-a",
+    "name": "Tomato Chicken Bowl",
+    "emoji": "🍅"
+   }
+  ]
+ },
+ {
+  "sheet": "DS-05",
+  "cols": 4,
+  "rows": 4,
+  "dishes": [
+   {
+    "id": "camp-spinach-curry",
+    "name": "Spinach Curry",
+    "emoji": "🥬"
+   },
+   {
+    "id": "camp-avocado-baguette-toast",
+    "name": "Avocado Baguette Toast",
+    "emoji": "🥑"
+   },
+   {
+    "id": "camp-cucumber-tomato-mezze",
+    "name": "Cucumber & Tomato Mezze",
+    "emoji": "🥙"
+   },
+   {
+    "id": "camp-tabbouleh-inspired-base",
+    "name": "Herb & Tomato Base",
+    "emoji": "🥗"
+   },
+   {
+    "id": "camp-corn-tomato-salsa",
+    "name": "Corn & Tomato Salsa",
+    "emoji": "🌽"
+   },
+   {
+    "id": "camp-pepper-fajita-julienne",
+    "name": "Pepper Fajita Julienne",
+    "emoji": "🫑"
+   },
+   {
+    "id": "camp-pineapple-mango-fresh",
+    "name": "Pineapple & Mango Fresh Cup",
+    "emoji": "🍍"
+   },
+   {
+    "id": "camp-sweetpotato-hash",
+    "name": "Sweet Potato Hash",
+    "emoji": "🍠"
+   },
+   {
+    "id": "camp-pineapple-salsa",
+    "name": "Pineapple Salsa",
+    "emoji": "🍍"
+   },
+   {
+    "id": "camp-latin-garden-plate",
+    "name": "Latin Garden Plate",
+    "emoji": "🌽"
+   },
+   {
+    "id": "camp-chicken-broccoli-plate",
+    "name": "Chicken & Broccoli Plate",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-tofu-broccoli-bowl",
+    "name": "Tofu & Broccoli Bowl",
+    "emoji": "🥦"
+   },
+   {
+    "id": "camp-chicken-pepper-stirfry",
+    "name": "Chicken Pepper Stir-Fry Prep",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-steak-pepper-stirfry",
+    "name": "Steak Pepper Stir-Fry Prep",
+    "emoji": "🥩"
+   },
+   {
+    "id": "camp-carrot-pepper-batch",
+    "name": "Carrot & Pepper Wok Plate",
+    "emoji": "🥕"
+   },
+   {
+    "id": "camp-italian-artichoke-fennel",
+    "name": "Artichoke & Fennel Plate",
+    "emoji": "🥬"
+   }
+  ]
+ },
+ {
+  "sheet": "DS-06",
+  "cols": 4,
+  "rows": 4,
+  "dishes": [
+   {
+    "id": "camp-italian-lettuce-tomato",
+    "name": "Lettuce & Tomato Salad",
+    "emoji": "🥗"
+   },
+   {
+    "id": "camp-cabbage-cauliflower-bowl",
+    "name": "Cabbage & Cauliflower Bowl",
+    "emoji": "🥬"
+   },
+   {
+    "id": "camp-eggplant-green-onion-wok-bowl",
+    "name": "Eggplant & Green Onion Wok Bowl",
+    "emoji": "🍆"
+   },
+   {
+    "id": "camp-chicken-dice-batch-a",
+    "name": "Chicken Wok Bowl (Pepper)",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-steak-protein-branch",
+    "name": "Steak Two Cuts",
+    "emoji": "🥩"
+   },
+   {
+    "id": "camp-mushroom-spinach-bowl",
+    "name": "Mushroom & Spinach Bowl",
+    "emoji": "🍄"
+   },
+   {
+    "id": "camp-tofu-cauliflower-bowl",
+    "name": "Tofu & Cauliflower Bowl",
+    "emoji": "🧊"
+   },
+   {
+    "id": "camp-full-wok-plate",
+    "name": "Full Wok Plate",
+    "emoji": "🥘"
+   },
+   {
+    "id": "camp-italian-chicken-artichoke",
+    "name": "Chicken & Artichoke",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-italian-mozzarella-3way-a",
+    "name": "Insalata Tricolore",
+    "emoji": "🧀"
+   },
+   {
+    "id": "camp-french-turnip-carrot",
+    "name": "Turnip & Carrot Plate",
+    "emoji": "🥕"
+   },
+   {
+    "id": "camp-french-peach-garnish",
+    "name": "Peach & Fennel Plate",
+    "emoji": "🍑"
+   },
+   {
+    "id": "camp-peach-cheddar-board",
+    "name": "Peach & Cheddar Board",
+    "emoji": "🍑"
+   },
+   {
+    "id": "camp-french-carrot-batch-a",
+    "name": "Carrot Turnip Plate",
+    "emoji": "🥕"
+   },
+   {
+    "id": "camp-med-chicken-watermelon",
+    "name": "Chicken & Watermelon",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-med-salmon-lemon",
+    "name": "Salmon & Lemon",
+    "emoji": "🐟"
+   }
+  ]
+ },
+ {
+  "sheet": "DS-07",
+  "cols": 4,
+  "rows": 4,
+  "dishes": [
+   {
+    "id": "camp-med-lemon-3way-a",
+    "name": "Lemon Salmon Plate",
+    "emoji": "🍋"
+   },
+   {
+    "id": "camp-latin-grapes-strawberry",
+    "name": "Grapes & Strawberry Cup",
+    "emoji": "🍇"
+   },
+   {
+    "id": "camp-latin-chicken-avocado-grapes",
+    "name": "Chicken, Avocado & Grapes",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-latin-steak-corn",
+    "name": "Steak & Corn",
+    "emoji": "🥩"
+   },
+   {
+    "id": "camp-sweet-potato-strawberry-plate",
+    "name": "Sweet Potato & Strawberry Plate",
+    "emoji": "🍓"
+   },
+   {
+    "id": "camp-latin-avocado-3way-a",
+    "name": "Avocado Corn Plate",
+    "emoji": "🥑"
+   },
+   {
+    "id": "camp-beetroot-pomegranate-plate",
+    "name": "Beetroot & Pomegranate Plate",
+    "emoji": "🥕"
+   },
+   {
+    "id": "camp-med-salmon-branch",
+    "name": "Salmon, Two Ways",
+    "emoji": "🐟"
+   },
+   {
+    "id": "camp-pomegranate-apple-plate",
+    "name": "Pomegranate & Apple Plate",
+    "emoji": "🍎"
+   },
+   {
+    "id": "camp-thai-chicken-basil",
+    "name": "Thai Basil Chicken",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-thai-greenbean-pepper",
+    "name": "Green Bean & Pepper",
+    "emoji": "🫛"
+   },
+   {
+    "id": "camp-thai-salmon-coconut",
+    "name": "Salmon & Coconut",
+    "emoji": "🐟"
+   },
+   {
+    "id": "camp-thai-cucumber-peapod",
+    "name": "Cucumber & Pea Pod Salad",
+    "emoji": "🥒"
+   },
+   {
+    "id": "camp-thai-mango-pineapple",
+    "name": "Mango & Pineapple Fresh Cup",
+    "emoji": "🥭"
+   },
+   {
+    "id": "camp-thai-salmon-mango",
+    "name": "Salmon & Mango Plate",
+    "emoji": "🐟"
+   },
+   {
+    "id": "camp-thai-chicken-branch",
+    "name": "Chicken Two Ways, Thai Style",
+    "emoji": "🍗"
+   }
+  ]
+ },
+ {
+  "sheet": "DS-08",
+  "cols": 4,
+  "rows": 4,
+  "dishes": [
+   {
+    "id": "camp-thai-aromatic-batch-a",
+    "name": "Basil Garlic Chicken",
+    "emoji": "🌿"
+   },
+   {
+    "id": "camp-korean-chicken-spinach",
+    "name": "Chicken & Spinach",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-korean-steak-cabbage",
+    "name": "Steak & Cabbage",
+    "emoji": "🥩"
+   },
+   {
+    "id": "camp-korean-steak-julienne-carrot",
+    "name": "Steak & Carrot Julienne",
+    "emoji": "🥩"
+   },
+   {
+    "id": "camp-pear-radish-side",
+    "name": "Pear & Radish Side",
+    "emoji": "🍐"
+   },
+   {
+    "id": "camp-korean-steak-batch-a",
+    "name": "Steak Plate (Cabbage)",
+    "emoji": "🥩"
+   },
+   {
+    "id": "camp-korean-grand-service-plate",
+    "name": "Korean Grand Service Plate",
+    "emoji": "🍽️"
+   },
+   {
+    "id": "camp-fusion-salmon-cabbage",
+    "name": "Salmon & Cabbage",
+    "emoji": "🐟"
+   },
+   {
+    "id": "camp-fusion-steak-spinach",
+    "name": "Steak & Spinach",
+    "emoji": "🥩"
+   },
+   {
+    "id": "camp-radish-pear-fusion-cup",
+    "name": "Radish & Pear Fusion Cup",
+    "emoji": "🍐"
+   },
+   {
+    "id": "camp-fusion-mushroom-batch-a",
+    "name": "Mushroom Salmon Plate",
+    "emoji": "🍄"
+   },
+   {
+    "id": "camp-fusion-carrot-3way-a",
+    "name": "Carrot Salmon Plate",
+    "emoji": "🥕"
+   },
+   {
+    "id": "camp-fusion2-salmon-basil",
+    "name": "Salmon Basil Garlic",
+    "emoji": "🐟"
+   },
+   {
+    "id": "camp-green-bean-tofu-wok-bowl",
+    "name": "Green Bean & Tofu Wok Bowl",
+    "emoji": "🫘"
+   },
+   {
+    "id": "camp-fusion2-garlic-3way-a",
+    "name": "Garlic Chicken Plate",
+    "emoji": "🧄"
+   },
+   {
+    "id": "camp-chicken-carrot-plate",
+    "name": "Chicken & Carrot Plate",
+    "emoji": "🍗"
+   }
+  ]
+ },
+ {
+  "sheet": "DS-09",
+  "cols": 4,
+  "rows": 4,
+  "dishes": [
+   {
+    "id": "camp-finale-apple-cheddar",
+    "name": "Apple & Cheddar Plate",
+    "emoji": "🧀"
+   },
+   {
+    "id": "camp-finale-nine-cuisine-sampler",
+    "name": "Nine-Kitchen Sampler",
+    "emoji": "🌍"
+   },
+   {
+    "id": "camp-finale-chicken-grand",
+    "name": "Chicken, the Full Kitchen",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-finale-steak-salmon-batch-a",
+    "name": "Grand Carrot Plate (Steak)",
+    "emoji": "🥩"
+   },
+   {
+    "id": "camp-finale-steak-salmon-batch-b",
+    "name": "Grand Carrot Bowl (Salmon)",
+    "emoji": "🐟"
+   },
+   {
+    "id": "camp-french-steak-branch",
+    "name": "Steak, French Two Ways",
+    "emoji": "🥩"
+   },
+   {
+    "id": "camp-steak-carrot-plate",
+    "name": "Steak & Carrot Plate",
+    "emoji": "🥩"
+   },
+   {
+    "id": "camp-finale-kiwi-lemon-plate",
+    "name": "Kiwi & Lemon Plate",
+    "emoji": "🥝"
+   },
+   {
+    "id": "camp-finale-onion-rings-smash",
+    "name": "Onion Rings & Smashed Garlic",
+    "emoji": "🧅"
+   },
+   {
+    "id": "camp-finale-garlic-grand-a",
+    "name": "The Last Service, Table One",
+    "emoji": "🏆"
+   },
+   {
+    "id": "camp-sliced-tomato-plate",
+    "name": "Sliced Tomato Plate",
+    "emoji": "🍅"
+   },
+   {
+    "id": "camp-fresh-cucumber-plate",
+    "name": "Fresh Cucumber Plate",
+    "emoji": "🥒"
+   },
+   {
+    "id": "camp-carrot-chop-bowl",
+    "name": "Carrot Chop Bowl",
+    "emoji": "🥕"
+   },
+   {
+    "id": "camp-onion-prep-chain",
+    "name": "Onion Prep",
+    "emoji": "🧅"
+   },
+   {
+    "id": "camp-diced-tomato-cup",
+    "name": "Diced Tomato Cup",
+    "emoji": "🍅"
+   },
+   {
+    "id": "camp-garden-tomato-cup",
+    "name": "Garden Tomato Cup",
+    "emoji": "🥣"
+   }
+  ]
+ },
+ {
+  "sheet": "DS-10",
+  "cols": 4,
+  "rows": 4,
+  "dishes": [
+   {
+    "id": "camp-peeled-potato-bowl",
+    "name": "Peeled Potato Bowl",
+    "emoji": "🥔"
+   },
+   {
+    "id": "camp-smashed-garlic-prep",
+    "name": "Smashed Garlic Prep",
+    "emoji": "🧄"
+   },
+   {
+    "id": "camp-latin-pepper-batch-b",
+    "name": "Pepper Corn Bowl",
+    "emoji": "🫑"
+   },
+   {
+    "id": "camp-mozzarella-tomato-skewers",
+    "name": "Mozzarella & Tomato Skewers",
+    "emoji": "🍢"
+   },
+   {
+    "id": "camp-chicken-julienne-pepper-cup",
+    "name": "Chicken Julienne Cup",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-julienne-carrot-garnish",
+    "name": "Julienne Carrot Garnish",
+    "emoji": "🥕"
+   },
+   {
+    "id": "camp-julienne-pepper-ribbons",
+    "name": "Julienne Pepper Ribbons",
+    "emoji": "🫑"
+   },
+   {
+    "id": "camp-orange-rose-garnish",
+    "name": "Orange Rose Garnish",
+    "emoji": "🍊"
+   },
+   {
+    "id": "camp-family-antipasto-for-two",
+    "name": "Family Antipasto for Two",
+    "emoji": "🍽️"
+   },
+   {
+    "id": "camp-baguette-rounds",
+    "name": "Baguette Rounds",
+    "emoji": "🥖"
+   },
+   {
+    "id": "camp-indian-tomato-3way-b",
+    "name": "Tomato Steak Cup",
+    "emoji": "🍅"
+   },
+   {
+    "id": "camp-indian-tomato-3way-c",
+    "name": "Tomato Onion Plate",
+    "emoji": "🍅"
+   },
+   {
+    "id": "camp-cauliflower-curry",
+    "name": "Cauliflower Curry",
+    "emoji": "🥦"
+   },
+   {
+    "id": "camp-parsley-chiffonade-garnish",
+    "name": "Parsley Chiffonade Garnish",
+    "emoji": "🌿"
+   },
+   {
+    "id": "camp-fresh-tomato-salsa",
+    "name": "Fresh Tomato Salsa",
+    "emoji": "🍅"
+   },
+   {
+    "id": "camp-baguette-cheddar-rounds",
+    "name": "Baguette & Cheddar Rounds",
+    "emoji": "🥖"
+   }
+  ]
+ },
+ {
+  "sheet": "DS-11",
+  "cols": 4,
+  "rows": 4,
+  "dishes": [
+   {
+    "id": "camp-carrot-peapod-batch",
+    "name": "Carrot & Pea Pod Wok Plate",
+    "emoji": "🥕"
+   },
+   {
+    "id": "camp-chicken-dice-batch-b",
+    "name": "Chicken Wok Bowl (Pea Pod)",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-chicken-dice-batch-c",
+    "name": "Chicken Wok Bowl (Cabbage)",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-cauliflower-chop-bowl",
+    "name": "Cauliflower Chop Bowl",
+    "emoji": "🥦"
+   },
+   {
+    "id": "camp-coconut-prep",
+    "name": "Coconut Prep",
+    "emoji": "🥥"
+   },
+   {
+    "id": "camp-italian-mozzarella-3way-b",
+    "name": "Mozzarella & Tomato Bowl",
+    "emoji": "🧀"
+   },
+   {
+    "id": "camp-italian-mozzarella-3way-c",
+    "name": "Mozzarella & Lettuce Cup",
+    "emoji": "🧀"
+   },
+   {
+    "id": "camp-french-carrot-batch-b",
+    "name": "Carrot Asparagus Bowl",
+    "emoji": "🥕"
+   },
+   {
+    "id": "camp-med-lemon-3way-b",
+    "name": "Lemon Chicken Bowl",
+    "emoji": "🍋"
+   },
+   {
+    "id": "camp-med-lemon-3way-c",
+    "name": "Lemon Cucumber Cup",
+    "emoji": "🍋"
+   },
+   {
+    "id": "camp-potato-tomato-curry",
+    "name": "Potato Tomato Curry",
+    "emoji": "🥔"
+   },
+   {
+    "id": "camp-pea-tomato-curry",
+    "name": "Pea Tomato Curry",
+    "emoji": "🍅"
+   },
+   {
+    "id": "camp-latin-avocado-3way-b",
+    "name": "Avocado Pepper Bowl",
+    "emoji": "🥑"
+   },
+   {
+    "id": "camp-latin-avocado-3way-c",
+    "name": "Avocado Grapes Cup",
+    "emoji": "🥑"
+   },
+   {
+    "id": "camp-pumpkin-garlic-curry",
+    "name": "Pumpkin Garlic Curry",
+    "emoji": "🎃"
+   },
+   {
+    "id": "camp-mango-garlic-chutney",
+    "name": "Mango Garlic Chutney",
+    "emoji": "🥭"
+   }
+  ]
+ },
+ {
+  "sheet": "DS-12",
+  "cols": 4,
+  "rows": 4,
+  "dishes": [
+   {
+    "id": "camp-eggplant-plate",
+    "name": "Eggplant Mezze Plate",
+    "emoji": "🍆"
+   },
+   {
+    "id": "camp-lemon-garnish",
+    "name": "Lemon Garnish",
+    "emoji": "🍋"
+   },
+   {
+    "id": "camp-pomegranate-garnish",
+    "name": "Pomegranate & Parsley Garnish",
+    "emoji": "🍎"
+   },
+   {
+    "id": "camp-thai-aromatic-batch-b",
+    "name": "Basil Garlic Salmon",
+    "emoji": "🌿"
+   },
+   {
+    "id": "camp-thai-aromatic-batch-c",
+    "name": "Basil Garlic Pineapple",
+    "emoji": "🌿"
+   },
+   {
+    "id": "camp-mezze-plate-for-two",
+    "name": "Shared Mezze for Two",
+    "emoji": "🍽️"
+   },
+   {
+    "id": "camp-pickled-onion-rings",
+    "name": "Pickled Onion Rings",
+    "emoji": "🧅"
+   },
+   {
+    "id": "camp-korean-steak-batch-b",
+    "name": "Steak Bowl (Spinach)",
+    "emoji": "🥩"
+   },
+   {
+    "id": "camp-fusion-mushroom-batch-b",
+    "name": "Mushroom Steak Bowl",
+    "emoji": "🍄"
+   },
+   {
+    "id": "camp-fusion-carrot-3way-b",
+    "name": "Carrot Steak Bowl",
+    "emoji": "🥕"
+   },
+   {
+    "id": "camp-fusion-carrot-3way-c",
+    "name": "Carrot Cabbage Cup",
+    "emoji": "🥕"
+   },
+   {
+    "id": "camp-fusion2-garlic-3way-b",
+    "name": "Garlic Salmon Bowl",
+    "emoji": "🧄"
+   },
+   {
+    "id": "camp-fusion2-garlic-3way-c",
+    "name": "Garlic Steak Cup",
+    "emoji": "🧄"
+   },
+   {
+    "id": "camp-finale-garlic-grand-b",
+    "name": "The Last Service, Table Two",
+    "emoji": "🏆"
+   },
+   {
+    "id": "camp-finale-garlic-grand-c",
+    "name": "The Last Service, Table Three",
+    "emoji": "🏆"
+   },
+   {
+    "id": "camp-pepper-two-ways",
+    "name": "Pepper Two Ways",
+    "emoji": "🫑"
+   }
+  ]
+ },
+ {
+  "sheet": "DS-13",
+  "cols": 4,
+  "rows": 4,
+  "dishes": [
+   {
+    "id": "camp-chicken-halve-dice",
+    "name": "Halved & Diced Chicken",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-chicken-garden-plate",
+    "name": "Chicken Garden Plate",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-salmon-avocado-plate",
+    "name": "Salmon & Avocado Plate",
+    "emoji": "🐟"
+   },
+   {
+    "id": "camp-thai-basil-garlic-base",
+    "name": "Thai Basil Garlic Base",
+    "emoji": "🌿"
+   },
+   {
+    "id": "camp-korean-garlic-onion-base",
+    "name": "Korean Garlic Onion Base",
+    "emoji": "🧄"
+   },
+   {
+    "id": "camp-korean-chicken-branch",
+    "name": "Chicken, Thin & Fine",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-italian-caprese-lettuce",
+    "name": "Caprese, Extra Greens",
+    "emoji": "🧀"
+   },
+   {
+    "id": "camp-italian-basil-batch-a",
+    "name": "Basil Tomato Plate",
+    "emoji": "🌿"
+   },
+   {
+    "id": "camp-italian-chicken-branch",
+    "name": "Chicken, Italian Two Ways",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-french-steak-turnip",
+    "name": "Steak & Turnip",
+    "emoji": "🥩"
+   },
+   {
+    "id": "camp-asparagus-persillade-cup",
+    "name": "Asparagus Persillade Cup",
+    "emoji": "🥬"
+   },
+   {
+    "id": "camp-salmon-persillade",
+    "name": "Salmon Persillade",
+    "emoji": "🐟"
+   },
+   {
+    "id": "camp-turnip-persillade-bowl",
+    "name": "Turnip Persillade Bowl",
+    "emoji": "🥕"
+   },
+   {
+    "id": "camp-indian-onion-rings-plate",
+    "name": "Onion Rings & Garlic",
+    "emoji": "🧅"
+   },
+   {
+    "id": "camp-indian-steak-curry",
+    "name": "Steak Curry Bowl",
+    "emoji": "🥩"
+   },
+   {
+    "id": "camp-indian-chicken-rings",
+    "name": "Chicken with Onion Rings",
+    "emoji": "🍗"
+   }
+  ]
+ },
+ {
+  "sheet": "DS-14",
+  "cols": 4,
+  "rows": 4,
+  "dishes": [
+   {
+    "id": "camp-eggplant-masala-prep",
+    "name": "Eggplant Masala Prep",
+    "emoji": "🍆"
+   },
+   {
+    "id": "camp-indian-onion-batch-a",
+    "name": "Onion Rings Bowl (Tomato)",
+    "emoji": "🧅"
+   },
+   {
+    "id": "camp-indian-onion-batch-b",
+    "name": "Onion Rings Cup (Garlic)",
+    "emoji": "🧅"
+   },
+   {
+    "id": "camp-indian-potato-branch",
+    "name": "Potato, Two Ways",
+    "emoji": "🥔"
+   },
+   {
+    "id": "camp-med-cucumber-batch-a",
+    "name": "Cucumber Tomato Plate",
+    "emoji": "🥒"
+   },
+   {
+    "id": "camp-med-cucumber-batch-b",
+    "name": "Cucumber Watermelon Bowl",
+    "emoji": "🥒"
+   },
+   {
+    "id": "camp-latin-chicken-branch",
+    "name": "Chicken, Latin Two Ways",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-fusion-salmon-branch",
+    "name": "Salmon, Fusion Two Ways",
+    "emoji": "🐟"
+   },
+   {
+    "id": "camp-fusion2-chicken-broccoli",
+    "name": "Chicken & Broccoli, Wok Style",
+    "emoji": "🍗"
+   },
+   {
+    "id": "camp-fusion2-pepper-batch-a",
+    "name": "Pepper Chicken Plate",
+    "emoji": "🫑"
+   },
+   {
+    "id": "camp-fusion2-pepper-batch-b",
+    "name": "Pepper Salmon Bowl",
+    "emoji": "🫑"
+   },
+   {
+    "id": "camp-fusion2-steak-branch",
+    "name": "Steak, Wok Two Ways",
+    "emoji": "🥩"
+   },
+   {
+    "id": "camp-finale-chicken-branch-grand",
+    "name": "Chicken, The Last Branch",
+    "emoji": "🍗"
+   }
+  ]
+ }
+]

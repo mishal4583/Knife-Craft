@@ -230,22 +230,37 @@ for (const [w, h] of [
       zones: document.querySelectorAll(".map-hotspot-zone").length,
       signs: document.querySelectorAll(".wide-sign").length,
       portraitArt: document.querySelectorAll('img[src*="kitchen-upgrade-map"]').length,
+      edgeFill: !!document.querySelector('[data-testid="map-edge-fill"]'),
     };
   });
   // RULE CHANGE 2026-11-20 (twice). First, the first Codex pictures kept the portrait picture in their middle, so the Kitchen, the map and the Second Floor were the
   // 9:16 box for a while. Then the TRUE landscape pictures arrived (TL-*.png, docs/planning/LANDSCAPE-TRUE-PICTURES-CODEX-PROMPTS-2026-11-20.md): the Kitchen fills the
   // window with its own wide picture, and the map is the wide 16:9 floor plan, sized to COVER the window (no bar), with its 12 rooms, their 12 printed signs, and no
   // portrait map picture. (W2 used to demand the whole window for a picture with the portrait map in its middle, then the 9:16 box.)
-  const covers =
+  // RULE CHANGE 2026-11-21 (developer: "make sure the entrance area and the outdoor area are included properly and do not crop any portion"): the map shows its WHOLE picture. The stage is
+  // INSIDE the viewport (nothing cropped), the largest 16:9 box that fits (it touches the viewport's two nearest edges), and a window that is not 16:9 has the garden carried on over its margins
+  // (`map-edge-fill`), so there is still no bar.
+  const fitsWhole =
     m.stage &&
     m.vp &&
-    m.stage.l <= m.vp.l + 2 &&
-    m.stage.t <= m.vp.t + 2 &&
-    m.stage.r >= m.vp.r - 2 &&
-    m.stage.b >= m.vp.b - 2 &&
+    m.stage.l >= m.vp.l - 2 &&
+    m.stage.t >= m.vp.t - 2 &&
+    m.stage.r <= m.vp.r + 2 &&
+    m.stage.b <= m.vp.b + 2 &&
+    (Math.abs(m.stage.w - (m.vp.r - m.vp.l)) < 3 || Math.abs(m.stage.h - (m.vp.b - m.vp.t)) < 3) &&
     Math.abs(m.stage.w / m.stage.h - 16 / 9) < 0.02;
+  const marginsFilled =
+    m.vp &&
+    m.stage &&
+    (m.stage.l - m.vp.l < 3 &&
+    m.vp.r - m.stage.r < 3 &&
+    m.stage.t - m.vp.t < 3 &&
+    m.vp.b - m.stage.b < 3
+      ? true
+      : m.edgeFill);
+  const covers = fitsWhole && marginsFilled;
   check(
-    `W2 at ${w}x${h} the Kitchen home fills the window with its wide picture; the restaurant map is the wide plan covering the window (12 rooms, 12 signs, no portrait map); the order card is at most 760 px`,
+    `W2 at ${w}x${h} the Kitchen home fills the window with its wide picture; the restaurant map is the WHOLE wide plan fitted in the window, the garden carried on over any margin (12 rooms, 12 signs, no portrait map); the order card is at most 760 px`,
     k.wide &&
       k.framed === "full" &&
       k.rootW >= k.vw - 100 &&

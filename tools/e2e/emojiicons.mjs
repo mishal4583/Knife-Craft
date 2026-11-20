@@ -2,7 +2,7 @@
 // screen renders text; the emoji character stays as zero-size inline text.
 //   1. Kitchen, Market, Restaurant and the Mini-games sheet each show drawn icons (.gi-svg) and no mapped emoji is left as raw text in a visible element;
 //   2. innerText still reads the same words ("Open for service"), on one line with its icon, and a button's text is not split onto another line;
-//   3. every icon is as big as its text (about 1.1 em, within 6..40 px) and is never the only thing clipped by its parent;
+//   3. every icon is as big as its text (about 1.1 em, a painted one 1.45 em, within 6..48 px) and is never the only thing clipped by its parent;
 //   4. an unmapped emoji (a tomato) is left as the emoji, not a wrong picture;
 //   5. 320 x 568, 390 x 844, 768 x 1024 and 1280 x 720: no sideways scroll, no page errors, no icon overflowing the window.
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -51,14 +51,15 @@ const probe = () =>
     const icons = [...document.querySelectorAll(".gi")];
     // only icons that are on screen: one inside a display:none parent (a hidden card) has no box and is not a defect
     const svgs = icons.filter(
-      (g) => g.querySelector(".gi-svg") && g.getBoundingClientRect().width > 0,
+      // RULE CHANGE 2026-11-21: most icons are PAINTED pictures now (.gi-img), the rest line icons (.gi-svg): both count as drawn icons
+      (g) => g.querySelector(".gi-svg, .gi-img") && g.getBoundingClientRect().width > 0,
     );
     const sizes = svgs.map((g) => {
       const r = g.getBoundingClientRect();
       const fs = parseFloat(getComputedStyle(g).fontSize) || 16;
       return { w: r.width, h: r.height, em: r.width / fs, left: r.left, right: r.right };
     });
-    const bad = sizes.filter((s) => s.w < 6 || s.w > 40 || s.em < 0.8 || s.em > 1.5);
+    const bad = sizes.filter((s) => s.w < 6 || s.w > 48 || s.em < 0.8 || s.em > 1.6);
     const off = sizes.filter((s) => s.right > vw + 1 || s.left < -1);
     // a mapped emoji left as raw text outside an icon: walk the text nodes
     const raw = [];
@@ -128,11 +129,11 @@ check("1c no emoji that has an icon is left as raw text on screen", stray.length
 // 4: RULE CHANGE 2026-11-20 (developer: "use proper emojis or assets throughout the game"): a tomato, a potato and an onion are the game's own PAINTED pictures now
 // (lib/paintedIcons.ts), never a wrong line icon and never a raw emoji; an emoji with neither a picture nor an icon (an olive) still stays an emoji
 check(
-  "4 a tomato, a potato and an onion are painted pictures (never a line icon); an olive has neither, so it stays an emoji",
+  "4 a tomato, a potato and an onion are painted pictures (never a line icon); an emoji the game never uses (the evil eye) has neither, so it stays an emoji",
   ["🍅", "🥔", "🧅"].every((e) => {
     const f = iconFor(e);
     return f !== null && "picture" in f && /business\/ingredients\//.test(f.picture);
-  }) && iconFor("🫒") === null,
+  }) && iconFor("🧿") === null,
 );
 // 4b: a painted picture really is drawn on a page (the Kitchen's dish chip shows the level's own food) and its file loads
 // (Level 60's dish is a carrot: the same save the Kitchen shows "Shared Carrot" with)

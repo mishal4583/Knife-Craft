@@ -10,6 +10,8 @@
  *
  * Keys are emoji with no variation selector and no skin tone (like `EMOJI_ICONS`).
  */
+import { PAINTED_ICON_FILES } from "./paintedIconFiles.ts";
+
 const INGREDIENT: Readonly<Record<string, string>> = {
   "🍅": "tomato",
   "🥔": "potato",
@@ -50,17 +52,18 @@ const INGREDIENT: Readonly<Record<string, string>> = {
   "🌿": "basil",
 };
 
-/** Delivered icon pictures: emoji -> file name in `public/icons/` (none yet; see the Codex list). */
-export const ICON_FILES: Readonly<Record<string, string>> = {};
+/** The delivered icon pictures (Codex, 2026-11-21): emoji -> file name in `public/icons/`, written by `scripts/make-icon-assets.py`. */
+export const ICON_FILES: Readonly<Record<string, string>> = PAINTED_ICON_FILES;
 
 const base = (): string => import.meta.env?.BASE_URL ?? "/";
 
 /** The painted picture's URL for an emoji (normalised), or null when it has none yet. */
 export function paintedFor(key: string): string | null {
-  const own = ICON_FILES[key];
-  if (own) return `${base()}icons/${own}.webp`;
+  // an ingredient's own painting first (the Market, the fridge and the recipes show the same picture), then the icon sheets
   const food = INGREDIENT[key];
   if (food) return `${base()}business/ingredients/${food}.webp`;
+  const own = ICON_FILES[key];
+  if (own) return `${base()}icons/${own}.webp`;
   return null;
 }
 

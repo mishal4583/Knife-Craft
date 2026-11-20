@@ -512,7 +512,7 @@ export function Preparation({
       ? seatInParty(
           service.order.order.id,
           shownCustomer.id,
-          { emoji: view.emoji, name: view.title },
+          { emoji: view.emoji, name: view.title, id: view.recipeId },
           service.partyWaiting ?? [],
           Date.now(),
           !!service.takeaway,
@@ -1567,7 +1567,7 @@ export function Preparation({
           seat={partySeat}
           customer={shownCustomer}
           line={levelGuide?.customerLine ?? shownCustomer.greeting}
-          dish={{ emoji: view.emoji, name: view.title }}
+          dish={{ emoji: view.emoji, name: view.title, id: view.recipeId }}
           {...(servedQuality ? { quality: servedQuality } : {})}
           reducedMotion={floor.reducedMotion}
           onDone={floorDone}
