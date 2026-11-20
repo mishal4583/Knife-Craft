@@ -261,6 +261,15 @@ export function DessertRunGame({
           aspectRatio: `${stage.w} / ${stage.h}`,
         }}
       >
+        {wide ? (
+          // the room's counter, in the board's coordinates (the bottom 36 of 540) but as wide as the window: wood, with a light top edge
+          <div
+            aria-hidden="true"
+            data-testid="dr-counter"
+            className="pointer-events-none absolute bottom-0 h-[6.67%] bg-[linear-gradient(#c27a38,#a35f26_12%,#6e3c16)] shadow-[inset_0_2px_0_rgba(255,225,160,.55)]"
+            style={{ left: "-100cqw", right: "-100cqw" }}
+          />
+        ) : null}
         <canvas
           ref={canvasRef}
           data-testid="dr-canvas"
@@ -275,7 +284,7 @@ export function DessertRunGame({
           }}
         />
         <header
-          className={`pointer-events-none absolute top-0 flex items-center gap-2 px-2 pt-[max(6px,env(safe-area-inset-top))] ${wide ? "left-0 w-[27%] min-w-[330px] flex-wrap" : "inset-x-0"}`}
+          className={`pointer-events-none absolute inset-x-0 top-0 flex items-center pt-[max(6px,env(safe-area-inset-top))] ${wide ? "gap-3 px-[3%]" : "gap-2 px-2"}`}
         >
           <button
             type="button"
@@ -286,7 +295,9 @@ export function DessertRunGame({
           >
             ←
           </button>
-          <div className="min-w-0 flex-1 rounded-2xl border border-[#d7a95c] bg-[#fff8e8] px-3 py-1 shadow-md">
+          <div
+            className={`min-w-0 border border-[#d7a95c] bg-[#fff8e8] shadow-md ${wide ? "w-[40%] max-w-[420px] flex-none rounded-full px-5 py-1" : "flex-1 rounded-2xl px-3 py-1"}`}
+          >
             <p className="text-[11px] font-black uppercase tracking-[.16em] text-[#a56a31]">
               🍰 Dessert Run
             </p>
@@ -297,6 +308,8 @@ export function DessertRunGame({
               </span>
             </p>
           </div>
+          {/* the mock-up's header: back and the name on the left, speed, tip and pause on the right */}
+          {wide ? <span aria-hidden="true" className="min-w-0 flex-1" /> : null}
           <button
             type="button"
             onClick={() => setSpeed(SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length]!)}

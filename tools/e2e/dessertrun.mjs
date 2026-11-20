@@ -11,7 +11,7 @@
 //   D7 Back leaves the game
 //   D8 no console errors
 //   D9 a WIDE window (developer 2026-11-20: 1280 x 720, 1917 x 912, a phone on its side 844 x 390) gets the LANDSCAPE board: a 16:9 canvas that fills the window on the Codex
-//      room (no 9:16 stage, no side copies, no "turn your phone" card), 48 px buttons, no sideways scroll; a tap on a waiter's ROW sends it and cubes reach the guests;
+//      room (no 9:16 stage, no side copies, no "turn your phone" card), 48 px buttons, no sideways scroll; a tap on a waiter's COLUMN sends it and cubes reach the guests;
 //      careless play there still ends in a result card
 // Screenshots: out/dessertrun-*.png. Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -282,10 +282,12 @@ for (const [w, h] of [
 }
 
 // D9: the wide windows
+// RULE CHANGE 2026-11-20 (developer's mock-up): on the landscape board a lane is a COLUMN of the cabinet's queue (it was a row): columns start at x 512, 400 wide, 6 apart
 const rowTap = async (lane, lanes = 3) => {
   const box = await (await page.$('[data-testid="dr-canvas"]')).boundingBox();
-  const y = 14 + ((540 - 28) / lanes) * (lane + 0.5);
-  await page.mouse.click(box.x + (800 / 960) * box.width, box.y + (y / 540) * box.height);
+  const w = (400 - 6 * (lanes - 1)) / lanes;
+  const x = 512 + lane * (w + 6) + w / 2;
+  await page.mouse.click(box.x + (x / 960) * box.width, box.y + (305 / 540) * box.height);
 };
 for (const [w, h] of [
   [1280, 720],
@@ -330,7 +332,7 @@ for (const [w, h] of [
   }
   await sleep(2500);
   check(
-    `D9 a tap on a waiter's row at ${w} x ${h} sends it: cubes reach the guests`,
+    `D9 a tap on a waiter's column at ${w} x ${h} sends it: cubes reach the guests`,
     (await served()) > 0,
     { served: await served() },
   );
