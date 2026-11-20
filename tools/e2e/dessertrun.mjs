@@ -10,6 +10,9 @@
 //   D6 five phone sizes x Levels 18, 54 and 91 (3, 4 and 5 lanes): no sideways scroll, every header button 48 px, the stage inside the screen
 //   D7 Back leaves the game
 //   D8 no console errors
+//   D9 a WIDE window (developer 2026-11-20: 1280 x 720, 1917 x 912, a phone on its side 844 x 390) gets the LANDSCAPE board: a 16:9 canvas that fills the window on the Codex
+//      room (no 9:16 stage, no side copies, no "turn your phone" card), 48 px buttons, no sideways scroll; a tap on a waiter's ROW sends it and cubes reach the guests;
+//      careless play there still ends in a result card
 // Screenshots: out/dessertrun-*.png. Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -277,6 +280,73 @@ for (const [w, h] of [
     if (level === 91 && w === 320) await shot(page, "dessertrun-91-320");
   }
 }
+
+// D9: the wide windows
+const rowTap = async (lane, lanes = 3) => {
+  const box = await (await page.$('[data-testid="dr-canvas"]')).boundingBox();
+  const y = 14 + ((540 - 28) / lanes) * (lane + 0.5);
+  await page.mouse.click(box.x + (800 / 960) * box.width, box.y + (y / 540) * box.height);
+};
+for (const [w, h] of [
+  [1280, 720],
+  [1917, 912],
+  [844, 390],
+]) {
+  await open(20, w, h);
+  const m = await page.evaluate(() => {
+    const c = document.querySelector('[data-testid="dr-canvas"]').getBoundingClientRect();
+    const small = [...document.querySelectorAll('[data-testid="dessert-run-game"] button')]
+      .map((b) => b.getBoundingClientRect())
+      .filter((r) => r.width > 0 && (r.width < 47.5 || r.height < 47.5)).length;
+    const room = document.querySelector('[data-testid="dr-room"]')?.getBoundingClientRect();
+    return {
+      ratio: Math.round((c.width / c.height) * 1000) / 1000,
+      sw: document.documentElement.scrollWidth,
+      iw: innerWidth,
+      small,
+      room: room ? [Math.round(room.width), Math.round(room.height)] : null,
+      sides: !!document.querySelector('[data-testid="stage-sides"]'),
+      card: !!document.querySelector('[data-testid="dr-upright"]'),
+      fills: Math.abs(c.width - innerWidth) < 2 || Math.abs(c.height - innerHeight) < 2,
+    };
+  });
+  check(
+    `D9 Level 20 at ${w} x ${h}: the landscape board (16:9) fills the window on the Codex room, no side copies, no card, 48 px buttons, no sideways scroll`,
+    Math.abs(m.ratio - 1.778) < 0.01 &&
+      m.room?.[0] === w &&
+      m.room?.[1] === h &&
+      !m.sides &&
+      !m.card &&
+      m.fills &&
+      m.small === 0 &&
+      m.sw <= m.iw,
+    m,
+  );
+  if (w === 1917) await shot(page, "dessertrun-wide-1917");
+  await setSpeed(4);
+  for (let l = 0; l < 3; l++) {
+    await rowTap(l);
+    await sleep(150);
+  }
+  await sleep(2500);
+  check(
+    `D9 a tap on a waiter's row at ${w} x ${h} sends it: cubes reach the guests`,
+    (await served()) > 0,
+    { served: await served() },
+  );
+}
+await open(20, 1280, 720);
+await setSpeed(4);
+const wideStart = Date.now();
+let widePhase = "play";
+while (Date.now() - wideStart < 120_000 && widePhase === "play") {
+  for (let l = 0; l < 3; l++) await rowTap(l);
+  await sleep(120);
+  widePhase = await attr("phase");
+}
+check("D9 careless play on the landscape board reaches a result card", widePhase !== "play", {
+  widePhase,
+});
 
 // D7
 await open(18);

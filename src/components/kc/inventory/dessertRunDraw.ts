@@ -37,7 +37,7 @@ export type DrawView = {
 };
 
 const SKIN = "#F2C9A0";
-const FONT = "Nunito, sans-serif";
+export const FONT = "Nunito, sans-serif";
 const shadeCache = new Map<string, string>();
 
 export function shade(hex: string, t: number): string {
@@ -55,7 +55,14 @@ export function shade(hex: string, t: number): string {
   return out;
 }
 
-function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+export function rr(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
   ctx.beginPath();
   if (ctx.roundRect) ctx.roundRect(x, y, w, h, r);
   else ctx.rect(x, y, w, h);
@@ -91,7 +98,7 @@ const tileCache = new Map<string, HTMLCanvasElement>();
  * edge to edge with nothing showing between them (no gap, no rounded corner); and it is blitted 1:1 (never scaled),
  * so no edge is ever blurred into a hairline.
  */
-function tileSprite(hex: string, w: number, h: number): HTMLCanvasElement {
+export function tileSprite(hex: string, w: number, h: number): HTMLCanvasElement {
   const key = `${hex}|${w}|${h}`;
   let c = tileCache.get(key);
   if (c) return c;
@@ -130,7 +137,7 @@ export function drawCube(
   ctx.drawImage(cubeSprite(hex), x, y, s, s);
 }
 
-function drawPlainPlate(ctx: CanvasRenderingContext2D, cx: number, cy: number, R: number) {
+export function drawPlainPlate(ctx: CanvasRenderingContext2D, cx: number, cy: number, R: number) {
   let gr = ctx.createRadialGradient(cx - R * 0.3, cy - R * 0.35, R * 0.2, cx, cy, R);
   gr.addColorStop(0, "#FFFDF7");
   gr.addColorStop(1, "#E7DCC6");
@@ -153,7 +160,7 @@ function drawPlainPlate(ctx: CanvasRenderingContext2D, cx: number, cy: number, R
 }
 
 /** A plain waiter, for the moments the painted one has not loaded. */
-function drawPlainWaiter(
+export function drawPlainWaiter(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
@@ -189,7 +196,13 @@ const GUEST_LOOK = [
   { skin: "#E3B78E", hair: "#7a7a7a" },
 ] as const;
 
-function drawPlainGuest(ctx: CanvasRenderingContext2D, x: number, y: number, p: number, j: number) {
+export function drawPlainGuest(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  p: number,
+  j: number,
+) {
   const look = GUEST_LOOK[j]!;
   ctx.fillStyle = look.hair;
   ctx.beginPath();
@@ -242,8 +255,8 @@ export function laneAt(x: number, y: number, lanes: number): number | null {
   return null;
 }
 
-type Frame = { sheet: HTMLCanvasElement; col: number; row: number };
-function frameOf(
+export type Frame = { sheet: HTMLCanvasElement; col: number; row: number };
+export function frameOf(
   art: RunArt | null,
   kind: "stand" | "run",
   k: number,
@@ -256,7 +269,7 @@ function frameOf(
   return sheet ? { sheet, col, row } : null;
 }
 /** Draws a waiter frame `size` stage pixels tall, standing with its feet at (x, feetY). */
-function drawFrame(
+export function drawFrame(
   ctx: CanvasRenderingContext2D,
   f: Frame,
   x: number,
@@ -278,10 +291,10 @@ function drawFrame(
 }
 
 /** The guests are drawn 95 px tall (105 before), with the bottom of the picture on the table. */
-const GUEST_SIZE = 95;
-const GUEST_BOTTOM = 579;
+export const GUEST_SIZE = 95;
+export const GUEST_BOTTOM = 579;
 /** The running waiter is drawn 72 px tall (62 before, developer 2026-11-18). */
-const RUNNER_SIZE = 72;
+export const RUNNER_SIZE = 72;
 /**
  * The cream well of a guest's plate, in stage pixels from the plate's centre (the picture is 84 x 42 and its well measures 63 x 27.6).
  * Served cubes are laid on a lattice inside it, middle first, as small as it takes to hold every cube the guest will be served.
@@ -289,7 +302,7 @@ const RUNNER_SIZE = 72;
 const WELL_RX = 30;
 const WELL_RY = 12.6;
 const layouts = new Map<number, { size: number; cells: { x: number; y: number }[] }>();
-function plateLayout(need: number) {
+export function plateLayout(need: number) {
   const key = Math.max(1, Math.round(need));
   const hit = layouts.get(key);
   if (hit) return hit;

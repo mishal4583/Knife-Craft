@@ -104,6 +104,8 @@ function check(id: string, ok: unknown) {
   // original size"): every screen painted only as a portrait stage marks itself `<PortraitOnly />`, so the shell keeps it at its original 9:16 size in a wide window.
   // RULE CHANGE 2026-11-20: the tag now carries the screen's landscape room (`art`), checked by landscape-art-qa; the intro story has its own landscape scenes and is no longer tagged.
   // A screen with a landscape painting or none (Kitchen, Market, Business, Inventory, the cleaning rooms, the cutting scene) must NOT carry it.
+  // RULE CHANGE 2026-11-20 (developer: "design wide versions of Dessert Run and Unload the Van"): the two canvas puzzles have a landscape board (`dessertRunWide.ts`, `KD_WIDE`), so in a
+  // wide window they register no `<PortraitOnly />` (the shell fills the window); the tag stays only in the branch for an upright window.
   const tagged = [
     "src/components/kc/inventory/DessertRunGame.tsx",
     "src/components/kc/inventory/KitchenDispatchGame.tsx",
@@ -134,8 +136,10 @@ function check(id: string, ok: unknown) {
     "src/components/kc/restaurantMap/RestaurantMapView.tsx",
   ];
   check(
-    "F5 the two canvas puzzles with a 9:16 stage (Dessert Run, Unload the Van) carry <PortraitOnly />; the seven landscape games and the sink do not; the screens with landscape art or none (the Kitchen, the maps, the Second Floor) do not",
-    tagged.every((f) => /<PortraitOnly\b/.test(read(f))) &&
+    "F5 the two canvas puzzles (Dessert Run, Unload the Van) draw a landscape board in a wide window and carry <PortraitOnly /> only in the upright branch; the seven landscape games and the sink do not carry it; the screens with landscape art or none (the Kitchen, the maps, the Second Floor) do not",
+    tagged.every(
+      (f) => /\) : \(\s*<>\s*<PortraitOnly\b/.test(read(f)) && /useLandscape\(\)/.test(read(f)),
+    ) &&
       landscapeOk.every((f) => !/<PortraitOnly\b/.test(read(f))) &&
       !fs.existsSync(path.join(ROOT, "src/components/kc/game/FloorSides.tsx")),
   );

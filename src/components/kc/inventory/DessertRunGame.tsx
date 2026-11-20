@@ -15,8 +15,10 @@ import {
   type RunState,
 } from "@/game/business/dessertRun";
 import { drawRun, laneAt, type DrawView } from "./dessertRunDraw";
+import { RUN_WIDE, drawRunWide, laneAtWide } from "./dessertRunWide";
 import { artUrl, loadRunArt, type RunArt } from "./dessertRunArt";
 import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
+import { useLandscape } from "@/components/kc/game/layoutMode";
 import { landscapeGameArt } from "@/game/landscapeArt";
 
 const SPEEDS = [1, 2, 4] as const;
@@ -46,8 +48,16 @@ export function DessertRunGame({
   const [attempt, setAttempt] = useState(0);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(2);
   const [paused, setPaused] = useState(false);
-  /** On a phone on its side the stage is a thin strip: a card asks for the phone upright and the round waits behind it. */
-  const { held, playAnyway } = useTurnUpright();
+  /**
+   * A wide window (a desktop, a tablet, a phone on its side) gets the LANDSCAPE board (developer 2026-11-20: `dessertRunWide.ts`, the same rules and levels, drawn
+   * 960 x 540 with the Codex wide room behind it). Only an upright window keeps the 9:16 stage.
+   */
+  const wide = useLandscape();
+  const stage = wide ? RUN_WIDE : STAGE;
+  /** On a phone on its side the 9:16 stage is a thin strip: a card asks for the phone upright and the round waits behind it. The wide board needs no card. */
+  const turn = useTurnUpright();
+  const held = turn.held && !wide;
+  const playAnyway = turn.playAnyway;
   const [phase, setPhase] = useState<Phase>("play");
   const [delivered, setDelivered] = useState(0);
   /** The round lives in a ref (the game loop owns it); this repaints the header when a new one is made. */
@@ -91,10 +101,10 @@ export function DessertRunGame({
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    artRef.current = loadRunArt();
+    artRef.current = artRef.current ?? loadRunArt();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = STAGE.w * dpr;
-    canvas.height = STAGE.h * dpr;
+    canvas.width = stage.w * dpr;
+    canvas.height = stage.h * dpr;
     let raf = 0;
     let last = performance.now();
     let acc = 0;
@@ -141,32 +151,35 @@ export function DessertRunGame({
           notice: view.notice,
           art: artRef.current,
         };
-        drawRun(ctx, state, drawView);
+        (wide ? drawRunWide : drawRun)(ctx, state, drawView);
       }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [wide, stage.w, stage.h]);
 
-  const stagePoint = useCallback((e: { clientX: number; clientY: number }) => {
-    const canvas = canvasRef.current!;
-    const box = canvas.getBoundingClientRect();
-    return {
-      x: ((e.clientX - box.left) / box.width) * STAGE.w,
-      y: ((e.clientY - box.top) / box.height) * STAGE.h,
-    };
-  }, []);
+  const stagePoint = useCallback(
+    (e: { clientX: number; clientY: number }) => {
+      const canvas = canvasRef.current!;
+      const box = canvas.getBoundingClientRect();
+      return {
+        x: ((e.clientX - box.left) / box.width) * stage.w,
+        y: ((e.clientY - box.top) / box.height) * stage.h,
+      };
+    },
+    [stage.w, stage.h],
+  );
 
   const laneUnder = useCallback(
     (e: { clientX: number; clientY: number }) => {
       const state = stateRef.current;
       if (!state) return null;
       const p = stagePoint(e);
-      const lane = laneAt(p.x, p.y, state.lanes.length);
+      const lane = (wide ? laneAtWide : laneAt)(p.x, p.y, state.lanes.length);
       return lane !== null && state.lanes[lane]![0] ? lane : null;
     },
-    [stagePoint],
+    [stagePoint, wide],
   );
 
   const say = (text: string) => {
@@ -223,14 +236,29 @@ export function DessertRunGame({
       data-tier={pick.tier.id}
       data-dessert={pick.dessertId}
       data-phase={phase}
+      data-wide={wide || undefined}
     >
-      <PortraitOnly art={landscapeGameArt("dessert-run")} />
-      <StageSides src={artUrl("backdrop")} stage={STAGE} />
+      {wide ? (
+        // the Codex wide room covers the window (never a bar); the 16:9 board sits on it
+        <img
+          src={landscapeGameArt("dessert-run")}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          data-testid="dr-room"
+          className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover"
+        />
+      ) : (
+        <>
+          <PortraitOnly art={landscapeGameArt("dessert-run")} />
+          <StageSides src={artUrl("backdrop")} stage={STAGE} />
+        </>
+      )}
       <div
         className="relative mx-auto"
         style={{
-          width: `min(100cqw, calc(100cqh * ${STAGE.w} / ${STAGE.h}))`,
-          aspectRatio: `${STAGE.w} / ${STAGE.h}`,
+          width: `min(100cqw, calc(100cqh * ${stage.w} / ${stage.h}))`,
+          aspectRatio: `${stage.w} / ${stage.h}`,
         }}
       >
         <canvas
@@ -246,7 +274,9 @@ export function DessertRunGame({
             if (viewRef.current.pressedLane === null) onCancel();
           }}
         />
-        <header className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-2 px-2 pt-[max(6px,env(safe-area-inset-top))]">
+        <header
+          className={`pointer-events-none absolute top-0 flex items-center gap-2 px-2 pt-[max(6px,env(safe-area-inset-top))] ${wide ? "left-0 w-[27%] min-w-[330px] flex-wrap" : "inset-x-0"}`}
+        >
           <button
             type="button"
             onClick={onExit}

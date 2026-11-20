@@ -33,6 +33,7 @@ import {
 } from "@/game/business/crateDispatch";
 import {
   KD_STAGE,
+  KD_WIDE,
   cellAt,
   drawKitchenDispatch,
   type KdView,
@@ -40,27 +41,55 @@ import {
 } from "./kitchenDispatchDraw";
 import { kdUrl, loadKdArt, type KdArt } from "./kitchenDispatchArt";
 import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
+import { useLandscape } from "@/components/kc/game/layoutMode";
 import { landscapeGameArt } from "@/game/landscapeArt";
 
 type Phase = "play" | "won" | "lost";
 const NOTICE_MS = 1700;
 const WIN_DELAY_MS = 650;
 
-/** A box in stage units (540 x 960), placed as percentages so it scales with the stage. */
-const box = (x: number, y: number, w: number, h: number): CSSProperties => ({
-  position: "absolute",
-  left: `${(x / KD_STAGE.w) * 100}%`,
-  top: `${(y / KD_STAGE.h) * 100}%`,
-  width: `${(w / KD_STAGE.w) * 100}%`,
-  height: `${(h / KD_STAGE.h) * 100}%`,
-});
+/** A box in stage units (540 x 960, or 960 x 540 on the landscape board), placed as percentages so it scales with the stage. */
+const boxOn =
+  (stage: { readonly w: number; readonly h: number }) =>
+  (x: number, y: number, w: number, h: number): CSSProperties => ({
+    position: "absolute",
+    left: `${(x / stage.w) * 100}%`,
+    top: `${(y / stage.h) * 100}%`,
+    width: `${(w / stage.w) * 100}%`,
+    height: `${(h / stage.h) * 100}%`,
+  });
 /** A font size in stage units, scaled with the stage's width. */
-const fs = (px: number): CSSProperties => ({ fontSize: `${(px / KD_STAGE.w) * 100}cqw` });
+const fsOn =
+  (stage: { readonly w: number }) =>
+  (px: number): CSSProperties => ({ fontSize: `${(px / stage.w) * 100}cqw` });
 /** A touch target never smaller than 48 px, whatever the stage's scale. */
 const TOUCH: CSSProperties = { minWidth: 48, minHeight: 48 };
 const img = (name: string) => `url(${kdUrl(name)})`;
 /** The centre of each booster button on the counter, in stage units. */
 const BOOSTER_X = [109, 218, 327, 435];
+/**
+ * The landscape board's HUD, in its 960 x 540 stage units (the frame is in the middle, x 250 to 710): the title, the level, the clock, the crates left, the stars and
+ * Paige on the left wall; Pause, the tip, the four boosters (two by two) and the line that says what to do on the right.
+ */
+type Box4 = readonly [number, number, number, number];
+type Hud = Record<
+  "back" | "level" | "title" | "timer" | "left" | "stars" | "mascot" | "tip" | "pause" | "notice",
+  Box4
+>;
+const WIDE_UI: Hud = {
+  back: [10, 10, 64, 64],
+  level: [84, 8, 86, 72],
+  title: [10, 90, 222, 84],
+  timer: [10, 184, 222, 74],
+  left: [10, 268, 140, 54],
+  stars: [10, 332, 128, 40],
+  mascot: [6, 396, 128, 108],
+  tip: [822, 17, 50, 50],
+  pause: [886, 10, 64, 64],
+  notice: [730, 380, 224, 120],
+};
+/** The landscape board's boosters, two by two: the two columns' centres and the two rows' tops. */
+const WIDE_BOOSTER = { x: [790, 890], y: [92, 232] } as const;
 
 const clock = (seconds: number) => {
   const s = Math.max(0, Math.ceil(seconds));
@@ -83,6 +112,11 @@ export function KitchenDispatchGame({
   onExit: () => void;
 }) {
   const day = save.business.calendar.businessDay;
+  /** A wide window (a desktop, a tablet, a phone on its side) gets the LANDSCAPE board; only an upright window keeps the 9:16 stage. */
+  const wide = useLandscape();
+  const stage = wide ? KD_WIDE : KD_STAGE;
+  const box = boxOn(stage);
+  const fs = fsOn(stage);
   /** "Next dispatch" moves to the next board; "Try again" replays the same one. */
   const [boardNo, setBoardNo] = useState(0);
   const [attempt, setAttempt] = useState(0);
@@ -91,8 +125,10 @@ export function KitchenDispatchGame({
   const [round, setRound] = useState<CrateRound>(initial);
   const [phase, setPhase] = useState<Phase>("play");
   const [paused, setPaused] = useState(false);
-  /** On a phone on its side the stage is a thin strip: a card asks for the phone upright and the clock waits behind it. */
-  const { held, playAnyway } = useTurnUpright();
+  /** On a phone on its side the 9:16 stage is a thin strip: a card asks for the phone upright and the clock waits behind it. The landscape board needs no card. */
+  const turn = useTurnUpright();
+  const held = turn.held && !wide;
+  const playAnyway = turn.playAnyway;
   const heldRef = useRef(held);
   const [secondsLeft, setSecondsLeft] = useState(initial.seconds);
   const [notice, setNotice] = useState("");
@@ -176,10 +212,10 @@ export function KitchenDispatchGame({
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    artRef.current = loadKdArt();
+    artRef.current = artRef.current ?? loadKdArt();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = KD_STAGE.w * dpr;
-    canvas.height = KD_STAGE.h * dpr;
+    canvas.width = stage.w * dpr;
+    canvas.height = stage.h * dpr;
     let raf = 0;
     let last = performance.now();
     let shownSecond = -1;
@@ -253,19 +289,20 @@ export function KitchenDispatchGame({
         vis,
         dragId: dragIdRef.current,
         armed: armedRef.current,
+        wide,
       });
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [wide, stage.w, stage.h]);
 
   /** The stage point under a pointer event. */
   const stagePoint = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
     return {
-      x: ((e.clientX - r.left) / r.width) * KD_STAGE.w,
-      y: ((e.clientY - r.top) / r.height) * KD_STAGE.h,
+      x: ((e.clientX - r.left) / r.width) * stage.w,
+      y: ((e.clientY - r.top) / r.height) * stage.h,
     };
   };
   const winSoon = (next: CrateRound) => {
@@ -290,7 +327,7 @@ export function KitchenDispatchGame({
     if (phaseRef.current !== "play" || pausedRef.current || dragRef.current) return;
     const p = stagePoint(e);
     const round = roundRef.current;
-    const { cx, cy, fx, fy } = cellAt(round.board, p.x, p.y);
+    const { cx, cy, fx, fy } = cellAt(round.board, p.x, p.y, wide);
     const armedNow = armedRef.current;
     if (armedNow === "rocket") {
       const b = brickAtCell(round.board, cx, cy);
@@ -334,7 +371,7 @@ export function KitchenDispatchGame({
     if (!d || e.pointerId !== d.pointerId || phaseRef.current !== "play" || pausedRef.current)
       return;
     const p = stagePoint(e);
-    const { fx, fy } = cellAt(roundRef.current.board, p.x, p.y);
+    const { fx, fy } = cellAt(roundRef.current.board, p.x, p.y, wide);
     const res = dragBrick(roundRef.current, d.id, Math.round(fx - d.offX), Math.round(fy - d.offY));
     if (!res.moved) return;
     d.moved = true;
@@ -382,6 +419,30 @@ export function KitchenDispatchGame({
   const stars = crateStars(secondsLeft, budget);
   const frac = Math.max(0, Math.min(1, secondsLeft / budget));
   const low = secondsLeft <= 15;
+  /** Where each piece of the HUD sits, in the stage's units: the 9:16 stage's top bar and counter, or the landscape board's two walls. */
+  const ui: Hud = wide
+    ? WIDE_UI
+    : {
+        back: [8, 8, 64, 64],
+        level: [72, 6, 86, 72],
+        title: [166, 4, 262, 98],
+        timer: [14, 196, 234, 78],
+        left: [252, 206, 140, 54],
+        stars: [398, 213, 128, 40],
+        mascot: [0, 90, 146, 124],
+        tip: [470, 146, 50, 50],
+        pause: [468, 8, 64, 64],
+        notice: [112, 104, 330, 90],
+      };
+  /** The booster at `i`: where its button, its count and its name go. */
+  const boosterAt = (i: number) => {
+    if (wide) {
+      const cx = WIDE_BOOSTER.x[i % 2]!;
+      const top = WIDE_BOOSTER.y[i >> 1]!;
+      return { cx, top };
+    }
+    return { cx: BOOSTER_X[i] ?? 0, top: 766 };
+  };
   const roundBtn: CSSProperties = {
     backgroundImage: img("round-button"),
     backgroundSize: "100% 100%",
@@ -444,13 +505,27 @@ export function KitchenDispatchGame({
         gates: round.board.gates.map((g) => [g.id, g.side, g.at, g.span, g.color]),
       })}
     >
-      <PortraitOnly art={landscapeGameArt("unload-the-van")} />
-      <StageSides src={kdUrl("backdrop")} stage={KD_STAGE} />
+      {wide ? (
+        // the Codex wide room covers the window (never a bar); the 16:9 board sits on it
+        <img
+          src={landscapeGameArt("unload-the-van")}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          data-testid="kd-room"
+          className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover"
+        />
+      ) : (
+        <>
+          <PortraitOnly art={landscapeGameArt("unload-the-van")} />
+          <StageSides src={kdUrl("backdrop")} stage={KD_STAGE} />
+        </>
+      )}
       <div
         className="relative select-none [container-type:inline-size]"
         style={{
-          width: `min(100cqw, calc(100cqh * ${KD_STAGE.w} / ${KD_STAGE.h}))`,
-          aspectRatio: `${KD_STAGE.w} / ${KD_STAGE.h}`,
+          width: `min(100cqw, calc(100cqh * ${stage.w} / ${stage.h}))`,
+          aspectRatio: `${stage.w} / ${stage.h}`,
         }}
       >
         <canvas
@@ -471,14 +546,14 @@ export function KitchenDispatchGame({
           aria-label="Back"
           data-testid="kd-back"
           className="pointer-events-auto grid place-items-center font-black text-white"
-          style={{ ...box(8, 8, 64, 64), ...TOUCH, ...roundBtn, ...fs(26) }}
+          style={{ ...box(...ui.back), ...TOUCH, ...roundBtn, ...fs(26) }}
         >
           ←
         </button>
         <div
           className="grid place-items-center font-black text-white"
           style={{
-            ...box(72, 6, 86, 72),
+            ...box(...ui.level),
             backgroundImage: img("level-badge"),
             backgroundSize: "100% 100%",
           }}
@@ -501,7 +576,7 @@ export function KitchenDispatchGame({
         <div
           className="grid place-items-center text-center font-black text-[#fff4d9]"
           style={{
-            ...box(166, 4, 262, 98),
+            ...box(...ui.title),
             backgroundImage: img("title-sign"),
             backgroundSize: "100% 100%",
             ...fs(21),
@@ -515,7 +590,7 @@ export function KitchenDispatchGame({
           aria-label={paused ? "Resume" : "Pause"}
           data-testid="kd-pause"
           className="grid place-items-center font-black text-white"
-          style={{ ...box(468, 8, 64, 64), ...TOUCH, ...roundBtn, ...fs(24) }}
+          style={{ ...box(...ui.pause), ...TOUCH, ...roundBtn, ...fs(24) }}
         >
           {paused ? "▶" : "Ⅱ"}
         </button>
@@ -525,7 +600,7 @@ export function KitchenDispatchGame({
           aria-hidden="true"
           data-testid="kd-mascot"
           style={{
-            ...box(0, 90, 146, 124),
+            ...box(...ui.mascot),
             backgroundImage: img("mascot"),
             backgroundSize: "100% auto",
             backgroundPosition: "top center",
@@ -535,10 +610,10 @@ export function KitchenDispatchGame({
         <div
           className="grid place-items-center px-[7%] text-center font-extrabold leading-tight text-[#5a3419]"
           style={{
-            ...box(112, 104, 330, 90),
+            ...box(...ui.notice),
             backgroundImage: img("info-banner"),
             backgroundSize: "100% 100%",
-            ...fs(16.5),
+            ...fs(wide ? 13 : 16.5),
           }}
         >
           <span role="status" data-testid="kd-notice">
@@ -547,6 +622,7 @@ export function KitchenDispatchGame({
         </div>
         <div
           aria-hidden="true"
+          hidden={wide}
           className="rounded-md border-2 border-[#d8b373] bg-[#fff3d6] shadow-[0_4px_8px_rgba(0,0,0,.35)]"
           style={{
             ...box(444, 104, 78, 88),
@@ -561,7 +637,7 @@ export function KitchenDispatchGame({
           </span>
           <span className="absolute left-1/2 top-[-6%] h-[13%] w-[17%] -translate-x-1/2 rounded-full bg-[#d6402a] shadow-[0_2px_3px_rgba(0,0,0,.4)]" />
         </div>
-        <span className="grid place-items-center" style={box(470, 146, 50, 50)}>
+        <span className="grid place-items-center" style={box(...ui.tip)}>
           <InfoTip label="How to play">
             The delivery van has dropped its crates on the loading bay. Drag a crate across it; it
             cannot pass through other crates or the dark blocks. Push it against the door that shows
@@ -576,7 +652,7 @@ export function KitchenDispatchGame({
         {/* the timer, the crates and the stars */}
         <div
           style={{
-            ...box(14, 196, 234, 78),
+            ...box(...ui.timer),
             backgroundImage: img("timer-pill"),
             backgroundSize: "100% 100%",
           }}
@@ -612,7 +688,7 @@ export function KitchenDispatchGame({
         <div
           className="flex items-center justify-center gap-[4%] font-black text-[#5a3419]"
           style={{
-            ...box(252, 206, 140, 54),
+            ...box(...ui.left),
             backgroundImage: img("label-plate"),
             backgroundSize: "100% 100%",
             ...fs(17),
@@ -640,7 +716,7 @@ export function KitchenDispatchGame({
           </span>
         </div>
         <div
-          style={box(398, 213, 128, 40)}
+          style={box(...ui.stars)}
           aria-label={`${stars} stars`}
           role="img"
           data-testid="kd-stars"
@@ -664,7 +740,7 @@ export function KitchenDispatchGame({
 
         {/* the boosters on the counter */}
         {boosters.map((b, i) => {
-          const cx = BOOSTER_X[i] ?? 0;
+          const { cx, top } = boosterAt(i);
           return (
             <div key={b.key}>
               <button
@@ -676,7 +752,7 @@ export function KitchenDispatchGame({
                 data-lit={b.lit || undefined}
                 className="transition-transform active:scale-90 disabled:opacity-50 disabled:grayscale-[.45] data-[lit]:scale-110 data-[lit]:drop-shadow-[0_0_10px_#ffd24a]"
                 style={{
-                  ...box(cx - 43, 766, 86, 72),
+                  ...box(cx - 43, top, 86, 72),
                   ...TOUCH,
                   backgroundImage: img(`booster-${b.key}`),
                   backgroundSize: "100% 100%",
@@ -685,7 +761,7 @@ export function KitchenDispatchGame({
               <span
                 className="pointer-events-none grid place-items-center font-black text-[#5a3419]"
                 style={{
-                  ...box(cx + 17, 757, 34, 34),
+                  ...box(cx + 17, top - 9, 34, 34),
                   backgroundImage: img("count-badge"),
                   backgroundSize: "100% 100%",
                   ...fs(16),
@@ -697,7 +773,7 @@ export function KitchenDispatchGame({
               <span
                 className="pointer-events-none grid place-items-center font-black text-[#5a3419]"
                 style={{
-                  ...box(cx - 46, 838, 92, 31),
+                  ...box(cx - 46, top + 72, 92, 31),
                   backgroundImage: img("label-plate"),
                   backgroundSize: "100% 100%",
                   ...fs(14),
@@ -715,7 +791,9 @@ export function KitchenDispatchGame({
             data-testid="kd-overlay"
             data-phase={paused && phase === "play" ? "paused" : phase}
           >
-            <div className="w-full max-w-[88%] rounded-[28px] border-2 border-[#e6c579] bg-[#fff4dc] p-4 text-center shadow-2xl">
+            <div
+              className={`w-full rounded-[28px] border-2 border-[#e6c579] bg-[#fff4dc] p-4 text-center shadow-2xl ${wide ? "max-w-[min(88%,420px)]" : "max-w-[88%]"}`}
+            >
               {phase === "play" ? (
                 <p className="text-3xl" aria-hidden="true">
                   ⏸️

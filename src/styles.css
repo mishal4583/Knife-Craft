@@ -1704,6 +1704,20 @@ html.kc-reduced-motion .kc-clean-sheen {
   height: 100%;
   vertical-align: top;
 }
+.gi .gi-img {
+  display: inline-block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  vertical-align: top;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.28));
+}
+/* a painted picture (lib/paintedIcons.ts) is a little bigger than a line icon: it has to read as a picture, not a glyph */
+.gi.gi-pic {
+  width: 1.45em;
+  height: 1.45em;
+  vertical-align: -0.38em;
+}
 .gi .gi-dot {
   display: inline-block;
   width: 0.78em;

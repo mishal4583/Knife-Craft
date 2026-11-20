@@ -46,9 +46,14 @@ console.log("A. The map");
     `A1: ${Object.keys(EMOJI_ICONS).length} emoji have a drawn icon, every one a real component or a colour dot`,
     bad,
   );
+  // RULE CHANGE 2026-11-20 (developer: "use proper emojis or assets throughout the game"): these foods have a PAINTED picture now (lib/paintedIcons.ts, the game's own ingredient
+  // paintings), so `iconFor` gives the picture; they still never get a wrong LINE icon.
   assert(
-    ["🍑", "🍓", "🍐", "🧈", "🍅", "🥔", "🧅", "🍄"].every((e) => iconFor(e) === null),
-    "A2: no wrong picture: a peach, a strawberry, a pear, butter, a tomato, a potato, an onion and a mushroom have no faithful icon, so they stay as emoji",
+    ["🍑", "🍓", "🍐", "🧈", "🍅", "🥔", "🧅", "🍄"].every((e) => {
+      const f = iconFor(e);
+      return f !== null && "picture" in f && !(e in EMOJI_ICONS);
+    }),
+    "A2: a peach, a strawberry, a pear, butter, a tomato, a potato, an onion and a mushroom are drawn as the game's own painted ingredient pictures, never as a wrong line icon",
   );
   assert(
     typeof Lucide.Trophy === "object" || typeof Lucide.Trophy === "function",
@@ -66,7 +71,8 @@ console.log("B. The conversion");
     "B1: '🔒 Locked · 🏆 won' becomes two icons and the same words",
     { n: out?.length, text },
   );
-  const plain = "Locked, 12 left (tomato 🍅)";
+  // RULE CHANGE 2026-11-20: a tomato has a painted picture now, so the example of an emoji with neither picture nor icon is an olive
+  const plain = "Locked, 12 left (olives 🫒)";
   assert(
     withIcons(plain) === null && convertChildren(plain) === plain,
     "B2: text with no mapped emoji is returned untouched, the very same string",

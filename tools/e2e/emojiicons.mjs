@@ -15,6 +15,7 @@ import {
   sleep,
   shot,
   openSection,
+  SAVE_KEY,
 } from "./harness.mjs";
 import { iconFor } from "../../src/lib/emojiIcons.ts";
 
@@ -124,10 +125,60 @@ const stray = rawAll.filter((t) =>
 );
 check("1c no emoji that has an icon is left as raw text on screen", stray.length === 0, stray);
 
-// 4: unmapped emoji stay emoji
+// 4: RULE CHANGE 2026-11-20 (developer: "use proper emojis or assets throughout the game"): a tomato, a potato and an onion are the game's own PAINTED pictures now
+// (lib/paintedIcons.ts), never a wrong line icon and never a raw emoji; an emoji with neither a picture nor an icon (an olive) still stays an emoji
 check(
-  "4 a tomato, a potato and an onion have no icon, so they stay emoji (never a wrong picture)",
-  ["🍅", "🥔", "🧅"].every((e) => iconFor(e) === null),
+  "4 a tomato, a potato and an onion are painted pictures (never a line icon); an olive has neither, so it stays an emoji",
+  ["🍅", "🥔", "🧅"].every((e) => {
+    const f = iconFor(e);
+    return f !== null && "picture" in f && /business\/ingredients\//.test(f.picture);
+  }) && iconFor("🫒") === null,
+);
+// 4b: a painted picture really is drawn on a page (the Kitchen's dish chip shows the level's own food) and its file loads
+// (Level 60's dish is a carrot: the same save the Kitchen shows "Shared Carrot" with)
+const save60 = seedSave({
+  credits: 50_000,
+  business: { ...MOVED_IN_BUSINESS, assistant: PAIGE_QUIET },
+  levelProgress: {
+    currentLevelId: "level-60",
+    highestUnlockedLevelId: "level-60",
+    completedLevelIds: Array.from({ length: 59 }, (_, i) => `level-${i + 1}`),
+    campaignVersion: 4,
+  },
+  story: { introDone: true, milestoneMask: 0xffff, finaleSeen: true },
+});
+await page.evaluate(
+  async (st, key) => {
+    await window.bridge.storage.set([key], [JSON.stringify(st)]);
+  },
+  save60,
+  SAVE_KEY,
+);
+await page.reload({ waitUntil: "networkidle0" });
+await page.waitForFunction(
+  () => document.elementFromPoint(5, 5)?.closest("#loading-overlay") === null,
+  { timeout: 20000 },
+);
+await sleep(1500);
+const pics = await page.evaluate(async () => {
+  const imgs = [...document.querySelectorAll(".gi-pic .gi-img")];
+  await Promise.all(
+    imgs.map((i) =>
+      i.complete
+        ? 0
+        : new Promise((r) => {
+            i.onload = r;
+            i.onerror = r;
+            setTimeout(r, 4000);
+          }),
+    ),
+  );
+  return imgs.map((i) => ({ w: i.naturalWidth, src: i.getAttribute("src") }));
+});
+check(
+  "4b a painted picture is drawn and loaded on the Kitchen",
+  pics.length >= 1 && pics.every((p) => p.w > 0),
+  pics.slice(0, 3),
 );
 
 // 5: sizes

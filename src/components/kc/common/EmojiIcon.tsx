@@ -11,8 +11,17 @@ export function EmojiIcon({ emoji }: { emoji: string }) {
   const found = iconFor(emoji);
   if (!found) return <>{emoji}</>;
   return (
-    <span className="gi" role="img" aria-label={emoji}>
-      {"icon" in found ? (
+    <span className={"picture" in found ? "gi gi-pic" : "gi"} role="img" aria-label={emoji}>
+      {"picture" in found ? (
+        <img
+          src={found.picture}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          decoding="async"
+          className="gi-img"
+        />
+      ) : "icon" in found ? (
         <found.icon aria-hidden="true" strokeWidth={2.1} className="gi-svg" />
       ) : (
         <span aria-hidden="true" className="gi-dot" style={{ background: found.dot }} />

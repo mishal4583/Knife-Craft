@@ -13,6 +13,9 @@
 //   K9 five phone sizes x Levels 18, 46 and 91 (5x5, 7x7, 8x8): no sideways scroll, every button 48 px, the stage inside the screen
 //   K10 Back leaves the game
 //   K11 no console errors
+//   K12 a WIDE window (developer 2026-11-20: 1280 x 720, 1917 x 912, a phone on its side 844 x 390) gets the LANDSCAPE board: a 16:9 stage that fills the window with the Codex
+//       room behind it (no portrait stage in the middle, no side copies, no "turn your phone" card), 48 px buttons, no sideways scroll; a real drag moves a crate there, and
+//       dragging every crate to its gate wins
 // Screenshots: out/kitchendispatch-*.png. Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -133,13 +136,16 @@ function pathOut(b, brick) {
   return null;
 }
 const GRID = { x: 40 + (460 * 70) / 1080, y: 292 + (460 * 70) / 1080, size: (460 * 940) / 1080 };
+/** The landscape board is the same drawing on a 960 x 540 stage, moved by (210, -252) (K12). */
+let wideMode = false;
 /** Page pixels of the middle of a grid cell. */
 async function cellPoint(cols, cx, cy) {
   const box = await (await page.$('[data-testid="kd-canvas"]')).boundingBox();
   const cell = GRID.size / cols;
+  const st = wideMode ? { w: 960, h: 540, dx: 210, dy: -252 } : { w: 540, h: 960, dx: 0, dy: 0 };
   return {
-    x: box.x + ((GRID.x + (cx + 0.5) * cell) / 540) * box.width,
-    y: box.y + ((GRID.y + (cy + 0.5) * cell) / 960) * box.height,
+    x: box.x + ((st.dx + GRID.x + (cx + 0.5) * cell) / st.w) * box.width,
+    y: box.y + ((st.dy + GRID.y + (cy + 0.5) * cell) / st.h) * box.height,
   };
 }
 /** Presses the crate's top-left cell and drags the finger along `cells` (top-left cells, one after another), then lets go. */
@@ -465,6 +471,75 @@ for (const [w, h] of [
     if (level === 46 && w === 390) await shot(page, "kitchendispatch-46-390");
   }
 }
+
+// K12: the wide windows
+wideMode = true;
+for (const [w, h] of [
+  [1280, 720],
+  [1917, 912],
+  [844, 390],
+]) {
+  await open(18, w, h);
+  const m = await page.evaluate(() => {
+    const c = document.querySelector('[data-testid="kd-canvas"]').getBoundingClientRect();
+    const small = [...document.querySelectorAll('[data-testid="kitchen-dispatch-game"] button')]
+      .map((b) => b.getBoundingClientRect())
+      .filter((r) => r.width > 0 && (r.width < 47.5 || r.height < 47.5)).length;
+    const room = document.querySelector('[data-testid="kd-room"]')?.getBoundingClientRect();
+    return {
+      ratio: Math.round((c.width / c.height) * 1000) / 1000,
+      sw: document.documentElement.scrollWidth,
+      iw: innerWidth,
+      small,
+      room: room ? [Math.round(room.width), Math.round(room.height)] : null,
+      sides: !!document.querySelector('[data-testid="stage-sides"]'),
+      card: !!document.querySelector('[data-testid="kd-upright"]'),
+      fills: Math.abs(c.width - innerWidth) < 2 || Math.abs(c.height - innerHeight) < 2,
+      ih: innerHeight,
+    };
+  });
+  check(
+    `K12 Level 18 at ${w} x ${h}: the landscape board (16:9) fills the window on the Codex room, no side copies, no card, 48 px buttons, no sideways scroll`,
+    Math.abs(m.ratio - 1.778) < 0.01 &&
+      m.room?.[0] === w &&
+      m.room?.[1] === h &&
+      !m.sides &&
+      !m.card &&
+      m.fills &&
+      m.small === 0 &&
+      m.sw <= m.iw,
+    m,
+  );
+  if (w === 1917) await shot(page, "kitchendispatch-wide-1917");
+  if (w === 844) {
+    const b = await board();
+    const mv = easyMove(b);
+    if (mv) {
+      await dragAlong(b, mv.brick, [mv.to]);
+      await sleep(300);
+      const after = (await board()).bricks.find((x) => x.id === mv.brick.id);
+      check(
+        "K12 a drag on a phone on its side moves the crate one cell",
+        after.x === mv.to[0] && after.y === mv.to[1],
+        { from: [mv.brick.x, mv.brick.y], to: mv.to, now: [after.x, after.y] },
+      );
+    } else check("K12 a crate can be dragged on a phone on its side", false, "no easy move");
+  }
+}
+await open(18, 1280, 720);
+const wideTotal = await crates();
+let wideDrags = 0;
+for (let guard = 0; guard < 40 && (await crates()) > 0; guard++) {
+  if (!(await dragOneOut())) break;
+  wideDrags += 1;
+}
+await sleep(1200);
+check(
+  "K12 on the landscape board dragging every crate to its gate wins",
+  (await data("phase")) === "won" && wideDrags >= wideTotal,
+  { wideTotal, wideDrags, phase: await data("phase") },
+);
+wideMode = false;
 
 // K10
 await open(18);

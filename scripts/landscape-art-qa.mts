@@ -161,10 +161,21 @@ console.log("\nC. Mini-games and the sink");
       .filter(([f, e]) => !read(f).includes(e) || /<PortraitOnly/.test(read(f)))
       .map(([f]) => f),
   );
+  // RULE CHANGE 2026-11-20 (developer: "design wide versions of Dessert Run and Unload the Van"): the two canvas puzzles paint their wide room themselves behind a 16:9 board
+  // (`dr-room`, `kd-room`); the framed stage (and its `<PortraitOnly art>`) is only the branch for an upright window.
   assert(
-    files.every(([f, expr]) => read(f).includes(`<PortraitOnly art={${expr}} />`)),
-    "C1: Dessert Run and Unload the Van (9:16 canvas puzzles) give their room to the framed stage",
-    files.filter(([f, e]) => !read(f).includes(`<PortraitOnly art={${e}} />`)).map(([f]) => f),
+    files.every(
+      ([f, expr]) =>
+        read(f).includes(`src={${expr}}`) &&
+        /data-testid="(dr|kd)-room"/.test(read(f)) &&
+        /\) : \(\s*<>\s*<PortraitOnly art=\{/.test(read(f)),
+    ),
+    "C1: Dessert Run and Unload the Van paint their wide room behind a landscape board; the framed 9:16 stage is only the upright branch",
+    files
+      .filter(
+        ([f, e]) => !read(f).includes(`src={${e}}`) || !/data-testid="(dr|kd)-room"/.test(read(f)),
+      )
+      .map(([f]) => f),
   );
   const shell = read("src/components/kc/game/GameShell.tsx");
   assert(

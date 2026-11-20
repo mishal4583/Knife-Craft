@@ -1,8 +1,8 @@
 // Screens with only a portrait painting keep their ORIGINAL size (developer 2026-11-19: "find all the areas that can't be converted to landscape because there are
 // no landscape assets and make them back to the original size; only keep the areas that need no asset in landscape"), restaurant build, real browser:
 //   P1 at 1280 x 720 and 1920 x 1080 the Kitchen, Market and Business fill the window (data-game-frame="full"): they need no portrait painting
-//   P2 at 1280 x 720 each mini-game that has only a portrait stage (Dessert Run, Unload the Van, Fridge Check, Car Park, Sauce Station) is the centred 9:16 box
-//      (data-game-frame="framed", 9:16 to within a pixel, centred, inside the window) and goes back to filling the window when closed (no remount: the Kitchen is the same one)
+//   P2 at 1280 x 720 Dessert Run and Unload the Van fill the window with their LANDSCAPE board (RULE CHANGE 2026-11-20, developer: "design wide versions"; they were the
+//      centred 9:16 box, data-game-frame="framed"): data-game-frame="full", a 16:9 canvas on the Codex room, and Back goes to the Kitchen, which fills the window again (no remount)
 //   P3 the dishwashing sink fills the window (RULE CHANGE 2026-11-20; it was the 9:16 box)
 //   P4 an upright phone (390 x 844) is NOT framed in a mini-game: it keeps the whole screen, and a phone on its side (844 x 390) is not framed either
 //   P5 no console errors
@@ -162,21 +162,46 @@ check(
   wideBad,
 );
 
-// ---------- P2: the mini-games with a portrait stage keep the original 9:16 size ----------
+// ---------- P2: Dessert Run and Unload the Van fill the window with their landscape board ----------
+// RULE CHANGE 2026-11-20 (developer: "design wide versions of Dessert Run and Unload the Van"): the last two games that were the centred 9:16 box have a landscape board now
+// (`dessertRunWide.ts`, `KD_WIDE`): same rules, same levels, drawn 16:9 on their wide room. The 9:16 stage is only for an upright window.
 const GAMES = [
-  ["dessert-run", "dessert-run-game", "dr-back"],
-  ["kitchen-dispatch", "kitchen-dispatch-game", "kd-back"],
-  // RULE CHANGE 2026-11-20 (developer: "fix the games in landscape first"): Fridge Check, Car Park and the Sauce Station are landscape layouts now (they fill the window, see
-  // the `P2b` check below); only the two canvas puzzles keep the 9:16 stage
+  ["dessert-run", "dessert-run-game", "dr-back", "dr-room", "dr-canvas"],
+  ["kitchen-dispatch", "kitchen-dispatch-game", "kd-back", "kd-room", "kd-canvas"],
 ];
 const p2 = [];
 const artSeen = [];
-for (const [id, testId, backId] of GAMES) {
+const roomOf = (roomId, canvasId) =>
+  page.evaluate(
+    async (r, c) => {
+      const i = document.querySelector(`[data-testid="${r}"]`);
+      const cv = document.querySelector(`[data-testid="${c}"]`)?.getBoundingClientRect();
+      if (!i) return null;
+      if (!i.complete)
+        await new Promise((res) => {
+          i.onload = res;
+          i.onerror = res;
+          setTimeout(res, 4000);
+        });
+      const b = i.getBoundingClientRect();
+      return {
+        w: i.naturalWidth,
+        h: i.naturalHeight,
+        src: i.getAttribute("src"),
+        fillsWindow: b.width >= innerWidth - 1 && b.height >= innerHeight - 1,
+        ratio: cv ? Math.round((cv.width / cv.height) * 1000) / 1000 : null,
+      };
+    },
+    roomId,
+    canvasId,
+  );
+for (const [id, testId, backId, roomId, canvasId] of GAMES) {
   await open(saveAt(91), 1280, 720);
   if (id === "dessert-run") await shot(page, "portraitonly-kitchen-1280");
   const opened = await openGame(id, testId);
   const f = await frame();
-  artSeen.push({ id, art: await shellArt() });
+  const room = await roomOf(roomId, canvasId);
+  artSeen.push({ id, art: room });
   await shot(page, `portraitonly-${id}-1280`);
   let backOk = true;
   let back = null;
@@ -187,21 +212,23 @@ for (const [id, testId, backId] of GAMES) {
     back = await frame();
     backOk = isFull(back) && Boolean(await page.$('[data-testid="kitchen-rank"]'));
   }
-  p2.push({ id, opened, ok: opened && isNineSixteen(f) && backOk, f, back });
+  p2.push({ id, opened, ok: opened && isFull(f) && backOk, f, back });
 }
 check(
-  "P2 Dessert Run and Unload the Van are the centred 9:16 box at 1280x720; after Back (Dessert Run, the Van) the Kitchen fills the window again",
+  "P2 Dessert Run and Unload the Van fill a 1280x720 window (the landscape board, no 9:16 box); after Back the Kitchen fills the window again",
   p2.every((r) => r.ok),
   p2.filter((r) => !r.ok),
 );
 check(
-  "P6 each framed mini-game paints its own true landscape room behind the stage (1600 x 900, the right file; RULE CHANGE 2026-11-20: the new pictures)",
+  "P6 each of the two paints its own true landscape room over the whole window with a 16:9 board on it (1600 x 900, the right file; RULE CHANGE 2026-11-20: no longer a framed stage)",
   artSeen.length === 2 &&
     artSeen.every(
       (r) =>
         r.art &&
         r.art.w === 1600 &&
         r.art.h === 900 &&
+        r.art.fillsWindow &&
+        Math.abs(r.art.ratio - 16 / 9) < 0.01 &&
         r.art.src.includes(
           {
             "dessert-run": "dessert-run",
@@ -234,8 +261,8 @@ const big = await openGame("dessert-run", "dessert-run-game");
 const bigF = await frame();
 await shot(page, "portraitonly-dessert-run-1920");
 check(
-  "P2b the same at 1920x1080 (the box is as tall as the window)",
-  big && isNineSixteen(bigF),
+  "P2b the same at 1920x1080 (the landscape board fills the window)",
+  big && isFull(bigF),
   bigF,
 );
 

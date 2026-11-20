@@ -159,6 +159,7 @@ import {
   Ban,
   type LucideIcon,
 } from "lucide-react";
+import { paintedFor } from "./paintedIcons.ts";
 
 /**
  * EMOJI -> ICON (developer 2026-11-19, Playgama 4.3.2: "the interface does not use emoji in place of icons"). The game's own screens and data wrote an emoji
@@ -169,7 +170,7 @@ import {
  * Only an emoji that has a faithful icon is listed. Ingredient and dish pictures that have no icon (a tomato, an onion, a mushroom ...) are NOT listed and
  * stay as they are: a wrong picture is worse than the emoji. `docs/PLATFORM-COMPLIANCE-2026-11-19.md` says how many are left.
  */
-export type EmojiIcon = { icon: LucideIcon } | { dot: string };
+export type EmojiIcon = { icon: LucideIcon } | { dot: string } | { picture: string };
 
 const i = (icon: LucideIcon): EmojiIcon => ({ icon });
 const dot = (color: string): EmojiIcon => ({ dot: color });
@@ -439,6 +440,9 @@ export function normalizeEmoji(raw: string): string {
 /** The icon for an emoji (a ZWJ sequence falls back to its first picture), or null when it has none. */
 export function iconFor(raw: string): EmojiIcon | null {
   const key = normalizeEmoji(raw);
+  // a PAINTED picture wins over a line icon (developer 2026-11-20, lib/paintedIcons.ts)
+  const painted = paintedFor(key);
+  if (painted) return { picture: painted };
   const whole = EMOJI_ICONS[key];
   if (whole) return whole;
   if (key.includes("‍")) return EMOJI_ICONS[key.split("‍")[0]!] ?? null;

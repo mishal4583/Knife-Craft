@@ -19,6 +19,18 @@ export const GRID_BOX = {
   size: (FRAME_BOX.size * 940) / 1080,
 } as const;
 export const COUNTER_Y = 750;
+/**
+ * The LANDSCAPE board (developer 2026-11-20): a 960 x 540 stage with the same square frame (460), standing in the middle, at (250, 40). Nothing about a board changes
+ * (a square board needs no new boards): the draw runs in the portrait stage's own coordinates under a translation by (dx, dy), so the frame, the cells, the crates and the
+ * gates are the very same drawing, and only the HUD (the screen's DOM) moves to the two sides. The room is the Codex wide picture behind the canvas, so the canvas paints
+ * neither the portrait room nor the counter.
+ */
+export const KD_WIDE = {
+  w: 960,
+  h: 540,
+  dx: 250 - FRAME_BOX.x,
+  dy: 40 - FRAME_BOX.y,
+} as const;
 /** How thick a gate's plate is, in stage units. */
 const GATE_THICK = 36;
 export const LEAVE_MS = 480;
@@ -26,10 +38,10 @@ export const LEAVE_MS = 480;
 export const cellOf = (board: Pick<CrateBoard, "cols">) => GRID_BOX.size / board.cols;
 
 /** The grid cell under a stage point (it may be outside the board), as whole numbers and as a fraction. */
-export function cellAt(board: Pick<CrateBoard, "cols">, x: number, y: number) {
+export function cellAt(board: Pick<CrateBoard, "cols">, x: number, y: number, wide = false) {
   const cell = cellOf(board);
-  const fx = (x - GRID_BOX.x) / cell;
-  const fy = (y - GRID_BOX.y) / cell;
+  const fx = (x - (wide ? KD_WIDE.dx : 0) - GRID_BOX.x) / cell;
+  const fy = (y - (wide ? KD_WIDE.dy : 0) - GRID_BOX.y) / cell;
   return { cx: Math.floor(fx), cy: Math.floor(fy), fx, fy };
 }
 
@@ -44,6 +56,8 @@ export type KdView = {
   dragId: string | null;
   /** A booster waiting for a tap: the crates (Rocket) or the dark blocks (Hammer) pulse. */
   armed: "rocket" | "hammer" | null;
+  /** The landscape board (`KD_WIDE`): no room and no counter are painted, the board is moved to the middle of a 960 x 540 stage. */
+  wide?: boolean;
 };
 
 const ANGLE: Record<Side, number> = {
@@ -124,8 +138,10 @@ function paintBack(
   board: CrateBoard,
   backdrop: CanvasImageSource | null,
   cell: number,
+  wide = false,
 ) {
-  if (backdrop) ctx.drawImage(backdrop, 0, 0, KD_STAGE.w, KD_STAGE.h);
+  if (wide) ctx.translate(KD_WIDE.dx, KD_WIDE.dy);
+  else if (backdrop) ctx.drawImage(backdrop, 0, 0, KD_STAGE.w, KD_STAGE.h);
   else {
     const g = ctx.createLinearGradient(0, 0, 0, KD_STAGE.h);
     g.addColorStop(0, "#7a5233");
@@ -147,18 +163,20 @@ function backLayer(
   board: CrateBoard,
   backdrop: CanvasImageSource | null,
   cell: number,
+  wide = false,
 ): HTMLCanvasElement | null {
   if (typeof document === "undefined") return null;
   const scale = ctx.getTransform().a || 1;
-  const key = `${board.cols}x${board.rows}@${scale}`;
+  const key = `${board.cols}x${board.rows}@${scale}${wide ? "w" : ""}`;
   if (back && back.key === key && back.backdrop === backdrop) return back.canvas;
   const canvas = back?.canvas ?? document.createElement("canvas");
-  canvas.width = Math.round(KD_STAGE.w * scale);
-  canvas.height = Math.round(KD_STAGE.h * scale);
+  const stage = wide ? KD_WIDE : KD_STAGE;
+  canvas.width = Math.round(stage.w * scale);
+  canvas.height = Math.round(stage.h * scale);
   const c = canvas.getContext("2d");
   if (!c) return null;
   c.setTransform(scale, 0, 0, scale, 0, 0);
-  paintBack(c, board, backdrop, cell);
+  paintBack(c, board, backdrop, cell, wide);
   back = { key, backdrop, canvas };
   return canvas;
 }
@@ -358,12 +376,22 @@ export function drawKitchenDispatch(
 ) {
   const { art, now } = view;
   const img = art?.images;
-  ctx.clearRect(0, 0, KD_STAGE.w, KD_STAGE.h);
+  const wide = !!view.wide;
+  const stage = wide ? KD_WIDE : KD_STAGE;
+  ctx.clearRect(0, 0, stage.w, stage.h);
   // the room and the floor of the board never change during a round: painted once into a layer, then copied
   const cell = cellOf(board);
-  const layer = backLayer(ctx, board, img?.backdrop ?? null, cell);
-  if (layer) ctx.drawImage(layer, 0, 0, KD_STAGE.w, KD_STAGE.h);
-  else paintBack(ctx, board, img?.backdrop ?? null, cell);
+  const backdrop = wide ? null : (img?.backdrop ?? null);
+  const layer = backLayer(ctx, board, backdrop, cell, wide);
+  if (layer) ctx.drawImage(layer, 0, 0, stage.w, stage.h);
+  else {
+    ctx.save();
+    paintBack(ctx, board, backdrop, cell, wide);
+    ctx.restore();
+  }
+  // the landscape board is the portrait drawing moved to its place on the wide stage
+  ctx.save();
+  if (wide) ctx.translate(KD_WIDE.dx, KD_WIDE.dy);
   const pulse = 0.55 + 0.45 * Math.sin(now / 140);
   // the dark blocks
   for (const w of board.walls) drawWall(ctx, board, w, view.armed === "hammer" ? pulse : 0);
@@ -439,6 +467,8 @@ export function drawKitchenDispatch(
       );
       ctx.globalAlpha = 1;
     }
-  // the counter in front, under the boosters
-  if (img?.counter) ctx.drawImage(img.counter, 0, COUNTER_Y, KD_STAGE.w, (KD_STAGE.w * 315) / 810);
+  ctx.restore();
+  // the counter in front, under the boosters (the landscape board has its boosters on the wall beside the frame)
+  if (!wide && img?.counter)
+    ctx.drawImage(img.counter, 0, COUNTER_Y, KD_STAGE.w, (KD_STAGE.w * 315) / 810);
 }

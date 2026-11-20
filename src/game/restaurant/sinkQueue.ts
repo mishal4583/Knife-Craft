@@ -110,7 +110,8 @@ export const HOSE = { x: 360, y: 236, w: 230, h: 230 } as const;
  * controls stay between 6 % and 90 % of the picture's height.
  */
 export const SINK_LAYOUT_WIDE = {
-  stage: { left: 0.3, top: 0.25, width: 0.4, height: 0.33 },
+  // developer 2026-11-20 ("place it properly inside the sink"): the dish sat low, over the basin's front rim; the box is centred on the basin's water now (the basin is x 655-1270, y 305-545 of the picture)
+  stage: { left: 0.3, top: 0.217, width: 0.4, height: 0.3 },
   hud: { left: 0.02, width: 0.27, top: 0.065, height: 0.085 },
   strip: { left: 0.02, width: 0.27, top: 0.165, height: 0.12 },
   status: { left: 0.3, width: 0.4, top: 0.585, height: 0.048 },

@@ -1,0 +1,1367 @@
+[
+ {
+  "sheet": "money-paper",
+  "title": "Money, paper and business",
+  "style": "ui",
+  "cols": 5,
+  "rows": 5,
+  "icons": [
+   [
+    "💵",
+    "banknote",
+    "a green dollar banknote"
+   ],
+   [
+    "💸",
+    "money-flying",
+    "a banknote with small wings flying away"
+   ],
+   [
+    "💰",
+    "money-bag",
+    "a tied money bag with a dollar sign"
+   ],
+   [
+    "💳",
+    "credit-card",
+    "a credit card"
+   ],
+   [
+    "🪙",
+    "coin",
+    "one gold coin"
+   ],
+   [
+    "🧾",
+    "receipt",
+    "a long paper till receipt with printed lines"
+   ],
+   [
+    "📋",
+    "clipboard",
+    "a clipboard with a checklist"
+   ],
+   [
+    "📊",
+    "chart-bars",
+    "a bar chart"
+   ],
+   [
+    "📈",
+    "chart-up",
+    "a chart with a rising line and arrow"
+   ],
+   [
+    "📉",
+    "chart-down",
+    "a chart with a falling line and arrow"
+   ],
+   [
+    "📅",
+    "calendar",
+    "a wall calendar page"
+   ],
+   [
+    "📆",
+    "calendar-tear",
+    "a tear-off calendar"
+   ],
+   [
+    "🗓",
+    "calendar-spiral",
+    "a spiral-bound desk calendar"
+   ],
+   [
+    "📒",
+    "ledger",
+    "a closed ledger notebook"
+   ],
+   [
+    "📄",
+    "page",
+    "a sheet of paper with text lines"
+   ],
+   [
+    "📃",
+    "page-curl",
+    "a paper sheet with a curled corner"
+   ],
+   [
+    "📜",
+    "scroll",
+    "a rolled parchment scroll"
+   ],
+   [
+    "📝",
+    "memo",
+    "a memo pad with a pencil"
+   ],
+   [
+    "🧮",
+    "abacus",
+    "an abacus"
+   ],
+   [
+    "⚖",
+    "scales",
+    "a pair of brass balance scales"
+   ],
+   [
+    "🏷",
+    "price-tag",
+    "a price tag on a string"
+   ],
+   [
+    "📖",
+    "open-book",
+    "an open book"
+   ],
+   [
+    "🗺",
+    "map",
+    "a folded paper map"
+   ],
+   [
+    "🧭",
+    "compass",
+    "a brass compass"
+   ],
+   [
+    "💾",
+    "save-disk",
+    "a floppy disk"
+   ]
+  ]
+ },
+ {
+  "sheet": "signs-arrows",
+  "title": "Signs and arrows",
+  "style": "ui",
+  "cols": 5,
+  "rows": 5,
+  "icons": [
+   [
+    "🔒",
+    "lock",
+    "a closed padlock"
+   ],
+   [
+    "🔓",
+    "unlock",
+    "an open padlock"
+   ],
+   [
+    "⛔",
+    "no-entry",
+    "a red round no-entry sign with a white bar"
+   ],
+   [
+    "🚫",
+    "prohibited",
+    "a red circle with a diagonal slash"
+   ],
+   [
+    "⚠",
+    "warning",
+    "a yellow warning triangle with an exclamation mark"
+   ],
+   [
+    "✅",
+    "check",
+    "a green square with a white tick"
+   ],
+   [
+    "❓",
+    "question-red",
+    "a red question mark"
+   ],
+   [
+    "❔",
+    "question-white",
+    "a white question mark with a dark outline"
+   ],
+   [
+    "ℹ",
+    "info",
+    "a blue round info badge with an i"
+   ],
+   [
+    "🔎",
+    "magnifier-right",
+    "a magnifying glass tilted to the right"
+   ],
+   [
+    "🔍",
+    "magnifier-left",
+    "a magnifying glass tilted to the left"
+   ],
+   [
+    "📍",
+    "pin-round",
+    "a round red map pin"
+   ],
+   [
+    "📌",
+    "pushpin",
+    "a red pushpin"
+   ],
+   [
+    "🎯",
+    "target",
+    "a dartboard with a dart in the middle"
+   ],
+   [
+    "⬆",
+    "arrow-up",
+    "a thick green arrow pointing up"
+   ],
+   [
+    "⬇",
+    "arrow-down",
+    "a thick orange arrow pointing down"
+   ],
+   [
+    "➡",
+    "arrow-right",
+    "a thick blue arrow pointing right"
+   ],
+   [
+    "↩",
+    "undo",
+    "a curved arrow turning back to the left"
+   ],
+   [
+    "🔁",
+    "repeat",
+    "two arrows chasing each other in a loop"
+   ],
+   [
+    "♻",
+    "recycle",
+    "three green arrows in a recycling triangle"
+   ],
+   [
+    "🔜",
+    "soon",
+    "a right arrow with the word-free \"soon\" look: an arrow ending at a small clock mark"
+   ],
+   [
+    "⏩",
+    "fast-forward",
+    "two thick right-pointing triangles"
+   ],
+   [
+    "▶",
+    "play",
+    "one thick right-pointing triangle"
+   ],
+   [
+    "⏸",
+    "pause",
+    "two thick vertical bars"
+   ],
+   [
+    "♾",
+    "infinity",
+    "an infinity loop"
+   ]
+  ]
+ },
+ {
+  "sheet": "effects-time",
+  "title": "Effects, states and time",
+  "style": "ui",
+  "cols": 5,
+  "rows": 5,
+  "icons": [
+   [
+    "★",
+    "star-solid",
+    "a plain bright gold five-point star"
+   ],
+   [
+    "⭐",
+    "star",
+    "a gold five-point star with a soft highlight"
+   ],
+   [
+    "🌟",
+    "star-glow",
+    "a gold star with glow rays"
+   ],
+   [
+    "✨",
+    "sparkles",
+    "three small four-point sparkles, one large"
+   ],
+   [
+    "💥",
+    "burst",
+    "an orange-yellow impact burst"
+   ],
+   [
+    "🔥",
+    "fire",
+    "a flame, orange and yellow"
+   ],
+   [
+    "❄",
+    "snowflake",
+    "a white-blue six-arm snowflake"
+   ],
+   [
+    "🧊",
+    "ice-cube",
+    "a pale blue ice cube"
+   ],
+   [
+    "⚡",
+    "lightning",
+    "a yellow lightning bolt"
+   ],
+   [
+    "⏳",
+    "hourglass",
+    "an hourglass with sand"
+   ],
+   [
+    "⏱",
+    "stopwatch",
+    "a stopwatch"
+   ],
+   [
+    "🕒",
+    "clock",
+    "a round wall clock showing three o'clock"
+   ],
+   [
+    "🌙",
+    "moon",
+    "a crescent moon"
+   ],
+   [
+    "☀",
+    "sun",
+    "a sun with rays"
+   ],
+   [
+    "🌅",
+    "sunrise",
+    "a sun rising over a horizon"
+   ],
+   [
+    "🌤",
+    "sun-cloud",
+    "a sun peeking out from behind a cloud"
+   ],
+   [
+    "🌆",
+    "dusk-city",
+    "a city skyline at dusk"
+   ],
+   [
+    "💡",
+    "bulb",
+    "a lit light bulb"
+   ],
+   [
+    "🔔",
+    "bell",
+    "a golden bell"
+   ],
+   [
+    "🛎",
+    "service-bell",
+    "a hotel service desk bell"
+   ],
+   [
+    "💬",
+    "speech",
+    "a speech bubble"
+   ],
+   [
+    "📣",
+    "megaphone",
+    "a megaphone"
+   ],
+   [
+    "🌀",
+    "swirl",
+    "a blue swirl"
+   ],
+   [
+    "🏁",
+    "flag",
+    "a chequered flag"
+   ],
+   [
+    "🌡",
+    "thermometer",
+    "a glass thermometer"
+   ]
+  ]
+ },
+ {
+  "sheet": "cleaning-repair",
+  "title": "Cleaning and repair",
+  "style": "ui",
+  "cols": 5,
+  "rows": 5,
+  "icons": [
+   [
+    "🧽",
+    "sponge",
+    "a yellow kitchen sponge with a green scouring side"
+   ],
+   [
+    "🧹",
+    "broom",
+    "a straw broom"
+   ],
+   [
+    "🧼",
+    "soap",
+    "a bar of soap with bubbles"
+   ],
+   [
+    "🧴",
+    "pump-bottle",
+    "a pump bottle of lotion or soap"
+   ],
+   [
+    "🪣",
+    "bucket",
+    "a metal bucket"
+   ],
+   [
+    "🧻",
+    "paper-roll",
+    "a roll of paper towel"
+   ],
+   [
+    "🫧",
+    "bubbles",
+    "a cluster of soap bubbles"
+   ],
+   [
+    "💧",
+    "droplet",
+    "one blue water droplet"
+   ],
+   [
+    "🚻",
+    "restroom",
+    "a restroom sign with two figures"
+   ],
+   [
+    "🚽",
+    "toilet",
+    "a toilet"
+   ],
+   [
+    "🧤",
+    "gloves",
+    "a pair of rubber gloves"
+   ],
+   [
+    "🔧",
+    "wrench",
+    "a wrench"
+   ],
+   [
+    "🛠",
+    "hammer-wrench",
+    "a hammer and a wrench crossed"
+   ],
+   [
+    "⚒",
+    "hammer-pick",
+    "a hammer and a pick crossed"
+   ],
+   [
+    "🔨",
+    "hammer",
+    "a hammer"
+   ],
+   [
+    "🧰",
+    "toolbox",
+    "a red toolbox"
+   ],
+   [
+    "🧲",
+    "magnet",
+    "a red horseshoe magnet"
+   ],
+   [
+    "🪓",
+    "axe",
+    "an axe"
+   ],
+   [
+    "✂",
+    "scissors",
+    "a pair of scissors"
+   ],
+   [
+    "🗡",
+    "dagger",
+    "a small knife or dagger"
+   ],
+   [
+    "📏",
+    "ruler",
+    "a straight ruler"
+   ],
+   [
+    "📐",
+    "set-square",
+    "a triangle set square"
+   ],
+   [
+    "🧪",
+    "test-tube",
+    "a test tube with liquid"
+   ],
+   [
+    "🛡",
+    "shield",
+    "a shield"
+   ],
+   [
+    "🎛",
+    "knobs",
+    "a panel of control knobs"
+   ]
+  ]
+ },
+ {
+  "sheet": "kitchen-containers",
+  "title": "Kitchen things and containers",
+  "style": "ui",
+  "cols": 5,
+  "rows": 5,
+  "icons": [
+   [
+    "🔪",
+    "knife",
+    "a chef's knife"
+   ],
+   [
+    "🍳",
+    "pan-egg",
+    "a frying pan with a fried egg"
+   ],
+   [
+    "🥄",
+    "spoon",
+    "a metal spoon"
+   ],
+   [
+    "🍴",
+    "fork-knife",
+    "a fork and a knife"
+   ],
+   [
+    "🍽",
+    "plate-cutlery",
+    "a plate with a fork and a knife"
+   ],
+   [
+    "🥣",
+    "bowl-spoon",
+    "a bowl with a spoon"
+   ],
+   [
+    "🥡",
+    "takeout",
+    "a takeout box"
+   ],
+   [
+    "🫙",
+    "jar",
+    "a glass jar with a lid"
+   ],
+   [
+    "🥫",
+    "can",
+    "a tin can"
+   ],
+   [
+    "📦",
+    "box",
+    "a cardboard box"
+   ],
+   [
+    "🗑",
+    "bin",
+    "a wastebasket"
+   ],
+   [
+    "🗄",
+    "file-cabinet",
+    "a file cabinet with drawers"
+   ],
+   [
+    "🛒",
+    "cart",
+    "a shopping cart"
+   ],
+   [
+    "🛍",
+    "shopping-bags",
+    "two shopping bags"
+   ],
+   [
+    "🧺",
+    "basket",
+    "a woven basket"
+   ],
+   [
+    "🍾",
+    "bottle",
+    "a bottle with a popping cork"
+   ],
+   [
+    "🥤",
+    "cup-straw",
+    "a cup with a straw"
+   ],
+   [
+    "☕",
+    "coffee",
+    "a cup of hot coffee"
+   ],
+   [
+    "🫖",
+    "teapot",
+    "a teapot"
+   ],
+   [
+    "🍷",
+    "wine",
+    "a glass of red wine"
+   ],
+   [
+    "🍶",
+    "sake",
+    "a sake bottle and cup"
+   ],
+   [
+    "🥛",
+    "milk",
+    "a glass of milk"
+   ],
+   [
+    "🧂",
+    "salt",
+    "a salt shaker"
+   ],
+   [
+    "🫗",
+    "pouring",
+    "a glass pouring liquid"
+   ],
+   [
+    "🥢",
+    "chopsticks",
+    "a pair of chopsticks"
+   ]
+  ]
+ },
+ {
+  "sheet": "dishes",
+  "title": "Dishes and treats",
+  "style": "food",
+  "cols": 5,
+  "rows": 5,
+  "icons": [
+   [
+    "🍗",
+    "drumstick",
+    "a roast chicken drumstick"
+   ],
+   [
+    "🥗",
+    "salad",
+    "a green salad bowl"
+   ],
+   [
+    "🍲",
+    "stew-pot",
+    "a pot of stew"
+   ],
+   [
+    "🍛",
+    "curry-rice",
+    "curry and rice on a plate"
+   ],
+   [
+    "🥙",
+    "flatbread",
+    "a stuffed flatbread"
+   ],
+   [
+    "🍢",
+    "skewers",
+    "oden skewers"
+   ],
+   [
+    "🥘",
+    "shallow-pan",
+    "a shallow pan of paella-style food"
+   ],
+   [
+    "🍔",
+    "burger",
+    "a hamburger"
+   ],
+   [
+    "🍕",
+    "pizza",
+    "a slice of pizza"
+   ],
+   [
+    "🍰",
+    "cake",
+    "a slice of strawberry shortcake"
+   ],
+   [
+    "🍜",
+    "noodles",
+    "a steaming noodle bowl"
+   ],
+   [
+    "🍝",
+    "spaghetti",
+    "spaghetti on a plate"
+   ],
+   [
+    "🌮",
+    "taco",
+    "a taco"
+   ],
+   [
+    "🍤",
+    "shrimp",
+    "fried shrimp"
+   ],
+   [
+    "🍣",
+    "sushi",
+    "a piece of sushi"
+   ],
+   [
+    "🧆",
+    "falafel",
+    "falafel balls"
+   ],
+   [
+    "🫔",
+    "tamale",
+    "a tamale in a corn husk"
+   ],
+   [
+    "🍱",
+    "bento",
+    "a bento box"
+   ],
+   [
+    "🥐",
+    "croissant",
+    "a croissant"
+   ],
+   [
+    "🍦",
+    "ice-cream",
+    "a soft-serve ice cream cone"
+   ],
+   [
+    "🍟",
+    "fries",
+    "fries in a carton"
+   ],
+   [
+    "🍬",
+    "candy",
+    "a wrapped candy"
+   ],
+   [
+    "🍯",
+    "honey",
+    "a honey pot"
+   ],
+   [
+    "🥚",
+    "egg",
+    "an egg"
+   ],
+   [
+    "🥜",
+    "peanuts",
+    "peanuts"
+   ]
+  ]
+ },
+ {
+  "sheet": "people-roles",
+  "title": "People and roles",
+  "style": "ui",
+  "cols": 5,
+  "rows": 5,
+  "icons": [
+   [
+    "🧑‍🍳",
+    "chef",
+    "a chef in a white hat and jacket (neutral)"
+   ],
+   [
+    "👩‍🍳",
+    "chef-woman",
+    "a woman chef in a white hat"
+   ],
+   [
+    "👨‍🍳",
+    "chef-man",
+    "a man chef in a white hat"
+   ],
+   [
+    "🧑‍🔧",
+    "mechanic",
+    "a repair person with a wrench and overalls"
+   ],
+   [
+    "🤵",
+    "waiter",
+    "a waiter in a vest and bow tie"
+   ],
+   [
+    "👵",
+    "grandma",
+    "an older woman with grey hair"
+   ],
+   [
+    "👴",
+    "grandpa",
+    "an older man with grey hair"
+   ],
+   [
+    "👥",
+    "two-people",
+    "two people side by side"
+   ],
+   [
+    "👤",
+    "one-person",
+    "one person bust"
+   ],
+   [
+    "🙋",
+    "hand-up",
+    "a person raising a hand"
+   ],
+   [
+    "🧑‍🤝‍🧑",
+    "team",
+    "two people shaking hands"
+   ],
+   [
+    "🕵",
+    "inspector",
+    "an inspector with a hat and a magnifier"
+   ],
+   [
+    "🤝",
+    "handshake",
+    "a handshake"
+   ],
+   [
+    "👋",
+    "wave",
+    "a waving hand"
+   ],
+   [
+    "👏",
+    "clap",
+    "clapping hands"
+   ],
+   [
+    "👩",
+    "woman",
+    "a woman with brown hair"
+   ],
+   [
+    "🧑",
+    "person",
+    "a person with short hair"
+   ],
+   [
+    "👩‍🦱",
+    "woman-curly",
+    "a woman with curly hair"
+   ],
+   [
+    "👱‍♀",
+    "woman-blond",
+    "a woman with blond hair"
+   ],
+   [
+    "🧔",
+    "beard",
+    "a bearded person"
+   ],
+   [
+    "👩‍🦰",
+    "woman-red",
+    "a woman with red hair"
+   ],
+   [
+    "🧑‍🦱",
+    "person-curly",
+    "a person with curly hair"
+   ],
+   [
+    "👨",
+    "man",
+    "a man with dark hair"
+   ],
+   [
+    "🧕",
+    "headscarf",
+    "a person with a headscarf"
+   ],
+   [
+    "👦",
+    "boy",
+    "a boy"
+   ]
+  ]
+ },
+ {
+  "sheet": "faces-hands",
+  "title": "Faces and hands",
+  "style": "ui",
+  "cols": 5,
+  "rows": 5,
+  "icons": [
+   [
+    "🙂",
+    "smile",
+    "a slightly smiling face"
+   ],
+   [
+    "😊",
+    "happy",
+    "a happy smiling face with smiling eyes"
+   ],
+   [
+    "🙁",
+    "frown",
+    "a slightly frowning face"
+   ],
+   [
+    "😐",
+    "neutral",
+    "a neutral face"
+   ],
+   [
+    "😟",
+    "worried",
+    "a worried face"
+   ],
+   [
+    "😬",
+    "grimace",
+    "a grimacing face"
+   ],
+   [
+    "😤",
+    "triumph",
+    "a face with a look of triumph"
+   ],
+   [
+    "😍",
+    "heart-eyes",
+    "a face with heart eyes"
+   ],
+   [
+    "😋",
+    "yum",
+    "a face savouring food"
+   ],
+   [
+    "😌",
+    "relieved",
+    "a relieved face"
+   ],
+   [
+    "🧐",
+    "monocle",
+    "a face with a monocle"
+   ],
+   [
+    "🙎‍♂",
+    "pout",
+    "a man with a pouting face"
+   ],
+   [
+    "👵🏻",
+    "grandma-light",
+    "an older woman with light skin"
+   ],
+   [
+    "🧔‍♂",
+    "beard-man",
+    "a bearded man"
+   ],
+   [
+    "🤖",
+    "robot",
+    "a friendly robot face"
+   ],
+   [
+    "👀",
+    "eyes",
+    "a pair of eyes"
+   ],
+   [
+    "👆",
+    "point-up",
+    "a hand pointing up"
+   ],
+   [
+    "👇",
+    "point-down",
+    "a hand pointing down"
+   ],
+   [
+    "👉",
+    "point-right",
+    "a hand pointing right"
+   ],
+   [
+    "✋",
+    "raised-hand",
+    "a raised open hand"
+   ],
+   [
+    "🏃",
+    "runner",
+    "a running figure"
+   ],
+   [
+    "🚶",
+    "walker",
+    "a walking figure"
+   ],
+   [
+    "♥",
+    "heart-solid",
+    "a plain red heart"
+   ],
+   [
+    "❤",
+    "heart",
+    "a glossy red heart"
+   ],
+   [
+    "🤍",
+    "heart-white",
+    "a white heart"
+   ]
+  ]
+ },
+ {
+  "sheet": "places-fun",
+  "title": "Places, vehicles and fun",
+  "style": "ui",
+  "cols": 5,
+  "rows": 5,
+  "icons": [
+   [
+    "🏠",
+    "house",
+    "a small house"
+   ],
+   [
+    "🏬",
+    "department-store",
+    "a department store building"
+   ],
+   [
+    "🏪",
+    "shop",
+    "a small convenience store with an awning"
+   ],
+   [
+    "🏗",
+    "construction",
+    "a crane over a building site"
+   ],
+   [
+    "🏙",
+    "cityscape",
+    "a city skyline in daylight"
+   ],
+   [
+    "🏛",
+    "landmark",
+    "a classical building with columns"
+   ],
+   [
+    "🚪",
+    "door",
+    "a wooden door"
+   ],
+   [
+    "🪑",
+    "chair",
+    "a wooden chair"
+   ],
+   [
+    "💺",
+    "seat",
+    "a padded seat"
+   ],
+   [
+    "🚚",
+    "truck",
+    "a delivery truck"
+   ],
+   [
+    "🚗",
+    "car",
+    "a car"
+   ],
+   [
+    "🚙",
+    "suv",
+    "a sport utility vehicle"
+   ],
+   [
+    "📺",
+    "tv",
+    "a television"
+   ],
+   [
+    "🎮",
+    "gamepad",
+    "a game controller"
+   ],
+   [
+    "📱",
+    "phone",
+    "a smartphone"
+   ],
+   [
+    "🌍",
+    "globe",
+    "the Earth globe"
+   ],
+   [
+    "⚙",
+    "gear",
+    "a gear"
+   ],
+   [
+    "🎬",
+    "clapper",
+    "a film clapper board"
+   ],
+   [
+    "📸",
+    "camera",
+    "a camera with a flash"
+   ],
+   [
+    "🎵",
+    "note",
+    "a musical note"
+   ],
+   [
+    "🎨",
+    "palette",
+    "a painter's palette"
+   ],
+   [
+    "🎁",
+    "gift",
+    "a wrapped present"
+   ],
+   [
+    "🎉",
+    "party-popper",
+    "a party popper with confetti"
+   ],
+   [
+    "🎊",
+    "confetti-ball",
+    "a confetti ball"
+   ],
+   [
+    "🏃‍♂",
+    "runner-man",
+    "a running man"
+   ]
+  ]
+ },
+ {
+  "sheet": "awards-nature",
+  "title": "Awards, nature and decoration",
+  "style": "ui",
+  "cols": 6,
+  "rows": 5,
+  "icons": [
+   [
+    "🏆",
+    "trophy",
+    "a gold trophy cup"
+   ],
+   [
+    "🎖",
+    "medal-military",
+    "a medal with a ribbon"
+   ],
+   [
+    "🏅",
+    "medal-sport",
+    "a sports medal"
+   ],
+   [
+    "🥇",
+    "medal-gold",
+    "a first-place gold medal"
+   ],
+   [
+    "🥈",
+    "medal-silver",
+    "a second-place silver medal"
+   ],
+   [
+    "🥉",
+    "medal-bronze",
+    "a third-place bronze medal"
+   ],
+   [
+    "👑",
+    "crown",
+    "a gold crown"
+   ],
+   [
+    "🎗",
+    "ribbon",
+    "a reminder ribbon"
+   ],
+   [
+    "⚓",
+    "anchor",
+    "an anchor"
+   ],
+   [
+    "🌱",
+    "seedling",
+    "a seedling"
+   ],
+   [
+    "🪴",
+    "potted-plant",
+    "a potted plant"
+   ],
+   [
+    "🌻",
+    "sunflower",
+    "a sunflower"
+   ],
+   [
+    "🌼",
+    "blossom",
+    "a daisy blossom"
+   ],
+   [
+    "🌷",
+    "tulip",
+    "a tulip"
+   ],
+   [
+    "🌸",
+    "cherry-blossom",
+    "a cherry blossom"
+   ],
+   [
+    "🏵",
+    "rosette",
+    "a rosette flower badge"
+   ],
+   [
+    "💐",
+    "bouquet",
+    "a bouquet of flowers"
+   ],
+   [
+    "🥀",
+    "wilted",
+    "a wilted flower"
+   ],
+   [
+    "🌲",
+    "evergreen",
+    "an evergreen tree"
+   ],
+   [
+    "🪵",
+    "log",
+    "a wood log"
+   ],
+   [
+    "🪶",
+    "feather",
+    "a feather"
+   ],
+   [
+    "🍁",
+    "maple",
+    "a maple leaf"
+   ],
+   [
+    "🍃",
+    "leaf",
+    "a leaf in the wind"
+   ],
+   [
+    "🎋",
+    "tanabata",
+    "a bamboo branch with paper strips"
+   ],
+   [
+    "🥂",
+    "toast",
+    "two clinking glasses"
+   ],
+   [
+    "🎲",
+    "die",
+    "a six-sided die"
+   ],
+   [
+    "🐙",
+    "octopus",
+    "an octopus"
+   ],
+   [
+    "🐉",
+    "dragon",
+    "a small friendly dragon"
+   ],
+   [
+    "🫘",
+    "beans",
+    "a pile of beans"
+   ],
+   [
+    "🫒",
+    "olive",
+    "an olive"
+   ]
+  ]
+ }
+]
