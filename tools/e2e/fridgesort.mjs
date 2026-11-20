@@ -830,6 +830,70 @@ try {
     { backBtn, stillIn },
   );
 
+  // S29 (developer 2026-11-20: "make the fridge sort game exactly like this image"): in a wide window the game is the mock-up's two columns: the HUD, the note, a BIG basket
+  // and the delivery pill on the left, a cream cabinet of shelves with a gold rim on the right (rows are fixed shares of the window's height, so no shelf balloons); a piece
+  // tapped and then a shelf tapped still sorts the whole basket
+  for (const [w, h] of [
+    [1280, 720],
+    [1917, 912],
+  ]) {
+    await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
+    await boot(page, saveAt(20));
+    await openInventory(page);
+    await openGame(page);
+    await sleep(600);
+    const m = await page.evaluate(() => {
+      const r = (sel) => document.querySelector(sel)?.getBoundingClientRect();
+      const crate = r('[data-testid="sort-crate"]');
+      const panel = r('[data-testid="sort-fridge"]');
+      const slip = r('[data-testid="sort-slip"]');
+      const timer = r('[data-testid="sort-timer"]');
+      const shelves = [...document.querySelectorAll("[data-target-id]")].map((e) =>
+        e.getBoundingClientRect(),
+      );
+      const tokens = [...document.querySelectorAll("[data-piece]")].map((e) =>
+        e.getBoundingClientRect(),
+      );
+      return {
+        crateW: Math.round(crate?.width ?? 0),
+        crateRight: Math.round(crate?.right ?? 0),
+        panelLeft: Math.round(panel?.left ?? 0),
+        panelTop: Math.round(panel?.top ?? 0),
+        timerBottom: Math.round(timer?.bottom ?? 0),
+        crateAboveSlip: !!(crate && slip && crate.bottom <= slip.top + 2),
+        shelfMin: Math.round(Math.min(...shelves.map((x) => x.height))),
+        tokenMin: Math.round(Math.min(...tokens.map((x) => x.width))),
+        sideways: document.documentElement.scrollWidth > innerWidth + 1,
+        vw: innerWidth,
+        vh: innerHeight,
+      };
+    });
+    await shot(page, `fridgesort-wide-${w}`);
+    check(
+      `S29 at ${w} x ${h} the basket is on the left and big, the cabinet on the right below the HUD, every shelf at least 48 px tall, every piece at least 48 px, no sideways scroll`,
+      m.crateRight < m.panelLeft &&
+        m.crateW >= m.vw * 0.3 &&
+        m.panelTop > 0 &&
+        m.crateAboveSlip &&
+        m.shelfMin >= 48 &&
+        m.tokenMin >= 48 &&
+        !m.sideways,
+      m,
+    );
+    await sortAll(page);
+    await sleep(1500);
+    const finished = await page.evaluate(
+      () => !!document.querySelector('[data-testid="sort-result"]'),
+    );
+    check(
+      `S29 at ${w} x ${h} tapping each piece and then its shelf sorts the whole basket`,
+      finished,
+      {
+        finished,
+      },
+    );
+  }
+
   const errors = logs.filter(
     (l) => /error/i.test(l) && !/favicon|Failed to load resource/i.test(l),
   );

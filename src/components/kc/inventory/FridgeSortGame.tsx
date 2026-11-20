@@ -64,16 +64,18 @@ const ART: Record<string, { file: string; kind: ArtKind }> = {
   "veg-salad": { file: "bin-salad", kind: "bin" },
   "veg-stems": { file: "bin-stems", kind: "bin" },
   "veg-pods": { file: "bin-pods", kind: "bin" },
-  "fruit-drawer": { file: "drawer-fruit", kind: "drawer" },
-  "greens-drawer": { file: "drawer-greens", kind: "drawer" },
-  "door-butter": { file: "rack-butter", kind: "rack-butter" },
-  "door-aromatics": { file: "rack-aromatics", kind: "rack-aromatics" },
+  // RULE CHANGE (developer 2026-11-20, the mock-up): all eight are the same wooden crate now (Codex, `make-fridge-sort-crates.py`), cut onto ONE canvas so the blank name slat
+  // is at the same height, so they share one kind; the drawers and racks of the old set (different shapes) are gone
+  "fruit-drawer": { file: "drawer-fruit", kind: "bin" },
+  "greens-drawer": { file: "drawer-greens", kind: "bin" },
+  "door-butter": { file: "rack-butter", kind: "bin" },
+  "door-aromatics": { file: "rack-aromatics", kind: "bin" },
 };
 const artOf = (id: string): { file: string; kind: ArtKind } =>
   ART[id] ?? { file: "shelf-glass", kind: "shelf" };
 /** Where the name chip sits on the art: over the piece's blank label plaque (bins, drawers, racks) or the shelf's top-left corner. */
 const ART_CHIP: Record<ArtKind, string> = {
-  bin: "left-1/2 top-[72%] -translate-x-1/2 -translate-y-1/2",
+  bin: "left-1/2 top-[79%] -translate-x-1/2 -translate-y-1/2",
   drawer: "left-1/2 top-[62%] -translate-x-1/2 -translate-y-1/2",
   "rack-butter": "left-1/2 top-[78%] -translate-x-1/2 -translate-y-1/2",
   "rack-aromatics": "left-1/2 top-[84%] -translate-x-1/2 -translate-y-1/2",
@@ -629,11 +631,11 @@ export function FridgeSortGame({
           if (selected !== null) resolveDrop(selected, t.id);
         }}
         className={cn(
-          "relative flex h-full min-h-0 flex-col items-center gap-0.5 rounded-2xl border-2 px-1.5 pb-1 pt-1 text-left transition-colors",
+          "relative flex h-full min-h-0 flex-col items-center gap-0.5 rounded-2xl border-2 px-1.5 pb-1 pt-1 text-left transition-colors land:rounded-[clamp(18px,3cqh,30px)]",
           kind === "shelf" ? "col-span-2" : "",
           glow
             ? "border-gold bg-gold/30 shadow-[0_0_0_3px_rgba(230,180,60,0.4)]"
-            : "border-[#d9b779]/70 bg-white/25",
+            : "border-[#d9b779]/70 bg-white/25 land:border land:border-[#e8d3a0] land:bg-[#fff7e0]/80",
           need === 0 && "opacity-70",
         )}
       >
@@ -655,7 +657,7 @@ export function FridgeSortGame({
           />
           <span
             className={cn(
-              "pointer-events-none absolute z-10 max-w-[98%] truncate whitespace-nowrap rounded-full bg-[#f3e1b8]/95 px-2 py-0.5 font-ui text-[11px] font-extrabold text-walnut-dark shadow-sm max-[360px]:px-1 max-[360px]:text-[10px]",
+              "pointer-events-none absolute z-10 max-w-[98%] truncate whitespace-nowrap rounded-full bg-[#f3e1b8]/95 px-2 py-0.5 font-ui text-[11px] font-extrabold text-walnut-dark shadow-sm max-[360px]:px-1 max-[360px]:text-[10px] land:bg-[#fffaf0] land:px-[1.8cqh] land:py-[.5cqh] land:text-[clamp(13px,2.2cqh,19px)]",
               ART_CHIP[kind],
             )}
             data-shelf-chip={t.id}
@@ -704,34 +706,51 @@ export function FridgeSortGame({
   // The shelves' rows: a wide shelf (Dairy, Meat) takes a whole row, the bins, drawers and racks sit two to a row. The rows share the
   // fridge's height, so every shelf is on screen with no scrolling (a very small screen still scrolls, with a "more shelves" cue).
   const rowSizes = (() => {
-    const rows: string[] = [];
+    const kinds: ("band" | "bin")[] = [];
     let col = 0;
     for (const t of shown) {
       if (artOf(t.id).kind === "shelf") {
-        if (col !== 0) rows.push(`minmax(${dense ? 48 : 58}px, 1fr)`);
-        rows.push(`minmax(${dense ? 48 : 52}px, 0.62fr)`);
+        if (col !== 0) kinds.push("bin");
+        kinds.push("band");
         col = 0;
       } else if (col === 0) {
         col = 1;
       } else {
-        rows.push(`minmax(${dense ? 48 : 58}px, 1fr)`);
+        kinds.push("bin");
         col = 0;
       }
     }
-    if (col !== 0) rows.push(`minmax(${dense ? 48 : 58}px, 1fr)`);
-    return rows.join(" ");
+    if (col !== 0) kinds.push("bin");
+    // landscape: a wide shelf is a band of 10.5 % of the window's height, a bin row 17 % (smaller when the crate is full); a cabinet with few shelves stretches them up to
+    // 1.3 x so it is never half empty, and one with many scrolls past the panel (the "More shelves below" cue)
+    const bandH = dense ? 8.6 : 10.5;
+    const binH = dense ? 13 : 17;
+    const total = kinds.reduce((n, k) => n + (k === "band" ? bandH : binH), 0);
+    const grow = Math.min(1.3, Math.max(1, 72 / Math.max(1, total)));
+    return kinds
+      .map((k) =>
+        wide
+          ? `${Math.round((k === "band" ? bandH : binH) * grow * 10) / 10}cqh`
+          : k === "band"
+            ? `minmax(${dense ? 48 : 52}px, 0.62fr)`
+            : `minmax(${dense ? 48 : 58}px, 1fr)`,
+      )
+      .join(" ");
   })();
+  /** A piece's side: px as before, but in landscape a share of the basket's width (360 px is the upright basket), so a bigger basket has bigger pieces. */
+  const px = (n: number): number | string => (wide ? `max(48px, ${(n / 360) * 100}cqw)` : n);
 
   // LANDSCAPE (developer 2026-11-20): the wide room behind the game's own landscape layout (the land: classes: crate and basket side by side).
 
   return (
     <div
       ref={rootRef}
-      className="relative flex h-full w-full select-none flex-col overflow-hidden bg-[#3b2a1d] touch-none"
+      className="relative flex h-full w-full select-none flex-col overflow-hidden bg-[#3b2a1d] touch-none [container-type:size] land:grid land:grid-cols-[46fr_54fr] land:grid-rows-[auto_auto_minmax(0,1fr)]"
       style={{
         backgroundImage: `url(${wide ? landscapeGameArt("fridge-sort") : fsUrl("kitchen-wall")})`,
         backgroundSize: "cover",
-        backgroundPosition: "center bottom",
+        // the wide room (the mock-up's): the jar shelf must stay under the note row, the cloth under the basket, whatever the window's shape
+        backgroundPosition: wide ? "center 35%" : "center bottom",
       }}
       data-testid="fridge-sort"
       data-phase={phase}
@@ -740,13 +759,13 @@ export function FridgeSortGame({
       data-left={crateLeft.length}
     >
       {/* HUD: pause, clock and score on the painted wooden plaques */}
-      <div className="flex items-center gap-2 px-3 pt-2 land:w-[calc(50%-8px)] land:px-5 land:pt-4">
+      <div className="flex items-center gap-2 px-3 pt-2 land:col-start-1 land:row-start-1 land:gap-3 land:px-[3cqw] land:pt-[2.4cqh]">
         <button
           type="button"
           onClick={pause}
           aria-label={phase === "ready" ? "Back" : "Pause"}
           data-testid="sort-pause"
-          className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-walnut text-[18px] text-gold"
+          className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-walnut text-[18px] text-gold land:h-[7cqh] land:min-h-12 land:w-[7cqh] land:min-w-12 land:text-[26px]"
         >
           <Art name="hud-round" className="absolute inset-0 h-full w-full object-fill" />
           <span className="relative">{phase === "ready" ? "←" : "⏸"}</span>
@@ -754,7 +773,7 @@ export function FridgeSortGame({
         <Plaque
           testId="sort-timer"
           className={cn(
-            "h-12 min-w-0 flex-1 font-ui text-[22px] font-black tabular-nums",
+            "h-12 min-w-0 flex-1 font-ui text-[22px] font-black tabular-nums land:h-[7cqh] land:min-h-12 land:text-[clamp(24px,4.2cqh,40px)]",
             low ? "text-tomato" : "text-ivory",
           )}
         >
@@ -762,7 +781,7 @@ export function FridgeSortGame({
         </Plaque>
         <Plaque
           testId="sort-score"
-          className="h-12 min-w-[104px] px-2 font-ui text-[16px] font-black tabular-nums text-ivory"
+          className="h-12 min-w-[104px] px-2 font-ui text-[16px] font-black tabular-nums text-ivory land:h-[7cqh] land:min-h-12 land:min-w-[9cqw] land:text-[clamp(20px,3.6cqh,34px)]"
         >
           <span aria-hidden className="text-gold">
             ★
@@ -771,14 +790,14 @@ export function FridgeSortGame({
         </Plaque>
       </div>
       {/* the star bar: the painted frame, a fill that grows with the score, and a star on each painted ring */}
-      <div className="px-4 pt-2 land:w-[calc(50%-8px)] land:px-5">
-        <div className="land:max-w-[360px]">
+      <div className="px-4 pt-2 land:col-start-1 land:row-start-2 land:px-[3cqw] land:pt-[1.6cqh]">
+        <div className="land:w-[27cqw] land:max-w-full">
           <StarBar progress={progress} marks={STAR_AT} />
         </div>
-        <div className="mt-1 flex min-h-[34px] items-center gap-2 font-ui">
+        <div className="mt-1 flex min-h-[34px] items-center gap-2 font-ui land:mt-[1.4cqh] land:gap-3">
           <p
             className={cn(
-              "min-w-0 flex-1 rounded-xl px-2.5 py-1 text-[13px] font-extrabold leading-tight",
+              "min-w-0 flex-1 rounded-xl px-2.5 py-1 text-[13px] font-extrabold leading-tight land:rounded-full land:border-2 land:border-[#d6a23c] land:px-[2cqw] land:py-[1.1cqh] land:text-[clamp(15px,2.9cqh,26px)] land:shadow-[0_3px_8px_rgba(40,20,5,.35)]",
               note?.tone === "bad"
                 ? "bg-[#7a2a1d]/85 text-[#ffe1d6]"
                 : note?.tone === "good"
@@ -810,7 +829,7 @@ export function FridgeSortGame({
             data-testid="sort-help"
             aria-label="How to play"
             onClick={() => setGuide(true)}
-            className="press grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-[#d6b46a] bg-walnut-dark text-[16px] font-black text-gold"
+            className="press grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-[#d6b46a] bg-walnut-dark text-[16px] font-black text-gold land:h-[7cqh] land:min-h-12 land:w-[7cqh] land:min-w-12 land:text-[clamp(18px,3.4cqh,30px)]"
           >
             ?
           </button>
@@ -819,18 +838,22 @@ export function FridgeSortGame({
 
       {/* A phone on its side (developer 2026-11-18): the basket and the delivery slip on the left, the shelves on the right, so the shelves are on
           screen. Upright: the groups are `display: contents` and the DOM order is the old single column, so nothing moves. */}
-      <div className="contents land:flex land:min-h-0 land:flex-1 land:gap-2 land:px-2 land:pb-1">
-        <div className="contents land:flex land:min-h-0 land:min-w-0 land:flex-1 land:basis-0 land:flex-col">
+      <div className="contents">
+        <div className="contents land:col-start-2 land:row-span-3 land:row-start-1 land:flex land:min-h-0 land:min-w-0 land:flex-col land:pb-[5cqh] land:pl-[1cqw] land:pr-[2cqw] land:pt-[11.5cqh]">
           {/* the fridge: the shelves share its height, so they are all in view (a tiny screen scrolls, with a cue) */}
-          <div className="relative mx-3 mt-1.5 min-h-0 flex-1 land:mx-0">
+          <div className="relative mx-3 mt-1.5 min-h-0 flex-1 land:mx-0 land:mt-0">
             <div
               ref={panelRef}
               data-testid="sort-fridge"
-              className="h-full overflow-y-auto rounded-[26px] border-4 border-[#b9773a] bg-[radial-gradient(ellipse_at_50%_0%,#fde7b0,#f0c377_55%,#e2a65a)] p-1 shadow-inner"
+              className="h-full overflow-y-auto rounded-[26px] border-4 border-[#b9773a] bg-[radial-gradient(ellipse_at_50%_0%,#fde7b0,#f0c377_55%,#e2a65a)] p-1 shadow-inner land:rounded-[clamp(26px,4cqh,40px)] land:border-[clamp(4px,.7cqh,7px)] land:border-[#d9a441] land:bg-[linear-gradient(#fbeecb,#f3dca8)] land:p-[1.6cqh] land:shadow-[inset_0_0_0_3px_rgba(255,238,175,.85),0_10px_22px_rgba(40,20,5,.45)]"
             >
               <div
-                className="grid h-full grid-cols-2 gap-1"
-                style={{ gridTemplateRows: rowSizes, gridAutoRows: "minmax(56px, 1fr)" }}
+                className="grid h-full grid-cols-2 gap-1 land:h-auto land:content-start land:gap-[1.2cqh]"
+                style={
+                  wide
+                    ? { gridTemplateRows: rowSizes, gridAutoRows: dense ? "13cqh" : "17cqh" }
+                    : { gridTemplateRows: rowSizes, gridAutoRows: "minmax(56px, 1fr)" }
+                }
                 data-testid="sort-targets"
               >
                 {shown.map(targetBand)}
@@ -839,26 +862,26 @@ export function FridgeSortGame({
             {moreBelow ? (
               <span
                 data-testid="sort-more-shelves"
-                className="pointer-events-none absolute inset-x-0 bottom-1.5 mx-auto w-fit rounded-full bg-walnut-dark/90 px-3 py-1 font-ui text-[12px] font-extrabold text-ivory shadow"
+                className="pointer-events-none absolute inset-x-0 bottom-1.5 mx-auto w-fit rounded-full bg-walnut-dark/90 px-3 py-1 font-ui text-[12px] font-extrabold text-ivory shadow land:inset-x-auto land:bottom-[2cqh] land:right-[2.4cqh] land:mx-0 land:border-2 land:border-[#d9a441] land:px-[2.4cqh] land:py-[1.2cqh] land:text-[clamp(14px,2.7cqh,24px)]"
               >
                 ▼ More shelves below
               </span>
             ) : null}
           </div>
         </div>
-        <div className="contents land:order-first land:flex land:min-h-0 land:min-w-0 land:flex-1 land:basis-0 land:flex-col land:justify-end">
+        <div className="contents land:col-start-1 land:row-start-3 land:flex land:min-h-0 land:min-w-0 land:flex-col land:items-center land:justify-end land:gap-[1.6cqh] land:px-[3cqw] land:pb-[4cqh]">
           {/* the delivery slip: what was bought, and how many loose pieces that is (1 lb of tomato is about 3 tomatoes) */}
           <div
-            className="mx-3 mt-1.5 flex items-center gap-1.5 overflow-x-auto rounded-xl bg-[#3b2a1d]/75 px-2 py-1 land:mx-0"
+            className="mx-3 mt-1.5 flex items-center gap-1.5 overflow-x-auto rounded-xl bg-[#3b2a1d]/75 px-2 py-1 land:order-last land:mx-0 land:mt-0 land:max-w-full land:gap-[.9cqh] land:flex-wrap land:justify-center land:rounded-[28px] land:border-2 land:border-[#d6a23c] land:bg-[#4a2c16] land:px-[2.6cqh] land:py-[1.3cqh]"
             data-testid="sort-slip"
           >
-            <span className="shrink-0 font-ui text-[11px] font-extrabold text-ivory/80">
+            <span className="shrink-0 font-ui text-[11px] font-extrabold text-ivory/80 land:text-[clamp(14px,2.4cqh,22px)] land:text-ivory">
               🧾 Delivery
             </span>
             {round.ingredients.map((id) => (
               <span
                 key={id}
-                className="flex shrink-0 items-center gap-0.5 rounded-full bg-[#fff7e6]/90 px-1.5 py-0.5 font-ui text-[11px] font-black text-walnut-dark"
+                className="flex shrink-0 items-center gap-0.5 rounded-full bg-[#fff7e6]/90 px-1.5 py-0.5 font-ui text-[11px] font-black text-walnut-dark land:px-[1.4cqh] land:py-[.6cqh] land:text-[clamp(13px,2.2cqh,20px)]"
               >
                 <IngredientIcon
                   id={id}
@@ -881,7 +904,7 @@ export function FridgeSortGame({
 
           {/* the basket: every piece of the delivery lies mixed on the cloth. Its stool is cropped off and it sits low on the screen. */}
           <div
-            className="relative mx-auto mb-1 mt-1 w-[calc(100%-24px)] max-w-[360px] shrink-0 land:w-full"
+            className="relative mx-auto mb-1 mt-1 w-[calc(100%-24px)] max-w-[360px] shrink-0 land:m-0 land:w-[min(100%,78cqh)] land:max-w-none land:[container-type:inline-size]"
             style={{ aspectRatio: BASKET_RATIO }}
             data-testid="sort-crate"
           >
@@ -939,13 +962,13 @@ export function FridgeSortGame({
                   style={{
                     left: `${spot.x}%`,
                     top: `${spot.y}%`,
-                    width: spot.size,
-                    height: spot.size,
-                    marginLeft: -spot.size / 2,
-                    marginTop: -spot.size / 2,
+                    width: px(spot.size),
+                    height: px(spot.size),
+                    marginLeft: wide ? `calc(-0.5 * ${px(spot.size)})` : -spot.size / 2,
+                    marginTop: wide ? `calc(-0.5 * ${px(spot.size)})` : -spot.size / 2,
                     zIndex: isSel ? 20 : 1 + (i % 7),
                     transform: isSel ? undefined : `rotate(${spot.rot}deg)`,
-                    fontSize: spot.size,
+                    fontSize: px(spot.size),
                   }}
                 >
                   <IngredientIcon
@@ -986,7 +1009,7 @@ export function FridgeSortGame({
               </span>
             ) : (
               <span
-                className="absolute bottom-[10%] left-1/2 z-40 -translate-x-1/2 rounded-full bg-walnut-dark/85 px-3 py-0.5 font-ui text-[12px] font-extrabold text-ivory"
+                className="absolute bottom-[10%] left-1/2 z-40 -translate-x-1/2 rounded-full bg-walnut-dark/85 px-3 py-0.5 font-ui text-[12px] font-extrabold text-ivory land:border-2 land:border-[#d6a23c] land:bg-[#4a2c16] land:px-[3.6cqw] land:py-[.6cqw] land:text-[3.8cqw]"
                 data-testid="sort-ready"
               >
                 {crateLeft.length} piece{crateLeft.length === 1 ? "" : "s"}
@@ -1230,7 +1253,7 @@ export function FridgeSortGame({
             onAction({ kind: "auto" });
             onExit();
           }}
-          className="absolute right-3 top-[76px] z-30 min-h-12 rounded-full border-2 border-[#d6b46a] bg-walnut-dark px-3 font-ui text-[12px] font-extrabold text-ivory"
+          className="absolute right-3 top-[76px] z-30 min-h-12 rounded-full border-2 border-[#d6b46a] bg-walnut-dark px-3 font-ui text-[12px] font-extrabold text-ivory land:right-[2cqw] land:top-[2.4cqh] land:h-[7cqh] land:min-h-12 land:border-[#d6a23c] land:bg-[#fff6dc] land:px-[2.6cqw] land:text-[clamp(15px,3cqh,26px)] land:text-walnut-dark land:shadow-[0_3px_8px_rgba(40,20,5,.35)]"
         >
           🧑‍🍳 Prep Cook does it · no stars
         </button>
