@@ -885,6 +885,22 @@ export function WashUpSink({
       ? { left: pct(r.left), width: pct(r.width), top: pct(r.top), height: pct(r.height) }
       : { top: pct(r.top), height: pct(r.height) };
   const pct = (v: number) => `${(v * 100).toFixed(3)}%`;
+  /**
+   * A window much wider than 16:9 (a phone on its side, 2.16:1) crops the cover box by 0.35 of its overflow off the top, which hid the Back button and the title (developer
+   * 2026-11-21: "make sure there is no issue like this in all mini game"). `pinTop` keeps a control at least 8 px inside the visible top; `pinBottom` keeps one at least 8 px inside
+   * the visible bottom. Both are plain CSS (`cqw` / `cqh` are the section's), and only matter when the window is wider than 16:9.
+   */
+  const cropTop = "0.35 * (max(100cqh, 56.25cqw) - 100cqh)";
+  const pinTop = (r: { top: number; height: number }, from?: { top: number }) => ({
+    ...place(r),
+    top: from
+      ? `calc(max(${pct(from.top)}, ${cropTop} + 8px) + ${pct(r.top - from.top)})`
+      : `max(${pct(r.top)}, calc(${cropTop} + 8px))`,
+  });
+  const pinBottom = (r: { top: number; height: number }) => ({
+    ...place(r),
+    top: `min(${pct(r.top)}, calc(${cropTop} + 100cqh - ${pct(r.height)} - 8px))`,
+  });
   const sceneStyle = stageBox
     ? { width: WIDTH * scale, height: HEIGHT * scale }
     : { width: "100%", aspectRatio: `${WIDTH} / ${HEIGHT}` };
@@ -946,7 +962,7 @@ export function WashUpSink({
           {/* HUD: Back, the title, what is left */}
           <div
             className={cn("absolute z-20 flex items-center gap-2 px-3", !wide && "inset-x-0")}
-            style={place(L.hud)}
+            style={wide ? pinTop(L.hud) : place(L.hud)}
           >
             <button
               type="button"
@@ -977,7 +993,10 @@ export function WashUpSink({
           </div>
 
           {/* Up next: one row; tap for the whole list */}
-          <div className={cn("absolute z-20", !wide && "inset-x-2")} style={place(L.strip)}>
+          <div
+            className={cn("absolute z-20", !wide && "inset-x-2")}
+            style={wide ? pinTop(L.strip, L.hud) : place(L.strip)}
+          >
             <SinkQueueStrip strip={strip} onOpen={() => setSheetOpen(true)} />
           </div>
 
@@ -1986,7 +2005,7 @@ export function WashUpSink({
           ) : null}
           <div
             className={`absolute ${wide ? "" : "inset-x-6"} z-20 flex items-center justify-center gap-2`}
-            style={place(L.footer)}
+            style={wide ? pinBottom(L.footer) : place(L.footer)}
           >
             {noSoap && onBuySoap ? (
               <KButton size="sm" variant="copper" className="min-h-12" onClick={onBuySoap}>

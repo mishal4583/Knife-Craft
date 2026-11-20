@@ -136,16 +136,17 @@ function pathOut(b, brick) {
   return null;
 }
 const GRID = { x: 40 + (460 * 70) / 1080, y: 292 + (460 * 70) / 1080, size: (460 * 940) / 1080 };
-/** The landscape board is the same drawing on a 960 x 540 stage, moved by (210, -252) (K12). */
+/** The landscape board (K12): a 960 x 540 stage whose cells area is (271, 124) 438 x 345, so its cells are wider than tall (RULE CHANGE 2026-11-20, the developer's mock-up). */
 let wideMode = false;
 /** Page pixels of the middle of a grid cell. */
 async function cellPoint(cols, cx, cy) {
   const box = await (await page.$('[data-testid="kd-canvas"]')).boundingBox();
-  const cell = GRID.size / cols;
-  const st = wideMode ? { w: 960, h: 540, dx: 210, dy: -252 } : { w: 540, h: 960, dx: 0, dy: 0 };
+  const st = wideMode
+    ? { w: 960, h: 540, gx: 271, gy: 124, gw: 438, gh: 345 }
+    : { w: 540, h: 960, gx: GRID.x, gy: GRID.y, gw: GRID.size, gh: GRID.size };
   return {
-    x: box.x + ((st.dx + GRID.x + (cx + 0.5) * cell) / st.w) * box.width,
-    y: box.y + ((st.dy + GRID.y + (cy + 0.5) * cell) / st.h) * box.height,
+    x: box.x + ((st.gx + ((cx + 0.5) * st.gw) / cols) / st.w) * box.width,
+    y: box.y + ((st.gy + ((cy + 0.5) * st.gh) / cols) / st.h) * box.height,
   };
 }
 /** Presses the crate's top-left cell and drags the finger along `cells` (top-left cells, one after another), then lets go. */

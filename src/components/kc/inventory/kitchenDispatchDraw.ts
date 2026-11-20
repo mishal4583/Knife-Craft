@@ -19,29 +19,51 @@ export const GRID_BOX = {
   size: (FRAME_BOX.size * 940) / 1080,
 } as const;
 export const COUNTER_Y = 750;
+
 /**
- * The LANDSCAPE board (developer 2026-11-20): a 960 x 540 stage with the same square frame (460), standing in the middle, at (250, 40). Nothing about a board changes
- * (a square board needs no new boards): the draw runs in the portrait stage's own coordinates under a translation by (dx, dy), so the frame, the cells, the crates and the
- * gates are the very same drawing, and only the HUD (the screen's DOM) moves to the two sides. The room is the Codex wide picture behind the canvas, so the canvas paints
- * neither the portrait room nor the counter.
+ * Where the board is on a stage. The cells are `grid.w / cols` wide and `grid.h / rows` tall: square on the 9:16 stage, and a little WIDER than tall on the landscape stage
+ * (developer 2026-11-20, the mock-up: a wide board that fills the window). Only the DRAWING is wider: the rules count cells, never pixels, so no board changes.
  */
-export const KD_WIDE = {
-  w: 960,
-  h: 540,
-  dx: 250 - FRAME_BOX.x,
-  dy: 40 - FRAME_BOX.y,
-} as const;
+export type Box = { x: number; y: number; w: number; h: number };
+export type KdLayout = {
+  wide: boolean;
+  stage: { readonly w: number; readonly h: number };
+  frame: Box;
+  grid: Box;
+};
+export const KD_PORTRAIT: KdLayout = {
+  wide: false,
+  stage: KD_STAGE,
+  frame: { x: FRAME_BOX.x, y: FRAME_BOX.y, w: FRAME_BOX.size, h: FRAME_BOX.size },
+  grid: { x: GRID_BOX.x, y: GRID_BOX.y, w: GRID_BOX.size, h: GRID_BOX.size },
+};
+/** The landscape board, measured on the mock-up (1672 x 941, x 0.574): the frame in the middle, the doors in its margin, the HUD on the two walls (the screen's DOM). */
+export const KD_WIDE: KdLayout = {
+  wide: true,
+  stage: { w: 960, h: 540 },
+  frame: { x: 223, y: 99, w: 536, h: 399 },
+  grid: { x: 271, y: 124, w: 438, h: 345 },
+};
 /** How thick a gate's plate is, in stage units. */
 const GATE_THICK = 36;
 export const LEAVE_MS = 480;
 
-export const cellOf = (board: Pick<CrateBoard, "cols">) => GRID_BOX.size / board.cols;
+/** One cell's width and height on a layout. */
+export const cellsOf = (board: Pick<CrateBoard, "cols" | "rows">, L: KdLayout) => ({
+  cw: L.grid.w / board.cols,
+  ch: L.grid.h / board.rows,
+});
 
 /** The grid cell under a stage point (it may be outside the board), as whole numbers and as a fraction. */
-export function cellAt(board: Pick<CrateBoard, "cols">, x: number, y: number, wide = false) {
-  const cell = cellOf(board);
-  const fx = (x - (wide ? KD_WIDE.dx : 0) - GRID_BOX.x) / cell;
-  const fy = (y - (wide ? KD_WIDE.dy : 0) - GRID_BOX.y) / cell;
+export function cellAt(
+  board: Pick<CrateBoard, "cols" | "rows">,
+  x: number,
+  y: number,
+  L: KdLayout = KD_PORTRAIT,
+) {
+  const { cw, ch } = cellsOf(board, L);
+  const fx = (x - L.grid.x) / cw;
+  const fy = (y - L.grid.y) / ch;
   return { cx: Math.floor(fx), cy: Math.floor(fy), fx, fy };
 }
 
@@ -56,8 +78,8 @@ export type KdView = {
   dragId: string | null;
   /** A booster waiting for a tap: the crates (Rocket) or the dark blocks (Hammer) pulse. */
   armed: "rocket" | "hammer" | null;
-  /** The landscape board (`KD_WIDE`): no room and no counter are painted, the board is moved to the middle of a 960 x 540 stage. */
-  wide?: boolean;
+  /** Where the board is (default: the 9:16 stage). The landscape board paints no room and no counter: the screen puts the room picture behind the canvas. */
+  layout?: KdLayout;
 };
 
 const ANGLE: Record<Side, number> = {
@@ -103,26 +125,48 @@ function glow(
   ctx.restore();
 }
 
-/** An empty cell of the counter: warm dark wood with a faint chef's hat pressed into it. */
-function drawFloorCell(ctx: CanvasRenderingContext2D, px: number, py: number, cell: number) {
+/** An empty cell of the counter: warm dark wood with a faint chef's hat pressed into it (a faint star on the landscape board, as in the mock-up). */
+function drawFloorCell(
+  ctx: CanvasRenderingContext2D,
+  px: number,
+  py: number,
+  cw: number,
+  ch: number,
+  star: boolean,
+) {
+  const cell = Math.min(cw, ch);
   const inset = cell * 0.035;
   const x = px + inset;
   const y = py + inset;
-  const s = cell - inset * 2;
-  const g = ctx.createLinearGradient(0, y, 0, y + s);
+  const w = cw - inset * 2;
+  const h = ch - inset * 2;
+  const g = ctx.createLinearGradient(0, y, 0, y + h);
   g.addColorStop(0, "#47332d");
   g.addColorStop(1, "#32231f");
   ctx.fillStyle = g;
-  rr(ctx, x, y, s, s, cell * 0.12);
+  rr(ctx, x, y, w, h, cell * 0.12);
   ctx.fill();
   ctx.strokeStyle = "rgba(0,0,0,.35)";
   ctx.lineWidth = 1.6;
   ctx.stroke();
-  // the hat: three puffs over a band
-  const cx = px + cell / 2;
-  const cy = py + cell / 2 + cell * 0.02;
-  const u = cell * 0.5;
+  const cx = px + cw / 2;
+  const cy = py + ch / 2 + cell * 0.02;
   ctx.fillStyle = "rgba(255,225,190,.075)";
+  if (star) {
+    // a five-point star
+    const R = cell * 0.27;
+    ctx.beginPath();
+    for (let k = 0; k < 10; k++) {
+      const a = -Math.PI / 2 + (k * Math.PI) / 5;
+      const r = k % 2 === 0 ? R : R * 0.45;
+      ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    }
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+  // the hat: three puffs over a band
+  const u = cell * 0.5;
   ctx.beginPath();
   ctx.arc(cx - u * 0.24, cy - u * 0.1, u * 0.21, 0, 7);
   ctx.arc(cx + u * 0.24, cy - u * 0.1, u * 0.21, 0, 7);
@@ -132,63 +176,120 @@ function drawFloorCell(ctx: CanvasRenderingContext2D, px: number, py: number, ce
   ctx.fill();
 }
 
-/** The room and the floor of the board: a dark wooden cell with a chef's hat in it, edge to edge. */
+/** The landscape board's frame: thick dark wood with a copper rim round a dark panel that holds the cells (the mock-up), painted in code. */
+function paintWideFrame(
+  ctx: CanvasRenderingContext2D,
+  L: KdLayout,
+  frameArt: CanvasImageSource | null,
+) {
+  const f = L.frame;
+  ctx.save();
+  ctx.shadowColor = "rgba(20,8,2,.55)";
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 6;
+  const wood = ctx.createLinearGradient(0, f.y, 0, f.y + f.h);
+  wood.addColorStop(0, "#9a5a26");
+  wood.addColorStop(0.5, "#7a4318");
+  wood.addColorStop(1, "#5b3012");
+  ctx.fillStyle = wood;
+  rr(ctx, f.x, f.y, f.w, f.h, 34);
+  ctx.fill();
+  ctx.restore();
+  if (frameArt) {
+    // the painted wooden ring (when one is supplied), stretched over the rectangle; its border is a few pixels, so the stretch is not seen
+    ctx.drawImage(frameArt, f.x, f.y, f.w, f.h);
+  } else {
+    ctx.strokeStyle = "#e0924a";
+    ctx.lineWidth = 4;
+    rr(ctx, f.x, f.y, f.w, f.h, 34);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,225,170,.35)";
+    ctx.lineWidth = 2;
+    rr(ctx, f.x + 7, f.y + 7, f.w - 14, f.h - 14, 28);
+    ctx.stroke();
+  }
+  // the dark panel the cells lie on, a little larger than the cells
+  const pad = 15;
+  ctx.fillStyle = "#2a1c18";
+  rr(ctx, L.grid.x - pad, L.grid.y - pad + 2, L.grid.w + pad * 2, L.grid.h + pad * 2 - 4, 20);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,.45)";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+}
+
+/** The room and the floor of the board: a dark wooden cell with a chef's hat in it (a star on the landscape board), edge to edge. */
 function paintBack(
   ctx: CanvasRenderingContext2D,
   board: CrateBoard,
   backdrop: CanvasImageSource | null,
-  cell: number,
-  wide = false,
+  L: KdLayout,
+  frameArt: CanvasImageSource | null,
 ) {
-  if (wide) ctx.translate(KD_WIDE.dx, KD_WIDE.dy);
-  else if (backdrop) ctx.drawImage(backdrop, 0, 0, KD_STAGE.w, KD_STAGE.h);
+  const { cw, ch } = cellsOf(board, L);
+  if (L.wide) paintWideFrame(ctx, L, frameArt);
   else {
-    const g = ctx.createLinearGradient(0, 0, 0, KD_STAGE.h);
-    g.addColorStop(0, "#7a5233");
-    g.addColorStop(1, "#4b2f1c");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, KD_STAGE.w, KD_STAGE.h);
+    if (backdrop) ctx.drawImage(backdrop, 0, 0, KD_STAGE.w, KD_STAGE.h);
+    else {
+      const g = ctx.createLinearGradient(0, 0, 0, KD_STAGE.h);
+      g.addColorStop(0, "#7a5233");
+      g.addColorStop(1, "#4b2f1c");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, KD_STAGE.w, KD_STAGE.h);
+    }
+    ctx.fillStyle = "#2a1c18";
+    ctx.fillRect(L.grid.x, L.grid.y, L.grid.w, L.grid.h);
   }
-  ctx.fillStyle = "#2a1c18";
-  ctx.fillRect(GRID_BOX.x, GRID_BOX.y, GRID_BOX.size, GRID_BOX.size);
   for (let y = 0; y < board.rows; y++)
     for (let x = 0; x < board.cols; x++)
-      drawFloorCell(ctx, GRID_BOX.x + x * cell, GRID_BOX.y + y * cell, cell);
+      drawFloorCell(ctx, L.grid.x + x * cw, L.grid.y + y * ch, cw, ch, L.wide);
 }
 
-let back: { key: string; backdrop: unknown; canvas: HTMLCanvasElement } | null = null;
+let back: {
+  key: string;
+  backdrop: unknown;
+  frameArt: unknown;
+  canvas: HTMLCanvasElement;
+} | null = null;
 /** The cached room + floor layer (null where no canvas can be made, e.g. a test without a DOM: the caller paints it directly). */
 function backLayer(
   ctx: CanvasRenderingContext2D,
   board: CrateBoard,
   backdrop: CanvasImageSource | null,
-  cell: number,
-  wide = false,
+  L: KdLayout,
+  frameArt: CanvasImageSource | null,
 ): HTMLCanvasElement | null {
   if (typeof document === "undefined") return null;
   const scale = ctx.getTransform().a || 1;
-  const key = `${board.cols}x${board.rows}@${scale}${wide ? "w" : ""}`;
-  if (back && back.key === key && back.backdrop === backdrop) return back.canvas;
+  const key = `${board.cols}x${board.rows}@${scale}${L.wide ? "w" : ""}`;
+  if (back && back.key === key && back.backdrop === backdrop && back.frameArt === frameArt)
+    return back.canvas;
   const canvas = back?.canvas ?? document.createElement("canvas");
-  const stage = wide ? KD_WIDE : KD_STAGE;
-  canvas.width = Math.round(stage.w * scale);
-  canvas.height = Math.round(stage.h * scale);
+  canvas.width = Math.round(L.stage.w * scale);
+  canvas.height = Math.round(L.stage.h * scale);
   const c = canvas.getContext("2d");
   if (!c) return null;
   c.setTransform(scale, 0, 0, scale, 0, 0);
-  paintBack(c, board, backdrop, cell, wide);
-  back = { key, backdrop, canvas };
+  paintBack(c, board, backdrop, L, frameArt);
+  back = { key, backdrop, frameArt, canvas };
   return canvas;
 }
 
 /** A fixed dark block: a riveted metal plate. */
-function drawWall(ctx: CanvasRenderingContext2D, board: CrateBoard, w: Wall, pulse: number) {
-  const cell = cellOf(board);
+function drawWall(
+  ctx: CanvasRenderingContext2D,
+  board: CrateBoard,
+  L: KdLayout,
+  w: Wall,
+  pulse: number,
+) {
+  const { cw, ch } = cellsOf(board, L);
+  const cell = Math.min(cw, ch);
   const pad = cell * 0.04;
-  const x = GRID_BOX.x + w.x * cell + pad;
-  const y = GRID_BOX.y + w.y * cell + pad;
-  const wd = w.w * cell - pad * 2;
-  const ht = w.h * cell - pad * 2;
+  const x = L.grid.x + w.x * cw + pad;
+  const y = L.grid.y + w.y * ch + pad;
+  const wd = w.w * cw - pad * 2;
+  const ht = w.h * ch - pad * 2;
   const rad = cell * 0.14;
   ctx.fillStyle = "rgba(0,0,0,.4)";
   rr(ctx, x, y + cell * 0.06, wd, ht, rad);
@@ -233,20 +334,22 @@ function drawBrick(
   ctx: CanvasRenderingContext2D,
   art: KdArt | null,
   board: CrateBoard,
+  L: KdLayout,
   b: Brick,
   gx: number,
   gy: number,
   lifted: boolean,
   pulse: number,
 ) {
-  const cell = cellOf(board);
+  const { cw, ch } = cellsOf(board, L);
+  const cell = Math.min(cw, ch);
   const base = CRATE_COLORS[b.color];
   const pad = cell * 0.04;
   const lift = lifted ? cell * 0.05 : 0;
-  const x = GRID_BOX.x + gx * cell + pad;
-  const y = GRID_BOX.y + gy * cell + pad - lift;
-  const wd = b.w * cell - pad * 2;
-  const ht = b.h * cell - pad * 2;
+  const x = L.grid.x + gx * cw + pad;
+  const y = L.grid.y + gy * ch + pad - lift;
+  const wd = b.w * cw - pad * 2;
+  const ht = b.h * ch - pad * 2;
   const rad = cell * 0.17;
   ctx.fillStyle = `rgba(0,0,0,${lifted ? 0.42 : 0.32})`;
   rr(ctx, x, y + cell * (lifted ? 0.13 : 0.07) + lift, wd, ht, rad);
@@ -293,8 +396,8 @@ function drawBrick(
     ctx.shadowOffsetY = 2;
     for (let j = 0; j < b.h; j++)
       for (let i = 0; i < b.w; i++) {
-        const cx = GRID_BOX.x + (gx + i + 0.5) * cell;
-        const cy = GRID_BOX.y + (gy + j + 0.5) * cell - lift;
+        const cx = L.grid.x + (gx + i + 0.5) * cw;
+        const cy = L.grid.y + (gy + j + 0.5) * ch - lift;
         ctx.drawImage(pic, cx - s / 2, cy - s / 2, s, s);
       }
     ctx.restore();
@@ -303,20 +406,29 @@ function drawBrick(
 }
 
 /** A door in the frame: a plate in its food's colour, chevrons pointing out of the board and the food that goes out of it in the middle. */
-function drawGate(ctx: CanvasRenderingContext2D, art: KdArt | null, board: CrateBoard, g: Gate) {
-  const cell = cellOf(board);
+function drawGate(
+  ctx: CanvasRenderingContext2D,
+  art: KdArt | null,
+  board: CrateBoard,
+  L: KdLayout,
+  g: Gate,
+) {
+  const { cw, ch } = cellsOf(board, L);
+  const horizontalSide = g.side === "left" || g.side === "right";
+  // a door on a side runs along the cells of THAT side: tall cells on the left and right, wide ones on the top and bottom
+  const run = horizontalSide ? ch : cw;
   const thick = GATE_THICK;
-  const len = g.span * cell - cell * 0.1;
-  const along = (g.at + g.span / 2) * cell;
+  const len = g.span * run - run * 0.1;
+  const along = (g.at + g.span / 2) * run;
   const mid = thick / 2 - 1; // the plate's inner edge sits on the board's edge
   const pos =
     g.side === "top"
-      ? { x: GRID_BOX.x + along, y: GRID_BOX.y - mid }
+      ? { x: L.grid.x + along, y: L.grid.y - mid }
       : g.side === "bottom"
-        ? { x: GRID_BOX.x + along, y: GRID_BOX.y + GRID_BOX.size + mid }
+        ? { x: L.grid.x + along, y: L.grid.y + L.grid.h + mid }
         : g.side === "left"
-          ? { x: GRID_BOX.x - mid, y: GRID_BOX.y + along }
-          : { x: GRID_BOX.x + GRID_BOX.size + mid, y: GRID_BOX.y + along };
+          ? { x: L.grid.x - mid, y: L.grid.y + along }
+          : { x: L.grid.x + L.grid.w + mid, y: L.grid.y + along };
   const base = CRATE_COLORS[g.color];
   ctx.save();
   ctx.translate(pos.x, pos.y);
@@ -376,25 +488,24 @@ export function drawKitchenDispatch(
 ) {
   const { art, now } = view;
   const img = art?.images;
-  const wide = !!view.wide;
-  const stage = wide ? KD_WIDE : KD_STAGE;
-  ctx.clearRect(0, 0, stage.w, stage.h);
+  const L = view.layout ?? KD_PORTRAIT;
+  const wide = L.wide;
+  ctx.clearRect(0, 0, L.stage.w, L.stage.h);
   // the room and the floor of the board never change during a round: painted once into a layer, then copied
-  const cell = cellOf(board);
+  const { cw, ch } = cellsOf(board, L);
   const backdrop = wide ? null : (img?.backdrop ?? null);
-  const layer = backLayer(ctx, board, backdrop, cell, wide);
-  if (layer) ctx.drawImage(layer, 0, 0, stage.w, stage.h);
+  // the painted wide frame (a `frame-wide.webp` ring) is drawn here once Codex delivers it; until then the frame is painted in code
+  const frameArt: CanvasImageSource | null = null;
+  const layer = backLayer(ctx, board, backdrop, L, frameArt);
+  if (layer) ctx.drawImage(layer, 0, 0, L.stage.w, L.stage.h);
   else {
     ctx.save();
-    paintBack(ctx, board, backdrop, cell, wide);
+    paintBack(ctx, board, backdrop, L, frameArt);
     ctx.restore();
   }
-  // the landscape board is the portrait drawing moved to its place on the wide stage
-  ctx.save();
-  if (wide) ctx.translate(KD_WIDE.dx, KD_WIDE.dy);
   const pulse = 0.55 + 0.45 * Math.sin(now / 140);
   // the dark blocks
-  for (const w of board.walls) drawWall(ctx, board, w, view.armed === "hammer" ? pulse : 0);
+  for (const w of board.walls) drawWall(ctx, board, L, w, view.armed === "hammer" ? pulse : 0);
   // the crates; the one under the finger last, so it rides over the others
   const ordered = [...board.bricks].sort(
     (a, b) => Number(a.id === view.dragId) - Number(b.id === view.dragId),
@@ -405,6 +516,7 @@ export function drawKitchenDispatch(
       ctx,
       art,
       board,
+      L,
       b,
       v.x,
       v.y,
@@ -412,32 +524,38 @@ export function drawKitchenDispatch(
       view.armed === "rocket" ? pulse : 0,
     );
   }
-  // the frame over the edges, then the gates on it
-  if (img?.frame)
-    ctx.drawImage(img.frame, FRAME_BOX.x, FRAME_BOX.y, FRAME_BOX.size, FRAME_BOX.size);
-  else {
-    ctx.strokeStyle = "#a9754a";
-    ctx.lineWidth = 16;
-    rr(ctx, FRAME_BOX.x + 12, FRAME_BOX.y + 12, FRAME_BOX.size - 24, FRAME_BOX.size - 24, 24);
-    ctx.stroke();
+  // the frame over the edges (the 9:16 stage's picture; the landscape frame is in the layer under the crates), then the gates on it
+  if (!wide) {
+    const f = L.frame;
+    if (img?.frame) ctx.drawImage(img.frame, f.x, f.y, f.w, f.h);
+    else {
+      ctx.strokeStyle = "#a9754a";
+      ctx.lineWidth = 16;
+      rr(ctx, f.x + 12, f.y + 12, f.w - 24, f.h - 24, 24);
+      ctx.stroke();
+    }
   }
-  for (const g of board.gates) drawGate(ctx, art, board, g);
+  for (const g of board.gates) drawGate(ctx, art, board, L, g);
   // crates sliding out of their gates, cut off at the frame's outer edge
   ctx.save();
   ctx.beginPath();
-  ctx.rect(FRAME_BOX.x + 2, FRAME_BOX.y + 2, FRAME_BOX.size - 4, FRAME_BOX.size - 4);
+  ctx.rect(L.frame.x + 2, L.frame.y + 2, L.frame.w - 4, L.frame.h - 4);
   ctx.clip();
   for (const l of view.leaving) {
     const p = Math.min(1, (now - l.start) / LEAVE_MS);
-    const dist = (cell * Math.max(l.brick.w, l.brick.h) + 70) * p * p;
-    const dir = ANGLE[l.gate.side];
+    const side = l.gate.side;
+    const dir = ANGLE[side];
+    const alongX = side === "left" || side === "right";
+    // how far it travels: its own length along the way out, plus a little
+    const dist = ((alongX ? cw * l.brick.w : ch * l.brick.h) + 70) * p * p;
     drawBrick(
       ctx,
       art,
       board,
+      L,
       l.brick,
-      l.brick.x + (Math.cos(dir) * dist) / cell,
-      l.brick.y + (Math.sin(dir) * dist) / cell,
+      l.brick.x + (Math.cos(dir) * dist) / cw,
+      l.brick.y + (Math.sin(dir) * dist) / ch,
       false,
       0,
     );
@@ -451,11 +569,13 @@ export function drawKitchenDispatch(
       const q = (p - 0.5) / 1;
       const dir = ANGLE[l.gate.side];
       const horizontal = l.gate.side === "left" || l.gate.side === "right";
-      const gx = GRID_BOX.x + (l.gate.at + l.gate.span / 2) * cell;
-      const ex = horizontal ? GRID_BOX.x + (l.gate.side === "right" ? GRID_BOX.size : 0) : gx;
+      const mid = l.gate.at + l.gate.span / 2;
+      const ex = horizontal
+        ? L.grid.x + (l.gate.side === "right" ? L.grid.w : 0)
+        : L.grid.x + mid * cw;
       const ey = horizontal
-        ? gx - GRID_BOX.x + GRID_BOX.y
-        : GRID_BOX.y + (l.gate.side === "bottom" ? GRID_BOX.size : 0);
+        ? L.grid.y + mid * ch
+        : L.grid.y + (l.gate.side === "bottom" ? L.grid.h : 0);
       ctx.globalAlpha = Math.max(0, 1 - q);
       const s = 38 + q * 34;
       ctx.drawImage(
@@ -467,7 +587,6 @@ export function drawKitchenDispatch(
       );
       ctx.globalAlpha = 1;
     }
-  ctx.restore();
   // the counter in front, under the boosters (the landscape board has its boosters on the wall beside the frame)
   if (!wide && img?.counter)
     ctx.drawImage(img.counter, 0, COUNTER_Y, KD_STAGE.w, (KD_STAGE.w * 315) / 810);

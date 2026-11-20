@@ -196,10 +196,8 @@ def build_spoiled() -> int:
 
 
 FS_OUT = os.path.join(ROOT, "public", "business", "fridge-sort")
-# RULE CHANGE 2026-11-20 (developer: the Fridge Sort mock-up): the eight crates and the shelf strip are the Codex crate set now, built by scripts/make-fridge-sort-crates.py;
-# the old bins, drawers, racks and glass shelf below are NOT rebuilt any more (this script would overwrite the new pictures with the old ones). Kept for the record.
 # (output name, source sheet, cell box (x0, y0, x1, y1) in the sheet, output width)
-FS_PARTS_OLD = [
+FS_PARTS = [
     ("bin-roots", "A24-veg-bins.png", (0, 0, 512, 512), 300),
     ("bin-salad", "A24-veg-bins.png", (512, 0, 1024, 512), 300),
     ("bin-stems", "A24-veg-bins.png", (1024, 0, 1536, 512), 300),
@@ -208,12 +206,9 @@ FS_PARTS_OLD = [
     ("drawer-greens", "A25-drawers.png", (512, 0, 1024, 512), 300),
 ]
 # the door's two racks are cut out of the empty door (A23, an opaque painting): (x0, y0, x1, y1) in its 737 x 2135 pixels
-FS_DOOR_OLD = [("rack-butter", (80, 540, 665, 760), 300), ("rack-aromatics", (80, 1085, 650, 1400), 300)]
+FS_DOOR = [("rack-butter", (80, 540, 665, 760), 300), ("rack-aromatics", (80, 1085, 650, 1400), 300)]
 # one glass shelf cut from the fridge (A1): the floor of the Dairy and Meat bands
-FS_SHELF_OLD = ("shelf-glass", (205, 435, 895, 520), 360)
-FS_PARTS: list = []
-FS_DOOR: list = []
-FS_SHELF_LIST: list = []
+FS_SHELF = ("shelf-glass", (205, 435, 895, 520), 360)
 
 
 def build_fridge_sort() -> int:
@@ -235,7 +230,7 @@ def build_fridge_sort() -> int:
         total += os.path.getsize(path)
     door_src = os.path.join(FRIDGE_SRC, "A23-door-empty.png")
     shelf_src = os.path.join(FRIDGE_SRC, "A1.png")
-    for name, box, width in FS_DOOR + FS_SHELF_LIST:
+    for name, box, width in FS_DOOR + [FS_SHELF]:
         src = door_src if name.startswith("rack") else shelf_src
         if not os.path.exists(src):
             print("missing fridge art (local-only):", src)

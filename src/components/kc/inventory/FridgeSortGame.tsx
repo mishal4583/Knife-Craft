@@ -64,18 +64,16 @@ const ART: Record<string, { file: string; kind: ArtKind }> = {
   "veg-salad": { file: "bin-salad", kind: "bin" },
   "veg-stems": { file: "bin-stems", kind: "bin" },
   "veg-pods": { file: "bin-pods", kind: "bin" },
-  // RULE CHANGE (developer 2026-11-20, the mock-up): all eight are the same wooden crate now (Codex, `make-fridge-sort-crates.py`), cut onto ONE canvas so the blank name slat
-  // is at the same height, so they share one kind; the drawers and racks of the old set (different shapes) are gone
-  "fruit-drawer": { file: "drawer-fruit", kind: "bin" },
-  "greens-drawer": { file: "drawer-greens", kind: "bin" },
-  "door-butter": { file: "rack-butter", kind: "bin" },
-  "door-aromatics": { file: "rack-aromatics", kind: "bin" },
+  "fruit-drawer": { file: "drawer-fruit", kind: "drawer" },
+  "greens-drawer": { file: "drawer-greens", kind: "drawer" },
+  "door-butter": { file: "rack-butter", kind: "rack-butter" },
+  "door-aromatics": { file: "rack-aromatics", kind: "rack-aromatics" },
 };
 const artOf = (id: string): { file: string; kind: ArtKind } =>
   ART[id] ?? { file: "shelf-glass", kind: "shelf" };
 /** Where the name chip sits on the art: over the piece's blank label plaque (bins, drawers, racks) or the shelf's top-left corner. */
 const ART_CHIP: Record<ArtKind, string> = {
-  bin: "left-1/2 top-[79%] -translate-x-1/2 -translate-y-1/2",
+  bin: "left-1/2 top-[72%] -translate-x-1/2 -translate-y-1/2",
   drawer: "left-1/2 top-[62%] -translate-x-1/2 -translate-y-1/2",
   "rack-butter": "left-1/2 top-[78%] -translate-x-1/2 -translate-y-1/2",
   "rack-aromatics": "left-1/2 top-[84%] -translate-x-1/2 -translate-y-1/2",
@@ -908,7 +906,12 @@ export function FridgeSortGame({
             style={{ aspectRatio: BASKET_RATIO }}
             data-testid="sort-crate"
           >
-            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            {/* landscape: the basket stands on the cloth, so it is not flush with the screen's bottom: its cropped bottom edge is rounded into a belly and it gets a soft shadow */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-[7%] -bottom-[3%] hidden h-[9%] rounded-[50%] bg-black/35 blur-md land:block"
+            />
+            <div className="pointer-events-none absolute inset-0 overflow-hidden land:[clip-path:inset(0_round_0_0_44%_44%/0_0_46%_46%)]">
               <Art
                 name="basket"
                 className="absolute inset-x-0 top-0 w-full object-fill"
@@ -996,7 +999,7 @@ export function FridgeSortGame({
               );
             })}
             {/* the basket's front: it covers the lower part of the pieces, so they sit INSIDE it */}
-            <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
+            <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden land:[clip-path:inset(0_round_0_0_44%_44%/0_0_46%_46%)]">
               <Art
                 name="basket"
                 className="absolute inset-x-0 top-0 w-full object-fill"

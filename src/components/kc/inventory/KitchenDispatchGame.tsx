@@ -32,6 +32,7 @@ import {
   type CrateRound,
 } from "@/game/business/crateDispatch";
 import {
+  KD_PORTRAIT,
   KD_STAGE,
   KD_WIDE,
   cellAt,
@@ -68,28 +69,42 @@ const img = (name: string) => `url(${kdUrl(name)})`;
 /** The centre of each booster button on the counter, in stage units. */
 const BOOSTER_X = [109, 218, 327, 435];
 /**
- * The landscape board's HUD, in its 960 x 540 stage units (the frame is in the middle, x 250 to 710): the title, the level, the clock, the crates left, the stars and
- * Paige on the left wall; Pause, the tip, the four boosters (two by two) and the line that says what to do on the right.
+ * The landscape board's HUD, in its 960 x 540 stage units, laid out like the developer's mock-up (2026-11-20): a full-width top bar (back and the level, the title, the line
+ * that says what to do, Pause), Paige, the clock, the crates left with the stars and the pinned tip card on the left wall, the frame in the middle, and the four boosters in a
+ * column on the right wall.
  */
 type Box4 = readonly [number, number, number, number];
 type Hud = Record<
-  "back" | "level" | "title" | "timer" | "left" | "stars" | "mascot" | "tip" | "pause" | "notice",
+  | "back"
+  | "level"
+  | "title"
+  | "timer"
+  | "left"
+  | "stars"
+  | "mascot"
+  | "tip"
+  | "pause"
+  | "notice"
+  | "panel"
+  | "card",
   Box4
 >;
 const WIDE_UI: Hud = {
-  back: [10, 10, 64, 64],
-  level: [84, 8, 86, 72],
-  title: [10, 90, 222, 84],
-  timer: [10, 184, 222, 74],
-  left: [10, 268, 140, 54],
-  stars: [10, 332, 128, 40],
-  mascot: [6, 396, 128, 108],
-  tip: [822, 17, 50, 50],
-  pause: [886, 10, 64, 64],
-  notice: [730, 380, 224, 120],
+  back: [20, 8, 64, 64],
+  level: [92, 4, 86, 72],
+  title: [216, 0, 238, 88],
+  notice: [452, 2, 342, 86],
+  pause: [880, 8, 64, 64],
+  mascot: [26, 96, 150, 126],
+  timer: [24, 238, 196, 66],
+  panel: [30, 306, 186, 100],
+  left: [46, 311, 144, 46],
+  stars: [56, 362, 124, 34],
+  card: [82, 414, 74, 86],
+  tip: [122, 458, 44, 44],
 };
-/** The landscape board's boosters, two by two: the two columns' centres and the two rows' tops. */
-const WIDE_BOOSTER = { x: [790, 890], y: [92, 232] } as const;
+/** The landscape board's boosters, one column: the centre x and the four tops (a name plate overlaps the foot of the button, as in the mock-up). */
+const WIDE_BOOSTER = { x: 852, y: [96, 189, 282, 375] } as const;
 
 const clock = (seconds: number) => {
   const s = Math.max(0, Math.ceil(seconds));
@@ -114,7 +129,8 @@ export function KitchenDispatchGame({
   const day = save.business.calendar.businessDay;
   /** A wide window (a desktop, a tablet, a phone on its side) gets the LANDSCAPE board; only an upright window keeps the 9:16 stage. */
   const wide = useLandscape();
-  const stage = wide ? KD_WIDE : KD_STAGE;
+  const layout = wide ? KD_WIDE : KD_PORTRAIT;
+  const stage = layout.stage;
   const box = boxOn(stage);
   const fs = fsOn(stage);
   /** "Next dispatch" moves to the next board; "Try again" replays the same one. */
@@ -289,13 +305,13 @@ export function KitchenDispatchGame({
         vis,
         dragId: dragIdRef.current,
         armed: armedRef.current,
-        wide,
+        layout,
       });
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [wide, stage.w, stage.h]);
+  }, [layout, stage.w, stage.h]);
 
   /** The stage point under a pointer event. */
   const stagePoint = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -327,7 +343,7 @@ export function KitchenDispatchGame({
     if (phaseRef.current !== "play" || pausedRef.current || dragRef.current) return;
     const p = stagePoint(e);
     const round = roundRef.current;
-    const { cx, cy, fx, fy } = cellAt(round.board, p.x, p.y, wide);
+    const { cx, cy, fx, fy } = cellAt(round.board, p.x, p.y, layout);
     const armedNow = armedRef.current;
     if (armedNow === "rocket") {
       const b = brickAtCell(round.board, cx, cy);
@@ -371,7 +387,7 @@ export function KitchenDispatchGame({
     if (!d || e.pointerId !== d.pointerId || phaseRef.current !== "play" || pausedRef.current)
       return;
     const p = stagePoint(e);
-    const { fx, fy } = cellAt(roundRef.current.board, p.x, p.y, wide);
+    const { fx, fy } = cellAt(roundRef.current.board, p.x, p.y, layout);
     const res = dragBrick(roundRef.current, d.id, Math.round(fx - d.offX), Math.round(fy - d.offY));
     if (!res.moved) return;
     d.moved = true;
@@ -433,13 +449,13 @@ export function KitchenDispatchGame({
         tip: [470, 146, 50, 50],
         pause: [468, 8, 64, 64],
         notice: [112, 104, 330, 90],
+        panel: [0, 0, 0, 0],
+        card: [444, 104, 78, 88],
       };
   /** The booster at `i`: where its button, its count and its name go. */
   const boosterAt = (i: number) => {
     if (wide) {
-      const cx = WIDE_BOOSTER.x[i % 2]!;
-      const top = WIDE_BOOSTER.y[i >> 1]!;
-      return { cx, top };
+      return { cx: WIDE_BOOSTER.x, top: WIDE_BOOSTER.y[i] ?? 0 };
     }
     return { cx: BOOSTER_X[i] ?? 0, top: 766 };
   };
@@ -613,7 +629,7 @@ export function KitchenDispatchGame({
             ...box(...ui.notice),
             backgroundImage: img("info-banner"),
             backgroundSize: "100% 100%",
-            ...fs(wide ? 13 : 16.5),
+            ...fs(wide ? 14 : 16.5),
           }}
         >
           <span role="status" data-testid="kd-notice">
@@ -622,11 +638,10 @@ export function KitchenDispatchGame({
         </div>
         <div
           aria-hidden="true"
-          hidden={wide}
           className="rounded-md border-2 border-[#d8b373] bg-[#fff3d6] shadow-[0_4px_8px_rgba(0,0,0,.35)]"
           style={{
-            ...box(444, 104, 78, 88),
-            transform: "rotate(4deg)",
+            ...box(...ui.card),
+            transform: wide ? "rotate(-3deg)" : "rotate(4deg)",
           }}
         >
           <span
@@ -685,6 +700,15 @@ export function KitchenDispatchGame({
             <span className="drop-shadow-[0_2px_0_rgba(0,0,0,.55)]">{clock(secondsLeft)}</span>
           </span>
         </div>
+        {wide ? (
+          // the wooden panel the "Crates" plate and the stars sit on (the mock-up): dark wood with a copper rim
+          <div
+            aria-hidden="true"
+            data-testid="kd-panel"
+            className="rounded-[18px] border-[3px] border-[#d98a3a] bg-[linear-gradient(#6a3d1c,#43250f)] shadow-[0_4px_10px_rgba(0,0,0,.4),inset_0_0_0_2px_rgba(255,220,160,.25)]"
+            style={box(...ui.panel)}
+          />
+        ) : null}
         <div
           className="flex items-center justify-center gap-[4%] font-black text-[#5a3419]"
           style={{
@@ -773,7 +797,7 @@ export function KitchenDispatchGame({
               <span
                 className="pointer-events-none grid place-items-center font-black text-[#5a3419]"
                 style={{
-                  ...box(cx - 46, top + 72, 92, 31),
+                  ...box(cx - 46, top + (wide ? 58 : 72), 92, wide ? 28 : 31),
                   backgroundImage: img("label-plate"),
                   backgroundSize: "100% 100%",
                   ...fs(14),

@@ -630,7 +630,7 @@ function Round({
       </div>
 
       {/* the crate */}
-      <div className="relative flex min-h-0 flex-1 items-center justify-center px-2 py-1 land:col-start-2 land:row-span-3 land:row-start-1 land:h-full land:w-[min(calc(100cqh*1.25),max(48cqw,calc(100cqw-520px)))] land:flex-none land:px-0 land:py-3">
+      <div className="relative flex min-h-0 flex-1 items-center justify-center px-2 py-1 land:col-start-2 land:row-span-3 land:row-start-1 land:h-full land:w-[min(calc(100cqh*1.25),max(48cqw,calc(100cqw-520px)))] land:flex-none land:px-0 land:pb-[4.5cqh] land:pt-3">
         <div
           className="relative isolate w-full max-w-[500px] land:max-w-none"
           style={{ aspectRatio: `${CRATE_W} / ${CRATE_H}` }}
