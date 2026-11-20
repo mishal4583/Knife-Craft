@@ -1,27 +1,28 @@
 import type { CSSProperties } from "react";
 import type { KitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
 import {
-  FLOOR_SEATS,
-  cashierSpot,
-  inView,
+  floorGeo,
+  inViewOf,
   lookFor,
-  partySpots,
-  takeawaySpot,
+  partySpotsOf,
+  type FloorGeo,
   type FloorPoint,
   type PartySeat,
 } from "@/game/restaurant/serviceFloor";
 import { GuestPoses } from "../restaurantMap/GuestPoses";
 import { TableCash } from "../common/TableCash";
 import { cashSpotBeside } from "@/game/restaurant/tableCash";
+import { useLandscape } from "./layoutMode";
+import { landscapeDiningArt } from "@/game/landscapeArt";
 import "./serviceFloor.css";
 
 const pct = (n: number) => `${Math.round(n * 100) / 100}%`;
-const at = (p: FloorPoint): CSSProperties => {
-  const v = inView(p);
+const at = (p: FloorPoint, g: FloorGeo): CSSProperties => {
+  const v = inViewOf(p, g);
   return { transform: `translate(${pct(v.x)},${pct(v.y)})` };
 };
-const pin = (p: FloorPoint): CSSProperties => {
-  const v = inView(p);
+const pin = (p: FloorPoint, g: FloorGeo): CSSProperties => {
+  const v = inViewOf(p, g);
   return { left: pct(v.x), top: pct(v.y) };
 };
 
@@ -66,18 +67,35 @@ export function DiningCashView({
   onRefill?: (() => void) | undefined;
 }) {
   const party = seat?.party ?? null;
-  const table = FLOOR_SEATS[stage][party?.table ?? 0];
+  // The wide dining picture and its own plan in a landscape window (developer 2026-11-20).
+  const wide = useLandscape();
+  const g = floorGeo(wide);
+  const seatsOf = g.seats(stage);
+  const table = seatsOf[party?.table ?? 0];
   const spots =
-    party && !party.left ? (takeaway ? [takeawaySpot(stage)] : partySpots(table, party.size)) : [];
+    party && !party.left
+      ? takeaway
+        ? [g.takeaway(stage)]
+        : partySpotsOf(table, party.size, g)
+      : [];
   const care = (dirty && onWipe) || (napkinsLow && onRefill);
   return (
-    <div className="sf relative h-full w-full bg-walnut-dark" data-testid="dining-cash-view">
+    <div
+      className="sf relative h-full w-full bg-walnut-dark"
+      data-testid="dining-cash-view"
+      data-wide={wide ? "" : undefined}
+    >
       <div className="sf-stage relative h-full min-h-0">
         <div className="sf-view touch-none" aria-hidden="true">
-          <img className="sf-map" src={mapUrl} alt="" draggable={false} />
+          <img
+            className="sf-map"
+            src={wide ? landscapeDiningArt(stage) : mapUrl}
+            alt=""
+            draggable={false}
+          />
           <div className="sf-dim" />
           {cashier ? (
-            <div className="sf-layer" style={at(cashierSpot(stage))}>
+            <div className="sf-layer" style={at(g.cashier(stage), g)}>
               <div className="sf-person sf-pose-stand">
                 <GuestPoses outfit="#3f5f8a" hair="#35271f" look="cashier" />
               </div>
@@ -85,7 +103,7 @@ export function DiningCashView({
           ) : null}
           {party
             ? spots.map((s, i) => (
-                <div key={`m${i}`} className="sf-layer" style={at(s)}>
+                <div key={`m${i}`} className="sf-layer" style={at(s, g)}>
                   <div className={`sf-person ${takeaway ? "sf-pose-stand" : "sf-pose-sit"}`}>
                     <GuestPoses {...lookFor(party.looks[i]!)} />
                   </div>
@@ -95,11 +113,12 @@ export function DiningCashView({
           {cents > 0 ? (
             <TableCash
               {...(party
-                ? { at: cashSpotBeside(stage, party.table, party.size, takeaway) }
+                ? { at: cashSpotBeside(stage, party.table, party.size, takeaway, g) }
                 : { stage })}
               cents={cents}
               onCollect={onCollect}
-              place={inView}
+              place={(p) => inViewOf(p, g)}
+              tables={wide ? [seatsOf[0].table, seatsOf[1].table] : undefined}
               swipe
             />
           ) : null}
@@ -109,7 +128,7 @@ export function DiningCashView({
               data-testid="dirty-table"
               aria-label="Wipe the dirty table"
               className="press absolute z-[16] grid min-h-12 min-w-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-copper/95 text-[22px] leading-none shadow-lift ring-2 ring-ivory/80"
-              style={pin({ x: table.table.x, y: table.table.y - 1 })}
+              style={pin({ x: table.table.x, y: table.table.y - 1 }, g)}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
@@ -126,7 +145,7 @@ export function DiningCashView({
               data-testid="napkins-low"
               aria-label="Refill the napkin holders"
               className="press absolute z-[16] grid min-h-12 min-w-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-tomato/90 text-[22px] leading-none shadow-lift ring-2 ring-ivory/80"
-              style={pin({ x: table.table.x + 6, y: table.table.y - 1 })}
+              style={pin({ x: table.table.x + (wide ? 5 : 6), y: table.table.y - 1 }, g)}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();

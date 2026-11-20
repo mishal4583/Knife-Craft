@@ -10,6 +10,9 @@ import {
 } from "@/game/cooking/ovenStep";
 import { AudioManager } from "@/game/AudioManager";
 import { KButton } from "../common/primitives";
+import { FilmBackdrop } from "./FilmBackdrop";
+import { useLandscape } from "./layoutMode";
+import { landscapeClipArt } from "@/game/landscapeArt";
 import ovenWebm from "@/assets/video/oven-bread.webm";
 import ovenMp4 from "@/assets/video/oven-bread.mp4";
 import ovenPoster from "@/assets/video/oven-bread-poster.webp";
@@ -56,6 +59,8 @@ export function OvenStep({
   const filmRef = useRef<HTMLVideoElement | null>(null);
   const [filmFailed, setFilmFailed] = useState(false);
   const useFilm = !reducedMotion && !filmFailed;
+  // A landscape window (developer 2026-11-20): the film is as tall as the window, in the middle of its own wide oven picture, with the title and the controls over it.
+  const wide = useLandscape();
   const bakeStart = useRef<number | null>(null);
   const finished = useRef(false);
   const onDoneRef = useRef(onDone);
@@ -135,8 +140,112 @@ export function OvenStep({
     };
   }, [reducedMotion]);
 
+  const filmVideo = (
+    <video
+      ref={filmRef}
+      className="h-full w-full object-cover"
+      muted
+      playsInline
+      preload="auto"
+      poster={ovenPoster}
+      disablePictureInPicture
+      controlsList="nodownload noremoteplayback"
+    >
+      <source src={ovenWebm} type="video/webm" />
+      <source src={ovenMp4} type="video/mp4" />
+    </video>
+  );
   const zone = donenessLabel(doneness);
   const glow = state === "baking" && !reducedMotion ? 0.25 + doneness * 0.55 : 0.2;
+  const meter = (
+    <div className="w-full">
+      <div className="relative h-4 overflow-hidden rounded-full bg-ivory/15">
+        <div
+          className="absolute inset-y-0 bg-[#5a1f10]/55"
+          style={{ left: `${OVEN.BURNT_FROM * 100}%`, right: 0 }}
+        />
+        <div
+          className="absolute inset-y-0 bg-gold/80"
+          style={{
+            left: `${OVEN.GOLDEN_FROM * 100}%`,
+            width: `${(OVEN.GOLDEN_TO - OVEN.GOLDEN_FROM) * 100}%`,
+          }}
+          data-testid="oven-window"
+        />
+        <div
+          className="absolute inset-y-0 left-0 rounded-full bg-[linear-gradient(90deg,#f5deb3,#d99a3a,#7a3e12)]"
+          style={{ width: `${Math.round(doneness * 1000) / 10}%` }}
+          data-testid="oven-doneness"
+        />
+      </div>
+      <div className="relative mt-1 h-4 font-ui text-[11px] font-bold text-ivory/80">
+        <span className="absolute left-0">Pale</span>
+        <span
+          className="absolute -translate-x-1/2 text-gold"
+          style={{ left: `${((OVEN.GOLDEN_FROM + OVEN.GOLDEN_TO) / 2) * 100}%` }}
+        >
+          Golden
+        </span>
+        <span className="absolute right-0">Burnt</span>
+      </div>
+    </div>
+  );
+  if (wide && useFilm)
+    return (
+      <div
+        className="absolute inset-0 z-[55] bg-walnut-dark text-center"
+        data-testid="oven-step"
+        data-state={state}
+        data-zone={result ?? zone}
+        data-film="on"
+        role="dialog"
+        aria-label={`Baking ${dish.name}`}
+      >
+        <FilmBackdrop
+          art={landscapeClipArt("oven-bread")}
+          share={864 / 1920}
+          video={
+            <div className="absolute inset-0" aria-hidden="true" data-testid="oven-film">
+              {filmVideo}
+            </div>
+          }
+          overlay={
+            <>
+              <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-walnut-dark/80 to-transparent px-6 pb-8 pt-5">
+                <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.2em] text-gold">
+                  🔥 Into the oven
+                </p>
+                <p className="font-display text-[20px] font-extrabold leading-tight text-ivory">
+                  {dish.emoji} {dish.name}
+                </p>
+              </div>
+              <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-3 bg-gradient-to-t from-walnut-dark/85 via-walnut-dark/60 to-transparent px-10 pb-6 pt-14">
+                {meter}
+                {state === "done" && result ? (
+                  <p
+                    className="anim-pop font-hand text-[22px] text-ivory"
+                    data-testid="oven-result"
+                  >
+                    {DONENESS_LINE[result]}
+                  </p>
+                ) : (
+                  <div className="w-full max-w-[300px]">
+                    <KButton
+                      full
+                      variant="copper"
+                      disabled={state !== "baking"}
+                      onClick={() => takeOut(doneness)}
+                    >
+                      🧤 Take it out
+                    </KButton>
+                  </div>
+                )}
+              </div>
+            </>
+          }
+        />
+      </div>
+    );
   return (
     <div
       className="absolute inset-0 z-[55] flex flex-col items-center justify-center gap-4 bg-walnut-dark/[0.97] px-5 backdrop-blur-sm text-center"
@@ -161,19 +270,7 @@ export function OvenStep({
           aria-hidden="true"
           data-testid="oven-film"
         >
-          <video
-            ref={filmRef}
-            className="h-full w-full object-cover"
-            muted
-            playsInline
-            preload="auto"
-            poster={ovenPoster}
-            disablePictureInPicture
-            controlsList="nodownload noremoteplayback"
-          >
-            <source src={ovenWebm} type="video/webm" />
-            <source src={ovenMp4} type="video/mp4" />
-          </video>
+          {filmVideo}
         </div>
       ) : (
         /* The painted oven (when the film cannot play, or Reduced Motion): its window, the glow, the tray and the bread. */

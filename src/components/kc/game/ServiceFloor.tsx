@@ -1,30 +1,30 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { KitchenMapArtStage } from "@/game/kitchen/kitchenMapArt";
 import {
-  FLOOR_SEATS,
   REACTION_FACE,
   REACT_MS,
   SIT_MS,
   BAG_MS,
   WAITER_LOOKS,
-  cashierSpot,
-  inView,
+  floorGeo,
+  inViewOf,
   lookFor,
-  partySpots,
   partyCompleteWith,
-  pathToSpot,
-  serveMs,
-  takeawaySpot,
-  takeawayStand,
-  waiterPath,
-  waiterStand,
+  partySpotsOf,
+  pathToSpotOf,
+  serveMsOf,
+  waiterPathOf,
+  waiterStandOf,
   walkFacing,
-  walkFrames,
-  walkMs,
+  walkFramesOf,
+  walkMsOf,
+  type FloorGeo,
   type FloorPoint,
   type PartySeat,
   type WaiterKind,
 } from "@/game/restaurant/serviceFloor";
+import { useLandscape } from "./layoutMode";
+import { landscapeDiningArt } from "@/game/landscapeArt";
 import type { QualityLabel } from "@/types/game";
 import { CustomerBust } from "@/components/kc/common/CustomerBust";
 import { GuestPoses } from "../restaurantMap/GuestPoses";
@@ -60,13 +60,13 @@ import "./serviceFloor.css";
 export type FloorMode = "arrive" | "deliver";
 
 const pct = (n: number) => `${Math.round(n * 100) / 100}%`;
-const at = (p: FloorPoint) => {
-  const v = inView(p);
+const at = (p: FloorPoint, g: FloorGeo) => {
+  const v = inViewOf(p, g);
   return { transform: `translate(${pct(v.x)},${pct(v.y)})` };
 };
 /** The painted walker turns to face its way: one opacity track per direction (down, up, right, left), on the walk's own timing. */
-const faceKeyframes = (name: string, path: readonly FloorPoint[]) => {
-  const frames = walkFrames(path);
+const faceKeyframes = (name: string, path: readonly FloorPoint[], g: FloorGeo) => {
+  const frames = walkFramesOf(path, g);
   const dirs = walkFacing(path);
   return (["down", "up", "r", "l"] as const)
     .map(
@@ -75,8 +75,8 @@ const faceKeyframes = (name: string, path: readonly FloorPoint[]) => {
     )
     .join("");
 };
-const walkKeyframes = (name: string, path: readonly FloorPoint[]) =>
-  `@keyframes ${name}{${walkFrames(path)
+const walkKeyframes = (name: string, path: readonly FloorPoint[], g: FloorGeo) =>
+  `@keyframes ${name}{${walkFramesOf(path, g)
     .map((f) => `${f.at}%{transform:translate(${pct(f.x)},${pct(f.y)})}`)
     .join("")}}`;
 /** The gap between members walking in (a party walks in a short file). */
@@ -127,33 +127,39 @@ export function ServiceFloor({
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
   const { party, slot, arriving, leaving } = partySeat;
-  const table = FLOOR_SEATS[stage][party.table];
-  const spots = takeaway ? [takeawaySpot(stage)] : partySpots(table, party.size);
-  const paths = takeaway ? [[takeawaySpot(stage)]] : spots.map((s) => pathToSpot(table, s));
+  // A landscape window shows the stage's wide dining picture and its own plan (developer 2026-11-20); portrait keeps the tall map's crop.
+  const wide = useLandscape();
+  const g = floorGeo(wide);
+  /** Offsets measured on the tall map, scaled for the wide picture (its tables are twice as far from their chairs). */
+  const k = wide ? 2 : 1;
+  const seatsOf = g.seats(stage);
+  const table = seatsOf[party.table];
+  const spots = takeaway ? [g.takeaway(stage)] : partySpotsOf(table, party.size, g);
+  const paths = takeaway ? [[g.takeaway(stage)]] : spots.map((s) => pathToSpotOf(table, s, g));
   // A takeaway customer is simply there at the counter (the tables are in the way of a walk to it).
   const walking = mode === "arrive" && arriving && !reducedMotion && !takeaway;
   const leavers =
     mode === "arrive" && arriving && leaving && !takeaway && !reducedMotion
-      ? partySpots(FLOOR_SEATS[stage][leaving.table], leaving.size).map((s, i) => ({
+      ? partySpotsOf(seatsOf[leaving.table], leaving.size, g).map((s, i) => ({
           look: leaving.looks[i]!,
           face: leaving.served[i]?.face ?? "🙂",
-          path: [...pathToSpot(FLOOR_SEATS[stage][leaving.table], s)].reverse(),
+          path: [...pathToSpotOf(seatsOf[leaving.table], s, g)].reverse(),
         }))
       : [];
   // The new party waits outside until the one leaving is through the door.
-  const waitMs = leavers.length ? Math.max(...leavers.map((l) => walkMs(l.path))) : 0;
-  const lastIn = walking ? Math.max(...paths.map((p, i) => walkMs(p) + i * FILE_GAP_MS)) : 0;
+  const waitMs = leavers.length ? Math.max(...leavers.map((l) => walkMsOf(l.path, g))) : 0;
+  const lastIn = walking ? Math.max(...paths.map((p, i) => walkMsOf(p, g) + i * FILE_GAP_MS)) : 0;
   // Served together: every plate held back for the table arrives with this one, they all eat, and
   // when the party is complete they all walk out together.
   const deliverers = spots.map((_, i) => i === slot || !!party.held[i]);
   const partyLeaves = mode === "deliver" && partyCompleteWith(partySeat);
   // The waiter's walk from the pass: beside the table (or the customer at the door), and how long the beat takes.
-  const stand = takeaway ? takeawayStand(stage) : waiterStand(table);
-  const wPath = waiterPath(stand);
-  const wWalkMs = walkMs(wPath);
+  const stand = takeaway ? g.takeawayStand(stage) : waiterStandOf(table, g);
+  const wPath = waiterPathOf(stand, g.pass(stage));
+  const wWalkMs = walkMsOf(wPath, g);
   // With a Cashier the bag changes hands at the counter: nobody walks.
   const bagByCashier = takeaway && cashier;
-  const deliverMs = bagByCashier ? BAG_MS : serveMs(stand);
+  const deliverMs = bagByCashier ? BAG_MS : serveMsOf(stand, g.pass(stage), g);
   const [state, setState] = useState<"walking" | "seated" | "serving" | "reacting" | "leaving">(
     mode === "arrive" ? (walking ? "walking" : "seated") : reducedMotion ? "reacting" : "serving",
   );
@@ -205,25 +211,29 @@ export function ServiceFloor({
 
   const keyframes =
     paths
-      .map((p, i) => walkKeyframes(`sfwalk${uid}_${i}`, p) + faceKeyframes(`sfwalk${uid}_${i}`, p))
+      .map(
+        (p, i) =>
+          walkKeyframes(`sfwalk${uid}_${i}`, p, g) + faceKeyframes(`sfwalk${uid}_${i}`, p, g),
+      )
       .join("") +
     leavers
       .map(
         (l, i) =>
-          walkKeyframes(`sfleave${uid}_${i}`, l.path) + faceKeyframes(`sfleave${uid}_${i}`, l.path),
+          walkKeyframes(`sfleave${uid}_${i}`, l.path, g) +
+          faceKeyframes(`sfleave${uid}_${i}`, l.path, g),
       )
       .join("") +
     paths
       .map(
         (p, i) =>
-          walkKeyframes(`sfexit${uid}_${i}`, [...p].reverse()) +
-          faceKeyframes(`sfexit${uid}_${i}`, [...p].reverse()),
+          walkKeyframes(`sfexit${uid}_${i}`, [...p].reverse(), g) +
+          faceKeyframes(`sfexit${uid}_${i}`, [...p].reverse(), g),
       )
       .join("") +
-    walkKeyframes(`sfwout${uid}`, wPath) +
-    faceKeyframes(`sfwout${uid}`, wPath) +
-    walkKeyframes(`sfwback${uid}`, [...wPath].reverse()) +
-    faceKeyframes(`sfwback${uid}`, [...wPath].reverse()) +
+    walkKeyframes(`sfwout${uid}`, wPath, g) +
+    faceKeyframes(`sfwout${uid}`, wPath, g) +
+    walkKeyframes(`sfwback${uid}`, [...wPath].reverse(), g) +
+    faceKeyframes(`sfwback${uid}`, [...wPath].reverse(), g) +
     `@keyframes sfgone${uid}{0%,85%{opacity:1}100%{opacity:0}}`;
   const sitting = state !== "walking";
   const face = quality ? REACTION_FACE[quality] : "🙂";
@@ -247,6 +257,7 @@ export function ServiceFloor({
     <div
       className="sf absolute inset-0 z-[65] flex flex-col bg-walnut-dark"
       data-testid="service-floor"
+      data-wide={wide ? "" : undefined}
       data-mode={mode}
       data-state={state}
       data-seat={party.table}
@@ -268,19 +279,28 @@ export function ServiceFloor({
           <img className="sf-map" src={mapUrl} alt="" draggable={false} />
         </div>
         <div className="sf-view" aria-hidden="true">
-          <img className="sf-map" src={mapUrl} alt="" draggable={false} />
+          <img
+            className="sf-map"
+            src={wide ? landscapeDiningArt(stage) : mapUrl}
+            alt=""
+            draggable={false}
+          />
           <div className="sf-dim" />
           {/* Plates of the members already served stay on the table. */}
           {spots.map((s, i) =>
             i !== slot && party.served[i] ? (
-              <div key={`plate${i}`} className="sf-layer" style={at({ x: s.x, y: s.y - 3.5 })}>
+              <div
+                key={`plate${i}`}
+                className="sf-layer"
+                style={at({ x: s.x, y: s.y - 3.5 * k }, g)}
+              >
                 <span className="sf-plate sf-plate--small">{party.served[i]!.emoji}</span>
               </div>
             ) : null,
           )}
           {/* The waiter carries the plate (a tray of plates for a party) from the pass, sets it down, walks back. */}
           {cashier ? (
-            <div className="sf-layer" data-testid="floor-cashier" style={at(cashierSpot(stage))}>
+            <div className="sf-layer" data-testid="floor-cashier" style={at(g.cashier(stage), g)}>
               <div className="sf-person sf-pose-stand">
                 <GuestPoses outfit="#3f5f8a" hair="#35271f" look="cashier" />
               </div>
@@ -329,7 +349,10 @@ export function ServiceFloor({
                   <div
                     key={`serve${i}`}
                     className="sf-layer"
-                    style={at({ x: s.x + (takeaway ? 2.5 : 0), y: s.y - (takeaway ? 4.5 : 3.5) })}
+                    style={at(
+                      { x: s.x + (takeaway ? 2.5 * k : 0), y: s.y - (takeaway ? 4.5 : 3.5) * k },
+                      g,
+                    )}
                   >
                     <span className="sf-plate">
                       {takeaway ? "🛍️" : i === slot ? dish.emoji : party.held[i]!.emoji}
@@ -340,10 +363,11 @@ export function ServiceFloor({
             : null}
           {tableCash && tableCash.cents > 0 ? (
             <TableCash
-              at={cashSpotBeside(stage, party.table, party.size, takeaway)}
+              at={cashSpotBeside(stage, party.table, party.size, takeaway, g)}
               cents={tableCash.cents}
               onCollect={tableCash.onCollect}
-              place={inView}
+              place={(p) => inViewOf(p, g)}
+              tables={wide ? [seatsOf[0].table, seatsOf[1].table] : undefined}
               swipe
             />
           ) : null}
@@ -353,13 +377,16 @@ export function ServiceFloor({
               className="sf-layer"
               {...(i === 0 ? { "data-testid": "service-floor-leaving" } : {})}
               style={{
-                animation: `sfleave${uid}_${i} ${walkMs(l.path)}ms linear both, sfgone${uid} ${walkMs(l.path)}ms linear both`,
+                animation: `sfleave${uid}_${i} ${walkMsOf(l.path, g)}ms linear both, sfgone${uid} ${walkMsOf(l.path, g)}ms linear both`,
               }}
             >
               <div className="sf-person sf-pose-walk">
                 <GuestPoses
                   {...lookFor(l.look)}
-                  face={{ name: `sfleave${uid}_${i}`, timing: `${walkMs(l.path)}ms linear both` }}
+                  face={{
+                    name: `sfleave${uid}_${i}`,
+                    timing: `${walkMsOf(l.path, g)}ms linear both`,
+                  }}
                 />
               </div>
               <div className="sf-face sf-face--small">{l.face}</div>
@@ -377,13 +404,13 @@ export function ServiceFloor({
                 style={
                   state === "walking"
                     ? {
-                        animation: `sfwalk${uid}_${i} ${walkMs(paths[i]!)}ms linear ${waitMs + i * FILE_GAP_MS}ms both`,
+                        animation: `sfwalk${uid}_${i} ${walkMsOf(paths[i]!, g)}ms linear ${waitMs + i * FILE_GAP_MS}ms both`,
                       }
                     : state === "leaving" && partyLeaves
                       ? {
                           animation: `sfexit${uid}_${i} ${LEAVE_MS}ms linear ${i * FILE_GAP_MS}ms both, sfgone${uid} ${LEAVE_MS}ms linear ${i * FILE_GAP_MS}ms both`,
                         }
-                      : at(s)
+                      : at(s, g)
                 }
               >
                 <div
@@ -405,7 +432,7 @@ export function ServiceFloor({
                       state === "walking"
                         ? {
                             name: `sfwalk${uid}_${i}`,
-                            timing: `${walkMs(paths[i]!)}ms linear ${waitMs + i * FILE_GAP_MS}ms both`,
+                            timing: `${walkMsOf(paths[i]!, g)}ms linear ${waitMs + i * FILE_GAP_MS}ms both`,
                           }
                         : state === "leaving" && partyLeaves
                           ? {

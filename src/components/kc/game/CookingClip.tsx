@@ -23,7 +23,8 @@
 import { useEffect, useRef, useState } from "react";
 import { AudioManager } from "@/game/AudioManager";
 import { PauseManager } from "@/game/PauseManager";
-import { LandscapeBackdrop } from "./LandscapeBackdrop";
+import { FilmBackdrop } from "./FilmBackdrop";
+import { landscapeClipArt, type ClipId } from "@/game/landscapeArt";
 import type { DishKind } from "@/game/recipes/dishKind";
 import cookingWebm from "@/assets/video/chef-cooking.webm";
 import cookingMp4 from "@/assets/video/chef-cooking.mp4";
@@ -52,6 +53,16 @@ const CLIPS: Record<DishKind, { webm: string; mp4: string; poster: string }> = {
   bread: { webm: breadWebm, mp4: breadMp4, poster: breadPoster },
   cooked: { webm: cookingWebm, mp4: cookingMp4, poster: cookingPoster },
   plated: { webm: platingWebm, mp4: platingMp4, poster: platingPoster },
+};
+
+/** The wide background picture of each film (a landscape window: `FilmBackdrop`). */
+const CLIP_ART: Record<DishKind, ClipId> = {
+  fruit: "chef-fruit",
+  salad: "chef-salad",
+  curry: "chef-curry",
+  bread: "chef-bread",
+  cooked: "chef-cooking",
+  plated: "chef-plating",
 };
 
 /** Taps sooner than this after the film appears are ignored (carry-over taps from the cutting or the plating skip). */
@@ -164,55 +175,60 @@ export function CookingClip({
         (playing && !leaving ? "opacity-100" : "pointer-events-none opacity-0")
       }
     >
-      {/* Landscape (a phone on its side, a desktop window): the portrait film whole, in a centred 9:16 box over the kitchen's own landscape painting, darkened
-          (cover would crop the film to a strip; a blurred copy of it is not allowed by YouTube Playables Design 1, 2026-11-19); portrait unchanged. */}
-      <LandscapeBackdrop section="kitchen" wash="dim" />
-      <div className="absolute inset-0 land:left-1/2 land:right-auto land:aspect-[720/1280] land:-translate-x-1/2">
-        <video
-          ref={videoRef}
-          playsInline
-          muted
-          preload="auto"
-          poster={clip.poster}
-          disablePictureInPicture
-          onPlaying={() => setStarted(true)}
-          onEnded={finish}
-          onError={() => {
-            if (playing) finish();
-          }}
-          className="absolute inset-0 h-full w-full object-cover"
-        >
-          <source src={clip.webm} type="video/webm" />
-          <source
-            src={clip.mp4}
-            type="video/mp4"
-            // The last <source> failing is reported here, not on <video>.
+      {/* Landscape (a phone on its side, a desktop window; developer 2026-11-20): the film has its OWN wide picture (the same room and light, the film's frame in its middle);
+          the film is drawn over the middle of it at the same scale and fades into it at both edges (`FilmBackdrop`). Portrait: the film fills the screen. */}
+      <FilmBackdrop
+        art={landscapeClipArt(CLIP_ART[kind])}
+        share={608 / 1920}
+        video={
+          <video
+            ref={videoRef}
+            playsInline
+            muted
+            preload="auto"
+            poster={clip.poster}
+            disablePictureInPicture
+            onPlaying={() => setStarted(true)}
+            onEnded={finish}
             onError={() => {
               if (playing) finish();
             }}
-          />
-        </video>
-        {playing ? (
-          // Sits exactly over the corner where the source film carried an AI
-          // watermark (painted out of the files too, see WATERMARK_*), and
-          // stays through the fade-out so that corner is never bare.
-          <button
-            type="button"
-            aria-label="Skip cooking"
-            disabled={leaving}
-            onClick={(e) => {
-              e.stopPropagation();
-              finish();
-            }}
-            style={{ left: `${WATERMARK_X * 100}%`, top: `${WATERMARK_Y * 100}%` }}
-            className="absolute z-10 flex h-[52px] min-w-[84px] -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+            className="absolute inset-0 h-full w-full object-cover"
           >
-            <span className="flex h-[38px] items-center rounded-full bg-walnut-dark/60 px-4 font-ui text-[13.5px] font-extrabold uppercase tracking-[0.16em] text-[#fff6e6] shadow-[0_2px_8px_rgba(0,0,0,0.25)] backdrop-blur-md">
-              Skip <span aria-hidden>&nbsp;›</span>
-            </span>
-          </button>
-        ) : null}
-      </div>
+            <source src={clip.webm} type="video/webm" />
+            <source
+              src={clip.mp4}
+              type="video/mp4"
+              // The last <source> failing is reported here, not on <video>.
+              onError={() => {
+                if (playing) finish();
+              }}
+            />
+          </video>
+        }
+        overlay={
+          playing ? (
+            // Sits exactly over the corner where the source film carried an AI
+            // watermark (painted out of the files too, see WATERMARK_*), and
+            // stays through the fade-out so that corner is never bare.
+            <button
+              type="button"
+              aria-label="Skip cooking"
+              disabled={leaving}
+              onClick={(e) => {
+                e.stopPropagation();
+                finish();
+              }}
+              style={{ left: `${WATERMARK_X * 100}%`, top: `${WATERMARK_Y * 100}%` }}
+              className="absolute z-10 flex h-[52px] min-w-[84px] -translate-x-1/2 -translate-y-1/2 items-center justify-center"
+            >
+              <span className="flex h-[38px] items-center rounded-full bg-walnut-dark/60 px-4 font-ui text-[13.5px] font-extrabold uppercase tracking-[0.16em] text-[#fff6e6] shadow-[0_2px_8px_rgba(0,0,0,0.25)] backdrop-blur-md">
+                Skip <span aria-hidden>&nbsp;›</span>
+              </span>
+            </button>
+          ) : null
+        }
+      />
       {playing && !started ? <span className="sr-only">Cooking…</span> : null}
     </div>
   );

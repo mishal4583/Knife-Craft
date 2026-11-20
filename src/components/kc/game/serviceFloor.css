@@ -364,3 +364,47 @@
   transform: translate(-50%, calc(-100% - 7cqw));
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
 }
+
+/* THE WIDE DINING ROOM (developer 2026-11-20): in a landscape window the view is the stage's whole wide picture (landscape-art/true/dining-0N.webp), covering the stage with the
+   door and the front tables in view (the crop comes off the top 12 % and the bottom, never the sides), no blurred backdrop, and smaller people. */
+.sf[data-wide] .sf-backdrop {
+  display: none;
+}
+.sf[data-wide] .sf-view {
+  --h: max(calc(100cqw * 9 / 16), calc(100cqh / 0.66));
+  position: absolute;
+  left: 50%;
+  top: calc(var(--h) * -0.12);
+  width: auto;
+  height: var(--h);
+  aspect-ratio: 16 / 9;
+  transform: translateX(-50%);
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.sf[data-wide] .sf-map {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+.sf[data-wide] .sf-person {
+  width: 3.3%;
+}
+.sf[data-wide] .sf-plate {
+  width: 2.8%;
+}
+/* the bubbles and faces rise above a head by a share of the stage's HEIGHT here (the stage is wide, so cqw would send them off) */
+.sf[data-wide] .sf-bubble {
+  max-width: 30cqh;
+  transform: translate(-50%, calc(-100% - 5.5cqh));
+}
+.sf[data-wide] .sf-bubble--small {
+  transform: translate(-50%, calc(-100% - 4.6cqh));
+}
+.sf[data-wide] .sf-face {
+  transform: translate(-50%, calc(-100% - 5cqh));
+}
+.sf[data-wide] .sf-carry {
+  transform: translate(-50%, calc(-100% - 3.6cqh));
+}

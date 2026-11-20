@@ -196,20 +196,20 @@ check(
   p2.filter((r) => !r.ok),
 );
 check(
-  "P6 each framed mini-game paints its own landscape room behind the stage (1440 x 810, the right file)",
+  "P6 each framed mini-game paints its own true landscape room behind the stage (1600 x 900, the right file; RULE CHANGE 2026-11-20: the new pictures)",
   artSeen.length === 5 &&
     artSeen.every(
       (r) =>
         r.art &&
-        r.art.w === 1440 &&
-        r.art.h === 810 &&
+        r.art.w === 1600 &&
+        r.art.h === 900 &&
         r.art.src.includes(
           {
             "dessert-run": "dessert-run",
             "kitchen-dispatch": "unload-the-van",
             "fridge-check": "fridge-check",
             "car-park": "car-park",
-            sauce: "sauce-mix",
+            sauce: "sauce-station-mix",
           }[r.id],
         ),
     ),

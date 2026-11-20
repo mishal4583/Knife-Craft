@@ -31,8 +31,7 @@ export function landscapeCleaningArt(area: CleanArea, stage: KitchenMapArtStage)
 }
 
 /**
- * The second set of landscape pictures (Codex, developer 2026-11-19/20): each is the portrait picture in the middle with the same room painted to both sides (the mini-games, the story and the loading screen; the Kitchen and the maps are the true pictures below)
- * (`scripts/make-landscape-assets.py` builds them, 1440 x 810 webp). They load only in a wide window.
+ * The wide rooms of the mini-games (Codex, developer 2026-11-20): composed wide from scratch, with a calm middle for the game's board. 1600 x 900 webp, wide windows only.
  */
 export type LandscapeGameId =
   | "dessert-run"
@@ -46,9 +45,22 @@ export type LandscapeGameId =
   | "stockroom"
   | "fridge-sort";
 
-/** The room round a mini-game's (or the sink's) 9:16 stage; the centre of the picture is dimmed to a dark well the stage sits in. */
+const GAME_FILE: Record<LandscapeGameId, string> = {
+  "dessert-run": "dessert-run",
+  "unload-the-van": "unload-the-van",
+  "car-park": "car-park",
+  "sauce-mix": "sauce-station-mix",
+  "sauce-bottle": "sauce-station-bottle",
+  "fridge-check": "fridge-check",
+  dishwashing: "dishwashing",
+  "delivery-inspection": "delivery-inspection",
+  stockroom: "stockroom",
+  "fridge-sort": "fridge-sort",
+};
+
+/** The room of a mini-game (or the sink): it fills the whole wide window behind the game. */
 export const landscapeGameArt = (id: LandscapeGameId): string =>
-  `${base()}landscape-art/games/${id}.webp`;
+  `${base()}landscape-art/true/game-${GAME_FILE[id]}.webp`;
 
 /**
  * TRUE landscape pictures (Codex, developer 2026-11-20): composed wide from scratch, no portrait picture inside them. The Kitchen home and the cutting scene for a
@@ -62,11 +74,33 @@ export const landscapeMapArt = (stage: KitchenMapArtStage): string =>
   `${base()}landscape-art/true/map-${stage}.webp`;
 
 /** The Second Floor food hall, laid out wide (1920 x 1080). */
-export const landscapeSecondFloorArt = (): string => `${base()}landscape-art/true/second-floor.webp`;
+export const landscapeSecondFloorArt = (): string =>
+  `${base()}landscape-art/true/second-floor.webp`;
 
-/** The intro story scenes ("scene1" … "scene5", "scene3A/B/C"). */
+/** The seven intro scenes ("scene1" ... "scene5", "scene3A/B/C"), composed wide (1600 x 900). */
 export const landscapeStoryArt = (scene: string): string =>
-  `${base()}landscape-art/story/${scene}.webp`;
+  `${base()}landscape-art/true/story-${scene}.webp`;
 
 /** The loading screen's room (index.html uses the same path in a media query). */
-export const landscapeLoadingArt = (): string => `${base()}landscape-art/loading.webp`;
+export const landscapeLoadingArt = (): string => `${base()}landscape-art/true/loading.webp`;
+
+/** The dining room shown while a customer is served, for a kitchen stage (1920 x 1080). */
+export const landscapeDiningArt = (stage: KitchenMapArtStage): string => {
+  const n =
+    ["humble", "growing", "established", "neighborhood-cafe", "flourishing-cafe", "grand"].indexOf(
+      stage,
+    ) + 1;
+  return `${base()}landscape-art/true/dining-0${Math.max(1, n)}.webp`;
+};
+
+/** The wide background of a cooking film: the film's frame is its middle, drawn over it at the same scale (CookingClip, OvenStep). */
+export type ClipId =
+  | "chef-cooking"
+  | "chef-salad"
+  | "chef-fruit"
+  | "chef-plating"
+  | "chef-curry"
+  | "chef-bread"
+  | "oven-bread";
+export const landscapeClipArt = (id: ClipId): string =>
+  `${base()}landscape-art/true/clip-${id}.webp`;

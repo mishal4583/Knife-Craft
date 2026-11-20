@@ -516,3 +516,201 @@ function partyByOrderReset(): void {
   party = null;
   partyByOrder.clear();
 }
+
+/**
+ * THE WIDE DINING ROOM (developer 2026-11-20): in a landscape window the Service Floor and the Served card's room show the stage's own wide picture
+ * (`landscape-art/true/dining-0N.webp`, 1920 x 1080, Codex), not the tall map's crop. Everything above is measured on the TALL map; `floorGeo(true)` gives the same
+ * things measured on the wide picture (percent of the whole picture, which is the view): the two front tables, the door, the pass at the counter, the Cashier's spot.
+ * The tall numbers do not change: `floorGeo(false)` returns them.
+ */
+export type FloorGeo = {
+  wide: boolean;
+  /** The part of the picture the view covers, in picture percent (the whole picture on the wide plan). */
+  view: { readonly x0: number; readonly x1: number; readonly y0: number; readonly y1: number };
+  /** Walking pace, picture percent per second. */
+  speed: number;
+  seats: (stage: KitchenMapArtStage) => readonly [FloorSeat, FloorSeat];
+  pass: (stage: KitchenMapArtStage) => FloorPoint;
+  cashier: (stage: KitchenMapArtStage) => FloorPoint;
+  takeaway: (stage: KitchenMapArtStage) => FloorPoint;
+  takeawayStand: (stage: KitchenMapArtStage) => FloorPoint;
+  /** Half the gap between a party's two chairs, and how far above the cloth the back pair sits. */
+  partyDx: number;
+  partyBack: number;
+  /** How far beside the seat the waiter stands. */
+  standDx: number;
+};
+
+const TALL_GEO: FloorGeo = {
+  wide: false,
+  view: FLOOR_VIEW,
+  speed: WALK_PER_SECOND,
+  seats: (st) => FLOOR_SEATS[st],
+  pass: () => FLOOR_PASS,
+  cashier: cashierSpot,
+  takeaway: takeawaySpot,
+  takeawayStand,
+  partyDx: 4.5,
+  partyBack: 4,
+  standDx: 9,
+};
+
+/** One wide front table: the cloth centre, the chair at its front (feet), and the way in from the door. */
+const wseat = (tx: number, ty: number, door: FloorPoint, outside: FloorPoint): FloorSeat => {
+  const sy = ty + 8;
+  const via = { x: tx + (tx < door.x ? 3 : -3), y: sy + 4 };
+  return {
+    seat: { x: tx, y: sy },
+    table: { x: tx, y: ty },
+    path: [outside, door, via, { x: tx, y: sy }],
+  };
+};
+
+type WideStage = {
+  door: FloorPoint;
+  outside: FloorPoint;
+  tables: readonly [FloorPoint, FloorPoint];
+  /** Where food comes from: in front of the service counter. */
+  pass: FloorPoint;
+};
+// Measured on a 5 % grid over each stage's wide dining picture (TL-dining-0N): the two front-row tables, the double door (x 50) and the counter.
+const WIDE_STAGES: Readonly<Record<KitchenMapArtStage, WideStage>> = {
+  humble: {
+    door: { x: 50, y: 70 },
+    outside: { x: 50, y: 86 },
+    tables: [
+      { x: 25, y: 42.5 },
+      { x: 73, y: 42.5 },
+    ],
+    pass: { x: 50, y: 30 },
+  },
+  growing: {
+    door: { x: 50, y: 63 },
+    outside: { x: 50, y: 80 },
+    tables: [
+      { x: 30, y: 47 },
+      { x: 69, y: 47 },
+    ],
+    pass: { x: 50, y: 21.5 },
+  },
+  established: {
+    door: { x: 50, y: 68 },
+    outside: { x: 50, y: 84 },
+    tables: [
+      { x: 39, y: 44.4 },
+      { x: 61, y: 44.4 },
+    ],
+    pass: { x: 50, y: 21 },
+  },
+  "neighborhood-cafe": {
+    door: { x: 50, y: 64 },
+    outside: { x: 50, y: 82 },
+    tables: [
+      { x: 28.6, y: 46.3 },
+      { x: 73.2, y: 45.7 },
+    ],
+    pass: { x: 50, y: 19 },
+  },
+  "flourishing-cafe": {
+    door: { x: 50, y: 63 },
+    outside: { x: 50, y: 81 },
+    tables: [
+      { x: 31, y: 42.5 },
+      { x: 67.9, y: 42.5 },
+    ],
+    pass: { x: 50, y: 19 },
+  },
+  grand: {
+    door: { x: 50, y: 65 },
+    outside: { x: 50, y: 82 },
+    tables: [
+      { x: 39.9, y: 48.9 },
+      { x: 60.4, y: 48.2 },
+    ],
+    pass: { x: 50, y: 18 },
+  },
+};
+
+const wideSeats = (st: KitchenMapArtStage): readonly [FloorSeat, FloorSeat] => {
+  const w = WIDE_STAGES[st];
+  return [
+    wseat(w.tables[0].x, w.tables[0].y, w.door, w.outside),
+    wseat(w.tables[1].x, w.tables[1].y, w.door, w.outside),
+  ];
+};
+const WIDE_SEATS_CACHE = new Map<KitchenMapArtStage, readonly [FloorSeat, FloorSeat]>();
+const WIDE_GEO: FloorGeo = {
+  wide: true,
+  view: { x0: 0, x1: 100, y0: 0, y1: 100 },
+  speed: 9,
+  seats: (st) => {
+    let s = WIDE_SEATS_CACHE.get(st);
+    if (!s) WIDE_SEATS_CACHE.set(st, (s = wideSeats(st)));
+    return s;
+  },
+  pass: (st) => WIDE_STAGES[st].pass,
+  cashier: (st) => ({ x: 64, y: WIDE_STAGES[st].pass.y + 3 }),
+  takeaway: (st) => ({ x: 58, y: WIDE_STAGES[st].pass.y + 5 }),
+  takeawayStand: (st) => ({ x: 52, y: WIDE_STAGES[st].pass.y + 6 }),
+  partyDx: 3.2,
+  partyBack: 7,
+  standDx: 8,
+};
+
+export const floorGeo = (wide: boolean): FloorGeo => (wide ? WIDE_GEO : TALL_GEO);
+
+// ---- the geometry functions above, taking the plan they work on (default: the tall one, as before) ----
+/** `inView` on a plan. */
+export function inViewOf(p: FloorPoint, g: FloorGeo): FloorPoint {
+  const { x0, x1, y0, y1 } = g.view;
+  return { x: ((p.x - x0) / (x1 - x0)) * 100, y: ((p.y - y0) / (y1 - y0)) * 100 };
+}
+/** `legDurations` / `walkMs` / `walkFrames` at a plan's pace and view. */
+export const walkMsOf = (path: readonly FloorPoint[], g: FloorGeo): number =>
+  path
+    .slice(1)
+    .map((p, i) => Math.round((Math.hypot(p.x - path[i]!.x, p.y - path[i]!.y) / g.speed) * 1000))
+    .reduce((a, b) => a + b, 0);
+export function walkFramesOf(
+  path: readonly FloorPoint[],
+  g: FloorGeo,
+): { at: number; x: number; y: number }[] {
+  const legs = path
+    .slice(1)
+    .map((p, i) => Math.round((Math.hypot(p.x - path[i]!.x, p.y - path[i]!.y) / g.speed) * 1000));
+  const total = legs.reduce((a, b) => a + b, 0) || 1;
+  let t = 0;
+  return path.map((p, i) => {
+    if (i > 0) t += legs[i - 1]!;
+    const v = inViewOf(p, g);
+    return { at: Math.round((t / total) * 1000) / 10, x: v.x, y: v.y };
+  });
+}
+/** Where a party sits and how it gets there, on a plan. */
+export function partySpotsOf(s: FloorSeat, n: number, g: FloorGeo): FloorPoint[] {
+  if (n <= 1) return [s.seat];
+  const back = s.table.y - g.partyBack;
+  return [
+    { x: s.seat.x - g.partyDx, y: s.seat.y },
+    { x: s.seat.x + g.partyDx, y: s.seat.y },
+    { x: s.seat.x - g.partyDx, y: back },
+    { x: s.seat.x + g.partyDx, y: back },
+  ].slice(0, Math.min(MAX_PARTY, n));
+}
+export function pathToSpotOf(s: FloorSeat, spot: FloorPoint, g: FloorGeo): FloorPoint[] {
+  const lead = s.path.slice(0, -1);
+  if (spot.y >= s.seat.y - 0.01) return [...lead, spot];
+  const side = { x: spot.x + (spot.x < s.seat.x ? -g.partyDx : g.partyDx), y: s.seat.y };
+  return [...lead, side, spot];
+}
+export const waiterStandOf = (s: FloorSeat, g: FloorGeo): FloorPoint => ({
+  x: s.seat.x + (s.seat.x < 50 ? 1 : -1) * g.standDx,
+  y: s.table.y + 1,
+});
+export const waiterPathOf = (stand: FloorPoint, pass: FloorPoint): FloorPoint[] => [
+  pass,
+  { x: stand.x, y: pass.y + 4 },
+  stand,
+];
+export const serveMsOf = (stand: FloorPoint, pass: FloorPoint, g: FloorGeo): number =>
+  walkMsOf(waiterPathOf(stand, pass), g) + SET_DOWN_MS;

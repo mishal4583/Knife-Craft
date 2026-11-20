@@ -122,10 +122,11 @@ const read = (p: string) =>
   const closing = read("src/components/kc/restaurant/ClosingTime.tsx");
   const card = read("src/components/kc/game/ServiceOrderComplete.tsx");
   check(
+    // RULE CHANGE 2026-11-20: cashSpotBeside takes the plan `g` (the wide dining picture's plan in a landscape window; floorGeo(false) is the tall one, unchanged).
     // Rule changed (developer 2026-11-01): the cash lies beside the party's own seats (cashSpotBeside), not on the
     // free table (was: first on the free table).
     "W1 the dining room draws the pile beside the party that paid and collecting does not skip the arrival",
-    /<TableCash[\s\S]{0,200}at=\{cashSpotBeside\(stage, party\.table, party\.size, takeaway\)\}/.test(
+    /<TableCash[\s\S]{0,200}at=\{cashSpotBeside\(stage, party\.table, party\.size, takeaway, g\)\}/.test(
       floor,
     ) &&
       /e\.stopPropagation\(\);[\s\S]{0,160}onCollect\(\);/.test(tc) &&

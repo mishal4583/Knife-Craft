@@ -38,7 +38,7 @@
     <link
       rel="preload"
       as="image"
-      href="./landscape-art/loading.webp"
+      href="./landscape-art/true/loading.webp"
       media="(min-aspect-ratio: 13/10)"
     />
     <style>
@@ -58,14 +58,24 @@
         pointer-events: auto; /* taps never reach the game under it (it may be mounted already) */
         transition: opacity 0.4s ease;
       }
-      /* A wide window (developer 2026-11-20): the loading room painted to both sides of the 9:16 column (landscape-art/loading.webp, its centre is the column's own picture,
-         dimmed to a well). A phone held upright never asks for it. */
+      /* A wide window (developer 2026-11-20): the loading room is its own wide picture (landscape-art/true/loading.webp, composed wide, calm in the middle), and the
+         chef, the board, the logo and the bar sit in the middle of it in a column (.bs-col) as tall as the window. A phone held upright never asks for it. */
       @media (min-aspect-ratio: 13/10) {
         #boot-splash {
-          background: #2b1a0e url("./landscape-art/loading.webp") center / cover no-repeat;
+          background: #2b1a0e url("./landscape-art/true/loading.webp") center / cover no-repeat;
         }
-        #boot-splash .bs-stage {
-          box-shadow: 0 0 60px 18px rgba(18, 10, 5, 0.6);
+        #boot-splash > div.bs-stage {
+          max-width: none;
+          background: none;
+        }
+        #boot-splash > div.bs-stage > img.bs-bg,
+        #boot-splash > div.bs-stage > div.bs-shade {
+          display: none;
+        }
+        #boot-splash > div.bs-stage > div.bs-col {
+          inset: 0 auto 0 50%;
+          width: calc(100dvh * 9 / 16);
+          transform: translateX(-50%);
         }
       }
       #boot-splash.leaving {
@@ -110,6 +120,10 @@
           rgba(30, 15, 5, 0) 62%,
           rgba(30, 15, 5, 0.55) 100%
         );
+      }
+      #boot-splash .bs-col {
+        position: absolute;
+        inset: 0;
       }
       #boot-splash .bs-chef {
         left: 50%;
@@ -242,49 +256,51 @@
           onload="this.classList.add('in')"
         />
         <div class="bs-shade"></div>
-        <img
-          class="bs-chef"
-          src="./loading/chef.webp"
-          alt=""
-          width="420"
-          height="630"
-          fetchpriority="low"
-          decoding="async"
-          onload="this.classList.add('in')"
-        />
-        <img
-          class="bs-board"
-          src="./loading/board.webp"
-          alt=""
-          width="640"
-          height="332"
-          fetchpriority="low"
-          decoding="async"
-          onload="this.classList.add('in')"
-        />
-        <img
-          class="bs-logo"
-          src="./loading/logo.webp"
-          alt="KnifeCraft"
-          width="520"
-          height="243"
-          fetchpriority="high"
-          onload="this.classList.add('in')"
-        />
-        <div class="bs-bar">
+        <div class="bs-col">
           <img
-            class="bs-frame"
-            src="./loading/bar-frame.webp"
+            class="bs-chef"
+            src="./loading/chef.webp"
             alt=""
-            width="560"
-            height="140"
+            width="420"
+            height="630"
+            fetchpriority="low"
+            decoding="async"
+            onload="this.classList.add('in')"
+          />
+          <img
+            class="bs-board"
+            src="./loading/board.webp"
+            alt=""
+            width="640"
+            height="332"
+            fetchpriority="low"
+            decoding="async"
+            onload="this.classList.add('in')"
+          />
+          <img
+            class="bs-logo"
+            src="./loading/logo.webp"
+            alt="KnifeCraft"
+            width="520"
+            height="243"
             fetchpriority="high"
             onload="this.classList.add('in')"
           />
-          <span class="bs-track"><span class="bs-fill"></span></span>
-          <span class="bs-text"
-            >LOADING…<span class="bs-hint" hidden> · 🎵 TAP FOR MUSIC</span></span
-          >
+          <div class="bs-bar">
+            <img
+              class="bs-frame"
+              src="./loading/bar-frame.webp"
+              alt=""
+              width="560"
+              height="140"
+              fetchpriority="high"
+              onload="this.classList.add('in')"
+            />
+            <span class="bs-track"><span class="bs-fill"></span></span>
+            <span class="bs-text"
+              >LOADING…<span class="bs-hint" hidden> · 🎵 TAP FOR MUSIC</span></span
+            >
+          </div>
         </div>
       </div>
     </div>

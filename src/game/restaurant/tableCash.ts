@@ -8,7 +8,14 @@
  * money itself is `economy/pendingCash.ts`.
  */
 import type { KitchenMapArtStage } from "../kitchen/kitchenMapArt";
-import { FLOOR_SEATS, partySpots, takeawaySpot, type FloorPoint } from "./serviceFloor";
+import {
+  FLOOR_SEATS,
+  partySpots,
+  partySpotsOf,
+  takeawaySpot,
+  type FloorGeo,
+  type FloorPoint,
+} from "./serviceFloor";
 
 /** The most bundles one table shows. */
 export const MAX_BUNDLES = 5;
@@ -60,22 +67,26 @@ export function cashSpotBeside(
   table: 0 | 1,
   size = 1,
   takeaway = false,
+  /** The wide dining room's plan (`floorGeo(true)`); default the tall one. */
+  geo?: FloorGeo,
 ): FloorPoint {
   if (takeaway) {
-    const c = takeawaySpot(stage);
-    return { x: c.x - 4.5, y: c.y + 0.5 };
+    const c = geo ? geo.takeaway(stage) : takeawaySpot(stage);
+    return { x: c.x - (geo?.wide ? 3 : 4.5), y: c.y + 0.5 };
   }
-  const seats = FLOOR_SEATS[stage];
+  const seats = geo ? geo.seats(stage) : FLOOR_SEATS[stage];
   const mine = seats[table];
   const other = seats[table === 0 ? 1 : 0];
-  const xs = partySpots(mine, Math.max(1, size)).map((p) => p.x);
+  const xs = (
+    geo ? partySpotsOf(mine, Math.max(1, size), geo) : partySpots(mine, Math.max(1, size))
+  ).map((p) => p.x);
   // Beside the party on the side that is clear of the other table and stays well inside the painting (a label on
   // the far edge was cut off): the left of the group or the right of it, whichever sits farther from the other seat.
   const sides = [
-    { x: Math.min(...xs) - 5.5, y: mine.seat.y - 1 },
-    { x: Math.max(...xs) + 5.5, y: mine.seat.y - 1 },
-  ].filter((p) => p.x >= 10 && p.x <= 80);
+    { x: Math.min(...xs) - (geo?.wide ? 4 : 5.5), y: mine.seat.y - 1 },
+    { x: Math.max(...xs) + (geo?.wide ? 4 : 5.5), y: mine.seat.y - 1 },
+  ].filter((p) => (geo?.wide ? p.x >= 8 && p.x <= 92 : p.x >= 10 && p.x <= 80));
   const far = (p: FloorPoint) => Math.hypot(p.x - other.seat.x, p.y - other.seat.y);
   const best = [...sides].sort((a, b) => far(b) - far(a))[0];
-  return best ?? { x: mine.seat.x + 5.5, y: mine.seat.y - 1 };
+  return best ?? { x: mine.seat.x + (geo?.wide ? 4 : 5.5), y: mine.seat.y - 1 };
 }

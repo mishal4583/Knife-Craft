@@ -19,6 +19,9 @@ import {
   landscapeGameArt,
   landscapeKitchenArt,
   landscapeLoadingArt,
+  landscapeDiningArt,
+  landscapeClipArt,
+  type ClipId,
   landscapeMapArt,
   landscapeSecondFloorArt,
   landscapeStoryArt,
@@ -58,6 +61,15 @@ const STAGES = [
   "flourishing-cafe",
   "grand",
 ] as const;
+const CLIPS: ClipId[] = [
+  "chef-cooking",
+  "chef-salad",
+  "chef-fruit",
+  "chef-plating",
+  "chef-curry",
+  "chef-bread",
+  "oven-bread",
+];
 const SCENES = ["scene1", "scene2", "scene3A", "scene3B", "scene3C", "scene4", "scene5"];
 const all = [
   ...GAMES.map((g) => landscapeGameArt(g)),
@@ -66,13 +78,15 @@ const all = [
   landscapeSecondFloorArt(),
   ...SCENES.map((s) => landscapeStoryArt(s)),
   landscapeLoadingArt(),
+  ...STAGES.map((s) => landscapeDiningArt(s)),
+  ...CLIPS.map((c) => landscapeClipArt(c)),
 ].map(rel);
 
 console.log("A. The set is complete");
 const missing = all.filter((f) => !fs.existsSync(path.join(ROOT, "public", f)));
 assert(
-  all.length === 31 && new Set(all).size === 31 && missing.length === 0,
-  "A1: 31 distinct pictures, all in public/landscape-art",
+  all.length === 44 && new Set(all).size === 44 && missing.length === 0,
+  "A1: 44 distinct pictures (10 games, 6 Kitchens, 7 maps, 7 scenes, loading, 6 dining rooms, 7 film backgrounds), all in public/landscape-art/true",
   missing,
 );
 
@@ -99,22 +113,21 @@ console.log("\nB. Real, the right size, light");
       h = ((v >> 14) & 0x3fff) + 1;
     }
     // the true pictures (Codex, composed wide from scratch): Kitchen 1600 x 900, maps 1920 x 1080; everything else 1440 x 810
-    const [ew, eh, maxKb] = /true\/kitchen-/.test(f)
-      ? [1600, 900, 600]
-      : /true\/(map-|second-floor)/.test(f)
-        ? [1920, 1080, 600]
-        : [1440, 810, 300];
+    // RULE CHANGE 2026-11-20: every picture is a TRUE landscape one (landscape-art/true/): Kitchen, games, story and loading 1600 x 900; maps, Second Floor and dining rooms 1920 x 1080
+    const [ew, eh, maxKb] = /true\/(map-|second-floor|dining-|clip-)/.test(f)
+      ? [1920, 1080, 600]
+      : [1600, 900, 600];
     if (!riff || w !== ew || h !== eh || b.length > maxKb * 1024)
       bad.push({ f, riff, w, h, kb: Math.round(b.length / 1024) });
   }
   assert(
     bad.length === 0,
-    "B1: every file is a webp of its size (1440 x 810, true Kitchen 1600 x 900, true maps 1920 x 1080) and light",
+    "B1: every file is a webp of its size (1440 x 810, 1600 x 900, maps and dining rooms 1920 x 1080) and light",
     bad.slice(0, 3),
   );
   assert(
-    total < 8 * 1024 * 1024,
-    `B2: the whole set is under 8 MB (${Math.round(total / 1024)} KB)`,
+    total < 12 * 1024 * 1024,
+    `B2: the whole set is under 12 MB (RULE CHANGE 2026-11-20: 44 pictures, loaded one screen at a time in a wide window only) (${Math.round(total / 1024)} KB)`,
   );
 }
 
@@ -179,7 +192,17 @@ console.log("\nD. Everything else");
     "D4: the intro story uses the landscape scenes and is no longer portrait-only",
   );
   assert(
-    /min-aspect-ratio: 13\/10/.test(html) && /landscape-art\/loading\.webp/.test(html),
+    /landscapeDiningArt\(stage\)/.test(read("src/components/kc/game/ServiceFloor.tsx")) &&
+      /landscapeDiningArt\(stage\)/.test(read("src/components/kc/game/DiningCashView.tsx")),
+    "D6: the service floor and the served card's room show the stage's wide dining picture in a landscape window",
+  );
+  assert(
+    /landscapeClipArt\(CLIP_ART\[kind\]\)/.test(read("src/components/kc/game/CookingClip.tsx")) &&
+      /landscapeClipArt\("oven-bread"\)/.test(read("src/components/kc/game/OvenStep.tsx")),
+    "D7: each cooking film (and the oven film) sits in the middle of its own matching wide picture",
+  );
+  assert(
+    /min-aspect-ratio: 13\/10/.test(html) && /landscape-art\/true\/loading\.webp/.test(html),
     "D5: the loading screen paints its room in a wide window only",
   );
 }
