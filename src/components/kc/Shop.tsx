@@ -8,7 +8,7 @@ import type { FloorResult } from "@/game/restaurant/secondFloor";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { firstRunHand } from "@/game/restaurant/firstRunGuide";
 import { PointerHand } from "./common/PointerHand";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import type { ScreenId } from "./data";
 import { BottomNav } from "./Kitchen";
 import { FIRST_INGREDIENT_PURCHASE_LEVEL } from "@/game/restaurant/firstLevels";
@@ -491,7 +491,10 @@ export function Shop({
 
         {/* Shopfront — the shop illustration in the same rounded hero frame Rack uses for its knife. */}
         <div className="px-4">
-          <div className="relative overflow-hidden rounded-[26px] border border-walnut-dark/50 wood shadow-lift">
+          <div
+            className="kc-banner relative overflow-hidden rounded-[26px] border border-walnut-dark/50 wood shadow-lift"
+            style={{ "--kc-ratio": 1440 / 631, "--kc-short-h": "72px" } as CSSProperties}
+          >
             {HEADER_ART ? (
               <img
                 src={HEADER_ART}
@@ -499,7 +502,7 @@ export function Shop({
                 // Restaurant Ingredients: a shorter banner so the Plan ahead panel is on
                 // screen (audit 2026-10-08: it sat below the fold).
                 className={cn(
-                  "block w-full object-cover object-top land:!h-[72px] land:object-[center_35%] land:[@media(min-height:520px)]:!h-[168px] land:[@media(min-height:520px)]:object-[center_20%]",
+                  "block w-full object-cover object-top",
                   RESTAURANT_MODE && category === "ingredients" ? "h-[96px]" : "h-[168px]",
                 )}
               />
@@ -817,7 +820,10 @@ function Blacksmith({
       </Panel>
 
       {/* The forge — illustration (or the knife) in the same wood hero frame as Rack. */}
-      <div className="relative overflow-hidden rounded-[26px] border border-walnut-dark/50 wood shadow-lift">
+      <div
+        className="kc-banner relative overflow-hidden rounded-[26px] border border-walnut-dark/50 wood shadow-lift"
+        style={{ "--kc-ratio": 1440 / 631, "--kc-short-h": "72px" } as CSSProperties}
+      >
         {BLACKSMITH_ART ? (
           <img
             src={BLACKSMITH_ART}

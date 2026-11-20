@@ -1,3 +1,13 @@
+import type { CSSProperties } from "react";
+
+/** Each picture's own width / height, so a wide window shows all of it (styles.css `.kc-banner`). */
+const BANNER_RATIO = {
+  "staff-banner.webp": 2.5,
+  "suppliers-banner.webp": 2.5,
+  "menu-banner.webp": 1440 / 540,
+  "operations-banner.webp": 1440 / 540,
+} as const;
+
 /** Compact, matching image header shared by the Business detail tabs. */
 export function BusinessSectionBanner({
   image,
@@ -8,8 +18,9 @@ export function BusinessSectionBanner({
 }) {
   return (
     <section
-      className="relative isolate h-[88px] overflow-hidden rounded-[20px] border border-walnut/20 bg-walnut-dark shadow-soft sm:h-[96px] land:!h-[56px] land:[@media(min-height:520px)]:!h-[120px]"
+      className="kc-banner relative isolate h-[88px] overflow-hidden rounded-[20px] border border-walnut/20 bg-walnut-dark shadow-soft sm:h-[96px]"
       aria-label={title}
+      style={{ "--kc-ratio": BANNER_RATIO[image], "--kc-short-h": "56px" } as CSSProperties}
     >
       <img
         src={`${import.meta.env.BASE_URL}business/${image}`}

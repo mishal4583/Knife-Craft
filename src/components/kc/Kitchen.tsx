@@ -62,6 +62,7 @@ import { ScrollCue } from "./common/ScrollCue";
 import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 import { AskPaigeButton } from "./assistant/AskPaigeButton";
 import { useLandscape } from "./game/layoutMode";
+import { PortraitOnly } from "./game/PortraitOnly";
 import { mgUrl, useMiniGameArt, warmMiniGameArt } from "./minigamesArt";
 import { useAssistant } from "./assistant/AssistantContext";
 import { PaigeStage } from "./assistant/PaigeStage";
@@ -319,6 +320,9 @@ export function Kitchen({
 
   return (
     <div data-kc-wide className="relative h-full w-full overflow-hidden bg-cream">
+      {/* RULE CHANGE 2026-11-20 (developer: the old portrait picture sat in the middle of the wide one): until a real landscape Kitchen painting exists, a wide
+          window keeps the Kitchen at its original 9:16 size */}
+      <PortraitOnly wideOnly />
       <KitchenBackground skin={equippedUpgrade.asset} />
       {/* The day clock (restaurant build): the light of the next service's time of day,
           night at closing — an opacity-only tint over the same art (dayClock.ts). */}

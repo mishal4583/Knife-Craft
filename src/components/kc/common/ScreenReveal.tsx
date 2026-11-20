@@ -72,6 +72,17 @@ async function decodeBig(root: HTMLElement): Promise<void> {
   ]);
 }
 
+/**
+ * Moving between the tabs of ONE section (Business's Overview / Equipment / Staff ..., the Market's and the Inventory's own screens) never blanks the page
+ * (developer 2026-11-20: "the Staff page blinks when clicked"): the section's frame, header and tabs stay, and its pictures fade in as they arrive. Only a jump to
+ * another section holds the screen for its pictures.
+ */
+const SAME_SECTION = ["business", "shop", "inventory"];
+const sectionOf = (key: string) => {
+  const head = key.split("-")[0] ?? key;
+  return SAME_SECTION.includes(head) ? head : key;
+};
+
 export function ScreenReveal({
   screenKey,
   children,
@@ -82,10 +93,14 @@ export function ScreenReveal({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [hidden, setHidden] = useState(false);
+  const prevKey = useRef<string | null>(null);
 
   useLayoutEffect(() => {
     const root = ref.current;
     if (!root) return;
+    const prev = prevKey.current;
+    prevKey.current = screenKey;
+    if (prev !== null && sectionOf(prev) === sectionOf(screenKey)) return;
     let cancelled = false;
     const opened = performance.now();
     const lateMs = root.querySelector(FALLBACK) ? LATE_WINDOW_LAZY_MS : LATE_WINDOW_MS;

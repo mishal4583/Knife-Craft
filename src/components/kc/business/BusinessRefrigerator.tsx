@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import type { ScreenId } from "../data";
 import type { SaveData } from "@/game/SaveManager";
 import { KButton, Panel, Badge } from "../common/primitives";
@@ -110,8 +110,9 @@ export function BusinessRefrigerator({
   return (
     <div className="space-y-3">
       <section
-        className="relative isolate h-[88px] overflow-hidden rounded-[20px] border border-walnut/20 bg-walnut-dark shadow-soft sm:h-[96px] land:!h-[56px] land:[@media(min-height:520px)]:!h-[120px]"
+        className="kc-banner relative isolate h-[88px] overflow-hidden rounded-[20px] border border-walnut/20 bg-walnut-dark shadow-soft sm:h-[96px]"
         aria-label="Commercial kitchen equipment"
+        style={{ "--kc-ratio": 2.5, "--kc-short-h": "56px" } as CSSProperties}
       >
         <img
           src={`${import.meta.env.BASE_URL}business/equipment-banner.webp`}

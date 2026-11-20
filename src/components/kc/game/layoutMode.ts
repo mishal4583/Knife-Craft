@@ -62,7 +62,12 @@ export const PORTRAIT_H = 960;
  * box that fits, centred, with dark bars round it (`frame`). A phone held upright still gets the whole screen, and a phone on its side (`isPhoneLandscape`)
  * keeps the landscape layout those screens have always had (the upright-only mini-games cover it with their "turn your phone" card).
  */
-export function fitLayout(width: number, height: number, portraitOnly = false): Fit {
+export function fitLayout(
+  width: number,
+  height: number,
+  portraitOnly = false,
+  wideOnly = false,
+): Fit {
   if (!(width > 0) || !(height > 0))
     return {
       landscape: false,
@@ -73,7 +78,13 @@ export function fitLayout(width: number, height: number, portraitOnly = false): 
     };
   const aspect = width / height;
   const uprightPhone = width < FILL_MAX_W && aspect <= FILL_MAX_ASPECT;
-  if (portraitOnly && !uprightPhone && !isPhoneLandscape(width, height)) {
+  // `wideOnly`: the box only for a window as wide as the landscape layout (aspect >= LAND_ASPECT); a taller window keeps the portrait layout at full size
+  if (
+    portraitOnly &&
+    (!wideOnly || aspect >= LAND_ASPECT) &&
+    !uprightPhone &&
+    !isPhoneLandscape(width, height)
+  ) {
     const k = Math.min(width / PORTRAIT_W, height / PORTRAIT_H);
     const w = PORTRAIT_W * k;
     const h = PORTRAIT_H * k;

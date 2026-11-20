@@ -1,4 +1,5 @@
 import { ScreenReveal } from "@/components/kc/common/ScreenReveal";
+import { PortraitOnly } from "@/components/kc/game/PortraitOnly";
 import { staffOnMap } from "@/game/restaurant/staffLife";
 import { restaurantNameOf } from "@/game/restaurant/restaurantName";
 import {
@@ -403,8 +404,17 @@ export function ScreensRouter({
           <NavHandContext.Provider value={firstRunNavHand}>
             <ScreenReveal screenKey={screen}>
               {screen === "restaurant-map" ? (
-                <Suspense fallback={<RestaurantLoading go={routeGo} active="restaurant-map" />}>
+                <Suspense
+                  fallback={
+                    <>
+                      <PortraitOnly wideOnly />
+                      <RestaurantLoading go={routeGo} active="restaurant-map" />
+                    </>
+                  }
+                >
                   <div data-kc-wide className="relative h-full w-full overflow-hidden bg-[#f7edd7]">
+                    {/* RULE CHANGE 2026-11-20: the map keeps its original 9:16 size in a wide window until a real landscape map exists */}
+                    <PortraitOnly wideOnly />
                     <RestaurantMap
                       className="restaurant-map-production"
                       playerLevel={restaurantLevelOf(save.levelProgress)}
@@ -494,8 +504,17 @@ export function ScreensRouter({
                 </Suspense>
               ) : null}
               {screen === "second-floor" ? (
-                <Suspense fallback={<RestaurantLoading go={routeGo} active="restaurant-map" />}>
+                <Suspense
+                  fallback={
+                    <>
+                      <PortraitOnly wideOnly />
+                      <RestaurantLoading go={routeGo} active="restaurant-map" />
+                    </>
+                  }
+                >
                   <div data-kc-wide className="relative h-full w-full overflow-hidden bg-[#f7edd7]">
+                    {/* RULE CHANGE 2026-11-20: the map keeps its original 9:16 size in a wide window until a real landscape map exists */}
+                    <PortraitOnly wideOnly />
                     <SecondFloorView
                       save={save}
                       playerLevel={restaurantLevelOf(save.levelProgress)}

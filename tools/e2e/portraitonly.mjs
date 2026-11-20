@@ -1,8 +1,8 @@
 // Screens with only a portrait painting keep their ORIGINAL size (developer 2026-11-19: "find all the areas that can't be converted to landscape because there are
 // no landscape assets and make them back to the original size; only keep the areas that need no asset in landscape"), restaurant build, real browser:
-//   P1 at 1280 x 720 and 1920 x 1080 the Kitchen, Market and Business fill the window (data-game-frame="full"): they need no portrait painting
+//   P1 at 1280 x 720 and 1920 x 1080 the Kitchen home is the 9:16 box (RULE CHANGE 2026-11-20), Market and Business fill the window (data-game-frame="full")
 //   P2 at 1280 x 720 each mini-game that has only a portrait stage (Dessert Run, Unload the Van, Fridge Check, Car Park, Sauce Station) is the centred 9:16 box
-//      (data-game-frame="framed", 9:16 to within a pixel, centred, inside the window) and goes back to filling the window when closed (no remount: the Kitchen is the same one)
+//      (data-game-frame="framed", 9:16 to within a pixel, centred, inside the window) and goes back to the Kitchen's own 9:16 box when closed (no remount: the Kitchen is the same one)
 //   P3 the dishwashing sink (Pre-Service Check > Wash) is the 9:16 box too
 //   P4 an upright phone (390 x 844) is NOT framed in a mini-game: it keeps the whole screen, and a phone on its side (844 x 390) is not framed either
 //   P5 no console errors
@@ -145,8 +145,10 @@ for (const [w, h] of [
   [1920, 1080],
 ]) {
   await open(saveAt(91), w, h);
+  // RULE CHANGE 2026-11-20: the Kitchen home keeps its original 9:16 box (no wide picture, no room behind it) until a real landscape painting exists
   const k = await frame();
-  if (!isFull(k)) wideBad.push({ w, h, screen: "kitchen", k });
+  if (!isNineSixteen(k) || (await shellArt()) !== null)
+    wideBad.push({ w, h, screen: "kitchen", k });
   for (const label of ["Market", "Business"]) {
     await openSection(page, label).catch(() => {});
     await sleep(900);
@@ -155,7 +157,7 @@ for (const [w, h] of [
   }
 }
 check(
-  "P1 the Kitchen, Market and Business fill the window at 1280x720 and 1920x1080 (landscape, no bars)",
+  "P1 the Kitchen is the original 9:16 box, and Market and Business fill the window, at 1280x720 and 1920x1080",
   wideBad.length === 0,
   wideBad,
 );
@@ -184,12 +186,12 @@ for (const [id, testId, backId] of GAMES) {
     await page.click(`[data-testid="${backId}"]`);
     await sleep(900);
     back = await frame();
-    backOk = isFull(back) && Boolean(await page.$('[data-testid="kitchen-rank"]'));
+    backOk = isNineSixteen(back) && Boolean(await page.$('[data-testid="kitchen-rank"]'));
   }
   p2.push({ id, opened, ok: opened && isNineSixteen(f) && backOk, f, back });
 }
 check(
-  "P2 Dessert Run, Unload the Van, Fridge Check, Car Park and Sauce Station are the centred 9:16 box at 1280x720; after Back (Dessert Run, the Van) the Kitchen fills the window again",
+  "P2 Dessert Run, Unload the Van, Fridge Check, Car Park and Sauce Station are the centred 9:16 box at 1280x720; after Back (Dessert Run, the Van) the Kitchen is the 9:16 box again",
   p2.every((r) => r.ok),
   p2.filter((r) => !r.ok),
 );

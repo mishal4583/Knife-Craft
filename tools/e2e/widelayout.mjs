@@ -1,12 +1,13 @@
 // The list screens are ONE reading column in a wide window (developer 2026-11-19: "every page feels so wide and not optimized"), restaurant build, real browser:
 //   W1 at 1917x912 and 1280x720 every block of Market, Business (all eight tabs), Inventory, Restaurant Progress, Achievements and Settings is at most 1040 px wide
 //      (--kc-col) and sits in the middle of the room beside the rail (equal space left and right, within 2 px); no sideways scroll
-//   W2 the full-bleed screens (Kitchen home, restaurant map) keep the whole window (their root is `data-kc-wide`), and the Kitchen's order card is at most 760 px
-//   W3 the section banners are real banners (Market 168 px, Business tabs and Inventory 120 px) in a window at least 520 px tall, and the small landscape ones
+//   W2 the Kitchen home and the restaurant map keep their original 9:16 box, centred, with no landscape picture (RULE CHANGE 2026-11-20)
+//   W3 every section banner shows its WHOLE picture (its own shape, not a fixed-height strip) in a window at least 520 px tall; the small landscape ones
 //      (72 / 56 / 64 px) on a short phone (844x390)
 //   W4 a phone on its side (844x390) is not changed: its blocks are as wide as the room beside the rail (the column is wider than the phone), no sideways scroll
 //   W5 the Mini-games sheet is a bottom sheet at every size: its bottom edge is the bottom of the window (the painted panel has no bottom edge)
 //   W6 no console errors
+//   W7 on a slow connection a Business tab click never blanks the page (the Staff blink)
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -186,8 +187,12 @@ for (const [w, h] of [
     const card = document.querySelector('[data-testid="day-strip"]')?.parentElement;
     return {
       wide: root?.hasAttribute("data-kc-wide"),
+      framed: document.querySelector("[data-game-frame]")?.getAttribute("data-game-frame"),
       rootW: root?.getBoundingClientRect().width,
+      rootX: root?.getBoundingClientRect().x,
       vw: document.documentElement.clientWidth,
+      vh: document.documentElement.clientHeight,
+      landArt: document.querySelectorAll('img[src*="landscape-art"]').length,
       cardW: card
         ? card.getBoundingClientRect().width /
           (document.querySelector("[data-game-content]").getBoundingClientRect().width /
@@ -202,17 +207,26 @@ for (const [w, h] of [
     const root = nav?.parentElement;
     return {
       wide: root?.hasAttribute("data-kc-wide"),
+      framed: document.querySelector("[data-game-frame]")?.getAttribute("data-game-frame"),
       rootW: root?.getBoundingClientRect().width,
+      rootX: root?.getBoundingClientRect().x,
       vw: document.documentElement.clientWidth,
+      vh: document.documentElement.clientHeight,
+      landArt: document.querySelectorAll('img[src*="landscape-art"]').length,
     };
   });
+  // RULE CHANGE 2026-11-20 (developer: "why is the old portrait layout still in the centre? ... completely landscape"): Codex's wide Kitchen and map pictures hold
+  // the portrait picture in their middle, so the Kitchen home, the restaurant map and the Second Floor keep their original 9:16 box (centred, dark bars) until a
+  // real landscape painting exists. W2 used to demand the whole window.
+  const boxOk = (r) =>
+    r.framed === "framed" &&
+    Math.abs(r.rootW - Math.min(r.vw, (r.vh * 9) / 16)) <= 3 &&
+    Math.abs(r.rootX - (r.vw - r.rootW) / 2) <= 3 &&
+    r.landArt === 0;
+  const kk = { ...k };
   check(
-    `W2 at ${w}x${h} the Kitchen home and the restaurant map keep the whole window; the order card is at most 760 px`,
-    k.wide &&
-      m.wide &&
-      k.rootW >= k.vw - 100 &&
-      m.rootW >= m.vw - 100 &&
-      Math.round(k.cardW) <= 760,
+    `W2 at ${w}x${h} the Kitchen home and the restaurant map are the original 9:16 box (centred, no wide picture behind them)`,
+    boxOk(kk) && boxOk(m),
     { k, m },
   );
   const banner = async (fn) => {
@@ -222,41 +236,50 @@ for (const [w, h] of [
   const heights = {};
   await page.evaluate(() => document.querySelector('[data-nav="shop"]')?.click());
   await sleep(700);
-  const sc = () =>
+  // RULE CHANGE 2026-11-20 (developer: "only a random portion is visible"): a banner is its picture's OWN shape, so the whole picture shows (before: 120 / 168 px strips).
+  // Every banner of the Market, the Business tabs and the Inventory: its box has the picture's width / height (within 2 %), the picture fills the box, and it is
+  // centred and no taller than 280 px.
+  const whole = () =>
     page.evaluate(() => {
       const g = document.querySelector("[data-game-content]");
-      return g.getBoundingClientRect().width / g.offsetWidth;
+      const k = g.getBoundingClientRect().width / g.offsetWidth;
+      return [...document.querySelectorAll(".kc-banner")]
+        .filter((b) => b.getBoundingClientRect().width > 0)
+        .map((b) => {
+          const i = b.querySelector("img");
+          const r = b.getBoundingClientRect();
+          const ir = i.getBoundingClientRect();
+          return {
+            ratio: r.width / r.height,
+            natural: i.naturalWidth / i.naturalHeight,
+            fills: Math.abs(ir.width - r.width) <= 4 && Math.abs(ir.height - r.height) <= 4,
+            h: r.height / k,
+          };
+        });
     });
-  heights.market =
-    (await page.evaluate(
-      () =>
-        document.querySelector("img[alt^='A friendly merchant']")?.getBoundingClientRect().height,
-    )) / (await sc());
+  const banners = {};
+  await page.evaluate(() => document.querySelector('[data-nav="shop"]')?.click());
+  await sleep(800);
+  banners.market = await whole();
   await openSection(page, "Business").catch(() => {});
   await sleep(600);
-  await goBusinessTab("Equipment");
-  heights.business =
-    (await page.evaluate(
-      () =>
-        [...document.querySelectorAll("section")]
-          .find((s) => /Kitchen equipment/.test(s.textContent))
-          ?.getBoundingClientRect().height,
-    )) / (await sc());
+  for (const tab of ["Equipment", "Staff", "Suppliers", "Menu", "Operations"]) {
+    await goBusinessTab(tab);
+    await sleep(300);
+    banners["business-" + tab] = await whole();
+  }
   await openSection(page, "Inventory").catch(() => {});
-  await sleep(600);
-  heights.inventory =
-    (await page.evaluate(
-      () =>
-        document
-          .querySelector("img[src*='stockroom-banner']")
-          ?.parentElement?.getBoundingClientRect().height,
-    )) / (await sc());
+  await sleep(700);
+  banners.inventory = await whole();
+  const badBanners = Object.entries(banners).filter(
+    ([, list]) =>
+      list.length === 0 ||
+      list.some((b) => Math.abs(b.ratio / b.natural - 1) > 0.02 || !b.fills || b.h > 281),
+  );
   check(
-    `W3 at ${w}x${h} the banners are real banners (Market 168, Business 120, Inventory 120)`,
-    Math.round(heights.market) === 168 &&
-      Math.round(heights.business) === 120 &&
-      Math.round(heights.inventory) === 120,
-    heights,
+    `W3 at ${w}x${h} every banner shows its WHOLE picture (own shape, filled, at most 280 px tall)`,
+    badBanners.length === 0,
+    badBanners.slice(0, 3),
   );
   // W5
   await fresh(w, h);
@@ -295,8 +318,42 @@ const bh = await page.evaluate(
 await shot(page, "widelayout-phone-844");
 check(
   "W4 a phone on its side (844x390): the blocks use the room beside the rail (no column cap), no sideways scroll, and the banners keep their small heights (Market 72, Business 56)",
-  pb && !pb.sideways && pb.maxW >= 844 - 76 - 40 && Math.round(mh) === 72 && Math.round(bh) === 56,
+  pb && !pb.sideways && pb.maxW >= 844 - 76 - 40 && Math.abs(mh - 72) <= 3 && Math.round(bh) === 56,
   { pb, mh, bh },
+);
+// W7: the Business tabs never blank the page (developer 2026-11-20: "the Staff page blinks when clicked"). On a slow connection with no cache, a click on each tab keeps
+// the ScreenReveal wrapper "ready" the whole time (sampled every 30 ms for 1.5 s): a jump WITHIN a section no longer holds the screen for its pictures.
+await fresh(1600, 785);
+await openSection(page, "Business").catch(() => {});
+await sleep(1200);
+const cdp = await page.createCDPSession();
+await cdp.send("Network.enable");
+await cdp.send("Network.setCacheDisabled", { cacheDisabled: true });
+await cdp.send("Network.emulateNetworkConditions", {
+  offline: false,
+  latency: 150,
+  downloadThroughput: (1.5 * 1024 * 1024) / 8,
+  uploadThroughput: (750 * 1024) / 8,
+});
+const blank = {};
+for (const tab of ["Staff", "Suppliers", "Equipment", "Menu", "Operations", "Overview"]) {
+  await page.evaluate(() => {
+    window.__w = 0;
+    const t0 = performance.now();
+    const tick = () => {
+      if (document.querySelector("[data-screen-reveal='waiting']")) window.__w++;
+      if (performance.now() - t0 < 1500) setTimeout(tick, 30);
+    };
+    tick();
+  });
+  await goBusinessTab(tab);
+  await sleep(1700);
+  blank[tab] = await page.evaluate(() => window.__w);
+}
+check(
+  "W7 on a slow connection no Business tab blanks the page (Staff, Suppliers, Equipment, Menu, Operations, Overview)",
+  Object.values(blank).every((n) => n === 0),
+  blank,
 );
 check(
   "W6 no console errors",

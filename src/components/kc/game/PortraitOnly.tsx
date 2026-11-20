@@ -8,9 +8,17 @@ import { registerPortraitOnly } from "./portraitOnlyStore";
  * the painting to fill the window (`fitLayout(..., portraitOnly)` in layoutMode.ts). `art` is the landscape picture of that screen's room (developer 2026-11-20,
  * `landscapeArt.ts`): the shell paints it across the whole window behind the stage, so there are no empty bars. Without `art` (a screen whose picture has not
  * been painted) the bars stay dark. It shows only in a wide window, where the frame exists; a phone never loads it.
+ * `wideOnly` (the Kitchen home and the maps, developer 2026-11-20): the 9:16 box is for a window wide enough for the landscape layout only; a tablet or a window
+ * that is already portrait-shaped keeps filling the screen with the portrait layout, as those screens always did.
  */
-export function PortraitOnly({ art = null }: { art?: string | null }) {
+export function PortraitOnly({
+  art = null,
+  wideOnly = false,
+}: {
+  art?: string | null;
+  wideOnly?: boolean;
+}) {
   // layout effect: the shell is re-fitted before the first paint of the screen, so it never shows one frame stretched
-  useLayoutEffect(() => registerPortraitOnly(art), [art]);
+  useLayoutEffect(() => registerPortraitOnly(art, wideOnly), [art, wideOnly]);
   return null;
 }

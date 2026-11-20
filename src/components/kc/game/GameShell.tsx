@@ -21,10 +21,10 @@ const LOGICAL_H = 960;
  * zero-viewport WebView case. `useLayoutEffect` (not `useEffect`) so the very first real measurement happens before paint, avoiding a one-frame flash at the
  * wrong size.
  */
-function useFillFit(logicalW: number, logicalH: number, portraitOnly: boolean) {
+function useFillFit(logicalW: number, logicalH: number, portraitOnly: boolean, wideOnly: boolean) {
   const ref = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ width: logicalW, height: logicalH });
-  const fit = fitLayout(box.width, box.height, portraitOnly);
+  const fit = fitLayout(box.width, box.height, portraitOnly, wideOnly);
   const landscape = fit.landscape;
 
   useLayoutEffect(() => {
@@ -73,8 +73,8 @@ function useFillFit(logicalW: number, logicalH: number, portraitOnly: boolean) {
  * alone, never cropped).
  */
 export function GameShell({ children }: { children: ReactNode; aside?: ReactNode }) {
-  const { active: portraitOnly, art: stageArt } = usePortraitOnly();
-  const { ref, box, fit } = useFillFit(LOGICAL_W, LOGICAL_H, portraitOnly);
+  const { active: portraitOnly, art: stageArt, wideOnly } = usePortraitOnly();
+  const { ref, box, fit } = useFillFit(LOGICAL_W, LOGICAL_H, portraitOnly, wideOnly);
   const scaled = Math.abs(fit.scale - 1) > 0.001;
   const contentStyle = scaled
     ? { width: fit.lw, height: fit.lh, transform: `scale(${fit.scale})` }

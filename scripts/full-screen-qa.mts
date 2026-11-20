@@ -36,7 +36,7 @@ function check(id: string, ok: unknown) {
       /export function fitLayout/.test(fit) &&
       // RULE CHANGE 2026-11-19 (developer: screens with only portrait art go back to their original size): the shell asks `fitLayout` with `portraitOnly`; the 9:16
       // box exists ONLY for those screens (`fit.frame`), never as the window's default frame
-      /fitLayout\(box\.width, box\.height, portraitOnly\)/.test(shell) &&
+      /fitLayout\(box\.width, box\.height, portraitOnly, wideOnly\)/.test(shell) &&
       /usePortraitOnly\(\)/.test(shell) &&
       !/Math\.min\(w \/ logicalW, h \/ logicalH\)/.test(shell) &&
       !/sm:rounded|sm:border/.test(shell) &&
@@ -114,9 +114,12 @@ function check(id: string, ok: unknown) {
     "src/components/kc/sauce/SauceStationGame.tsx",
     "src/components/kc/restaurant/FridgeCheckGame.tsx",
     "src/components/kc/restaurant/WashUpSink.tsx",
+    // RULE CHANGE 2026-11-20 (developer: "why is the old portrait layout still in the centre? ... completely landscape"): Codex's wide pictures keep the portrait picture
+    // in their middle, so until real landscape paintings exist the Kitchen home, the restaurant map and the Second Floor keep their original 9:16 size
+    "src/components/kc/Kitchen.tsx",
+    "src/ScreensRouter.tsx",
   ];
   const landscapeOk = [
-    "src/components/kc/Kitchen.tsx",
     "src/components/kc/Shop.tsx",
     "src/components/kc/business/BusinessDashboard.tsx",
     "src/components/kc/inventory/InventoryScreen.tsx",
@@ -125,7 +128,7 @@ function check(id: string, ok: unknown) {
     "src/components/kc/restaurantMap/RestaurantMapView.tsx",
   ];
   check(
-    "F5 the nine screens with a portrait stage (eight games and the sink) carry <PortraitOnly />; the screens with landscape art or none do not",
+    "F5 the nine screens with a portrait stage (eight games and the sink), the Kitchen home and the map screens carry <PortraitOnly />; the screens with landscape art or none do not",
     tagged.every((f) => /<PortraitOnly\b/.test(read(f))) &&
       landscapeOk.every((f) => !/<PortraitOnly\b/.test(read(f))) &&
       !fs.existsSync(path.join(ROOT, "src/components/kc/game/FloorSides.tsx")),
@@ -147,13 +150,17 @@ function check(id: string, ok: unknown) {
         kitchen,
       ) &&
       /land:!max-w-\[760px\]/.test(kitchen) &&
-      /land:\[@media\(min-height:520px\)\]:!h-\[120px\]/.test(
-        read("src/components/kc/business/BusinessSectionBanner.tsx"),
-      ) &&
-      /land:\[@media\(min-height:520px\)\]:!h-\[120px\]/.test(
-        read("src/components/kc/business/BusinessRefrigerator.tsx"),
-      ) &&
-      /land:\[@media\(min-height:520px\)\]:!h-\[168px\]/.test(read("src/components/kc/Shop.tsx")) &&
+      // RULE CHANGE 2026-11-20 (developer: "images are not properly integrated, only a random portion is visible"): a banner keeps its picture's own shape
+      // (`.kc-banner`, aspect-ratio from `--kc-ratio`) instead of a fixed 120 / 168 px strip; no Tailwind `land:!h-[..]` is left on a banner (its `!important`
+      // would beat the stylesheet)
+      /\.kc-banner \{[\s\S]{0,260}aspect-ratio: var\(--kc-ratio\)/.test(css) &&
+      /clamp\(170px, 26vh, 280px\)/.test(css) &&
+      [
+        "src/components/kc/business/BusinessSectionBanner.tsx",
+        "src/components/kc/business/BusinessRefrigerator.tsx",
+        "src/components/kc/inventory/InventoryScreen.tsx",
+        "src/components/kc/Shop.tsx",
+      ].every((f) => /kc-banner/.test(read(f)) && !/land:!h-\[/.test(read(f))) &&
       !/land:items-center/.test(read("src/components/kc/MiniGamesSheet.tsx").slice(0, 3200)),
   );
 }

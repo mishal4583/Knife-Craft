@@ -12,6 +12,31 @@ const shopArt = import.meta.glob("/src/assets/shop-mobile/*.webp", {
   import: "default",
 }) as Record<string, string>;
 
+const shopArtWide = import.meta.glob("/src/assets/shop/*.webp", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
+
+const STAFF_PORTRAITS = [
+  "assistant",
+  "cashier",
+  "cleaner",
+  "cleaner-today",
+  "floor-cleaner",
+  "floor-cleaner-male",
+  "floor-server",
+  "head-chef",
+  "line-cook",
+  "manager",
+  "prep-cook",
+  "server",
+  "specialist-asian",
+  "specialist-indian",
+  "specialist-mediterranean",
+  "specialist-mexican",
+];
+
 const warmed = new Set<string>();
 
 /** Fetches and decodes each picture once. Safe to call again with the same list. */
@@ -42,6 +67,16 @@ export function sectionPictures(opts: {
     `${base}inventory/ingredients-stockroom.webp`,
     `${base}inventory/supplies-stockroom.webp`,
     ...Object.values(shopArt),
+    // the wide window's Market pictures (developer 2026-11-20): the 1440 px ones
+    ...(typeof window !== "undefined" && window.innerWidth >= 900
+      ? Object.values(shopArtWide)
+      : []),
+    // the Business section's tabs (developer 2026-11-20: "the Staff page blinks when clicked"): their banners, the overview picture and every staff portrait
+    ...["staff", "suppliers", "menu", "operations", "equipment"].map(
+      (n) => `${base}business/${n}-banner.webp`,
+    ),
+    `${base}business/business-overview.webp`,
+    ...STAFF_PORTRAITS.map((n) => `${base}business/staff-portraits/${n}.webp`),
     ...(opts.secondFloorOpen ? [`${base}restaurant-map/second-floor.webp`] : []),
   ];
 }

@@ -1512,6 +1512,38 @@ html.kc-reduced-motion .kc-clean-sheen {
   padding-bottom: 1.5rem;
 }
 
+/* BANNERS KEEP THEIR PICTURE'S OWN SHAPE (developer 2026-11-19/20: "images are not properly integrated, only a random portion is visible"). A section banner is a wide
+   painting (2.2:1 to 2.7:1). In a wide window it used to be forced to a fixed height at the full column width, so only a thin slice of it showed. Now, in a window at
+   least 520 px tall, the banner is the picture's own shape (`--kc-ratio`, set by the banner), at most `--kc-banner-h` tall (26 % of the window height, 170 to 280 px) and centred, so the WHOLE
+   picture is seen. On a short phone on its side the small crop stays (there is no room for more). */
+/* (A short phone on its side, under 520 px tall, keeps a small strip: `--kc-short-h`, set by the banner.) The rules are unlayered and carry no `!important` against
+   Tailwind, whose `!important` utilities (`land:!h-[56px]`) would beat them: the banners no longer use those. */
+[data-orient="landscape"] .kc-banner > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+@media (max-height: 519.98px) {
+  [data-orient="landscape"] .kc-banner {
+    height: var(--kc-short-h, 56px);
+  }
+}
+@media (min-height: 520px) {
+  [data-orient="landscape"] .kc-banner {
+    height: auto !important;
+    aspect-ratio: var(--kc-ratio);
+    width: 100%;
+    max-width: calc(var(--kc-banner-h, clamp(170px, 26vh, 280px)) * var(--kc-ratio)) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  [data-orient="landscape"] .kc-banner > img {
+    object-position: center;
+  }
+}
+
 /* ONE READING COLUMN in a wide window (developer 2026-11-19: "every page feels so wide and not optimized"). The list screens (Market, Business, Inventory, Progress,
    Settings, Recipes ...) are one scrolling box beside the rail; its blocks used to run edge to edge, so on a laptop or a desktop a name sat at the far left and its
    button 1,500 px away, bars and buttons were as wide as the window, and pictures were stretched. In landscape every block of that box is at most --kc-col wide and

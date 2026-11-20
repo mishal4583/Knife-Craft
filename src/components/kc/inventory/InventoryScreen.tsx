@@ -6,7 +6,7 @@ import { todayPlanNeed } from "@/game/restaurant/marketPlan";
 import { RestaurantAttentionPanel } from "./RestaurantAttentionPanel";
 import { DeliveryRoutineCard } from "@/components/kc/business/DeliveryRoutine";
 import { flowSteps } from "@/game/business/deliveryFlow";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { ScreenId } from "../data";
 import type { SaveData } from "@/game/SaveManager";
 import { BottomNav } from "../Kitchen";
@@ -688,8 +688,9 @@ export function InventoryScreen({
 
         <div className="space-y-3 px-4">
           <section
-            className="relative isolate h-[104px] overflow-hidden rounded-[18px] border border-walnut/20 bg-walnut-dark shadow-soft sm:h-[116px] land:!h-[64px] land:[@media(min-height:520px)]:!h-[120px]"
+            className="kc-banner relative isolate h-[104px] overflow-hidden rounded-[18px] border border-walnut/20 bg-walnut-dark shadow-soft sm:h-[116px]"
             aria-label="Restaurant stockroom"
+            style={{ "--kc-ratio": 1080 / 483, "--kc-short-h": "64px" } as CSSProperties}
           >
             <img
               src={`${import.meta.env.BASE_URL}inventory/stockroom-banner.webp`}
