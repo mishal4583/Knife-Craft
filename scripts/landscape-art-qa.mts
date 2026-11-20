@@ -4,7 +4,8 @@
  *
  *  A. Every picture the code can ask for exists in public/landscape-art: 10 mini-game rooms, 6 Kitchen skins, 7 restaurant maps (6 stages and the Second Floor),
  *     7 story scenes and the loading room: 31 files.
- *  B. Each is a real webp of exactly 1440 x 810 and under 300 KB (a wide window only: a phone never downloads them); the whole set stays under 6 MB.
+ *  B. Each is a real webp (1440 x 810 and under 300 KB; the true Kitchen pictures 1600 x 900 and the true maps 1920 x 1080, under 600 KB: a wide window only, a phone never
+ *     downloads them); the whole set stays under 8 MB. (RULE CHANGE 2026-11-20: the Kitchen, the maps and the Second Floor are the true landscape pictures in true/.)
  *  C. Every portrait-only screen gives its room (`<PortraitOnly art={landscapeGameArt(...)} />`), the Sauce Station by phase; the shell paints it behind the stage
  *     only while the stage is framed (`data-testid="shell-art"`), under a soft shadow.
  *  D. The Kitchen home, the cutting scene, the restaurant map, the Second Floor, the intro story and the loading screen use their landscape picture in a wide window
@@ -97,17 +98,23 @@ console.log("\nB. Real, the right size, light");
       w = (v & 0x3fff) + 1;
       h = ((v >> 14) & 0x3fff) + 1;
     }
-    if (!riff || w !== 1440 || h !== 810 || b.length > 300 * 1024)
+    // the true pictures (Codex, composed wide from scratch): Kitchen 1600 x 900, maps 1920 x 1080; everything else 1440 x 810
+    const [ew, eh, maxKb] = /true\/kitchen-/.test(f)
+      ? [1600, 900, 600]
+      : /true\/(map-|second-floor)/.test(f)
+        ? [1920, 1080, 600]
+        : [1440, 810, 300];
+    if (!riff || w !== ew || h !== eh || b.length > maxKb * 1024)
       bad.push({ f, riff, w, h, kb: Math.round(b.length / 1024) });
   }
   assert(
     bad.length === 0,
-    "B1: every file is a webp of 1440 x 810 and under 300 KB",
+    "B1: every file is a webp of its size (1440 x 810, true Kitchen 1600 x 900, true maps 1920 x 1080) and light",
     bad.slice(0, 3),
   );
   assert(
-    total < 6 * 1024 * 1024,
-    `B2: the whole set is under 6 MB (${Math.round(total / 1024)} KB)`,
+    total < 8 * 1024 * 1024,
+    `B2: the whole set is under 8 MB (${Math.round(total / 1024)} KB)`,
   );
 }
 
@@ -162,7 +169,8 @@ console.log("\nD. Everything else");
     "D2: the cutting scene shows the built kitchen's landscape painting",
   );
   assert(
-    /landscapeMapArt\(stage \?\? stageOfImage\(kitchenMapImage\)\)/.test(map) &&
+    /landscapeMapArt\(stageId\)/.test(map) &&
+      /wideZones\(stageId\)/.test(map) &&
       /landscapeSecondFloorArt\(\)/.test(sf),
     "D3: the restaurant map shows its stage's dining room, the Second Floor its food hall",
   );

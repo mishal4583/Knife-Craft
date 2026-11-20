@@ -114,12 +114,14 @@ function check(id: string, ok: unknown) {
     "src/components/kc/sauce/SauceStationGame.tsx",
     "src/components/kc/restaurant/FridgeCheckGame.tsx",
     "src/components/kc/restaurant/WashUpSink.tsx",
-    // RULE CHANGE 2026-11-20 (developer: "why is the old portrait layout still in the centre? ... completely landscape"): Codex's wide pictures keep the portrait picture
-    // in their middle, so until real landscape paintings exist the Kitchen home, the restaurant map and the Second Floor keep their original 9:16 size
+  ];
+  // RULE CHANGE 2026-11-20 (twice). First (developer: "why is the old portrait layout still in the centre?"): the first Codex pictures kept the portrait picture in their
+  // middle, so for a while the Kitchen, the map and the Second Floor were tagged `<PortraitOnly wideOnly />`. Then the TRUE landscape pictures arrived
+  // (docs/planning/LANDSCAPE-TRUE-PICTURES-CODEX-PROMPTS-2026-11-20.md) and those three screens are real landscape screens again: no tag.
+  const landscapeOk = [
     "src/components/kc/Kitchen.tsx",
     "src/ScreensRouter.tsx",
-  ];
-  const landscapeOk = [
+    "src/components/kc/restaurantMap/SecondFloorView.tsx",
     "src/components/kc/Shop.tsx",
     "src/components/kc/business/BusinessDashboard.tsx",
     "src/components/kc/inventory/InventoryScreen.tsx",
@@ -128,7 +130,7 @@ function check(id: string, ok: unknown) {
     "src/components/kc/restaurantMap/RestaurantMapView.tsx",
   ];
   check(
-    "F5 the nine screens with a portrait stage (eight games and the sink), the Kitchen home and the map screens carry <PortraitOnly />; the screens with landscape art or none do not",
+    "F5 the nine screens with a portrait stage (eight games and the sink) carry <PortraitOnly />; the screens with landscape art or none (the Kitchen, the maps, the Second Floor) do not",
     tagged.every((f) => /<PortraitOnly\b/.test(read(f))) &&
       landscapeOk.every((f) => !/<PortraitOnly\b/.test(read(f))) &&
       !fs.existsSync(path.join(ROOT, "src/components/kc/game/FloorSides.tsx")),

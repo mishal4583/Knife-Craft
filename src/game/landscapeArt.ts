@@ -31,7 +31,7 @@ export function landscapeCleaningArt(area: CleanArea, stage: KitchenMapArtStage)
 }
 
 /**
- * The second set of landscape pictures (Codex, developer 2026-11-19/20): each is the portrait picture in the middle with the same room painted to both sides
+ * The second set of landscape pictures (Codex, developer 2026-11-19/20): each is the portrait picture in the middle with the same room painted to both sides (the mini-games, the story and the loading screen; the Kitchen and the maps are the true pictures below)
  * (`scripts/make-landscape-assets.py` builds them, 1440 x 810 webp). They load only in a wide window.
  */
 export type LandscapeGameId =
@@ -50,16 +50,19 @@ export type LandscapeGameId =
 export const landscapeGameArt = (id: LandscapeGameId): string =>
   `${base()}landscape-art/games/${id}.webp`;
 
-/** The Kitchen home and the cutting scene for a kitchen skin ("skin-01" Humble … "skin-06" Grand). */
+/**
+ * TRUE landscape pictures (Codex, developer 2026-11-20): composed wide from scratch, no portrait picture inside them. The Kitchen home and the cutting scene for a
+ * kitchen skin ("skin-01" Humble … "skin-06" Grand), 1600 x 900.
+ */
 export const landscapeKitchenArt = (skin: string): string =>
-  `${base()}landscape-art/kitchen/${skin}.webp`;
+  `${base()}landscape-art/true/kitchen-${skin.replace("skin-", "")}.webp`;
 
-/** The dining room round the restaurant map for a kitchen stage; the centre is blurred and dimmed (the live map is drawn over it). */
+/** The restaurant floor plan for a kitchen stage, laid out wide (1920 x 1080). The rooms are in `restaurantMapZonesWide.ts`. */
 export const landscapeMapArt = (stage: KitchenMapArtStage): string =>
-  `${base()}landscape-art/map/${stage}.webp`;
+  `${base()}landscape-art/true/map-${stage}.webp`;
 
-/** The food hall round the Second Floor map. */
-export const landscapeSecondFloorArt = (): string => `${base()}landscape-art/map/second-floor.webp`;
+/** The Second Floor food hall, laid out wide (1920 x 1080). */
+export const landscapeSecondFloorArt = (): string => `${base()}landscape-art/true/second-floor.webp`;
 
 /** The intro story scenes ("scene1" … "scene5", "scene3A/B/C"). */
 export const landscapeStoryArt = (scene: string): string =>

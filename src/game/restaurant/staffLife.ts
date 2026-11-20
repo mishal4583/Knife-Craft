@@ -20,6 +20,7 @@ import type { KitchenMapArtStage } from "../kitchen/kitchenMapArt";
 import { TASK_RULES, type TaskKind } from "./cleanliness";
 import { FLOOR_LIFE_ALWAYS_PREVIEW, type FloorActor, type Stop } from "./floorLife";
 import { STAFF_LOOK } from "./peopleLooks";
+import { RESTROOM_STOPS_WIDE, STAGE_SPOTS_WIDE } from "./staffLifeWide";
 
 export const STAFF_LIFE_ROLES: readonly BusinessStaffRole[] = [
   "line-cook",
@@ -40,7 +41,7 @@ export const MAP_STAGES: readonly KitchenMapArtStage[] = [
 ];
 
 /** What each stage's art needs measured (map percent, feet position). */
-type StageSpots = {
+export type StageSpots = {
   /** In front of the range: y and three x positions along it. */
   range: { y: number; xs: [number, number, number] };
   /** The prep aisle beside the island: x and two y positions. */
@@ -137,8 +138,11 @@ export const RESTROOM_STOPS: readonly Stop[] = [
 ];
 
 /** Where the Cleaner works on each restroom job: by the stalls, the basins, or the floor. */
-export function restroomSpot(job: TaskKind): Stop {
-  const [floor, stalls, basins] = RESTROOM_STOPS;
+export function restroomSpot(
+  job: TaskKind,
+  stops: readonly [Stop, Stop, Stop] = RESTROOM_STOPS as readonly [Stop, Stop, Stop],
+): Stop {
+  const [floor, stalls, basins] = stops;
   const at = /toilet|disinfect|deep/.test(job)
     ? stalls!
     : /sink|paper|refresh|check/.test(job)
@@ -223,8 +227,12 @@ const LOOKS: Readonly<Record<BusinessStaffRole, Look>> = {
 };
 
 /** Each role's loop on one stage's art. */
-export function roleStops(role: BusinessStaffRole, stage: KitchenMapArtStage): Stop[] {
-  const s = STAGE_SPOTS[stage];
+export function roleStops(
+  role: BusinessStaffRole,
+  stage: KitchenMapArtStage,
+  wide = false,
+): Stop[] {
+  const s = (wide ? STAGE_SPOTS_WIDE : STAGE_SPOTS)[stage];
   switch (role) {
     case "line-cook":
       // The range's right half (the Old Chef works the left half).
@@ -251,12 +259,18 @@ export function roleStops(role: BusinessStaffRole, stage: KitchenMapArtStage): S
     }
     case "cleaner":
       // Only drawn with a real job (staffCast); this is the floor spot as a fallback.
-      return [{ ...RESTROOM_STOPS[0]!, hold: CLEANING_SECONDS, pose: "clean" }];
+      return [
+        {
+          ...(wide ? RESTROOM_STOPS_WIDE[stage] : RESTROOM_STOPS)[0]!,
+          hold: CLEANING_SECONDS,
+          pose: "clean",
+        },
+      ];
     case "manager":
       // Sits in the chair behind the desk only (developer 2026-10-16).
       return [{ ...s.managerSeat, hold: 12, pose: "sit" }];
     case "cashier":
-      return cashierStops(stage);
+      return cashierStops(stage, wide);
   }
 }
 
@@ -266,8 +280,8 @@ export function roleStops(role: BusinessStaffRole, stage: KitchenMapArtStage): S
  * (developer 2026-11-01) this is the hired Cashier (the billing staff): shown once
  * the service counter is open. They stand at the counter, at its computer.
  */
-export function cashierStops(stage: KitchenMapArtStage): Stop[] {
-  const c = STAGE_SPOTS[stage].counter;
+export function cashierStops(stage: KitchenMapArtStage, wide = false): Stop[] {
+  const c = (wide ? STAGE_SPOTS_WIDE : STAGE_SPOTS)[stage].counter;
   return [
     { x: c.computerX, y: c.frontY, hold: 7, pose: "work" },
     { x: c.computerX + 3, y: c.frontY, hold: 2 },
@@ -284,6 +298,8 @@ export type StaffLifeContext = {
   cleanerJob: TaskKind | null;
   /** A Cleaner hired for today only (cleanliness.dayCleanerToday) walks the map too. */
   cleanerToday?: boolean;
+  /** The wide (landscape) plan: the spots of `staffLifeWide.ts` instead of the tall plan's. */
+  wide?: boolean;
 };
 
 const NO_WORK: StaffLifeContext = {
@@ -303,13 +319,14 @@ export function staffCast(
   context: Partial<StaffLifeContext> = {},
 ): FloorActor[] {
   const c = { ...NO_WORK, ...context };
+  const spots = (c.wide ? STAGE_SPOTS_WIDE : STAGE_SPOTS)[c.stage];
   const cast: FloorActor[] = [
     {
       ...OLD_CHEF,
       id: "old-chef",
-      stops: [STAGE_SPOTS[c.stage].range.xs[0], STAGE_SPOTS[c.stage].range.xs[1]].map((x) => ({
+      stops: [spots.range.xs[0], spots.range.xs[1]].map((x) => ({
         x,
-        y: STAGE_SPOTS[c.stage].range.y,
+        y: spots.range.y,
         hold: 3.5,
         pose: "work",
       })),
@@ -325,18 +342,27 @@ export function staffCast(
         ...LOOKS.cleaner,
         food: TASK_RULES[c.cleanerJob].icon,
         id: `staff-cleaner-${c.cleanerJob}`,
-        stops: [restroomSpot(c.cleanerJob)],
+        stops: [
+          restroomSpot(
+            c.cleanerJob,
+            c.wide ? (RESTROOM_STOPS_WIDE[c.stage] as readonly [Stop, Stop, Stop]) : undefined,
+          ),
+        ],
         delay: 0,
       });
       continue;
     }
-    cast.push({ ...LOOKS[role], id: `staff-${role}`, stops: roleStops(role, c.stage) });
+    cast.push({
+      ...LOOKS[role],
+      id: `staff-${role}`,
+      stops: roleStops(role, c.stage, c.wide === true),
+    });
   }
   if (c.serviceOpen && hiredRoles.includes("cashier")) {
     cast.push({
       ...LOOKS.cashier,
       id: "service-cashier",
-      stops: cashierStops(c.stage),
+      stops: cashierStops(c.stage, c.wide === true),
     });
   }
   return cast;

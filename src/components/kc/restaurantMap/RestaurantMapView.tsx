@@ -1,7 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useUnlockText } from "../navLevel";
 import { landscapeMapArt } from "@/game/landscapeArt";
-import { LandscapeBackdrop } from '@/components/kc/game/LandscapeBackdrop';
+import { useLandscape } from '@/components/kc/game/layoutMode';
+import { WIDE_NAMEBOARD, useBoxSize, wideCashTables, wideCover, wideZones } from './restaurantMapWide';
+import { wideOf } from '@/game/restaurant/guestWalk';
 import {
   DEFAULT_RESTAURANT_NAME,
   RESTAURANT_NAME_MAX,
@@ -20,6 +22,7 @@ import './RestaurantMap.css';
 import { MapCast } from './FloorLife';
 import { firstFloorGuests } from '@/game/restaurant/guestLife';
 import type { KitchenMapArtStage } from '@/game/kitchen/kitchenMapArt';
+import type { WalkStage } from '@/game/restaurant/guestWalk';
 import { MAP_STAGES } from '@/game/restaurant/staffLife';
 import { StaffLife } from './StaffLife';
 import { TableCash } from '../common/TableCash';
@@ -55,6 +58,17 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
   const [isEditingRestaurantName, setIsEditingRestaurantName] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  // A landscape window shows the wide floor plan (developer 2026-11-20): its own picture, rooms and spots, sized to cover the window.
+  const wide = useLandscape();
+  const stageId: KitchenMapArtStage = stage ?? stageOfImage(kitchenMapImage);
+  const vp = useBoxSize(viewportRef, wide);
+  const zones = useMemo(() => (wide ? wideZones(stageId) : RESTAURANT_MAP_DISPLAY_ZONES), [wide, stageId]);
+  // Cover the window with the 16:9 plan (the edges are garden): never a bar. Most of the crop comes off the bottom (garden and cobbles), a little off the top.
+  const wideBox = useMemo(
+    () => (wide && vp.w > 0 && vp.h > 0 ? wideCover(vp) : null),
+    [wide, vp],
+  );
   const noticeTimerRef = useRef<number | null>(null);
 
   // The name lives in the save (restaurant/restaurantName.ts, developer 2026-10-17); it
@@ -133,6 +147,20 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging || zoomLevel <= 1) return;
+    if (wide && wideBox) {
+      // keep the scaled plan covering the whole window
+      const cx0 = wideBox.left + wideBox.sw / 2;
+      const cy0 = wideBox.top + wideBox.sh / 2;
+      const loX = vp.w - (zoomLevel * wideBox.sw) / 2 - cx0;
+      const hiX = (zoomLevel * wideBox.sw) / 2 - cx0;
+      const loY = vp.h - (zoomLevel * wideBox.sh) / 2 - cy0;
+      const hiY = (zoomLevel * wideBox.sh) / 2 - cy0;
+      setPanOffset({
+        x: Math.max(Math.min(e.clientX - dragStartRef.current.x, hiX), loX),
+        y: Math.max(Math.min(e.clientY - dragStartRef.current.y, hiY), loY),
+      });
+      return;
+    }
     const maxPanX = 180 * (zoomLevel - 1);
     const maxPanY = 250 * (zoomLevel - 1);
     const newX = Math.max(Math.min(e.clientX - dragStartRef.current.x, maxPanX), -maxPanX);
@@ -144,13 +172,12 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
 
   return (
     <div
+      data-wide={wide ? '' : undefined}
       className={`restaurant-map-container ${reducedMotion ? 'restaurant-map--reduced-motion' : ''} ${className}`}
       ref={containerRef}
       role="region"
       aria-label="KnifeCraft Restaurant Interactive Map"
     >
-      {/* Phone landscape: the dining room painting around the map. */}
-      <LandscapeBackdrop section="restaurant" wash="none" art={landscapeMapArt(stage ?? stageOfImage(kitchenMapImage))} />
       {/* Map Toolbar / View Controls */}
       <div className="restaurant-map-toolbar" role="toolbar" aria-label="Map View Controls">
         <div className="map-legend-pills">
@@ -197,15 +224,24 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
       {/* Main Map Viewport */}
       <div
         className="restaurant-map-viewport"
+        ref={viewportRef}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
         <div
-          className="restaurant-map-stage"
+          className={`restaurant-map-stage${wide ? ' is-wide' : ''}`}
+          data-testid={wide ? 'wide-map-stage' : undefined}
           style={{
-            transform: `scale(${zoomLevel}) translate(${panOffset.x / zoomLevel}px, ${panOffset.y / zoomLevel}px)`,
+            ...(wide
+              ? wideBox
+                ? { left: wideBox.left, top: wideBox.top, width: wideBox.sw, height: wideBox.sh, visibility: 'visible' as const }
+                : { visibility: 'hidden' as const }
+              : {}),
+            transform: wide
+              ? `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`
+              : `scale(${zoomLevel}) translate(${panOffset.x / zoomLevel}px, ${panOffset.y / zoomLevel}px)`,
             cursor: zoomLevel > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'
           }}
         >
@@ -213,21 +249,24 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
             {mapWebpUrl && <source type="image/webp" srcSet={mapWebpUrl} />}
             <img
               className="restaurant-vector-map"
-              src={mapJpgUrl || kitchenMapImage || '/restaurant-map-generated-v3.png'}
+              src={wide ? landscapeMapArt(stageId) : (mapJpgUrl || kitchenMapImage || '/restaurant-map-generated-v3.png')}
               alt="Illustrated overhead floor plan of a warm, wood-framed restaurant, with labeled kitchen, dining, storage, service, and facility areas"
               draggable={false}
             />
           </picture>
 
-          <FridgeMapOverlay tier={fridgeTier} />
-          <AnimatedGuestTraffic stage={stage ?? stageOfImage(kitchenMapImage)} />
-          {staffOnMap ? <StaffLife hiredRoles={staffOnMap.roles} context={{ ...staffOnMap.context, diningOpen: staffOnMap.context.diningOpen && mapRoomOpen('dining', playerLevel), serviceOpen: staffOnMap.context.serviceOpen && mapRoomOpen('service', playerLevel) }} preview={staffOnMap.preview} onCleanerDone={onCleanerDone} /> : null}
+          {wide ? null : <FridgeMapOverlay tier={fridgeTier} />}
+          <AnimatedGuestTraffic stage={wide ? wideOf(stageId) : stageId} />
+          {staffOnMap ? <StaffLife hiredRoles={staffOnMap.roles} context={{ ...staffOnMap.context, wide, diningOpen: staffOnMap.context.diningOpen && mapRoomOpen('dining', playerLevel), serviceOpen: staffOnMap.context.serviceOpen && mapRoomOpen('service', playerLevel) }} preview={staffOnMap.preview} onCleanerDone={onCleanerDone} /> : null}
 
           {tableCash && tableCash.cents > 0 ? (
-            <TableCash stage={tableCash.stage} cents={tableCash.cents} onCollect={tableCash.onCollect} />
+            <TableCash stage={tableCash.stage} cents={tableCash.cents} onCollect={tableCash.onCollect} tables={wide ? wideCashTables(tableCash.stage) : undefined} />
           ) : null}
 
-          <div className="restaurant-nameboard-wrap">
+          <div
+            className="restaurant-nameboard-wrap"
+            style={wide ? { left: `${WIDE_NAMEBOARD[stageId].x}%`, top: `${WIDE_NAMEBOARD[stageId].y}%`, width: `${WIDE_NAMEBOARD[stageId].w}%`, height: `${WIDE_NAMEBOARD[stageId].h}%` } : undefined}
+          >
             {isEditingRestaurantName ? (
               <form
                 className="restaurant-nameboard is-editing"
@@ -263,9 +302,28 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
             )}
           </div>
 
+          {/* The room names, printed on the blank signboards of the wide picture (the painting has no words). */}
+          {wide ? (
+            <div className="wide-sign-layer" aria-hidden="true">
+              {zones.map((zone) => {
+                const b = zone.bannerBounds;
+                const font = Math.min(0.95, (b.w * 0.9) / (zone.name.length * 0.56));
+                return (
+                  <span
+                    key={zone.id}
+                    className="wide-sign"
+                    style={{ left: `${b.x}%`, top: `${b.y}%`, width: `${b.w}%`, height: `${b.h}%`, fontSize: `max(8.5px, ${font}cqw)` }}
+                  >
+                    {zone.name}
+                  </span>
+                );
+              })}
+            </div>
+          ) : null}
+
           {/* INTERACTIVE HOTSPOTS LAYER */}
           <div className="restaurant-map-hotspots-layer">
-            {RESTAURANT_MAP_DISPLAY_ZONES.map((zone) => {
+            {zones.map((zone) => {
               const unlocked = isZoneUnlocked(zone, playerLevel);
               const isHovered = hoveredZone?.id === zone.id;
               const isCurrent = currentScreen === zone.targetScreen;
@@ -301,8 +359,9 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
                       left: unlocked
                         ? `${((zone.bannerBounds.x + zone.bannerBounds.w / 2 - zone.roomBounds.x) / zone.roomBounds.w) * 100}%`
                         : '50%',
+                      // wide plan: the chips sit just under the sign so the room name stays readable
                       top: unlocked
-                        ? `${((zone.bannerBounds.y + zone.bannerBounds.h / 2 - zone.roomBounds.y) / zone.roomBounds.h) * 100}%`
+                        ? `${((zone.bannerBounds.y + (wide ? zone.bannerBounds.h + 2.6 : zone.bannerBounds.h / 2) - zone.roomBounds.y) / zone.roomBounds.h) * 100}%`
                         : '50%'
                     }}
                   >
@@ -392,7 +451,7 @@ function stageOfImage(url?: string): KitchenMapArtStage {
   return (MAP_STAGES as readonly string[]).includes(name ?? '') ? (name as KitchenMapArtStage) : 'humble';
 }
 
-function AnimatedGuestTraffic({ stage }: { stage: KitchenMapArtStage }) {
+function AnimatedGuestTraffic({ stage }: { stage: WalkStage }) {
   const cast = useMemo(() => firstFloorGuests(stage), [stage]);
   return <MapCast cast={cast} testId="guest-life" />;
 }

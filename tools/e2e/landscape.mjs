@@ -190,22 +190,13 @@ for (const [w, h] of [
 check(
   // RULE CHANGE (developer 2026-11-19, Playgama 1.6.1 / 1.6.8, YouTube Playables Design 1): every window is filled edge to edge, whatever its shape (it used to
   // keep a framed 9:16 column on a tablet or a desktop). The layout is landscape from an aspect ratio of 1.3, portrait below it.
-  "1 every window shape fills the screen (no frame, no bars): a phone on its side, an upright phone, a tablet, a square window; a laptop or desktop window (wide, 640+ px tall) shows the Kitchen as the 9:16 box",
-  sizeRows.every((r) => {
-    // RULE CHANGE 2026-11-20 (developer: the old portrait picture sat in the middle of the wide Kitchen): a window as wide as the landscape layout and at least
-    // 640 px tall (a laptop, a desktop, a tablet turned) shows the Kitchen home as its original 9:16 box until a real landscape painting exists
-    if (r.w / r.h >= 1.3 && r.h >= 640)
-      return (
-        Math.abs(r.frame.h - r.h) <= 2 &&
-        Math.abs(r.frame.w - (r.h * 9) / 16) <= 2 &&
-        r.orient === "portrait"
-      );
-    return (
+  "1 every window shape fills the screen (no frame, no bars): a phone on its side, an upright phone, a tablet, a square window, a desktop; landscape from 1.3",
+  sizeRows.every(
+    (r) =>
       Math.abs(r.frame.w - r.w) <= 2 &&
       Math.abs(r.frame.h - r.h) <= 2 &&
-      r.orient === (r.w / r.h >= 1.3 ? "landscape" : "portrait")
-    );
-  }),
+      r.orient === (r.w / r.h >= 1.3 ? "landscape" : "portrait"),
+  ),
   sizeRows,
 );
 const bad = screenRows.filter(
@@ -237,7 +228,8 @@ await page.evaluate(() => document.querySelector('[data-nav="restaurant-map"]')?
 await sleep(1500);
 const mapArt = await page.evaluate(() =>
   [...document.querySelectorAll("img")].some(
-    (i) => /landscape-art\/map\/[a-z-]+\.webp/.test(i.src) && i.complete && i.naturalWidth > 1000,
+    (i) =>
+      /landscape-art\/true\/map-[a-z-]+\.webp/.test(i.src) && i.complete && i.naturalWidth > 1000,
   ),
 );
 await view(390, 844);
@@ -246,8 +238,8 @@ const mapArtPortrait = await page.evaluate(() =>
   [...document.querySelectorAll("img")].some((i) => /landscape-art\//.test(i.src)),
 );
 check(
-  // RULE CHANGE 2026-11-20 (developer: the Codex landscape pictures): the map sits on its kitchen stage's own dining room (landscape-art/map/<stage>.webp), not the one shared painting
-  "3 the map sits on its stage's landscape dining room (landscape only)",
+  // RULE CHANGE 2026-11-20 (twice): the map is the TRUE wide floor plan of its kitchen stage (landscape-art/true/map-<stage>.webp, composed wide from scratch), shown in landscape only
+  "3 the map is its stage's wide landscape floor plan (landscape only)",
   mapArt && !mapArtPortrait,
   { mapArt, mapArtPortrait },
 );

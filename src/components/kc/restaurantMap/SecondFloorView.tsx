@@ -6,7 +6,7 @@
  * down. The money rules live in game/restaurant/secondFloor.ts — this view
  * only shows them and calls `onAction`.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AudioManager } from "@/game/AudioManager";
 import { useUnlockText } from "../navLevel";
 import { FloorLife } from "./FloorLife";
@@ -76,7 +76,14 @@ import { PointerHand } from "../common/PointerHand";
 import { goldenAmounts, goldenAt, goldenAvailable } from "@/game/restaurant/goldenGuest";
 import type { NormalizedRect } from "./restaurantMap";
 import "./RestaurantMap.css";
-import { LandscapeBackdrop } from "@/components/kc/game/LandscapeBackdrop";
+import { useLandscape } from "@/components/kc/game/layoutMode";
+import {
+  WIDE_SF_CASH_AT,
+  WIDE_SF_ZONES,
+  useBoxSize,
+  wideCover,
+  wideGoldenSpot,
+} from "./restaurantMapWide";
 import { FloorStaffFace } from "@/components/kc/common/FloorStaffFace";
 import { landscapeSecondFloorArt } from "@/game/landscapeArt";
 
@@ -205,6 +212,12 @@ export function SecondFloorView({
   reducedMotion?: boolean;
 }) {
   const u = useUnlockText();
+  // A landscape window shows the wide food hall (developer 2026-11-20): its own picture, rooms and people routes, sized to cover the window.
+  const wide = useLandscape();
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const vp = useBoxSize(viewportRef, wide);
+  const wideBox = useMemo(() => (wide && vp.w > 0 && vp.h > 0 ? wideCover(vp) : null), [wide, vp]);
+  const zones = wide ? WIDE_SF_ZONES : ZONES;
   // The floor earns by the real clock: re-read it every few seconds while open.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -773,8 +786,8 @@ export function SecondFloorView({
       role="region"
       aria-label="Second floor: the automated food hall"
       data-testid="second-floor"
+      data-wide={wide ? "" : undefined}
     >
-      <LandscapeBackdrop section="restaurant" wash="none" art={landscapeSecondFloorArt()} />
       <div className="restaurant-map-toolbar" role="toolbar" aria-label="Second floor">
         <div className="map-legend-pills">
           <span className="legend-pill level-pill">
@@ -799,12 +812,25 @@ export function SecondFloorView({
         </button>
       </div>
 
-      <div className="restaurant-map-viewport">
-        <div className="restaurant-map-stage is-second-floor">
+      <div className="restaurant-map-viewport" ref={viewportRef}>
+        <div
+          className={`restaurant-map-stage is-second-floor${wide ? " is-wide" : ""}`}
+          style={
+            wide
+              ? wideBox
+                ? { left: wideBox.left, top: wideBox.top, width: wideBox.sw, height: wideBox.sh }
+                : { visibility: "hidden" }
+              : undefined
+          }
+        >
           <picture className="restaurant-map-picture">
             <img
               className="restaurant-vector-map"
-              src={`${import.meta.env.BASE_URL}restaurant-map/second-floor.webp`}
+              src={
+                wide
+                  ? landscapeSecondFloorArt()
+                  : `${import.meta.env.BASE_URL}restaurant-map/second-floor.webp`
+              }
               alt="Overhead plan of the second floor: automated pizza, coffee, drinks, burger, ice cream and fried-food stations, a pickup counter and a seating area"
               draggable={false}
             />
@@ -813,10 +839,11 @@ export function SecondFloorView({
             floor={previewLife ? FLOOR_LIFE_PREVIEW : floor}
             earning={previewLife || perHour > 0}
             preview={previewLife}
+            wide={wide}
           />
           {/* What the machines have made lies on the Pickup Counter, like the cash on the tables. */}
           <TableCash
-            at={PICKUP_CASH_AT}
+            at={wide ? WIDE_SF_CASH_AT : PICKUP_CASH_AT}
             where="the Pickup Counter"
             testId="floor-cash"
             cents={waiting}
@@ -828,14 +855,40 @@ export function SecondFloorView({
               data-testid="golden-guest"
               aria-label="A VIP guest is here: tap for a tip"
               className="absolute z-30 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-[#f5c451] bg-ivory/95 text-[28px] shadow-lift animate-bounce"
-              style={{ left: `${golden.x}%`, top: `${golden.y}%` }}
+              style={{
+                left: `${(wide ? wideGoldenSpot(golden) : golden).x}%`,
+                top: `${(wide ? wideGoldenSpot(golden) : golden).y}%`,
+              }}
               onClick={tapGolden}
             >
               <span aria-hidden="true">🌟</span>
             </button>
           ) : null}
+          {wide ? (
+            <div className="wide-sign-layer" aria-hidden="true">
+              {WIDE_SF_ZONES.filter((z) => z.signed).map((z) => {
+                const name = zoneLabel(z.id).name;
+                const font = Math.min(0.95, (z.banner.w * 0.9) / (name.length * 0.56));
+                return (
+                  <span
+                    key={z.id}
+                    className="wide-sign"
+                    style={{
+                      left: `${z.banner.x}%`,
+                      top: `${z.banner.y}%`,
+                      width: `${z.banner.w}%`,
+                      height: `${z.banner.h}%`,
+                      fontSize: `max(8.5px, ${font}cqw)`,
+                    }}
+                  >
+                    {name}
+                  </span>
+                );
+              })}
+            </div>
+          ) : null}
           <div className="restaurant-map-hotspots-layer">
-            {ZONES.map((z) => {
+            {zones.map((z) => {
               const station = isStation(z.id) ? STATIONS.find((s) => s.id === z.id)! : null;
               const owned = station ? floor.stations[station.id] : undefined;
               // Every station stays locked until it is bought (developer 2026-10-16);
@@ -877,7 +930,8 @@ export function SecondFloorView({
                     className="hotspot-banner-anchor"
                     style={{
                       left: `${((z.banner.x + z.banner.w / 2 - z.room.x) / z.room.w) * 100}%`,
-                      top: `${((z.banner.y + z.banner.h / 2 - z.room.y) / z.room.h) * 100}%`,
+                      // wide plan: the chips sit just under the sign so the station name stays readable
+                      top: `${((z.banner.y + (wide && "signed" in z && z.signed ? z.banner.h + 2.8 : z.banner.h / 2) - z.room.y) / z.room.h) * 100}%`,
                     }}
                   >
                     {locked ? (
@@ -939,7 +993,7 @@ export function SecondFloorView({
 
       {!open && ownedCount > 0 && (rushOn || hype >= HYPE_MAX) ? (
         <div
-          className={`absolute bottom-[160px] left-2 right-2 z-20 flex min-h-12 items-center justify-between gap-2 rounded-2xl border px-3 py-1.5 font-ui text-[13px] font-extrabold shadow-lg ${rushOn ? "border-copper/50 bg-copper text-ivory" : "border-[#f5c451] bg-ivory/95 text-walnut-dark"}`}
+          className={`absolute bottom-[160px] left-2 right-2 z-20 land:bottom-[120px] land:left-1/2 land:right-auto land:w-[min(760px,calc(100%-24px))] land:-translate-x-1/2 flex min-h-12 items-center justify-between gap-2 rounded-2xl border px-3 py-1.5 font-ui text-[13px] font-extrabold shadow-lg ${rushOn ? "border-copper/50 bg-copper text-ivory" : "border-[#f5c451] bg-ivory/95 text-walnut-dark"}`}
           data-testid={rushOn ? "rush-on" : "rush-ready"}
         >
           {rushOn ? (
@@ -1041,7 +1095,7 @@ export function SecondFloorView({
         </div>
       ) : !open && goal ? (
         <div
-          className="absolute bottom-[88px] left-2 right-2 z-20 flex items-center gap-2 rounded-2xl border border-walnut/15 bg-ivory/95 p-2 shadow-lg"
+          className="absolute bottom-[88px] left-2 right-2 z-20 flex items-center gap-2 rounded-2xl border border-walnut/15 bg-ivory/95 p-2 shadow-lg land:bottom-14 land:left-1/2 land:right-auto land:w-[min(760px,calc(100%-24px))] land:-translate-x-1/2"
           data-testid="floor-goal"
         >
           <div className="min-w-0 flex-1 font-ui text-[12.5px] leading-tight text-walnut-dark">

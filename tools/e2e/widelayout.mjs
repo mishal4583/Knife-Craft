@@ -1,7 +1,7 @@
 // The list screens are ONE reading column in a wide window (developer 2026-11-19: "every page feels so wide and not optimized"), restaurant build, real browser:
 //   W1 at 1917x912 and 1280x720 every block of Market, Business (all eight tabs), Inventory, Restaurant Progress, Achievements and Settings is at most 1040 px wide
 //      (--kc-col) and sits in the middle of the room beside the rail (equal space left and right, within 2 px); no sideways scroll
-//   W2 the Kitchen home and the restaurant map keep their original 9:16 box, centred, with no landscape picture (RULE CHANGE 2026-11-20)
+//   W2 the Kitchen home fills the window with its true wide picture; the restaurant map is the wide plan covering the window, 12 rooms and 12 signs (RULE CHANGE 2026-11-20)
 //   W3 every section banner shows its WHOLE picture (its own shape, not a fixed-height strip) in a window at least 520 px tall; the small landscape ones
 //      (72 / 56 / 64 px) on a short phone (844x390)
 //   W4 a phone on its side (844x390) is not changed: its blocks are as wide as the room beside the rail (the column is wider than the phone), no sideways scroll
@@ -201,32 +201,65 @@ for (const [w, h] of [
     };
   });
   await page.evaluate(() => document.querySelector('[data-nav="restaurant-map"]')?.click());
-  await sleep(900);
-  const m = await page.evaluate(() => {
+  await sleep(1500);
+  const m = await page.evaluate(async () => {
     const nav = document.querySelector("nav[data-bottom-nav]");
     const root = nav?.parentElement;
+    const stage = document.querySelector('[data-testid="wide-map-stage"]');
+    const vpEl = document.querySelector(".restaurant-map-viewport");
+    const img = stage?.querySelector("img.restaurant-vector-map");
+    if (img && !img.complete)
+      await new Promise((r) => {
+        img.onload = r;
+        img.onerror = r;
+        setTimeout(r, 4000);
+      });
+    const sr = stage?.getBoundingClientRect();
+    const vr = vpEl?.getBoundingClientRect();
     return {
       wide: root?.hasAttribute("data-kc-wide"),
       framed: document.querySelector("[data-game-frame]")?.getAttribute("data-game-frame"),
       rootW: root?.getBoundingClientRect().width,
-      rootX: root?.getBoundingClientRect().x,
       vw: document.documentElement.clientWidth,
-      vh: document.documentElement.clientHeight,
-      landArt: document.querySelectorAll('img[src*="landscape-art"]').length,
+      src: img?.getAttribute("src") ?? null,
+      natural: img ? [img.naturalWidth, img.naturalHeight] : null,
+      stage: sr
+        ? { l: sr.left, t: sr.top, r: sr.right, b: sr.bottom, w: sr.width, h: sr.height }
+        : null,
+      vp: vr ? { l: vr.left, t: vr.top, r: vr.right, b: vr.bottom } : null,
+      zones: document.querySelectorAll(".map-hotspot-zone").length,
+      signs: document.querySelectorAll(".wide-sign").length,
+      portraitArt: document.querySelectorAll('img[src*="kitchen-upgrade-map"]').length,
     };
   });
-  // RULE CHANGE 2026-11-20 (developer: "why is the old portrait layout still in the centre? ... completely landscape"): Codex's wide Kitchen and map pictures hold
-  // the portrait picture in their middle, so the Kitchen home, the restaurant map and the Second Floor keep their original 9:16 box (centred, dark bars) until a
-  // real landscape painting exists. W2 used to demand the whole window.
-  const boxOk = (r) =>
-    r.framed === "framed" &&
-    Math.abs(r.rootW - Math.min(r.vw, (r.vh * 9) / 16)) <= 3 &&
-    Math.abs(r.rootX - (r.vw - r.rootW) / 2) <= 3 &&
-    r.landArt === 0;
-  const kk = { ...k };
+  // RULE CHANGE 2026-11-20 (twice). First, the first Codex pictures kept the portrait picture in their middle, so the Kitchen, the map and the Second Floor were the
+  // 9:16 box for a while. Then the TRUE landscape pictures arrived (TL-*.png, docs/planning/LANDSCAPE-TRUE-PICTURES-CODEX-PROMPTS-2026-11-20.md): the Kitchen fills the
+  // window with its own wide picture, and the map is the wide 16:9 floor plan, sized to COVER the window (no bar), with its 12 rooms, their 12 printed signs, and no
+  // portrait map picture. (W2 used to demand the whole window for a picture with the portrait map in its middle, then the 9:16 box.)
+  const covers =
+    m.stage &&
+    m.vp &&
+    m.stage.l <= m.vp.l + 2 &&
+    m.stage.t <= m.vp.t + 2 &&
+    m.stage.r >= m.vp.r - 2 &&
+    m.stage.b >= m.vp.b - 2 &&
+    Math.abs(m.stage.w / m.stage.h - 16 / 9) < 0.02;
   check(
-    `W2 at ${w}x${h} the Kitchen home and the restaurant map are the original 9:16 box (centred, no wide picture behind them)`,
-    boxOk(kk) && boxOk(m),
+    `W2 at ${w}x${h} the Kitchen home fills the window with its wide picture; the restaurant map is the wide plan covering the window (12 rooms, 12 signs, no portrait map); the order card is at most 760 px`,
+    k.wide &&
+      k.framed === "full" &&
+      k.rootW >= k.vw - 100 &&
+      k.landArt >= 1 &&
+      Math.round(k.cardW) <= 760 &&
+      m.wide &&
+      m.framed === "full" &&
+      covers &&
+      /landscape-art\/true\/map-[a-z-]+\.webp/.test(m.src ?? "") &&
+      m.natural?.[0] === 1920 &&
+      m.natural?.[1] === 1080 &&
+      m.zones === 12 &&
+      m.signs === 12 &&
+      m.portraitArt === 0,
     { k, m },
   );
   const banner = async (fn) => {

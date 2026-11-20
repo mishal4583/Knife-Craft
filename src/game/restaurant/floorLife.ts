@@ -73,6 +73,8 @@ export const FLOOR_SPOTS = {
   counterFront: { x: 65.4, y: 55 },
   /** Servers put the food down here, on the counter's station side. */
   counterBack: { x: 56, y: 40.8 },
+  /** How far below a chair the lane runs that reaches it from the aisle (the gap between two rows of tables). */
+  laneDrop: 5.6,
   /** The walkway between the stations: across the top row and down the middle. */
   topWalk: 20.6,
   middleWalk: 37.8,
@@ -109,6 +111,89 @@ export const FLOOR_SPOTS = {
     { x: 85.5, y: 75.6 },
   ] as readonly Spot[],
 } as const;
+
+/** The same set of places on any plan of the Second Floor (the tall one above, or the wide one below). */
+export type FloorSpots = {
+  readonly door: Spot;
+  readonly aisleX: number;
+  readonly aisleBottom: number;
+  readonly counterFront: Spot;
+  readonly counterBack: Spot;
+  readonly laneDrop: number;
+  readonly seats: readonly Spot[];
+  readonly tableSides: readonly Spot[];
+};
+
+/**
+ * Where things are on the WIDE Second Floor (developer 2026-11-20, `TL-second-floor.png`, 1920 x 1080), map percent of that picture: the double door in the
+ * front wall, the aisle up the middle, the Pickup Counter (guests wait in front of it, servers put food down behind it), the chairs and where a cleaner
+ * stands at each table. Measured on a 5 % grid over the picture; nobody stands on a table, a counter or a machine.
+ */
+export const FLOOR_SPOTS_WIDE: FloorSpots = {
+  door: { x: 50, y: 91 },
+  aisleX: 50.5,
+  aisleBottom: 86,
+  counterFront: { x: 72, y: 55.6 },
+  counterBack: { x: 66, y: 40.8 },
+  laneDrop: 1.6,
+  seats: [
+    { x: 44, y: 72.8 },
+    { x: 56.5, y: 72.8 },
+    { x: 44, y: 85.5 },
+    { x: 56.5, y: 85.5 },
+    { x: 29, y: 72.8 },
+    { x: 71, y: 72.8 },
+    { x: 29, y: 85.5 },
+    { x: 71, y: 85.5 },
+    { x: 88, y: 72.8 },
+    { x: 88, y: 85.5 },
+    { x: 12.4, y: 72.8 },
+  ],
+  tableSides: [
+    { x: 36.5, y: 74.6 },
+    { x: 63.7, y: 74.6 },
+    { x: 36.5, y: 87 },
+    { x: 63.7, y: 87 },
+    { x: 21, y: 74.6 },
+    { x: 21, y: 87 },
+    { x: 79.5, y: 74.6 },
+  ],
+};
+
+/** The wide plan's server walks: along the corridor under the top row, down the corridors at x 32.5 and 62.5 to the Pickup Counter. Every route's second stop is on that corridor, so a server never cuts across a room between two stations. */
+const STATION_ROUTE_WIDE: Record<StationId, Spot[]> = {
+  pizza: [
+    { x: 14, y: 29 },
+    { x: 62.5, y: 30.4 },
+    { x: 62.5, y: 38.5 },
+  ],
+  coffee: [
+    { x: 38, y: 29 },
+    { x: 62.5, y: 30.4 },
+    { x: 62.5, y: 38.5 },
+  ],
+  drinks: [
+    { x: 62.5, y: 29.2 },
+    { x: 62.5, y: 38.5 },
+  ],
+  burger: [
+    { x: 32.3, y: 50.5 },
+    { x: 32.5, y: 30.4 },
+    { x: 62.5, y: 30.4 },
+    { x: 62.5, y: 38.5 },
+  ],
+  iceCream: [
+    { x: 86, y: 29 },
+    { x: 62.5, y: 30.4 },
+    { x: 62.5, y: 38.5 },
+  ],
+  hotFood: [
+    { x: 32.8, y: 45.5 },
+    { x: 32.5, y: 30.4 },
+    { x: 62.5, y: 30.4 },
+    { x: 62.5, y: 38.5 },
+  ],
+};
 
 /** Where a server stands at each station, and the walk from it to the counter. */
 const STATION_ROUTE: Record<StationId, Spot[]> = {
@@ -159,10 +244,9 @@ const CLEANER_OUTFIT = "#5d8a8a";
 
 /** From the aisle to a chair: chairs away from the aisle are reached along the
  *  lane below their table row, so nobody walks through a table. */
-function toSeat(seat: Spot): Spot[] {
-  const S = FLOOR_SPOTS;
+function toSeat(seat: Spot, S: FloorSpots): Spot[] {
   if (Math.abs(seat.x - S.aisleX) <= 8) return [{ x: S.aisleX, y: seat.y }];
-  const lane = seat.y + 5.6;
+  const lane = seat.y + S.laneDrop;
   return [
     { x: S.aisleX, y: lane },
     { x: seat.x, y: lane },
@@ -207,13 +291,14 @@ function seedOf(floor: SecondFloorState): number {
 const iconOf = (id: StationId) => STATIONS.find((d) => d.id === id)!.icon;
 
 /** The whole cast for this floor. An empty or unstaffed floor is quiet. */
-export function floorCast(floor: SecondFloorState): FloorActor[] {
+export function floorCast(floor: SecondFloorState, wide = false): FloorActor[] {
   const working = workingStations(floor);
   if (working.length === 0) return [];
   const rand = makeSeededRand(seedOf(floor));
   const pick = <T>(list: readonly T[]) => list[Math.floor(rand() * list.length)]!;
   const cast: FloorActor[] = [];
-  const S = FLOOR_SPOTS;
+  const S: FloorSpots = wide ? FLOOR_SPOTS_WIDE : FLOOR_SPOTS;
+  const routes = wide ? STATION_ROUTE_WIDE : STATION_ROUTE;
   const seed = seedOf(floor);
   // Painted people: a bigger crew is not clones (four floor servers, four floor cleaners), the guests are all different.
   const serverLooks = pickLooks(seed ^ 0x51, FLOOR_STAFF.server.max, FLOOR_SERVER_LOOKS);
@@ -231,7 +316,7 @@ export function floorCast(floor: SecondFloorState): FloorActor[] {
     const mine = served.slice(i * FLOOR_STAFF.server.covers, (i + 1) * FLOOR_STAFF.server.covers);
     const stops: Stop[] = [];
     for (const id of mine) {
-      const route = STATION_ROUTE[id];
+      const route = routes[id];
       stops.push({ ...route[0]!, hold: 2.2, pose: "pick" });
       for (const p of route.slice(1)) stops.push({ ...p });
       stops.push({ ...S.counterBack, hold: 1.6, pose: "drop" });
@@ -253,7 +338,7 @@ export function floorCast(floor: SecondFloorState): FloorActor[] {
   const guests = Math.min(MAX_GUESTS, working.length * 2, S.seats.length);
   for (let i = 0; i < guests; i++) {
     const seat = S.seats[i]!;
-    const there = toSeat(seat);
+    const there = toSeat(seat, S);
     cast.push({
       id: `guest-${i}`,
       kind: "guest",

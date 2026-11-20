@@ -35,12 +35,14 @@ export function tablePiles(
   stage: KitchenMapArtStage,
   cents: number,
   first: 0 | 1 = 0,
+  /** The two tables of the WIDE plan (restaurantMapWide.ts `wideCashTables`) instead of the tall plan's front tables. */
+  tables?: readonly [FloorPoint, FloorPoint],
 ): TablePile[] {
   const total = Math.min(bundleCount(cents), MAX_BUNDLES * 2);
   if (total <= 0) return [];
   const seats = FLOOR_SEATS[stage];
-  const a = seats[first];
-  const b = seats[first === 0 ? 1 : 0];
+  const a = tables ? { table: tables[first] } : seats[first];
+  const b = tables ? { table: tables[first === 0 ? 1 : 0] } : seats[first === 0 ? 1 : 0];
   const onFirst = Math.min(total, MAX_BUNDLES);
   const piles: TablePile[] = [{ at: { x: a.table.x + 3.2, y: a.table.y }, bundles: onFirst }];
   if (total > onFirst)

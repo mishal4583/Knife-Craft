@@ -10,10 +10,9 @@
  * affluent diner, and a family of four (father, mother, child and grandmother). Pure; seeded by nothing (the cast is fixed per stage); never
  * touches the save.
  */
-import type { KitchenMapArtStage } from "../kitchen/kitchenMapArt";
 import type { FloorActor, Stop } from "./floorLife";
 import {
-  STAGE_TABLES,
+  geoOf,
   blockedAt,
   canWalk,
   chairOf,
@@ -22,14 +21,16 @@ import {
   type Pt,
   type Slot,
   type StageTable,
+  type WalkStage,
 } from "./guestWalk";
 
-const door = (x: number, away: number): Stop => ({ x, y: 91, hold: away, pose: "away" });
-
-/** The row the guests stand on to order (in front of the service counter). */
-const COUNTER_Y = 56;
-/** Just inside the street door. */
-const INSIDE_Y = 80;
+/** Outside the street door, where a guest waits between laps (the geometry of the plan the guest walks on: tall or wide, see guestWalk.ts `geoOf`). */
+const door = (stage: WalkStage, x: number, away: number): Stop => ({
+  x,
+  y: geoOf(stage).outsideY,
+  hold: away,
+  pose: "away",
+});
 
 type Member = {
   id: string;
@@ -77,15 +78,17 @@ const PARTIES: readonly Party[] = [
 type Seat = { table: StageTable; chair: Pt };
 
 /** Every chair of the stage's tables that a guest can walk to from the door (a packed room leaves some tables out). */
-function reachableChairs(stage: KitchenMapArtStage): Map<string, Seat | null> {
+function reachableChairs(stage: WalkStage): Map<string, Seat | null> {
   const out = new Map<string, Seat | null>();
-  const tables = STAGE_TABLES[stage];
+  const tables = geoOf(stage).tables;
   tables.forEach((t, ti) => {
     for (const slot of ["bottom", "left", "right", "top"] as const) {
-      const chair = chairOf(t, slot);
+      const chair = chairOf(t, slot, stage);
       out.set(
         `${ti}:${slot}`,
-        t.booth || blockedAt(stage, chair, t) || !canWalk(stage, { x: 50, y: INSIDE_Y }, chair, t)
+        t.booth ||
+          blockedAt(stage, chair, t) ||
+          !canWalk(stage, { x: 50, y: geoOf(stage).insideY }, chair, t)
           ? null
           : { table: t, chair },
       );
@@ -95,9 +98,11 @@ function reachableChairs(stage: KitchenMapArtStage): Map<string, Seat | null> {
 }
 
 /** The stage's seats given out: every member of every party gets their own chair (tables are tried from the party's own first one). */
-function seatsFor(stage: KitchenMapArtStage): Map<string, Seat> {
+function seatsFor(stage: WalkStage): Map<string, Seat> {
   const chairs = reachableChairs(stage);
-  const seated = STAGE_TABLES[stage].map((t, i) => ({ t, i })).filter((x) => !x.t.booth);
+  const seated = geoOf(stage)
+    .tables.map((t, i) => ({ t, i }))
+    .filter((x) => !x.t.booth);
   const taken = new Set<string>();
   const out = new Map<string, Seat>();
   for (const party of PARTIES) {
@@ -126,17 +131,18 @@ function seatsFor(stage: KitchenMapArtStage): Map<string, Seat> {
   return out;
 }
 
-function actorOf(stage: KitchenMapArtStage, m: Member, seat: Seat, taken: number[]): FloorActor {
-  const entry: Pt = { x: m.doorX, y: 87 };
+function actorOf(stage: WalkStage, m: Member, seat: Seat, taken: number[]): FloorActor {
+  const g = geoOf(stage);
+  const entry: Pt = { x: m.doorX, y: g.entryY };
   // A room packed to the counter may leave no way to it: that guest sits down without queueing.
-  const counter = counterSpot(stage, m.wantX, COUNTER_Y, taken, entry);
+  const counter = counterSpot(stage, m.wantX + g.counterShift, g.counterY, taken, entry);
   if (counter) taken.push(counter.x);
-  const inside: Pt = { x: m.doorX, y: INSIDE_Y };
+  const inside: Pt = { x: m.doorX, y: g.insideY };
   const toCounter = counter ? (walkPath(stage, entry, counter) ?? [counter]) : [];
   const toChair = walkPath(stage, counter ?? entry, seat.chair, seat.table) ?? [seat.chair];
   const out = walkPath(stage, seat.chair, inside, seat.table) ?? [inside];
   const stops: Stop[] = [
-    door(m.doorX, m.away),
+    door(stage, m.doorX, m.away),
     entry,
     ...(counter
       ? [...toCounter.slice(0, -1), { ...counter, hold: 2.6, pose: "pick" as const }]
@@ -144,7 +150,7 @@ function actorOf(stage: KitchenMapArtStage, m: Member, seat: Seat, taken: number
     ...toChair.slice(0, -1),
     { ...seat.chair, hold: 15, pose: "sit" },
     ...out,
-    { x: m.doorX, y: 88 },
+    { x: m.doorX, y: g.entryY + 1 },
   ];
   return {
     id: m.id,
@@ -159,10 +165,10 @@ function actorOf(stage: KitchenMapArtStage, m: Member, seat: Seat, taken: number
   };
 }
 
-const CACHE = new Map<KitchenMapArtStage, FloorActor[]>();
+const CACHE = new Map<WalkStage, FloorActor[]>();
 
 /** The first floor's guests on this stage's artwork: a food blogger on her own, a businessman and an affluent diner, a family of four. */
-export function firstFloorGuests(stage: KitchenMapArtStage = "humble"): FloorActor[] {
+export function firstFloorGuests(stage: WalkStage = "humble"): FloorActor[] {
   const hit = CACHE.get(stage);
   if (hit) return hit;
   const seats = seatsFor(stage);

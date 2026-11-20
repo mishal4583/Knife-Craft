@@ -20,6 +20,7 @@ export function TableCash({
   onCollect,
   place = (p) => p,
   first = 0,
+  tables,
   swipe = false,
   className = "",
 }: {
@@ -35,6 +36,8 @@ export function TableCash({
   place?: (p: FloorPoint) => FloorPoint;
   /** The table the pile fills first (the dining room passes the one nobody sits at). */
   first?: 0 | 1;
+  /** The wide map's two tables (the piles lie there instead of on the tall plan's front tables). */
+  tables?: readonly [FloorPoint, FloorPoint] | undefined;
   /** Dragging a finger (or a pressed mouse) across a pile collects it too, as well as a tap (the dining room). */
   swipe?: boolean;
   className?: string;
@@ -78,7 +81,7 @@ export function TableCash({
       ? [{ at, bundles: bundleCount(cents) }]
       : []
     : stage
-      ? tablePiles(stage, cents, first)
+      ? tablePiles(stage, cents, first, tables)
       : [];
   if (piles.length === 0) return null;
   const owed = formatUsd(cents);

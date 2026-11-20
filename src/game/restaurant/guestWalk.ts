@@ -84,10 +84,186 @@ const ROOM_X1: Partial<Record<KitchenMapArtStage, number>> = { "neighborhood-caf
 const ROOM_Y1: Partial<Record<KitchenMapArtStage, number>> = { grand: 78.4 };
 const DOORWAY = { x0: 45, x1: 56, y1: 96 } as const;
 
-const inRoom = (stage: KitchenMapArtStage, x: number, y: number): boolean =>
-  y >= (ROOM_Y1[stage] ?? ROOM.y1)
-    ? x >= DOORWAY.x0 && x <= DOORWAY.x1 && y <= DOORWAY.y1
-    : x >= ROOM.x0 && x <= (ROOM_X1[stage] ?? ROOM.x1) && y >= ROOM.y0;
+/**
+ * A walking stage: one of the six tall plans (`"humble"` ...), or the same stage on the WIDE landscape plan (`"humble@wide"`, developer 2026-11-20, 1920 x 1080
+ * pictures). Everything below reads its numbers from `geoOf`, so the tall plans behave exactly as before.
+ */
+export type WalkStage = KitchenMapArtStage | `${KitchenMapArtStage}@wide`;
+export const wideOf = (stage: KitchenMapArtStage): WalkStage => `${stage}@wide`;
+const isWide = (stage: WalkStage): boolean => stage.endsWith("@wide");
+const baseStage = (stage: WalkStage): KitchenMapArtStage =>
+  stage.replace("@wide", "") as KitchenMapArtStage;
+
+export type Geo = {
+  tables: readonly StageTable[];
+  top: { hw: number; hh: number };
+  chair: { hw: number; hh: number };
+  slot: Readonly<Record<Slot, Pt>>;
+  room: { x0: number; x1: number; y0: number; y1: number };
+  doorway: { x0: number; x1: number; y1: number };
+  /** The half-percent search grid: origin and size in cells. */
+  grid: { x0: number; y0: number; w: number; h: number };
+  /** The row guests stand on to order, just inside the street door, in the doorway, and outside it. */
+  counterY: number;
+  insideY: number;
+  entryY: number;
+  outsideY: number;
+  /** Added to a guest's wanted counter spot (the counter is further right on the wide plan). */
+  counterShift: number;
+};
+
+const TALL_GEO: Record<KitchenMapArtStage, Geo> = Object.fromEntries(
+  (Object.keys(STAGE_TABLES) as KitchenMapArtStage[]).map((st) => [
+    st,
+    {
+      tables: STAGE_TABLES[st],
+      top: TABLE_TOP,
+      chair: CHAIR,
+      slot: SLOT_OFFSET,
+      room: { x0: ROOM.x0, x1: ROOM_X1[st] ?? ROOM.x1, y0: ROOM.y0, y1: ROOM_Y1[st] ?? ROOM.y1 },
+      doorway: DOORWAY,
+      grid: { x0: 30, y0: 50, w: 134, h: 96 },
+      counterY: 56,
+      insideY: 80,
+      entryY: 87,
+      outsideY: 91,
+      counterShift: 0,
+    } satisfies Geo,
+  ]),
+) as unknown as Record<KitchenMapArtStage, Geo>;
+
+/**
+ * The wide plans (1920 x 1080 pictures). The tables are the cloth centres measured on each picture; a booth is a table in a sofa corner (an obstacle, never a
+ * seat). A table straight in front of the street door (x 45 to 54) is left out of this list: its chairs would close the doorway to the walking guests (it stays painted). The dining floor is the room between the service counter's front and the front wall; the doorway is the gap in the front wall (x about 45 to 54).
+ */
+export const STAGE_TABLES_WIDE: Readonly<Record<KitchenMapArtStage, readonly StageTable[]>> = {
+  humble: [
+    { x: 35, y: 70.2 },
+    { x: 48.6, y: 68.9 },
+    { x: 64.4, y: 70.2 },
+    { x: 83.9, y: 70.5, booth: true },
+    { x: 92, y: 70.5, booth: true },
+  ],
+  growing: [
+    { x: 40.5, y: 63.9 },
+    { x: 40.5, y: 76.7 },
+    { x: 55.5, y: 67.8 },
+    { x: 74.4, y: 63.9 },
+    { x: 72.8, y: 76.7 },
+    { x: 87.5, y: 71.1 },
+    { x: 87.5, y: 77.8, booth: true },
+    { x: 28.4, y: 67.8, booth: true },
+    { x: 28.4, y: 76.7, booth: true },
+  ],
+  established: [
+    { x: 30.9, y: 72.2 },
+    { x: 50.3, y: 63.9 },
+    { x: 65.3, y: 63.9 },
+    { x: 65.3, y: 76.1 },
+    { x: 80.3, y: 72.2 },
+    { x: 33.7, y: 62.8, booth: true },
+    { x: 78.4, y: 62.8, booth: true },
+    { x: 93, y: 68.3, booth: true },
+    { x: 93, y: 76.7, booth: true },
+  ],
+  "neighborhood-cafe": [
+    { x: 45, y: 64.4 },
+    { x: 43.8, y: 73.9 },
+    { x: 56.9, y: 64.4 },
+    { x: 56.9, y: 73.9 },
+    { x: 68.1, y: 64.4 },
+    { x: 68.4, y: 73.9 },
+    { x: 78.8, y: 64.4 },
+    { x: 80.3, y: 73.9 },
+    { x: 29.4, y: 67.2, booth: true },
+    { x: 28.4, y: 74.4, booth: true },
+    { x: 90.6, y: 66.7, booth: true },
+    { x: 93, y: 74.4, booth: true },
+  ],
+  "flourishing-cafe": [
+    { x: 42.8, y: 64.2 },
+    { x: 30.9, y: 67.8 },
+    { x: 30.9, y: 77.2 },
+    { x: 42, y: 73.3 },
+    { x: 54.7, y: 64.2 },
+    { x: 54.9, y: 72.8 },
+    { x: 68.8, y: 63.9 },
+    { x: 67.8, y: 73.9 },
+    { x: 79, y: 69.4 },
+    { x: 90.3, y: 71.1, booth: true },
+    { x: 90.9, y: 79.4, booth: true },
+    { x: 85.6, y: 63.9, booth: true },
+  ],
+  grand: [
+    { x: 36.6, y: 66.9 },
+    { x: 35.6, y: 74.7 },
+    { x: 47.5, y: 63.9 },
+    { x: 47.2, y: 71.1 },
+    { x: 62.5, y: 63.9 },
+    { x: 63.1, y: 72.2 },
+    { x: 55.6, y: 72.2 },
+    { x: 76.9, y: 66.7 },
+    { x: 78.4, y: 77.8 },
+    { x: 25.6, y: 66.7, booth: true },
+    { x: 90, y: 67.8, booth: true },
+    { x: 91.9, y: 72.8, booth: true },
+  ],
+};
+
+const WIDE_SLOT: Readonly<Record<Slot, Pt>> = {
+  bottom: { x: 0, y: 5.2 },
+  left: { x: -5.4, y: -0.4 },
+  right: { x: 5.4, y: -0.4 },
+  top: { x: 0, y: -5.2 },
+};
+
+/** Each wide stage's counter front (the row guests stand on to order, just below the service counter) and the floor's edges. */
+const WIDE_ROOM: Record<
+  KitchenMapArtStage,
+  { x0: number; x1: number; y0: number; y1: number; counterY: number }
+> = {
+  humble: { x0: 23, x1: 80, y0: 59, y1: 81, counterY: 61.5 },
+  growing: { x0: 22, x1: 94, y0: 59, y1: 82, counterY: 60.5 },
+  established: { x0: 22, x1: 95, y0: 59, y1: 82, counterY: 61.5 },
+  "neighborhood-cafe": { x0: 22, x1: 94, y0: 58, y1: 82, counterY: 59.5 },
+  "flourishing-cafe": { x0: 22, x1: 94, y0: 59, y1: 82, counterY: 61.5 },
+  grand: { x0: 22, x1: 94, y0: 59, y1: 82, counterY: 61 },
+};
+
+const WIDE_GEO: Record<KitchenMapArtStage, Geo> = Object.fromEntries(
+  (Object.keys(STAGE_TABLES_WIDE) as KitchenMapArtStage[]).map((st) => [
+    st,
+    {
+      tables: STAGE_TABLES_WIDE[st],
+      top: { hw: 3.3, hh: 3.8 },
+      chair: { hw: 1.4, hh: 2.2 },
+      slot: WIDE_SLOT,
+      room: {
+        x0: WIDE_ROOM[st].x0,
+        x1: WIDE_ROOM[st].x1,
+        y0: WIDE_ROOM[st].y0,
+        y1: WIDE_ROOM[st].y1,
+      },
+      doorway: { x0: 45, x1: 54, y1: 96 },
+      grid: { x0: 20, y0: 55, w: 156, h: 84 },
+      counterY: WIDE_ROOM[st].counterY,
+      insideY: 80,
+      entryY: 84,
+      outsideY: 93,
+      counterShift: 6,
+    } satisfies Geo,
+  ]),
+) as unknown as Record<KitchenMapArtStage, Geo>;
+
+export const geoOf = (stage: WalkStage): Geo =>
+  isWide(stage) ? WIDE_GEO[baseStage(stage)] : TALL_GEO[stage as KitchenMapArtStage];
+
+const inRoom = (stage: WalkStage, x: number, y: number): boolean => {
+  const g = geoOf(stage);
+  return y >= g.room.y1
+    ? x >= g.doorway.x0 && x <= g.doorway.x1 && y <= g.doorway.y1
+    : x >= g.room.x0 && x <= g.room.x1 && y >= g.room.y0;
+};
 
 const inBox = (p: Pt, c: Pt, hw: number, hh: number): boolean =>
   Math.abs(p.x - c.x) < hw && Math.abs(p.y - c.y) < hh;
@@ -96,21 +272,22 @@ const inBox = (p: Pt, c: Pt, hw: number, hh: number): boolean =>
  * Is this spot closed to a walker? Every table's cloth and chairs are closed; `own` is the table the person is going to sit at, and
  * for that one only the cloth is (they walk in through their own chairs).
  */
-export function blockedAt(stage: KitchenMapArtStage, p: Pt, own?: Pt): boolean {
+export function blockedAt(stage: WalkStage, p: Pt, own?: Pt): boolean {
   if (!inRoom(stage, p.x, p.y)) return true;
-  for (const t of STAGE_TABLES[stage]) {
-    if (inBox(p, t, TABLE_TOP.hw, TABLE_TOP.hh)) return true;
+  const g = geoOf(stage);
+  for (const t of g.tables) {
+    if (inBox(p, t, g.top.hw, g.top.hh)) return true;
     if (own && t.x === own.x && t.y === own.y) continue;
     for (const slot of SLOTS) {
-      const o = SLOT_OFFSET[slot];
-      if (inBox(p, { x: t.x + o.x, y: t.y + o.y }, CHAIR.hw, CHAIR.hh)) return true;
+      const o = g.slot[slot];
+      if (inBox(p, { x: t.x + o.x, y: t.y + o.y }, g.chair.hw, g.chair.hh)) return true;
     }
   }
   return false;
 }
 
 /** A straight walk from `a` to `b` that stays on open floor (sampled every half percent). */
-export function segmentFree(stage: KitchenMapArtStage, a: Pt, b: Pt, own?: Pt): boolean {
+export function segmentFree(stage: WalkStage, a: Pt, b: Pt, own?: Pt): boolean {
   const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 0.5));
   for (let i = 0; i <= n; i++) {
     const p = { x: a.x + ((b.x - a.x) * i) / n, y: a.y + ((b.y - a.y) * i) / n };
@@ -120,10 +297,6 @@ export function segmentFree(stage: KitchenMapArtStage, a: Pt, b: Pt, own?: Pt): 
 }
 
 const STEP = 0.5;
-const GX0 = 30;
-const GY0 = 50;
-const GW = 134; // x 30..96.5
-const GH = 96; // y 50..97.5
 
 /** A minimal binary heap of [cost, cell]. */
 class Heap {
@@ -166,10 +339,11 @@ class Heap {
 
 const GRIDS = new Map<string, Uint8Array>();
 /** 1 = open floor, 0 = closed, for every cell of the half-percent grid; cached per stage and own table (the tables never move). */
-function freeGrid(stage: KitchenMapArtStage, own?: Pt): Uint8Array {
+function freeGrid(stage: WalkStage, own?: Pt): Uint8Array {
   const key = `${stage}|${own ? `${own.x},${own.y}` : "-"}`;
   const hit = GRIDS.get(key);
   if (hit) return hit;
+  const { x0: GX0, y0: GY0, w: GW, h: GH } = geoOf(stage).grid;
   const free = new Uint8Array(GW * GH);
   for (let cy = 0; cy < GH; cy++)
     for (let cx = 0; cx < GW; cx++)
@@ -181,8 +355,9 @@ function freeGrid(stage: KitchenMapArtStage, own?: Pt): Uint8Array {
 }
 
 /** Whether a walker can get from `from` to `to` at all (a flood fill over the cached grid: much cheaper than finding the path). */
-export function canWalk(stage: KitchenMapArtStage, from: Pt, to: Pt, own?: Pt): boolean {
+export function canWalk(stage: WalkStage, from: Pt, to: Pt, own?: Pt): boolean {
   if (segmentFree(stage, from, to, own)) return true;
+  const { x0: GX0, y0: GY0, w: GW, h: GH } = geoOf(stage).grid;
   const base = freeGrid(stage, own).slice();
   const at = (p: Pt) =>
     Math.min(GH - 1, Math.max(0, Math.round((p.y - GY0) / STEP))) * GW +
@@ -216,8 +391,9 @@ export function canWalk(stage: KitchenMapArtStage, from: Pt, to: Pt, own?: Pt): 
 }
 
 /** The shortest way between two spots around the tables: A* on a half-percent grid, then straightened. null when there is none. */
-export function walkPath(stage: KitchenMapArtStage, from: Pt, to: Pt, own?: Pt): Pt[] | null {
+export function walkPath(stage: WalkStage, from: Pt, to: Pt, own?: Pt): Pt[] | null {
   if (segmentFree(stage, from, to, own)) return [to];
+  const { x0: GX0, y0: GY0, w: GW, h: GH } = geoOf(stage).grid;
   const cell = (p: Pt) => ({
     cx: Math.min(GW - 1, Math.max(0, Math.round((p.x - GX0) / STEP))),
     cy: Math.min(GH - 1, Math.max(0, Math.round((p.y - GY0) / STEP))),
@@ -284,10 +460,10 @@ export function walkPath(stage: KitchenMapArtStage, from: Pt, to: Pt, own?: Pt):
 }
 
 /** A chair of a table: where the guest's feet go. */
-export const chairOf = (t: Pt, slot: Slot): Pt => ({
-  x: Math.round((t.x + SLOT_OFFSET[slot].x) * 10) / 10,
-  y: Math.round((t.y + SLOT_OFFSET[slot].y) * 10) / 10,
-});
+export const chairOf = (t: Pt, slot: Slot, stage?: WalkStage): Pt => {
+  const o = (stage ? geoOf(stage).slot : SLOT_OFFSET)[slot];
+  return { x: Math.round((t.x + o.x) * 10) / 10, y: Math.round((t.y + o.y) * 10) / 10 };
+};
 
 /**
  * The nearest open spot to `want` in front of the service counter (the guests queue there to order), at least `gap` from the ones in
@@ -295,7 +471,7 @@ export const chairOf = (t: Pt, slot: Slot): Pt => ({
  * guest shares an open spot (they order at different times). Only spots a person can walk to from `from` count; null when the room has none.
  */
 export function counterSpot(
-  stage: KitchenMapArtStage,
+  stage: WalkStage,
   wantX: number,
   y: number,
   taken: readonly number[],
@@ -305,7 +481,11 @@ export function counterSpot(
   let best: { p: Pt; room: number } | null = null;
   for (let d = 0; d <= 40; d += 0.5) {
     for (const x of d === 0 ? [wantX] : [wantX - d, wantX + d]) {
-      if (x < ROOM.x0 + 1 || x > (ROOM_X1[stage] ?? ROOM.x1) - 1 || blockedAt(stage, { x, y }))
+      if (
+        x < geoOf(stage).room.x0 + 1 ||
+        x > geoOf(stage).room.x1 - 1 ||
+        blockedAt(stage, { x, y })
+      )
         continue;
       const room = taken.reduce((m, t) => Math.min(m, Math.abs(t - x)), Infinity);
       // Only a spot that would be used is tested for being a pocket nobody can walk into.

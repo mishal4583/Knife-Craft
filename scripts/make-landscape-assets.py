@@ -10,9 +10,12 @@ stretched sideways for about 30 px. How that is hidden depends on how the pictur
              dark well and the 80 px beside it ramp up to full brightness, so the seams and the smear sit in a soft shadow beside the stage.
   * "map"    (the restaurant maps, the Second Floor): the live map is drawn over the centre, so the copy of the map in the picture must not show round it: the centre
              is blurred and dimmed, with the same ramp.
-  * "seam"   (the Kitchen skins): the whole picture is the backdrop; a soft shadow (a dip of 24 % over about 50 px) is laid on the two seams so the sideways smear
-             Codex left there is not seen.
+  * "seam"   (OLD, no longer built: the Kitchen skins of the first Codex set, replaced 2026-11-20 by the true pictures below)
   * "plain"  (the story scenes): the seams are already clean; used as they are.
+
+TRUE LANDSCAPE PICTURES (developer 2026-11-20, `docs/planning/LANDSCAPE-TRUE-PICTURES-CODEX-PROMPTS-2026-11-20.md`): `Landscape Backdrops Assets/true-landscape/TL-*.png`
+(1920 x 1080, composed wide from scratch, no portrait picture inside) are used as they are, only resized and compressed, into public/landscape-art/true/
+(kitchen-0N.webp, map-<stage>.webp, second-floor.webp). The Kitchen ones are 1600 x 900; the maps 1920 x 1080 (the player zooms them).
 
 Run:  python scripts/make-landscape-assets.py   (needs Pillow and numpy)
 """
@@ -80,10 +83,11 @@ JOBS = []  # (source name, output path, kind, centre width at 1920)
 for n in ["dessert-run", "unload-the-van", "car-park", "sauce-mix", "sauce-bottle", "fridge-check", "dishwashing", "delivery-inspection", "stockroom", "fridge-sort"]:
     JOBS.append((f"LS-{n}.png", f"games/{n}.webp", "stage", 608))
 JOBS.append(("LS-loading-screen.png", "loading.webp", "stage", 608))
+TRUE = []  # (source in true-landscape, output, size)
 for i, s in enumerate(STAGES):
-    JOBS.append((f"LS-kitchen-0{i + 1}-{s}.png", f"kitchen/skin-0{i + 1}.webp", "seam", 608))
-    JOBS.append((f"LS-restaurant-0{i + 1}-{s}.png", f"map/{s}.webp", "map", 720))
-JOBS.append(("LS-second-floor.png", "map/second-floor.webp", "map", 608))
+    TRUE.append((f"TL-kitchen-0{i + 1}-{s}.png", f"true/kitchen-0{i + 1}.webp", (1600, 900)))
+    TRUE.append((f"TL-restaurant-0{i + 1}-{s}.png", f"true/map-{s}.webp", (1920, 1080)))
+TRUE.append(("TL-second-floor.png", "true/second-floor.webp", (1920, 1080)))
 for src, dst in [
     ("story-1-key", "scene1"),
     ("story-2-kitchen", "scene2"),
@@ -113,4 +117,15 @@ for src, dst, kind, cw in JOBS:
     size = os.path.getsize(out)
     total += size
     print(f"{dst:40s} {kind:6s} {size // 1024:4d} KB")
-print(f"{len(JOBS)} pictures, {total // 1024} KB in all")
+for src, dst, size in TRUE:
+    p = os.path.join(SRC, "true-landscape", src)
+    if not os.path.exists(p):
+        sys.exit(f"missing {p}")
+    im = Image.open(p).convert("RGB").resize(size, Image.LANCZOS)
+    out = os.path.join(OUT, dst)
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    im.save(out, "WEBP", quality=80, method=6)
+    kb = os.path.getsize(out)
+    total += kb
+    print(f"{dst:40s} true   {kb // 1024:4d} KB")
+print(f"{len(JOBS) + len(TRUE)} pictures, {total // 1024} KB in all")

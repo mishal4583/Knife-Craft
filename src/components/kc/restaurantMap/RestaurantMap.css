@@ -2891,3 +2891,51 @@
 .restaurant-map--reduced-motion .floor-card-fx {
   animation: none;
 }
+
+/* THE WIDE MAP (developer 2026-11-20): in a landscape window the stage is the 16:9 floor plan, sized by RestaurantMapView to cover the window (garden at the edges is
+   cropped, never a bar). Its position and size come from the view; percent coordinates inside it are of the 1920 x 1080 picture. */
+.restaurant-map-stage.is-wide {
+  position: absolute;
+  aspect-ratio: auto;
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+  box-shadow: none;
+  display: block;
+}
+
+/* The wide map has no cream bar over the plan: the signs of the top row sit right under the toolbar, so only the pills and buttons are drawn over it. */
+.restaurant-map-container[data-wide] .restaurant-map-toolbar {
+  background: none;
+}
+.restaurant-map-container[data-wide] .legend-pill {
+  box-shadow: 0 2px 8px rgba(30, 16, 6, 0.45);
+}
+
+/* Wide map: the toolbar sits at the bottom (the top row of the plan has the signs and their lock chips), and the stage is a size container so the sign text scales with the map. */
+.restaurant-map-container[data-wide] .restaurant-map-toolbar {
+  inset: auto 10px 10px;
+}
+.restaurant-map-stage.is-wide {
+  container-type: inline-size;
+}
+.wide-sign-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.wide-sign {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* a name wider than its sign (a small window, the 8.5 px floor) spills evenly on both sides instead of being cut */
+  overflow: visible;
+  white-space: nowrap;
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #4a2e1b;
+  text-shadow: 0 1px 0 rgba(255, 244, 214, 0.7);
+}

@@ -155,15 +155,18 @@ export function FloorLife({
   floor,
   earning,
   preview = false,
+  wide = false,
 }: {
   floor: SecondFloorState;
   earning: boolean;
   preview?: boolean;
+  /** The wide plan (floorLife.ts `FLOOR_SPOTS_WIDE`). */
+  wide?: boolean;
 }) {
   // The cast only changes when the stations or the team change (not every clock tick).
-  const key = `${Object.keys(floor.stations).sort().join()}|${floor.servers ?? 0}|${floor.cleaners ?? 0}`;
+  const key = `${Object.keys(floor.stations).sort().join()}|${floor.servers ?? 0}|${floor.cleaners ?? 0}|${wide}`;
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` captures what the cast reads
-  const cast = useMemo(() => floorCast(floor), [key]);
+  const cast = useMemo(() => floorCast(floor, wide), [key]);
   return (
     <MapCast cast={cast} testId="floor-life" preview={preview}>
       {earning ? (
