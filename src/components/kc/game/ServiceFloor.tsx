@@ -28,6 +28,7 @@ import { landscapeDiningArt } from "@/game/landscapeArt";
 import type { QualityLabel } from "@/types/game";
 import { CustomerBust } from "@/components/kc/common/CustomerBust";
 import { GuestPoses } from "../restaurantMap/GuestPoses";
+import { ambientDiners } from "@/game/restaurant/ambientDiners";
 import { KButton } from "../common/primitives";
 import { TableCash } from "../common/TableCash";
 import { cashSpotBeside } from "@/game/restaurant/tableCash";
@@ -286,6 +287,16 @@ export function ServiceFloor({
             draggable={false}
           />
           <div className="sf-dim" />
+          {/* The room's other diners (wide plan only, ambientDiners.ts): one guest in the front chair of about half the other tables. */}
+          {wide
+            ? ambientDiners(stage).map((d) => (
+                <div key={d.id} className="sf-layer" data-testid="floor-diner" style={at(d.at, g)}>
+                  <div className="sf-diner sf-pose-sit">
+                    <GuestPoses {...lookFor(d.id)} />
+                  </div>
+                </div>
+              ))
+            : null}
           {/* Plates of the members already served stay on the table. */}
           {spots.map((s, i) =>
             i !== slot && party.served[i] ? (

@@ -25,6 +25,7 @@ import {
   FLOOR_PASS,
   FLOOR_SEATS,
   FLOOR_VIEW,
+  floorGeo,
   REACTION_FACE,
   inView,
   legDurations,
@@ -34,6 +35,7 @@ import {
   walkFrames,
   walkMs,
 } from "../src/game/restaurant/serviceFloor.ts";
+import { ambientDiners } from "../src/game/restaurant/ambientDiners.ts";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const read = (f: string) => fs.readFileSync(path.resolve(ROOT, f), "utf8");
@@ -189,6 +191,50 @@ console.log("D. Wiring");
       /done\.current/.test(view) &&
       /min-h-|h-12|KButton/.test(view),
     "D6: a tap anywhere skips ahead, once (a second tap does nothing); the button is a 48 px KButton",
+  );
+}
+
+console.log("F. The wide dining room's other diners (developer 2026-11-20)");
+{
+  const stages = Object.keys(FLOOR_SEATS) as (keyof typeof FLOOR_SEATS)[];
+  const front = (st: keyof typeof FLOOR_SEATS) =>
+    floorGeo(true)
+      .seats(st)
+      .map((s) => s.table);
+  const bad: string[] = [];
+  const ids = new Set<string>();
+  let total = 0;
+  for (const st of stages) {
+    const diners = ambientDiners(st);
+    total += diners.length;
+    for (const d of diners) {
+      if (ids.has(d.id)) bad.push(`${st}: duplicate ${d.id}`);
+      ids.add(d.id);
+      // inside the picture's floor (not the street, not the counter wall), and never on a front table
+      if (d.at.x < 8 || d.at.x > 92 || d.at.y < 25 || d.at.y > 62)
+        bad.push(`${st}: ${d.id} outside the room ${d.at.x},${d.at.y}`);
+      if (
+        front(st).some(
+          (t) =>
+            Math.min(
+              Math.hypot(t.x - d.at.x, t.y - d.at.y),
+              Math.hypot(t.x - d.at.x, t.y + 8 - d.at.y),
+            ) < 7,
+        )
+      )
+        bad.push(`${st}: ${d.id} on a front table`);
+    }
+    if (diners.length < 1) bad.push(`${st}: no diners`);
+    if (JSON.stringify(ambientDiners(st)) !== JSON.stringify(diners)) bad.push(`${st}: not stable`);
+  }
+  assert(
+    bad.length === 0 && total >= 15,
+    `F1: every stage seats its own fixed set of diners inside the room, never on a front table (${total} in all)`,
+    bad,
+  );
+  assert(
+    /\{wide\s*\?\s*ambientDiners\(stage\)/.test(read("src/components/kc/game/ServiceFloor.tsx")),
+    "F2: the diners are drawn by the wide dining room only (presentation, no order, save or money)",
   );
 }
 

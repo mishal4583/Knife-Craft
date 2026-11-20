@@ -69,7 +69,8 @@
   pointer-events: none;
 }
 
-.sf .sf-person {
+.sf .sf-person,
+.sf .sf-diner {
   position: absolute;
   left: 0;
   top: 0;
@@ -388,23 +389,43 @@
   width: 100%;
   height: 100%;
 }
-.sf[data-wide] .sf-person {
-  width: 3.3%;
+/* The people are drawn at the size of the picture's furniture (developer 2026-11-20: "the customers are not integrated properly": they were 63 px tall beside 100 px chairs):
+   a standing adult is about as tall as a table is wide. Everything that rises above a head is measured in the VIEW's height (`--h`, set on `.sf-view`), so it follows the picture. */
+.sf[data-wide] .sf-person,
+.sf[data-wide] .sf-diner {
+  width: 5.2%;
 }
 .sf[data-wide] .sf-plate {
-  width: 2.8%;
+  width: 3.2%;
+  font-size: 24px;
 }
-/* the bubbles and faces rise above a head by a share of the stage's HEIGHT here (the stage is wide, so cqw would send them off) */
+.sf[data-wide] .sf-plate--small {
+  width: 2.6%;
+}
 .sf[data-wide] .sf-bubble {
   max-width: 30cqh;
-  transform: translate(-50%, calc(-100% - 5.5cqh));
+  transform: translate(-50%, calc(-100% - 0.098 * var(--h)));
 }
 .sf[data-wide] .sf-bubble--small {
-  transform: translate(-50%, calc(-100% - 4.6cqh));
+  transform: translate(-50%, calc(-100% - 0.088 * var(--h)));
 }
 .sf[data-wide] .sf-face {
-  transform: translate(-50%, calc(-100% - 5cqh));
+  font-size: 34px;
+  padding: 5px;
+  border-radius: 999px;
+  background: #fffaf0;
+  border: 1px solid rgba(201, 162, 92, 0.65);
+  transform: translate(-50%, calc(-100% - 0.088 * var(--h)));
+}
+.sf[data-wide] .sf-face--small {
+  font-size: 24px;
+  padding: 4px;
 }
 .sf[data-wide] .sf-carry {
-  transform: translate(-50%, calc(-100% - 3.6cqh));
+  transform: translate(-50%, calc(-100% - 0.078 * var(--h)));
+}
+/* a seated guest is seen from behind and cut at the waist (the tall map's chair hid the legs); in the wide picture the chair is part of the painting, so the waist is put down
+   on its seat: the figure is moved down by the cut-off share of its height */
+.sf[data-wide] .sf-pose-sit .guest-back-view {
+  transform: translateY(24%);
 }
