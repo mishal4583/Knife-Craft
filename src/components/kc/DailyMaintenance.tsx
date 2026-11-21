@@ -1,7 +1,7 @@
 import type { SaveData } from "@/game/SaveManager";
 import { inventoryView } from "@/game/business/inventoryView";
 import { INVENTORY_STATUS_META } from "@/game/business/inventoryStatus";
-import { formatQuantity } from "@/game/business/businessInventory";
+import { displayMeasure, formatStockAmount } from "@/game/business/measure";
 import { getSupplyItem } from "@/game/business/businessSupplies";
 import { inventoryMenuOf, restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { todayPlanNeed } from "@/game/restaurant/marketPlan";
@@ -31,6 +31,7 @@ import { Eyebrow } from "./common/Meters";
 import { KButton, Panel, ScreenHeader } from "./common/primitives";
 import { InfoTip } from "./common/InfoTip";
 import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
+import { FreshnessGrid, type WatchTile } from "./FreshnessWatch";
 
 const urgencyClass = {
   urgent: "border-tomato/35 bg-tomato/5",
@@ -68,38 +69,52 @@ function AttentionItem({ row, go }: { row: AttentionRow; go: (s: ScreenId) => vo
   );
 }
 
-function StockItem({
-  item,
-  go,
-}: {
-  item: ReturnType<typeof inventoryView>["items"][number];
-  go: (s: ScreenId) => void;
-}) {
+/** A stocked ingredient as a freshness-watch tile (picture in its state, status, amount, freshness bar, the fixing button). */
+function stockTile(
+  item: ReturnType<typeof inventoryView>["items"][number],
+  go: (s: ScreenId) => void,
+): WatchTile {
   const meta = INVENTORY_STATUS_META[item.status];
   const canRestock = item.status === "critical" || item.status === "low";
-  return (
-    <li className="flex items-center gap-2 rounded-xl border border-walnut/10 bg-ivory/70 px-3 py-2">
-      <span aria-hidden="true">{meta.marker}</span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-ui text-[12.5px] font-extrabold text-walnut-dark">
-          {item.name}
-        </p>
-        <p className="font-ui text-[11px] text-walnut/60">
-          {meta.label} · {formatQuantity(item.quantity)} {item.unit}
-          {item.daysRemaining >= 0 ? ` · ${item.daysRemaining}d freshness` : ""}
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={() =>
-          canRestock ? openMarketIngredients(go, item.ingredientId) : go("inventory")
-        }
-        className="press min-h-11 shrink-0 rounded-full border border-walnut/20 bg-cream px-3 font-ui text-[11px] font-extrabold text-walnut-dark"
-      >
-        {canRestock ? "Restock" : "Inventory"} ›
-      </button>
-    </li>
-  );
+  const measure = displayMeasure();
+  return {
+    id: item.ingredientId,
+    name: item.name,
+    label: meta.label,
+    marker: meta.marker,
+    tone: meta.tone,
+    // "Spoils tonight" is drawn going off even while the shelf-life state still reads aging.
+    state:
+      item.daysRemaining === 1 && item.freshnessState !== "EXPIRED"
+        ? "NEAR_EXPIRY"
+        : item.freshnessState,
+    freshness: item.freshness,
+    days: item.daysRemaining <= 0 ? "Expired" : `${item.daysRemaining}d left`,
+    amount: formatStockAmount(item.ingredientId, item.quantity, measure),
+    ...(item.todayRequirement && item.todayRequirement > 0
+      ? { need: formatStockAmount(item.ingredientId, item.todayRequirement, measure) }
+      : {}),
+    action: canRestock ? "Restock" : "Inventory",
+    onAction: () => (canRestock ? openMarketIngredients(go, item.ingredientId) : go("inventory")),
+  };
+}
+
+/** A low-stock alert for an ingredient (no freshness known) as a tile of the same look. */
+function lowTile(row: AttentionRow, go: (s: ScreenId) => void): WatchTile | null {
+  if (row.action.to !== "ingredient") return null;
+  return {
+    id: row.action.id,
+    name: row.name,
+    label: "Running low",
+    marker: "🟡",
+    tone: "gold",
+    state: "FRESH",
+    freshness: null,
+    days: "",
+    amount: row.amount,
+    action: "Top up",
+    onAction: () => openAttentionRow(row, go),
+  };
 }
 
 export function DailyMaintenance({
@@ -136,6 +151,7 @@ export function DailyMaintenance({
       (!serviceSuppliesShown || r.kind !== "supply") &&
       !(r.action.to === "ingredient" && dayStockIngredientIds.has(r.action.id)),
   );
+  const otherLowRows = lowRows.filter((r) => r.action.to !== "ingredient");
   const inventory = inventoryView(save, inventoryMenuOf(save), todayPlanNeed(save));
   const inventoryAttention = inventory.attention
     .flatMap((group) => group.items)
@@ -336,17 +352,22 @@ export function DailyMaintenance({
               </span>
             </div>
             {lowRows.length || inventoryAttention.length || expired.length ? (
-              <ul className="mt-3 space-y-2">
-                {lowRows.map((row) => (
-                  <AttentionItem key={row.id} row={row} go={go} />
-                ))}
-                {inventoryAttention.map((item) => (
-                  <StockItem key={item.ingredientId} item={item} go={go} />
-                ))}
-                {expired.map((item) => (
-                  <StockItem key={`expired-${item.ingredientId}`} item={item} go={go} />
-                ))}
-              </ul>
+              <>
+                <FreshnessGrid
+                  tiles={[
+                    ...lowRows.flatMap((row) => lowTile(row, go) ?? []),
+                    ...inventoryAttention.map((item) => stockTile(item, go)),
+                    ...expired.map((item) => stockTile(item, go)),
+                  ]}
+                />
+                {otherLowRows.length ? (
+                  <ul className="mt-2 space-y-2">
+                    {otherLowRows.map((row) => (
+                      <AttentionItem key={row.id} row={row} go={go} />
+                    ))}
+                  </ul>
+                ) : null}
+              </>
             ) : (
               <p className="mt-3 rounded-xl bg-sage/10 px-3 py-2 font-ui text-[12.5px] font-bold text-olive">
                 ✓ All covered today

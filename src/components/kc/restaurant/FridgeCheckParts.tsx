@@ -51,7 +51,14 @@ export const hashOf = (s: string): number => {
  * The ingredient's picture, made to LOOK its state: fresh and aging are clean, near-expiry is browned and bruised, expired is greyed with
  * mold or rot on it and a fly or two (the painted overlays of the kit; each ingredient always gets the same ones).
  */
-export function FoodPicture({ card, className }: { card: CheckCard; className?: string }) {
+export function FoodPicture({
+  card,
+  className,
+}: {
+  /** Only the ingredient and its state are read, so any list that knows both (Daily Maintenance's freshness watch) draws the same picture. */
+  card: Pick<CheckCard, "id" | "state">;
+  className?: string;
+}) {
   const h = hashOf(card.id);
   const ov = ((h % 12) + 1).toString().padStart(2, "0");
   const ov2 = (((h >> 4) % 12) + 1).toString().padStart(2, "0");
