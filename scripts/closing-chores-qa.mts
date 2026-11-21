@@ -42,6 +42,7 @@ import {
   applyCleanlinessAction,
   areaView,
   cleanerRound,
+  hireDayCleaner,
   phaseChores,
   type TaskKind,
 } from "../src/game/restaurant/cleanliness.ts";
@@ -281,6 +282,27 @@ const tasksOf = (s: SaveData, n: number) =>
   );
   const none = closingAt(40, { dirty: { "dinner-plates": 4 } });
   assert(cleanerClosing(none).save === none, "K2: no Cleaner → the sink is the player's");
+  // Developer 2026-11-21 ("while closing why can't I hire a cleaner for washing dishes?"): hiring one at closing hands the dishes over.
+  const wash = (x: SaveData) => closingRows(x, 40).find((r) => r.id === "wash-up")!;
+  assert(
+    wash(none).state === "todo" &&
+      wash(none).label === "Wash the dishes" &&
+      wash(round).state === "done" &&
+      wash(round).label === "The Cleaner washes the dishes",
+    "K3: with a Cleaner on duty the 'Wash the dishes' row is theirs (done, says so); without one it stays the player's",
+  );
+  const dayCleaned = hireDayCleaner(none, 40);
+  assert(
+    dayCleaned.ok &&
+      wash(dayCleaned.save).state === "done" &&
+      sinkPieces(cleanerClosing(dayCleaned.save).save) === 0,
+    "K4: a Cleaner hired for tonight (day Cleaner, the closing card's button) washes the sink before closeDay",
+  );
+  const noSoap = closingAt(40, { dirty: { "dinner-plates": 4 }, soap: 0, cleaner: true });
+  assert(
+    wash(noSoap).state === "blocked",
+    "K5: no dish soap: even a Cleaner cannot wash (the row waits for START, it never holds the close)",
+  );
 }
 
 // ---------- D. The day and saves ----------

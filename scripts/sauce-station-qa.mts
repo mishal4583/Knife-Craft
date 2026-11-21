@@ -850,6 +850,16 @@ console.log("M. 2026-11-11: the pot's liquid, Play again, the Pour button");
     /items-end justify-center px-2 pb-4/.test(gameSrc),
     "M5: the pot sits low in its space, on the counter",
   );
+  // Developer 2026-11-21: "put the bowl a little more down to the table"; "make the ingredients a little bigger and show the name fully".
+  assert(
+    /landx:translate-y-\[9%\]/.test(gameSrc),
+    "M5b: in a wide window the bowl is let down onto the table",
+  );
+  assert(
+    /h-\[clamp\(70px,10\.5vh,108px\)\]/.test(gameSrc) &&
+      !/w-full truncate rounded-md border/.test(gameSrc),
+    "M5c: the pantry tiles are bigger and their name is never cut with an ellipsis",
+  );
 }
 
 console.log("N. Why not three stars, and the clocks (developer 2026-11-13)");

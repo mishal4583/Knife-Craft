@@ -706,7 +706,7 @@ function Round({
   const pantryCols =
     !productsOn || items.length <= 10
       ? "repeat(5, minmax(0, 1fr))"
-      : "repeat(auto-fill, minmax(48px, 1fr))";
+      : "repeat(auto-fill, minmax(58px, 1fr))";
   // LANDSCAPE (developer 2026-11-20): the wide kitchen behind the game's own landscape layout (the land: classes; mixing is two columns, bottling its own stage).
   const wide = useLandscape();
   const showBackdrop = phase === "bottle" ? artBottle : art;
@@ -918,7 +918,9 @@ function Round({
               <div className="relative order-4 flex min-h-0 flex-1 items-end justify-center px-2 pb-4 land:pb-1">
                 <div
                   ref={vesselRef}
-                  className="relative flex h-full max-w-full items-center justify-center"
+                  // Developer 2026-11-21 ("put the bowl a little more down to the table and place it properly"): in a wide window the bowl stood at the very
+                  // top edge of the counter; it is let down onto the table.
+                  className="relative flex h-full max-w-full items-center justify-center landx:translate-y-[9%]"
                   style={{ aspectRatio: "540 / 360" }}
                   data-testid="sauce-stage"
                   onPointerDown={onToolDown}
@@ -1312,7 +1314,8 @@ function PantryTile({
         onPointerCancel={onUp}
         onContextMenu={(e) => e.preventDefault()}
         className={cn(
-          "press relative flex h-[clamp(48px,9vh,84px)] flex-col items-center justify-end rounded-xl px-0 pb-0 pt-1",
+          // Developer 2026-11-21 ("make the ingredients a little bigger and show the name fully"): taller tiles, a bigger picture, the name on up to two lines.
+          "press relative flex h-[clamp(70px,10.5vh,108px)] flex-col items-center justify-end rounded-xl px-0 pb-0 pt-1 [@media(max-height:620px)]:h-[64px]",
           disabled && "opacity-60",
           hint && "sauce-hint",
         )}
@@ -1337,11 +1340,11 @@ function PantryTile({
           alt=""
           draggable={false}
           className="pointer-events-none relative z-[1] min-h-0 flex-1 select-none object-contain drop-shadow-[0_4px_3px_rgba(40,20,5,0.5)]"
-          style={{ maxHeight: "calc(clamp(56px, 9vh, 84px) - 20px)" }}
+          style={{ maxHeight: "calc(100% - 28px)" }}
         />
         <span
           className={cn(
-            "relative z-[2] -mt-0.5 w-full truncate rounded-md border px-0.5 text-center font-ui text-[10px] font-extrabold leading-[14px] text-walnut-dark shadow-[0_2px_0_rgba(60,30,10,0.45)]",
+            "relative z-[2] -mt-0.5 flex min-h-[26px] w-full items-center justify-center whitespace-normal break-words rounded-md border px-0.5 text-center font-ui text-[10.5px] font-extrabold leading-[12px] text-walnut-dark shadow-[0_2px_0_rgba(60,30,10,0.45)] land:text-[11px]",
             need === 0
               ? "border-[#5a9a3f] bg-[#cfe6b8]"
               : "border-[#a9743a] bg-[linear-gradient(180deg,#f3dcaa,#e2bd7a)]",

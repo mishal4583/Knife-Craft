@@ -94,14 +94,17 @@ export function closingRows(save: SaveData, levelNumber: number): ClosingRow[] {
   });
   const pieces = sinkPieces(save);
   const soap = bottleView(save, "dish-soap").status !== "empty";
+  // Developer 2026-11-21 ("while closing why can't I hire a cleaner for washing dishes?"): with a Cleaner on duty (hired for the day from the closing card, or for good)
+  // the dishes are theirs: the row is done and says so, and `cleanerClosing` washes the sink by hand just before `closeDay`.
+  const cleanerWashes = pieces > 0 && soap && cleanerOnDuty(save);
   rows.unshift({
     id: "wash-up",
     type: "sink",
-    label: "Wash the dishes",
+    label: cleanerWashes ? "The Cleaner washes the dishes" : "Wash the dishes",
     icon: "🫧",
     pieces,
     // No soap: the dishes wait for START (the row says so; it never holds the close).
-    state: pieces === 0 ? "done" : soap ? "todo" : "blocked",
+    state: pieces === 0 || cleanerWashes ? "done" : soap ? "todo" : "blocked",
   });
   // Phase 10 (developer 2026-11-01): the Cashier counts the till at night, so with one on the team the count is done.
   const cashier = save.business.staff.hiredRoles.includes("cashier");

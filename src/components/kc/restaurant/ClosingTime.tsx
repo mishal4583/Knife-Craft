@@ -1,9 +1,17 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { TonightsOrder } from "./Deliveries";
 import type { ScreenId } from "@/components/kc/data";
 import { openMarketSupplies } from "@/components/kc/marketFocus";
 import { getSupplyItem, type SupplyId } from "@/game/business/businessSupplies";
-import type { CleanlinessAction, CleanlinessActionResult } from "@/game/restaurant/cleanliness";
+import {
+  cleanerOnDuty,
+  type CleanlinessAction,
+  type CleanlinessActionResult,
+  type DayCleanerOffer,
+  type DayCleanerOutcome,
+} from "@/game/restaurant/cleanliness";
+import { StaffPortrait } from "@/components/kc/business/StaffCard";
+import { DAY_CLEANER_PORTRAIT } from "@/components/kc/business/staffPortraits";
 import { useCleaningGame, isInteractiveTask } from "./CleaningGame";
 import { SinkWash } from "./SinkWash";
 import { KButton } from "@/components/kc/common/primitives";
@@ -42,6 +50,7 @@ export function ClosingTime({
   cleanlinessAction,
   onChore,
   onCollectTableCash,
+  dayCleaner,
   go,
 }: {
   save: SaveData;
@@ -54,6 +63,8 @@ export function ClosingTime({
   onChore?: (id: string) => void;
   /** Takes the cash still on the table into the till (it must be in before the night closes). */
   onCollectTableCash?: () => void;
+  /** Hire a Cleaner for tonight, paid or for an ad (App; the same offer as Restaurant → Cleanliness). */
+  dayCleaner?: DayCleanerOffer;
 }) {
   const tableCash = pendingCashTotal(save);
   const nowMs = Date.now();
@@ -144,6 +155,26 @@ export function ClosingTime({
               {left > 0 ? `${left} left` : "✓ All done"}
             </span>
           </div>
+          {dayCleaner &&
+          onChore &&
+          !cleanerOnDuty(save) &&
+          rows.some((r) => r.type !== "count" && r.state !== "done") ? (
+            <CleanerOffer dayCleaner={dayCleaner} credits={save.credits} />
+          ) : null}
+          {cleanerOnDuty(save) ? (
+            <p
+              data-testid="closing-cleaner-on"
+              className="mt-2 flex items-center gap-2 rounded-xl border border-sage/45 bg-sage/10 px-2.5 py-1.5 font-ui text-[12.5px] font-extrabold text-olive"
+            >
+              <StaffPortrait
+                file={DAY_CLEANER_PORTRAIT}
+                name="Cleaner"
+                emoji="🧽"
+                className="h-8 w-8 shrink-0 rounded-full"
+              />
+              A Cleaner is on duty · the dishes and the routine chores are theirs
+            </p>
+          ) : null}
           <ul className="mt-1.5 space-y-1.5" data-testid="closing-chores">
             {rows.map((r, i) => (
               <ChoreRow
@@ -377,5 +408,76 @@ function ChoreRow({
       )}
       {sink}
     </li>
+  );
+}
+
+/** "Hire a Cleaner" at closing time (developer 2026-11-21): tonight for the day's wage, or free with an ad; they wash the dishes and do the routine chores, the count stays the owner's. */
+function CleanerOffer({ dayCleaner, credits }: { dayCleaner: DayCleanerOffer; credits: number }) {
+  const [busy, setBusy] = useState(false);
+  const [said, setSaid] = useState("");
+  const say = (r: DayCleanerOutcome) => {
+    if (r.ok) setSaid("");
+    else if (r.reason === "insufficientFunds") setSaid("💸 Not enough money for a Cleaner tonight");
+    else if (r.reason === "notRewarded") setSaid("🎬 The ad didn't finish · no Cleaner");
+    else setSaid("No Cleaner could be hired right now");
+  };
+  return (
+    <div
+      data-testid="closing-hire-cleaner"
+      className="mt-2 rounded-2xl border-2 border-gold/50 bg-gradient-to-b from-ivory to-cream p-2.5 shadow-[0_3px_0_rgba(200,150,50,0.18)]"
+    >
+      <div className="flex items-center gap-2.5">
+        <StaffPortrait
+          file={DAY_CLEANER_PORTRAIT}
+          name="Cleaner"
+          emoji="🧽"
+          className="h-12 w-12 shrink-0 rounded-full border-2 border-gold/70"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-1.5 font-display text-[15px] font-black leading-tight text-walnut-dark">
+            Hire a Cleaner
+            <InfoTip label="A Cleaner for tonight">
+              Totally optional. A Cleaner washes the dishes in the sink and does the routine chores;
+              spills and anything short of supplies stay yours, and so does the count. Hire one for
+              good in Staff.
+            </InfoTip>
+          </p>
+          <p className="font-ui text-[12px] font-bold text-walnut/65">
+            Washes the dishes · does the routine chores
+          </p>
+        </div>
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <KButton
+          variant="sage"
+          className="h-12 px-2 text-[12.5px]"
+          disabled={credits < dayCleaner.price || busy}
+          onClick={() => say(dayCleaner.onPay())}
+        >
+          {`Tonight · ${formatUsd(dayCleaner.price)}`}
+        </KButton>
+        {dayCleaner.adAvailable ? (
+          <KButton
+            variant="copper"
+            className="h-12 px-2 text-[12.5px]"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true);
+              void dayCleaner
+                .onAd()
+                .then(say)
+                .finally(() => setBusy(false));
+            }}
+          >
+            {busy ? "Loading ad…" : "🎬 Free with an ad"}
+          </KButton>
+        ) : null}
+      </div>
+      {said ? (
+        <p className="mt-1.5 font-ui text-[12px] font-extrabold text-tomato" role="status">
+          {said}
+        </p>
+      ) : null}
+    </div>
   );
 }

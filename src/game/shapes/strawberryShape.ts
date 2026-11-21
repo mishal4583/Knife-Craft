@@ -54,11 +54,12 @@ export const STRAWBERRY_SIL: Pt[] = strawberrySilhouette();
 /** Seeds spiral along the fruit's curvature, never a grid. */
 function strawberrySeedPositions(): { x: number; y: number; a: number }[] {
   const out: { x: number; y: number; a: number }[] = [];
-  const rows = 9;
+  // Developer 2026-11-21: "reduce the white seed-like things, size and count": 6 rows (was 9), one seed per 19 px of half-width (was 13).
+  const rows = 6;
   for (let r = 0; r < rows; r++) {
     const v = 0.08 + (r / (rows - 1)) * 0.84;
     const hw = strawberryHalfWidth(v);
-    const count = Math.max(2, Math.round(hw / 13));
+    const count = Math.max(2, Math.round(hw / 19));
     for (let c = 0; c < count; c++) {
       const off = (r % 2 ? 0.5 : 0) + c;
       const u = count === 1 ? 0.5 : off / count;

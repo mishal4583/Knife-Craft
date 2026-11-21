@@ -5094,6 +5094,12 @@ export function App() {
             cleanlinessAction={cleanlinessAction}
             go={go}
             onCollectTableCash={collectTableCash}
+            dayCleaner={{
+              price: dayCleanerPrice(),
+              adAvailable: rewardedAdsAvailable(),
+              onPay: hireDayCleanerPaid,
+              onAd: hireDayCleanerWithAd,
+            }}
             onChore={(id) => {
               // The owner's own closing tap: counting the till (the rest are Cleanliness tasks).
               const r = doClosingChore(save, id);

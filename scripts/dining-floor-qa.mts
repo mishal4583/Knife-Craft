@@ -730,8 +730,10 @@ const base = (credits = dollars(500)): SaveData =>
   );
   const chores = read("src/components/kc/restaurant/ShiftChecklist.tsx");
   check(
-    "B2 the chore row keeps its name readable: the label has a minimum width so a long Buy button wraps under it",
-    /flex-\[1_1_9rem\]/.test(chores) && /max-w-full/.test(chores),
+    // RULE CHANGE (developer 2026-11-21, "digitalized"): a chore is a tile: the name has its own row beside the round icon and the Buy / Do it button
+    // is a full-width row under it, so a long Buy button can never squeeze the name (it was a min-width label that let the button wrap).
+    "B2 the chore tile keeps its name readable: the name has its own row and a long Buy button sits full width under it",
+    /min-w-0 flex-1 font-ui text-\[13\.5px\]/.test(chores) && /w-full max-w-full/.test(chores),
   );
   const cl = read("src/components/kc/business/BusinessCleanliness.tsx");
   const iReady = cl.indexOf("<ReadyCard");
