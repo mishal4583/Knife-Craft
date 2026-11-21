@@ -1,5 +1,4 @@
 import type { CSSProperties, ReactNode } from "react";
-import { dishArtUrl } from "@/game/dishArt";
 import "./orderCard.css";
 
 /**
@@ -30,7 +29,7 @@ export type OrderCardProps = {
   bust?: ReactNode;
 };
 
-function Hat() {
+export function Hat() {
   return (
     <svg className="oc-hat" viewBox="0 0 120 84" aria-hidden="true" focusable="false">
       <path
@@ -51,7 +50,7 @@ function Hat() {
   );
 }
 
-function Sprig({ flip }: { flip?: boolean }) {
+export function Sprig({ flip }: { flip?: boolean }) {
   return (
     <svg
       className="oc-sprig"
@@ -93,7 +92,7 @@ function Sprig({ flip }: { flip?: boolean }) {
   );
 }
 
-function Laurel({ flip }: { flip?: boolean }) {
+export function Laurel({ flip }: { flip?: boolean }) {
   return (
     <svg
       className="oc-laurel"
@@ -177,7 +176,6 @@ export function OrderArrivalCard({
   size,
   bust,
 }: OrderCardProps) {
-  const art = dishArtUrl(dish.id);
   const heading =
     state === "walking"
       ? takeaway
@@ -225,24 +223,6 @@ export function OrderArrivalCard({
           <b />
           <i />
         </div>
-        {compact && !art ? null : (
-          <div className="oc-plate" data-art={art ? "dish" : "icon"}>
-            <div className="oc-cloth" aria-hidden="true" />
-            {art ? (
-              <img
-                className="oc-dish"
-                src={art}
-                alt=""
-                draggable={false}
-                data-testid="order-card-art"
-              />
-            ) : (
-              <div className="oc-plate-fb" aria-hidden="true">
-                <span>{dish.emoji}</span>
-              </div>
-            )}
-          </div>
-        )}
         <div className="oc-startrow">
           <Laurel />
           <button

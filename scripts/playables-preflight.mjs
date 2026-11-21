@@ -172,7 +172,8 @@ if (indexHtml) {
   }
 
   console.log(`\nFiles: ${files.length}`);
-  console.log(`Total bundle size: ${(totalBytes / MB).toFixed(2)} MiB (target: < 15 MiB)`);
+  // the platform's real limits (YouTube Playables / Playgama): initial load < 30 MB, any one file < 30 MB, the zip up to 200 MB; the initial load is what loads before the game is playable (about 6-8 MB for KnifeCraft, measured 2026-11-21)
+  console.log(`Total bundle size: ${(totalBytes / MB).toFixed(2)} MiB (platform limit: zip up to 200 MB; the first load, under 30 MB, is what matters)`);
   if (oversized.length) {
     console.log(`Files over 512 KiB (${oversized.length}):`);
     for (const s of oversized) console.log(`  - ${s.rel}: ${(s.bytes / KB).toFixed(0)} KiB`);

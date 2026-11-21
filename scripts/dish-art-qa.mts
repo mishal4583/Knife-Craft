@@ -114,14 +114,13 @@ console.log("D. The card");
       "oc-dishrow",
       "oc-line",
       "oc-divider",
-      "oc-plate",
-      "oc-cloth",
       "oc-start",
       "oc-laurel",
       "oc-prep",
       "oc-auto",
     ].every((c) => card.includes(c)),
-    "D1: the card has the banner with hat and leaves, the dish row, the line, the plate on a cloth, Start cooking between laurels, Prep Cook and Auto",
+    // RULE CHANGE 2026-11-21 (developer: "don't show the dish photo before cooking"): the starting card no longer has the plate on a cloth; the dish picture is on the Served card (E)
+    "D1: the card has the banner with hat and leaves, the dish row, the line, Start cooking between laurels, Prep Cook and Auto (no dish picture before cooking)",
   );
   assert(
     /Start cooking/.test(card) &&
@@ -145,9 +144,54 @@ console.log("D. The card");
     "D5: the plates set on the tables use the dish's own picture when it has one",
   );
   assert(
+    !/dishArtUrl|oc-dish(?!row)|oc-plate|<img/.test(card) &&
+      !/\.oc-plate|\.oc-dish(?!row)|\.oc-cloth/.test(css),
+    "D7: the starting card shows no dish picture before cooking (developer 2026-11-21)",
+  );
+  assert(
+    /\.oc-prep,\s*\.oc-auto\s*\{[^}]*font-size: 0\.98em/.test(css) &&
+      /\.oc-row2\s*\{[^}]*max-width: 25em/.test(css),
+    "D8: the Prep Cook and Auto buttons are slightly smaller (developer 2026-11-21), still at least 48 px tall",
+  );
+  assert(
     /id: view\.recipeId/.test(read("src/components/kc/game/Preparation.tsx")) &&
       /id: r\.id/.test(read("src/App.tsx")),
     "D6: the recipe id reaches the card and the party's dishes",
+  );
+}
+console.log("E. The Served card (developer 2026-11-21, from his concept)");
+{
+  const sv = read("src/components/kc/game/ServiceOrderComplete.tsx");
+  const css = read("src/components/kc/game/servedCard.css");
+  assert(
+    /dishArtUrl\(recipe\.id\)/.test(sv) &&
+      /data-testid="served-dish-art"/.test(sv) &&
+      /sv-cloth/.test(sv) &&
+      /sv-glow/.test(sv),
+    "E1: the Served card shows the dish's own picture on its cloth with a glow, after the customer's line",
+  );
+  assert(
+    /className="sv-wrap"/.test(sv) &&
+      /<Hat \/>/.test(sv) &&
+      /data-testid="served-close"/.test(sv) &&
+      /<Laurel \/>/.test(sv) &&
+      /<Laurel flip \/>/.test(sv),
+    "E2: in a wide window the card stands in the middle with the chef's hat, leaves, a round close button and the wallet between laurels",
+  );
+  assert(
+    /land:absolute land:inset-0/.test(sv) &&
+      /\[data-orient="landscape"\] \.sv-wrap\s*\{[^}]*left: 50%[^}]*top: 50%/.test(css),
+    "E3: the dining room fills the wide window and the card is centred over it (upright phone: the sheet under the room, unchanged)",
+  );
+  assert(
+    /max-height: 700px/.test(css) && /max-height: 580px/.test(css),
+    "E4: a short window gets a compact card so both buttons stay in view",
+  );
+  assert(
+    />\s*\{nextLabel\}/.test(sv) &&
+      /Back to Kitchen/.test(sv) &&
+      /className="sv-btn-ico sv-wide-only"/.test(sv),
+    "E5: the buttons keep their exact texts (the icons are drawings, not text; the browser suites click them by text)",
   );
 }
 console.log(failures === 0 ? "\nDISH ART QA: ALL PASS" : `\nDISH ART QA: ${failures} FAILURE(S)`);

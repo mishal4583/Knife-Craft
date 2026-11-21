@@ -1,0 +1,232 @@
+/* THE SERVED CARD in a wide window (developer 2026-11-21, from his concept): the dining room fills the window and the card stands in the middle of it, with the chef's hat and leaves on top, the
+   round close button on its corner, the dish on its checkered cloth, and the money lines. On an upright phone nothing changes: the card is the sheet under the room. */
+.sv-wrap {
+  display: contents;
+}
+.sv-wide-only {
+  display: none;
+}
+.sv-dish {
+  display: none;
+}
+/* an upright phone tall enough for it: a small dish picture under the customer's line */
+@media (min-height: 780px) {
+  html:not([data-orient="landscape"]) .sv-dish {
+    display: block;
+    position: relative;
+    height: 4.6rem;
+    margin: 0;
+  }
+  html:not([data-orient="landscape"]) .sv-dish .sv-cloth {
+    width: 8.4rem;
+    height: 3.4rem;
+  }
+  html:not([data-orient="landscape"]) .sv-dish .sv-img {
+    width: 6.2rem;
+  }
+  html:not([data-orient="landscape"]) .sv-dish .sv-glow {
+    width: 10rem;
+    height: 4.6rem;
+  }
+}
+
+[data-orient="landscape"] .sv-wide-only {
+  display: inline-block;
+}
+[data-orient="landscape"] .sv-wrap {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  width: min(34rem, 44%);
+  max-height: calc(100% - 5.2rem);
+  min-width: 300px;
+  transform: translate(-50%, -48%);
+  font-size: 16px;
+}
+[data-orient="landscape"] .sv-wrap > .oc-hat {
+  top: -2.3em;
+  z-index: 3;
+}
+[data-orient="landscape"] .sv-wrap > .oc-sprig {
+  left: calc(50% - 7.2em);
+  top: -1.2em;
+  width: 4.8em;
+  z-index: 3;
+}
+[data-orient="landscape"] .sv-wrap > .oc-sprig:nth-of-type(2) {
+  left: auto;
+  right: calc(50% - 7.2em);
+}
+.sv-close {
+  display: none;
+}
+[data-orient="landscape"] .sv-close {
+  position: absolute;
+  right: -0.7em;
+  top: -0.7em;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 3em;
+  height: 3em;
+  border-radius: 50%;
+  border: 0.16em solid #e2b45a;
+  background: radial-gradient(circle at 35% 30%, #6a3a1b, #3a1d0c);
+  color: #f8e6b4;
+  font-size: 1em;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 0.3em 0.7em rgba(30, 14, 4, 0.55);
+  cursor: pointer;
+}
+[data-orient="landscape"] .sv-card {
+  border: 0.22em solid #e2b45a;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0) 62%),
+    linear-gradient(#fff6e1, #f8e5bd);
+  box-shadow:
+    0 1em 2.4em rgba(25, 10, 2, 0.55),
+    inset 0 0 0 0.16em #f3d68e,
+    inset 0 0 0 0.3em rgba(255, 255, 255, 0.5);
+  padding-top: 1.7rem;
+}
+
+/* the heading pills: "SERVED · customer" and the dish's tier */
+[data-orient="landscape"] .sv-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+[data-orient="landscape"] .sv-head .sv-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  border-radius: 999px;
+  padding: 0.35em 1em;
+  border: 0.12em solid #e6d3a2;
+  background: linear-gradient(#fbf0d6, #f3e2bb);
+  color: #6b4426;
+}
+[data-orient="landscape"] .sv-head [data-testid="plate-tier"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  border-radius: 999px;
+  padding: 0.35em 1em;
+  border: 0.12em solid #d9a441;
+  background: linear-gradient(#6a3a1b, #46250f);
+  color: #f8d98a;
+  box-shadow: inset 0 0 0 0.08em rgba(255, 224, 150, 0.3);
+}
+[data-orient="landscape"] .sv-sep {
+  display: none;
+}
+
+/* the dish on its checkered cloth, with a warm glow behind it */
+[data-orient="landscape"] .sv-dish {
+  display: block;
+  position: relative;
+  height: 9.6rem;
+  margin: 0.3rem 0 0.1rem;
+}
+.sv-glow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 19rem;
+  height: 9rem;
+  transform: translate(-50%, -52%);
+  background: radial-gradient(ellipse, rgba(255, 224, 130, 0.9), rgba(255, 224, 130, 0) 66%);
+  pointer-events: none;
+}
+.sv-cloth {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  width: 15.5rem;
+  height: 6.6rem;
+  transform: translate(-50%, -50%) skewX(-12deg) rotate(-2deg);
+  border-radius: 0.4rem;
+  background: repeating-conic-gradient(#f4f0e2 0 25%, #6fa070 0 50%) 0 0 / 1.7rem 1.7rem;
+  box-shadow: 0 0.4rem 0.8rem rgba(60, 30, 5, 0.35);
+  pointer-events: none;
+}
+.sv-img {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: 12.4rem;
+  transform: translate(-50%, -52%);
+  filter: drop-shadow(0 0.4rem 0.4rem rgba(50, 25, 5, 0.4));
+  pointer-events: none;
+}
+/* a short window (a laptop's browser area is about 650 px): a smaller dish and tighter lines, so both buttons stay in view */
+@media (max-height: 700px) {
+  [data-orient="landscape"] .sv-wrap {
+    max-height: calc(100% - 3.6rem);
+  }
+  [data-orient="landscape"] .sv-card {
+    padding-top: 1.3rem;
+    padding-bottom: 0.9rem;
+  }
+  [data-orient="landscape"] .sv-dish {
+    height: 6.8rem;
+  }
+  [data-orient="landscape"] .sv-glow {
+    width: 15rem;
+    height: 7rem;
+  }
+  [data-orient="landscape"] .sv-cloth {
+    width: 12.4rem;
+    height: 5rem;
+  }
+  [data-orient="landscape"] .sv-img {
+    width: 9.6rem;
+  }
+}
+@media (max-height: 580px) {
+  [data-orient="landscape"] .sv-wrap {
+    max-height: calc(100% - 2.2rem);
+  }
+  [data-orient="landscape"] .sv-card {
+    padding-top: 1rem;
+    padding-bottom: 0.6rem;
+  }
+  [data-orient="landscape"] .sv-dish {
+    height: 4.6rem;
+    margin: 0;
+  }
+  [data-orient="landscape"] .sv-glow {
+    width: 11rem;
+    height: 5rem;
+  }
+  [data-orient="landscape"] .sv-cloth {
+    width: 9rem;
+    height: 3.6rem;
+  }
+  [data-orient="landscape"] .sv-img {
+    width: 7rem;
+  }
+}
+
+/* the wallet between two gold laurels */
+.sv-wallet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+.sv-wallet .oc-laurel {
+  width: 1.9rem;
+  height: 2.5rem;
+}
+.sv-btn-ico {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+}

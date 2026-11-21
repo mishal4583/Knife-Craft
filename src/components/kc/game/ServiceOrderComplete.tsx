@@ -12,6 +12,11 @@ import {
 import { CashVacuum } from "./CashVacuum";
 import { useRolledNumber } from "./useRolledNumber";
 import { KButton, Panel } from "../common/primitives";
+import { Users, ChefHat } from "lucide-react";
+import { dishArtUrl } from "@/game/dishArt";
+import { Hat, Sprig, Laurel } from "./OrderArrivalCard";
+import "./orderCard.css";
+import "./servedCard.css";
 import { CurrencyPill } from "../common/Indicators";
 import { BusinessPaymentLines } from "../business/BusinessPaymentLines";
 import type {
@@ -338,304 +343,347 @@ export function ServiceOrderComplete({
   // Reduced Motion).
   const stage = (ms: number) => (reduced ? undefined : ({ animationDelay: `${ms}ms` } as const));
 
+  const sheet = !!(served && room);
+  const dishArt = served ? dishArtUrl(recipe.id) : null;
+  const panel = (
+    <Panel
+      tone="cream"
+      className={
+        served && room
+          ? "sv-card min-h-0 w-full flex-1 overflow-y-auto overscroll-contain rounded-b-none rounded-t-[22px] p-5 text-center [@media(max-height:640px)]:px-4 [@media(max-height:640px)]:py-3 land:rounded-[28px] land:p-5"
+          : "anim-pop max-h-[calc(100%-12px)] w-[82%] land:max-w-[560px] overflow-y-auto overscroll-contain p-6 text-center [@media(max-height:640px)]:px-5 [@media(max-height:640px)]:py-4"
+      }
+    >
+      <p className="sv-head font-ui text-[11px] font-extrabold uppercase tracking-[0.24em] text-copper">
+        <span className="sv-pill">{served ? "Served" : "Order Ready"}</span>
+        {/* Phase 4 (A/C): the plate's presentation tier, on the same line. */}
+        {plateTier ? (
+          <span data-testid="plate-tier" data-tier={plateTier}>
+            <span className="sv-sep"> · </span>
+            {TIER_INFO[plateTier].icon} {TIER_INFO[plateTier].name}
+          </span>
+        ) : null}
+      </p>
+      <p className="mt-1 font-display text-[24px] font-black leading-tight tracking-tight text-walnut-dark [@media(max-height:640px)]:text-[21px]">
+        {recipe.name}
+      </p>
+      {/* Phase 2 (C2): the customer reacts to the dish's own grade (the
+            score its pay came from) — a cheer and a clap for Masterful, a
+            nod for Clean, nothing extra otherwise. Once, on serve. */}
+      <p className="font-hand text-[18px] text-olive" data-testid="service-customer">
+        <span
+          className={
+            (reaction === "cheer" ? "kc-cheer" : reaction === "nod" ? "kc-nod" : "") +
+            // Phase 4 (B5/B7): the Mystery Guest is a silhouette until served; Bruno is big.
+            (personality?.id === "mystery-customer" && !served ? " kc-silhouette" : "") +
+            (personality?.id === "giant-eater" ? " inline-block text-[1.45em] leading-none" : "")
+          }
+          data-testid={personality ? "special-customer" : undefined}
+          data-customer={personality?.id}
+        >
+          <CustomerBust
+            customerId={customer.id}
+            expression={served ? expressionFor(reaction) : "neutral"}
+            fallback={customer.avatarEmoji}
+            em={1.7}
+          />
+        </span>
+        {personality ? (
+          <span className="ml-0.5 text-[0.8em]" aria-hidden="true">
+            {PERSONALITIES[personality.id].badge}
+          </span>
+        ) : null}{" "}
+        {customer.name}
+        {reaction === "cheer" ? (
+          // The clap rides inside the chip: name, avatar and chip stay on one
+          // line at 320 px, so a tip line still fits on a 320×568 screen.
+          <span
+            className="anim-pop ml-1.5 inline-block whitespace-nowrap rounded-full bg-copper/10 px-2 py-0.5 align-middle font-ui text-[10.5px] font-extrabold uppercase tracking-[0.12em] text-copper"
+            data-testid="customer-reaction"
+          >
+            <span className="kc-cheer" aria-hidden="true">
+              👏
+            </span>{" "}
+            Exceptional!
+          </span>
+        ) : null}
+      </p>
+
+      {served ? (
+        <>
+          <p
+            className="kc-stage mt-2 font-hand text-[20px] leading-snug text-walnut-dark [@media(max-height:640px)]:text-[18px]"
+            data-testid="customer-line"
+            style={stage(0)}
+          >
+            {special?.reveal ? (
+              <span
+                className="font-ui text-[13px] font-extrabold text-copper"
+                data-testid="mystery-reveal"
+              >
+                It was {special.reveal}!{" "}
+              </span>
+            ) : null}
+            {special ? special.line : `"${served.reaction}"`}
+          </p>
+          {dishArt ? (
+            <div className="sv-dish" data-testid="served-dish">
+              <i className="sv-glow" aria-hidden="true" />
+              <i className="sv-cloth" aria-hidden="true" />
+              <img
+                className="sv-img"
+                src={dishArt}
+                alt=""
+                draggable={false}
+                data-testid="served-dish-art"
+              />
+            </div>
+          ) : null}
+          {/* Economy V2 Phase 9 §11 — a replay must read as unambiguously
+                economically-zero, never inferred from coinsAwarded === 0
+                (a genuine settlement can also floor at 0, rarely). */}
+          {served.isReplay ? (
+            <p className="mt-3 font-ui text-[12px] font-extrabold uppercase tracking-[0.16em] text-walnut/50">
+              🔁 Replay · no money earned
+            </p>
+          ) : isBusinessOrder && served.businessPayment ? (
+            <div className="mt-3">
+              <BusinessPaymentLines payment={served.businessPayment} paid />
+            </div>
+          ) : served.coinsAwarded > 0 ? (
+            <p
+              className="kc-stage mt-3 font-hand text-[20px] text-olive [@media(max-height:640px)]:mt-2"
+              style={stage(180)}
+            >
+              <span className="sv-wide-only">💵 </span>
+              {formatUsdChange(served.coinsAwarded)}
+            </p>
+          ) : null}
+          {preparedBy === "prep-cook" ? (
+            <p
+              className="mt-1 font-ui text-[12px] font-extrabold uppercase tracking-[0.14em] text-olive"
+              data-testid="prepared-by"
+            >
+              👨‍🍳 Cut by your Prep Cook
+            </p>
+          ) : null}
+          {served.popularExtra && served.popularExtra > 0 && !served.isReplay ? (
+            <p
+              className="kc-stage font-ui text-[13px] font-extrabold uppercase tracking-[0.14em] text-tomato"
+              data-testid="popular-line"
+              style={stage(300)}
+            >
+              🔥 Popular +{formatUsd(served.popularExtra)}
+            </p>
+          ) : null}
+          {/* Phase 2 (C3): the tip, as its own line under the order pay. */}
+          {tip > 0 ? (
+            <p
+              className="kc-stage font-ui text-[13px] font-extrabold uppercase tracking-[0.14em] text-copper"
+              data-testid="tip-line"
+              style={stage(360)}
+            >
+              💸 Tip {formatUsdChange(tip)}
+            </p>
+          ) : null}
+          {bill && paidCents + tip > 0 ? (
+            <p
+              className="mt-1 font-ui text-[12.5px] font-extrabold uppercase tracking-[0.14em] text-walnut/70"
+              data-testid="bill-line"
+              style={stage(420)}
+            >
+              🧾 Bill {formatUsd(paidCents + tip)}
+            </p>
+          ) : null}
+          {/* Phase 2 (B2/B3): the payment (and tip) as cash to sweep in. */}
+          {paidCents + tip > 0 && cashAtTable ? (
+            <p
+              className="mt-2 font-ui text-[12px] font-extrabold uppercase tracking-[0.16em] text-olive"
+              data-testid={remaining > 0 ? "cash-prompt" : "cash-collected"}
+            >
+              {remaining > 0 ? `💵 ${formatUsd(remaining)} on the table` : "✓ Cash collected"}
+            </p>
+          ) : paidCents + tip > 0 ? (
+            <div className="kc-stage" style={stage(520)}>
+              <CashVacuum
+                payCents={paidCents}
+                tipCents={tip}
+                walletRef={walletRef}
+                reducedMotion={reduced}
+                {...(onCashPieceCollected ? { onPieceCollected: onCashPieceCollected } : {})}
+                onRemaining={(cents) => {
+                  setLocalRemaining(cents);
+                  onCashRemaining?.(cents);
+                }}
+                {...(onCashCollected ? { onDone: onCashCollected } : {})}
+              />
+            </div>
+          ) : null}
+          <div className="sv-wallet mt-1 flex items-center justify-center gap-1">
+            <span className="sv-wide-only">
+              <Laurel />
+            </span>
+            <span ref={walletRef} data-testid="wallet-pill" data-credits={credits}>
+              <CurrencyPill amount={shownCredits} />
+            </span>
+            {remaining > 0 && !cashAtTable ? (
+              <span className="font-hand text-[14px] text-olive">Swipe the cash to collect it</span>
+            ) : null}
+            <span className="sv-wide-only">
+              <Laurel flip />
+            </span>
+          </div>
+          {served.settlement ? (
+            <SettlementBreakdown
+              settlement={served.settlement}
+              {...(knife ? { knife } : {})}
+              {...(board ? { board } : {})}
+              {...(selectedSupplierId !== undefined ? { selectedSupplierId } : {})}
+              {...(ownedStaffIds ? { ownedStaffIds } : {})}
+              {...(knifeSharpnessValue !== undefined ? { knifeSharpnessValue } : {})}
+            />
+          ) : null}
+          {isBusinessOrder && served.businessCustomers ? (
+            <p className="mt-3 font-ui text-[12px] font-bold uppercase tracking-[0.14em] text-walnut/60">
+              Customers today {served.businessCustomers.served} / {served.businessCustomers.target}{" "}
+              served
+            </p>
+          ) : null}
+          {isBusinessOrder && served.businessCustomers?.complete ? (
+            <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/70">
+              ✓ Today's customers are complete. 🌙 End the day when ready.
+            </p>
+          ) : null}
+          <div className="mt-5 space-y-2 [@media(max-height:640px)]:mt-3">
+            {afterServe ? (
+              <div data-testid="after-serve">
+                <p className="font-hand text-[17px] leading-snug text-walnut/80">
+                  {afterServe.chips.length > 0
+                    ? "While you wait, you could…"
+                    : "Your next customer is waiting in the Kitchen."}
+                </p>
+                {afterServe.teaser ? (
+                  <p
+                    data-testid="level-teaser"
+                    className="mt-1.5 font-ui text-[13.5px] font-extrabold text-copper"
+                  >
+                    ✨ {afterServe.teaser}
+                  </p>
+                ) : null}
+                {afterServe.chips.length > 0 ? (
+                  <div className="mt-1.5 flex flex-wrap justify-center gap-1.5">
+                    {afterServe.chips.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        data-testid={`after-serve-${c.id}`}
+                        onClick={() => afterServe.onGo(c.to)}
+                        className="press flex min-h-12 items-center gap-1.5 rounded-2xl border-2 border-[#b8873f] bg-[linear-gradient(170deg,#f7e3b0,#e8c27a)] px-3 font-ui text-[13.5px] font-extrabold text-walnut-dark shadow-soft"
+                      >
+                        <span aria-hidden>{c.icon}</span>
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : isBusinessOrder && served.businessCustomers?.complete ? null : (
+              <>
+                {blockNext ? (
+                  <p
+                    role="status"
+                    data-testid="next-blocked"
+                    className="font-hand text-[16px] leading-snug text-copper"
+                  >
+                    {blockNext}
+                  </p>
+                ) : null}
+                <KButton full disabled={!!blockNext} onClick={nextOnce}>
+                  <Users className="sv-btn-ico sv-wide-only" aria-hidden="true" />
+                  {nextLabel}
+                </KButton>
+              </>
+            )}
+            {extraAction ? (
+              <KButton
+                full
+                variant="sage"
+                className="h-auto min-h-12 py-2 leading-tight [@media(max-height:640px)]:text-[12.5px]"
+                disabled={!!extraAction.disabled}
+                onClick={extraAction.onClick}
+              >
+                {extraAction.label}
+              </KButton>
+            ) : null}
+            <KButton full variant={afterServe ? "wood" : "ghost"} onClick={onExit}>
+              <ChefHat className="sv-btn-ico sv-wide-only" aria-hidden="true" />
+              {isBusinessOrder ? "Back to Service" : "Back to Kitchen"}
+            </KButton>
+          </div>
+        </>
+      ) : (
+        <>
+          {bookNote}
+          <p className="mt-2 font-hand text-[17px] text-walnut/70">
+            Everything's prepared — {customer.name} is waiting.
+          </p>
+          {serveError ? (
+            <p role="alert" className="mt-2 font-ui text-[13px] font-bold text-red-700">
+              Couldn’t serve this order. Check the required ingredients in Market and try again.
+            </p>
+          ) : null}
+          <div className="mt-5 space-y-2">
+            <KButton full variant="green" size="lg" onClick={handleServe}>
+              Serve to {customer.name}
+            </KButton>
+            <KButton full variant="cream" onClick={onRetry}>
+              Prepare Again
+            </KButton>
+            <KButton full variant="ghost" onClick={onExit}>
+              {isBusinessOrder ? "Back to Service" : "Back to Kitchen"}
+            </KButton>
+          </div>
+        </>
+      )}
+      {auto && onStopAuto ? (
+        <div className="mt-2">
+          <KButton full variant="cream" onClick={onStopAuto}>
+            ⏸ Stop Auto
+          </KButton>
+        </div>
+      ) : null}
+    </Panel>
+  );
   return (
     <div
       className={`absolute inset-0 z-50 ${
-        served && room
-          ? "flex flex-col bg-walnut-dark land:flex-row"
+        sheet
+          ? "flex flex-col bg-walnut-dark land:block"
           : "grid place-items-center bg-walnut-dark/55 backdrop-blur-[3px]"
       }${hidden ? " hidden" : ""}`}
     >
-      {served && room ? (
-        <div className="relative min-h-0 flex-[0_0_40%] land:min-w-0 land:flex-1">{room}</div>
+      {sheet ? (
+        <div className="relative min-h-0 flex-[0_0_37%] land:absolute land:inset-0">{room}</div>
       ) : null}
-      <Panel
-        tone="cream"
-        className={
-          served && room
-            ? "min-h-0 w-full flex-1 overflow-y-auto overscroll-contain rounded-b-none rounded-t-[22px] p-5 text-center [@media(max-height:640px)]:px-4 [@media(max-height:640px)]:py-3 land:w-[min(460px,40%)] land:min-w-[300px] land:flex-none land:rounded-none land:rounded-l-[22px] land:p-6"
-            : "anim-pop max-h-[calc(100%-12px)] w-[82%] land:max-w-[560px] overflow-y-auto overscroll-contain p-6 text-center [@media(max-height:640px)]:px-5 [@media(max-height:640px)]:py-4"
-        }
-      >
-        <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.24em] text-copper">
-          {served ? "Served" : "Order Ready"}
-          {/* Phase 4 (A/C): the plate's presentation tier, on the same line. */}
-          {plateTier ? (
-            <span data-testid="plate-tier" data-tier={plateTier}>
-              {" "}
-              · {TIER_INFO[plateTier].icon} {TIER_INFO[plateTier].name}
-            </span>
-          ) : null}
-        </p>
-        <p className="mt-1 font-display text-[24px] font-black leading-tight tracking-tight text-walnut-dark [@media(max-height:640px)]:text-[21px]">
-          {recipe.name}
-        </p>
-        {/* Phase 2 (C2): the customer reacts to the dish's own grade (the
-            score its pay came from) — a cheer and a clap for Masterful, a
-            nod for Clean, nothing extra otherwise. Once, on serve. */}
-        <p className="font-hand text-[18px] text-olive" data-testid="service-customer">
-          <span
-            className={
-              (reaction === "cheer" ? "kc-cheer" : reaction === "nod" ? "kc-nod" : "") +
-              // Phase 4 (B5/B7): the Mystery Guest is a silhouette until served; Bruno is big.
-              (personality?.id === "mystery-customer" && !served ? " kc-silhouette" : "") +
-              (personality?.id === "giant-eater" ? " inline-block text-[1.45em] leading-none" : "")
-            }
-            data-testid={personality ? "special-customer" : undefined}
-            data-customer={personality?.id}
+      {sheet ? (
+        <div className="sv-wrap">
+          <Hat />
+          <Sprig />
+          <Sprig flip />
+          <button
+            type="button"
+            className="sv-close"
+            aria-label="Close"
+            data-testid="served-close"
+            onClick={onExit}
           >
-            <CustomerBust
-              customerId={customer.id}
-              expression={served ? expressionFor(reaction) : "neutral"}
-              fallback={customer.avatarEmoji}
-              em={1.7}
-            />
-          </span>
-          {personality ? (
-            <span className="ml-0.5 text-[0.8em]" aria-hidden="true">
-              {PERSONALITIES[personality.id].badge}
-            </span>
-          ) : null}{" "}
-          {customer.name}
-          {reaction === "cheer" ? (
-            // The clap rides inside the chip: name, avatar and chip stay on one
-            // line at 320 px, so a tip line still fits on a 320×568 screen.
-            <span
-              className="anim-pop ml-1.5 inline-block whitespace-nowrap rounded-full bg-copper/10 px-2 py-0.5 align-middle font-ui text-[10.5px] font-extrabold uppercase tracking-[0.12em] text-copper"
-              data-testid="customer-reaction"
-            >
-              <span className="kc-cheer" aria-hidden="true">
-                👏
-              </span>{" "}
-              Exceptional!
-            </span>
-          ) : null}
-        </p>
-
-        {served ? (
-          <>
-            <p
-              className="kc-stage mt-2 font-hand text-[20px] leading-snug text-walnut-dark [@media(max-height:640px)]:text-[18px]"
-              data-testid="customer-line"
-              style={stage(0)}
-            >
-              {special?.reveal ? (
-                <span
-                  className="font-ui text-[13px] font-extrabold text-copper"
-                  data-testid="mystery-reveal"
-                >
-                  It was {special.reveal}!{" "}
-                </span>
-              ) : null}
-              {special ? special.line : `"${served.reaction}"`}
-            </p>
-            {/* Economy V2 Phase 9 §11 — a replay must read as unambiguously
-                economically-zero, never inferred from coinsAwarded === 0
-                (a genuine settlement can also floor at 0, rarely). */}
-            {served.isReplay ? (
-              <p className="mt-3 font-ui text-[12px] font-extrabold uppercase tracking-[0.16em] text-walnut/50">
-                🔁 Replay · no money earned
-              </p>
-            ) : isBusinessOrder && served.businessPayment ? (
-              <div className="mt-3">
-                <BusinessPaymentLines payment={served.businessPayment} paid />
-              </div>
-            ) : served.coinsAwarded > 0 ? (
-              <p
-                className="kc-stage mt-3 font-hand text-[20px] text-olive [@media(max-height:640px)]:mt-2"
-                style={stage(180)}
-              >
-                {formatUsdChange(served.coinsAwarded)}
-              </p>
-            ) : null}
-            {preparedBy === "prep-cook" ? (
-              <p
-                className="mt-1 font-ui text-[12px] font-extrabold uppercase tracking-[0.14em] text-olive"
-                data-testid="prepared-by"
-              >
-                👨‍🍳 Cut by your Prep Cook
-              </p>
-            ) : null}
-            {served.popularExtra && served.popularExtra > 0 && !served.isReplay ? (
-              <p
-                className="kc-stage font-ui text-[13px] font-extrabold uppercase tracking-[0.14em] text-tomato"
-                data-testid="popular-line"
-                style={stage(300)}
-              >
-                🔥 Popular +{formatUsd(served.popularExtra)}
-              </p>
-            ) : null}
-            {/* Phase 2 (C3): the tip, as its own line under the order pay. */}
-            {tip > 0 ? (
-              <p
-                className="kc-stage font-ui text-[13px] font-extrabold uppercase tracking-[0.14em] text-copper"
-                data-testid="tip-line"
-                style={stage(360)}
-              >
-                💸 Tip {formatUsdChange(tip)}
-              </p>
-            ) : null}
-            {bill && paidCents + tip > 0 ? (
-              <p
-                className="mt-1 font-ui text-[12.5px] font-extrabold uppercase tracking-[0.14em] text-walnut/70"
-                data-testid="bill-line"
-                style={stage(420)}
-              >
-                🧾 Bill {formatUsd(paidCents + tip)}
-              </p>
-            ) : null}
-            {/* Phase 2 (B2/B3): the payment (and tip) as cash to sweep in. */}
-            {paidCents + tip > 0 && cashAtTable ? (
-              <p
-                className="mt-2 font-ui text-[12px] font-extrabold uppercase tracking-[0.16em] text-olive"
-                data-testid={remaining > 0 ? "cash-prompt" : "cash-collected"}
-              >
-                {remaining > 0 ? `💵 ${formatUsd(remaining)} on the table` : "✓ Cash collected"}
-              </p>
-            ) : paidCents + tip > 0 ? (
-              <div className="kc-stage" style={stage(520)}>
-                <CashVacuum
-                  payCents={paidCents}
-                  tipCents={tip}
-                  walletRef={walletRef}
-                  reducedMotion={reduced}
-                  {...(onCashPieceCollected ? { onPieceCollected: onCashPieceCollected } : {})}
-                  onRemaining={(cents) => {
-                    setLocalRemaining(cents);
-                    onCashRemaining?.(cents);
-                  }}
-                  {...(onCashCollected ? { onDone: onCashCollected } : {})}
-                />
-              </div>
-            ) : null}
-            <div className="mt-1 flex items-center justify-center gap-1">
-              <span ref={walletRef} data-testid="wallet-pill" data-credits={credits}>
-                <CurrencyPill amount={shownCredits} />
-              </span>
-              {remaining > 0 && !cashAtTable ? (
-                <span className="font-hand text-[14px] text-olive">
-                  Swipe the cash to collect it
-                </span>
-              ) : null}
-            </div>
-            {served.settlement ? (
-              <SettlementBreakdown
-                settlement={served.settlement}
-                {...(knife ? { knife } : {})}
-                {...(board ? { board } : {})}
-                {...(selectedSupplierId !== undefined ? { selectedSupplierId } : {})}
-                {...(ownedStaffIds ? { ownedStaffIds } : {})}
-                {...(knifeSharpnessValue !== undefined ? { knifeSharpnessValue } : {})}
-              />
-            ) : null}
-            {isBusinessOrder && served.businessCustomers ? (
-              <p className="mt-3 font-ui text-[12px] font-bold uppercase tracking-[0.14em] text-walnut/60">
-                Customers today {served.businessCustomers.served} /{" "}
-                {served.businessCustomers.target} served
-              </p>
-            ) : null}
-            {isBusinessOrder && served.businessCustomers?.complete ? (
-              <p className="mt-1 font-hand text-[16px] leading-snug text-walnut/70">
-                ✓ Today's customers are complete. 🌙 End the day when ready.
-              </p>
-            ) : null}
-            <div className="mt-5 space-y-2 [@media(max-height:640px)]:mt-3">
-              {afterServe ? (
-                <div data-testid="after-serve">
-                  <p className="font-hand text-[17px] leading-snug text-walnut/80">
-                    {afterServe.chips.length > 0
-                      ? "While you wait, you could…"
-                      : "Your next customer is waiting in the Kitchen."}
-                  </p>
-                  {afterServe.teaser ? (
-                    <p
-                      data-testid="level-teaser"
-                      className="mt-1.5 font-ui text-[13.5px] font-extrabold text-copper"
-                    >
-                      ✨ {afterServe.teaser}
-                    </p>
-                  ) : null}
-                  {afterServe.chips.length > 0 ? (
-                    <div className="mt-1.5 flex flex-wrap justify-center gap-1.5">
-                      {afterServe.chips.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          data-testid={`after-serve-${c.id}`}
-                          onClick={() => afterServe.onGo(c.to)}
-                          className="press flex min-h-12 items-center gap-1.5 rounded-2xl border-2 border-[#b8873f] bg-[linear-gradient(170deg,#f7e3b0,#e8c27a)] px-3 font-ui text-[13.5px] font-extrabold text-walnut-dark shadow-soft"
-                        >
-                          <span aria-hidden>{c.icon}</span>
-                          {c.label}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              ) : isBusinessOrder && served.businessCustomers?.complete ? null : (
-                <>
-                  {blockNext ? (
-                    <p
-                      role="status"
-                      data-testid="next-blocked"
-                      className="font-hand text-[16px] leading-snug text-copper"
-                    >
-                      {blockNext}
-                    </p>
-                  ) : null}
-                  <KButton full disabled={!!blockNext} onClick={nextOnce}>
-                    {nextLabel}
-                  </KButton>
-                </>
-              )}
-              {extraAction ? (
-                <KButton
-                  full
-                  variant="sage"
-                  className="h-auto min-h-12 py-2 leading-tight [@media(max-height:640px)]:text-[12.5px]"
-                  disabled={!!extraAction.disabled}
-                  onClick={extraAction.onClick}
-                >
-                  {extraAction.label}
-                </KButton>
-              ) : null}
-              <KButton full variant={afterServe ? "wood" : "ghost"} onClick={onExit}>
-                {isBusinessOrder ? "Back to Service" : "Back to Kitchen"}
-              </KButton>
-            </div>
-          </>
-        ) : (
-          <>
-            {bookNote}
-            <p className="mt-2 font-hand text-[17px] text-walnut/70">
-              Everything's prepared — {customer.name} is waiting.
-            </p>
-            {serveError ? (
-              <p role="alert" className="mt-2 font-ui text-[13px] font-bold text-red-700">
-                Couldn’t serve this order. Check the required ingredients in Market and try again.
-              </p>
-            ) : null}
-            <div className="mt-5 space-y-2">
-              <KButton full variant="green" size="lg" onClick={handleServe}>
-                Serve to {customer.name}
-              </KButton>
-              <KButton full variant="cream" onClick={onRetry}>
-                Prepare Again
-              </KButton>
-              <KButton full variant="ghost" onClick={onExit}>
-                {isBusinessOrder ? "Back to Service" : "Back to Kitchen"}
-              </KButton>
-            </div>
-          </>
-        )}
-        {auto && onStopAuto ? (
-          <div className="mt-2">
-            <KButton full variant="cream" onClick={onStopAuto}>
-              ⏸ Stop Auto
-            </KButton>
-          </div>
-        ) : null}
-      </Panel>
+            ✕
+          </button>
+          {panel}
+        </div>
+      ) : (
+        panel
+      )}
     </div>
   );
 }
