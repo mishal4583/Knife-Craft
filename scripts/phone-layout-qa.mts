@@ -123,8 +123,11 @@ console.log("B. Phone-landscape layouts");
   );
   const sort = read("src/components/kc/inventory/FridgeSortGame.tsx");
   assert(
-    /land:order-first land:flex/.test(sort) &&
-      /<div className="contents land:flex land:min-h-0 land:flex-1 land:gap-2/.test(sort),
+    // RULE CHANGE 2026-11-21 (found by the deep check; the developer's Fridge Sort mock-up, 2026-11-20): on its side the game is a two-column grid: the HUD, the note and the basket in
+    // the LEFT column (col 1), the cabinet of shelves in the RIGHT one (col 2, spanning the rows)
+    /land:grid land:grid-cols-\[46fr_54fr\]/.test(sort) &&
+      /land:col-start-1 land:row-start-3/.test(sort) &&
+      /land:col-start-2 land:row-span-3/.test(sort),
     "B2: Fridge Sort puts the basket and the slip on the left and the shelves on the right on its side",
   );
   const car = read("src/components/kc/inventory/CarParkGame.tsx");

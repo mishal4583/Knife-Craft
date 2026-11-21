@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { dishArtUrl } from "@/game/dishArt";
 import "./orderCard.css";
 
@@ -26,6 +26,8 @@ export type OrderCardProps = {
   compact?: boolean;
   /** The font size of the card (the screen sets it from its own size). */
   size: string;
+  /** A named regular's portrait (`CustomerBust`), shown on the banner's left edge once they are seated; without one nothing is drawn. */
+  bust?: ReactNode;
 };
 
 function Hat() {
@@ -116,14 +118,14 @@ function Laurel({ flip }: { flip?: boolean }) {
       ].map(([x, y, r], i) => (
         <g key={i}>
           <path
-            d={`M${x} ${y}c-9-2-16 4-17 12 8 1 15-3 17-12Z`}
+            d={`M${x} ${y} c-9-2-16 4-17 12 8 1 15-3 17-12Z`}
             fill="#f2c85a"
             stroke="#c9942c"
             strokeWidth="1.2"
             transform={`rotate(${(r as number) - 60} ${x} ${y})`}
           />
           <path
-            d={`M${(x as number) + 5} ${(y as number) - 4}c8-4 15 0 17 8-8 2-15-1-17-8Z`}
+            d={`M${(x as number) + 5} ${(y as number) - 4} c8-4 15 0 17 8-8 2-15-1-17-8Z`}
             fill="#f7d878"
             stroke="#c9942c"
             strokeWidth="1.2"
@@ -173,6 +175,7 @@ export function OrderArrivalCard({
   prepCook,
   compact = false,
   size,
+  bust,
 }: OrderCardProps) {
   const art = dishArtUrl(dish.id);
   const heading =
@@ -193,6 +196,11 @@ export function OrderArrivalCard({
       onClick={(e) => e.stopPropagation()}
     >
       <div className="oc-banner">
+        {bust && state === "seated" ? (
+          <span className="oc-bust" data-testid="order-card-bust">
+            {bust}
+          </span>
+        ) : null}
         <Hat />
         <Sprig />
         <Sprig flip />

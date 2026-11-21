@@ -30,6 +30,7 @@ import { GuestPoses } from "../restaurantMap/GuestPoses";
 import { ambientDiners } from "@/game/restaurant/ambientDiners";
 import { dishArtUrl } from "@/game/dishArt";
 import { OrderArrivalCard } from "./OrderArrivalCard";
+import { CustomerBust } from "@/components/kc/common/CustomerBust";
 import { TableCash } from "../common/TableCash";
 import { cashSpotBeside } from "@/game/restaurant/tableCash";
 import { AUTO_SERVE_MS } from "@/game/restaurant/prepCookAuto";
@@ -523,6 +524,14 @@ export function ServiceFloor({
               onStart={finish}
               prepCook={prepCook && sitting ? prepCook : undefined}
               compact={!wide}
+              bust={
+                <CustomerBust
+                  customerId={customer.id}
+                  expression="neutral"
+                  fallback={customer.avatarEmoji}
+                  em={2}
+                />
+              }
               size={wide ? "clamp(8px, min(2.4cqh, 1.4cqw), 30px)" : "clamp(8px, 2.5cqw, 15px)"}
             />
           </div>

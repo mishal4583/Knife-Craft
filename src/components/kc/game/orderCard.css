@@ -50,6 +50,28 @@
   vertical-align: 0.25em;
   color: #e9b94f;
 }
+.oc-bust {
+  position: absolute;
+  left: -1.35em;
+  top: 50%;
+  z-index: 3;
+  width: 2.9em;
+  height: 2.9em;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  border: 0.16em solid #e2b45a;
+  background: #fff6e1;
+  box-shadow: 0 0.2em 0.5em rgba(30, 14, 4, 0.5);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  font-size: 1.5em;
+  line-height: 1;
+}
+.oc-bust > * {
+  width: 100% !important;
+  height: 100% !important;
+}
 .oc-hat {
   position: absolute;
   left: 50%;

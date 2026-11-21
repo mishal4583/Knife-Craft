@@ -453,7 +453,8 @@ function floorSave(now: number): SaveData {
     "W2 the Second Floor shows a bar and 'full in' per station and for the floor, and the takings lie on the Pickup Counter as a tappable pile",
     /<FillBar fill=\{wholeFill\} testId="floor-fill"/.test(view) &&
       /testId="station-fill"/.test(view) &&
-      /<TableCash[\s\S]{0,200}at=\{PICKUP_CASH_AT\}[\s\S]{0,200}onCollect=\{\(\) => act\(\{ kind: "collect" \}\)\}/.test(
+      // RULE CHANGE 2026-11-21 (found by the deep check): since the landscape Second Floor (2026-11-20) the pile's spot is `wide ? WIDE_SF_CASH_AT : PICKUP_CASH_AT`; it still lies on the Pickup Counter
+      /<TableCash[\s\S]{0,200}at=\{wide \? WIDE_SF_CASH_AT : PICKUP_CASH_AT\}[\s\S]{0,200}onCollect=\{\(\) => act\(\{ kind: "collect" \}\)\}/.test(
         view,
       ),
   );

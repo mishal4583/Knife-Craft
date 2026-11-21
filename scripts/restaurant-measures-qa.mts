@@ -585,7 +585,9 @@ console.log("A. Audit fixes (2026-10-08)");
     /ready to prepare · \$\{payText\(save, todayLevel\)\}/.test(kitchen) &&
       /ready to prepare · \$\{payText\(save, level\)\}/.test(kitchen) &&
       /\{canOpen && !completed \? \(/.test(kitchen) &&
-      /max-w-\[60%\]/.test(kitchen),
+      // RULE CHANGE 2026-11-21 (found by the deep check): the rank card's cap is now `max-w-[calc(100%-84px)]` upright and `land:max-w-[64%]` in a wide window (the wide-window pass, 2026-11-19 / 20)
+      /max-w-\[calc\(100%-84px\)\]/.test(kitchen) &&
+      /land:max-w-\[64%\]/.test(kitchen),
     "A4: the Kitchen card and Order Board show the level's pay; hints only on the level to play; the rank card is width-capped",
   );
   assert(

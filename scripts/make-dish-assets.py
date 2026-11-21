@@ -53,10 +53,19 @@ for sh in sheets:
         core = al > CORE
         labels, n = ndimage.label(ndimage.binary_dilation(core, structure=np.ones((3, 3)), iterations=4))
         keep = np.zeros_like(core)
+        parts = []
         for lab in range(1, n + 1):
             part = (labels == lab) & core
             if part.sum() >= 300:  # the dish and its garnish; not a speck
-                keep |= part
+                ys_, xs_ = np.nonzero(part)
+                touches = xs_.min() <= 2 or ys_.min() <= 2 or xs_.max() >= CELL - 3 or ys_.max() >= CELL - 3
+                parts.append((part, int(part.sum()), touches))
+        biggest = max((p[1] for p in parts), default=0)
+        for part, area, touches in parts:
+            # a small piece that touches the cell edge is the rim of the NEIGHBOUR's plate reaching over the cell line (some plates overhang by a few px): not part of this dish
+            if touches and area < 0.35 * biggest:
+                continue
+            keep |= part
         if keep.sum() < 3000:
             problems.append(f"{sh['sheet']} #{i + 1} {dish['id']}: no dish found")
             continue

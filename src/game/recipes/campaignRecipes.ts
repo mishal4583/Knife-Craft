@@ -696,7 +696,7 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
   {
     id: "camp-italian-garden-plate",
     name: "Italian Garden Plate",
-    emoji: "🇮🇹",
+    emoji: "🥗",
     cuisineId: "italian",
     authenticity: "B",
     components: [

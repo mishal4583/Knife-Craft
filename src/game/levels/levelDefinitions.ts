@@ -712,7 +712,7 @@ const SOURCE_LEVELS: LevelDefinition[] = [
     subtitle: "The chapter's signature dish",
     description:
       "Everything this chapter taught, on one plate — dice, slice, chop, and rings, all Italian.",
-    emoji: "🇮🇹",
+    emoji: "🥗",
     recipeId: "camp-italian-garden-plate",
     objectives: [
       { type: "prepareIngredient", ingredientId: "tomato", technique: "dice" },
@@ -1098,7 +1098,7 @@ const SOURCE_LEVELS: LevelDefinition[] = [
     subtitle: "Two customers, the whole chapter combined",
     description:
       "A full night of service — two customers, drawing on every Italian recipe this chapter has taught.",
-    emoji: "🇮🇹",
+    emoji: "🍝",
     recipeId: "level-30",
     objectives: [
       { type: "prepareIngredient", ingredientId: "bread", technique: "slice" },

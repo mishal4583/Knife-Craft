@@ -182,7 +182,10 @@ console.log("A. Restaurant restoration");
 }
 
 assert(
-  /src=\{kitchenArt \?\? kitchenBg\}/.test(code("src/components/kc/game/Preparation.tsx")) &&
+  // RULE CHANGE 2026-11-21 (found by the deep check): since the landscape pictures (2026-11-20) a wide window paints its own wide kitchen; the portrait picture is still `kitchenArt ?? kitchenBg`
+  /src=\{landscape \? landscapeKitchenArt\(kitchenSkin \?\? "skin-01"\) : \(kitchenArt \?\? kitchenBg\)\}/.test(
+    code("src/components/kc/game/Preparation.tsx"),
+  ) &&
     /save\.equippedKitchenUpgradeId !== "humble-kitchen"/.test(app) &&
     (app.match(/kitchenArt: cuttingKitchenArt/g) ?? []).length === 2,
   "A13: the cutting screen paints the built tier's art (both Preparation mounts); the Humble Kitchen keeps the original",
