@@ -7,7 +7,7 @@ import { inventoryMenuOf, restaurantLevelOf } from "@/game/restaurant/restaurant
 import { todayPlanNeed } from "@/game/restaurant/marketPlan";
 import { closingPreview, restaurantDayOf, todaysServices } from "@/game/restaurant/restaurantDay";
 import { INGREDIENTS } from "@/game/definitions";
-import { INGREDIENT_EMOJI, knifeOrDefault } from "@/game/knives/knifeDefinitions";
+import { knifeOrDefault } from "@/game/knives/knifeDefinitions";
 import { boardOrDefault } from "@/game/boards/boardDefinitions";
 import { getKnifeSharpness, sharpnessLabel } from "@/game/economy/sharpness";
 import { restaurantAttention, type AttentionRow } from "@/game/restaurant/restaurantAttention";
@@ -22,16 +22,17 @@ import { getLevel } from "@/game/levels/LevelManager";
 import { openMarketIngredients, openMarketSupplies } from "./marketFocus";
 import { openAttentionRow } from "./attentionActions";
 import { openStaffFor } from "./staffFocus";
-import { StaffPortrait } from "./business/StaffCard";
-import { staffFallbackEmoji, staffPortraitFile } from "./business/staffPortraits";
 import { ShiftChecklist } from "./restaurant/ShiftChecklist";
 import type { ScreenId } from "./data";
 import { BottomNav } from "./Kitchen";
 import { Eyebrow } from "./common/Meters";
 import { KButton, Panel, ScreenHeader } from "./common/primitives";
 import { InfoTip } from "./common/InfoTip";
-import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 import { FreshnessGrid, type WatchTile } from "./FreshnessWatch";
+import { SupplyCheckGrid } from "./SupplyCheckTiles";
+import { TeamGrid } from "./TeamTiles";
+import { AllClear, AreaThumbs, ClosingPlan, MealPills, Plate } from "./ChoreTiles";
+import type { SupplyCheckRow } from "@/game/restaurant/serviceSupplies";
 
 const urgencyClass = {
   urgent: "border-tomato/35 bg-tomato/5",
@@ -101,18 +102,19 @@ function stockTile(
 
 /** A low-stock alert for an ingredient (no freshness known) as a tile of the same look. */
 function lowTile(row: AttentionRow, go: (s: ScreenId) => void): WatchTile | null {
+  const urgent = row.severity === "urgent";
   if (row.action.to !== "ingredient") return null;
   return {
     id: row.action.id,
     name: row.name,
-    label: "Running low",
-    marker: "🟡",
-    tone: "gold",
+    label: urgent ? "Needed now" : "Running low",
+    marker: urgent ? "⛔" : "🟡",
+    tone: urgent ? "tomato" : "gold",
     state: "FRESH",
     freshness: null,
     days: "",
     amount: row.amount,
-    action: "Top up",
+    action: urgent ? "Refill" : "Top up",
     onAction: () => openAttentionRow(row, go),
   };
 }
@@ -150,6 +152,11 @@ export function DailyMaintenance({
       r.severity === "low" &&
       (!serviceSuppliesShown || r.kind !== "supply") &&
       !(r.action.to === "ingredient" && dayStockIngredientIds.has(r.action.id)),
+  );
+  const urgentIngredientRows = urgentRows.filter((r) => r.action.to === "ingredient");
+  const urgentStaffRows = urgentRows.filter((r) => r.action.to === "staff");
+  const urgentOtherRows = urgentRows.filter(
+    (r) => r.action.to !== "ingredient" && r.action.to !== "staff",
   );
   const otherLowRows = lowRows.filter((r) => r.action.to !== "ingredient");
   const inventory = inventoryView(save, inventoryMenuOf(save), todayPlanNeed(save));
@@ -230,16 +237,7 @@ export function DailyMaintenance({
                   <p className="font-ui text-[10px] font-extrabold uppercase tracking-wider text-gold">
                     Today’s service plan
                   </p>
-                  <ul className="mt-1 space-y-1">
-                    {schedule.map((service) => (
-                      <li
-                        key={`${service.name}-${service.levelNumber}`}
-                        className="font-ui text-[12px] font-bold text-ivory/90"
-                      >
-                        {service.done ? "✓" : "•"} {service.name}
-                      </li>
-                    ))}
-                  </ul>
+                  <MealPills services={schedule} />
                 </div>
               ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
@@ -266,15 +264,39 @@ export function DailyMaintenance({
               </span>
             </div>
             {urgentRows.length ? (
-              <ul className="mt-3 space-y-2">
-                {urgentRows.map((row) => (
-                  <AttentionItem key={row.id} row={row} go={go} />
-                ))}
-              </ul>
+              <>
+                {urgentIngredientRows.length ? (
+                  <FreshnessGrid
+                    tiles={urgentIngredientRows.flatMap((row) => lowTile(row, go) ?? [])}
+                  />
+                ) : null}
+                {urgentStaffRows.length ? (
+                  <TeamGrid
+                    people={urgentStaffRows.flatMap((row) =>
+                      row.action.to === "staff"
+                        ? [
+                            {
+                              id: row.action.id,
+                              title: row.name,
+                              specialist: row.action.specialist,
+                              met: false,
+                              onHire: () => openAttentionRow(row, go),
+                            },
+                          ]
+                        : [],
+                    )}
+                  />
+                ) : null}
+                {urgentOtherRows.length ? (
+                  <ul className="mt-3 space-y-2">
+                    {urgentOtherRows.map((row) => (
+                      <AttentionItem key={row.id} row={row} go={go} />
+                    ))}
+                  </ul>
+                ) : null}
+              </>
             ) : (
-              <p className="mt-3 rounded-xl bg-sage/10 px-3 py-2 font-ui text-[12.5px] font-bold text-olive">
-                ✓ No service blockers{dayStock ? " · ingredients below" : ""}
-              </p>
+              <AllClear>No service blockers{dayStock ? " · ingredients below" : ""}</AllClear>
             )}
           </Panel>
 
@@ -296,36 +318,23 @@ export function DailyMaintenance({
                 </span>
               </div>
               {dayStock.rows.length ? (
-                <ul className="mt-3 space-y-2">
-                  {dayStock.rows.map((row) => (
-                    <li
-                      key={row.ingredientId}
-                      className="flex items-center gap-2 rounded-xl border border-gold/30 bg-gold/5 px-3 py-2"
-                    >
-                      <span aria-hidden="true" className="text-lg">
-                        <IngredientIcon
-                          id={row.ingredientId}
-                          fallback={INGREDIENT_EMOJI[row.ingredientId]}
-                        />
-                      </span>
-                      <p className="min-w-0 flex-1 font-ui text-[12.5px] font-bold text-walnut-dark">
-                        {INGREDIENTS[row.ingredientId]?.name ?? row.ingredientId} · buy{" "}
-                        {row.buyUnits}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => openMarketIngredients(go, row.ingredientId, row.buyUnits)}
-                        className="press min-h-11 shrink-0 rounded-full bg-walnut px-3 font-ui text-[11px] font-extrabold text-ivory"
-                      >
-                        Buy ›
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                <FreshnessGrid
+                  tiles={dayStock.rows.map((row) => ({
+                    id: row.ingredientId,
+                    name: INGREDIENTS[row.ingredientId]?.name ?? row.ingredientId,
+                    label: "To buy",
+                    marker: "🛒",
+                    tone: "gold" as const,
+                    state: "FRESH" as const,
+                    freshness: null,
+                    days: "",
+                    amount: `Buy ${row.buyUnits}`,
+                    action: "Buy",
+                    onAction: () => openMarketIngredients(go, row.ingredientId, row.buyUnits),
+                  }))}
+                />
               ) : (
-                <p className="mt-3 rounded-xl bg-sage/10 px-3 py-2 font-ui text-[12.5px] font-bold text-olive">
-                  ✓ Stock covers the rest of today
-                </p>
+                <AllClear>Stock covers the rest of today</AllClear>
               )}
               {!dayStock.fits ? (
                 <p className="mt-2 flex items-center gap-1.5 font-ui text-[12px] font-bold text-copper">
@@ -369,9 +378,7 @@ export function DailyMaintenance({
                 ) : null}
               </>
             ) : (
-              <p className="mt-3 rounded-xl bg-sage/10 px-3 py-2 font-ui text-[12.5px] font-bold text-olive">
-                ✓ All covered today
-              </p>
+              <AllClear>All covered today</AllClear>
             )}
             {inventory.summary.stocked === 0 && attention.rows.length === 0 ? (
               <p className="mt-2 font-ui text-[12px] text-walnut/50">🔒 Opens with the Market</p>
@@ -382,9 +389,7 @@ export function DailyMaintenance({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <Eyebrow>🌅 Opening clean</Eyebrow>
-                <p className="mt-0.5 font-ui text-[12px] text-walnut/60">
-                  🍳 Kitchen · 🚻 restroom · 🍽️ dining
-                </p>
+                <AreaThumbs />
               </div>
               <span
                 className={`rounded-full px-2.5 py-1 font-ui text-[10px] font-extrabold ${openingDone ? "bg-sage/15 text-olive" : "bg-gold/20 text-copper"}`}
@@ -404,9 +409,7 @@ export function DailyMaintenance({
                   onOpenCleanliness={() => go("business-cleanliness")}
                 />
               ) : (
-                <p className="mt-3 rounded-xl bg-sage/10 px-3 py-2 font-ui text-[12.5px] font-bold text-olive">
-                  ✓ No opening tasks
-                </p>
+                <AllClear>No opening tasks</AllClear>
               )
             ) : (
               <p className="mt-3 rounded-xl bg-cream px-3 py-2 font-ui text-[12px] text-walnut/60">
@@ -445,80 +448,58 @@ export function DailyMaintenance({
                   onOpenCleanliness={() => go("business-cleanliness")}
                 />
               ) : (
-                <p className="mt-3 flex items-center gap-1.5 rounded-xl bg-cream px-3 py-2 font-ui text-[12px] text-walnut/60">
-                  🌙 Added after the last service{" "}
+                <AllClear icon="moon" fallback="🌙">
+                  Added after the last service{" "}
                   <InfoTip label="About closing chores">
                     Closing chores are added after the day’s final service. The full close-down
                     lives in Cleanliness & Maintenance.
                   </InfoTip>
-                </p>
+                </AllClear>
               )
             ) : (
               <p className="mt-3 rounded-xl bg-cream px-3 py-2 font-ui text-[12px] text-walnut/60">
                 🔒 Unlocks with restaurant operations
               </p>
             )}
-            <div className="mt-3 rounded-xl border border-walnut/10 bg-ivory/70 p-3">
-              <p className="font-ui text-[11px] font-extrabold uppercase tracking-wide text-walnut/60">
-                Tonight’s close
-              </p>
-              <ul className="mt-1 space-y-1">
-                {closePlan.chores.map((chore) => (
-                  <li key={chore.id} className="font-ui text-[12px] text-walnut-dark">
-                    🌙 {chore.label}
-                  </li>
-                ))}
-                {closePlan.fullDayEnd ? (
-                  <li className="font-ui text-[12px] text-walnut-dark">
-                    💰 Close the books and pay the team
-                  </li>
-                ) : null}
-              </ul>
-              {closePlan.spoiled ? (
-                <p
-                  className={`mt-2 font-ui text-[11px] font-bold ${closePlan.spoiled.quantity ? "text-tomato" : "text-olive"}`}
-                >
-                  {closePlan.spoiled.quantity
-                    ? `🗑️ ${closePlan.spoiled.quantity} units expire tonight · use or clear`
-                    : "✓ Nothing expires tonight"}
+            <ClosingPlan
+              chores={closePlan.chores}
+              fullDayEnd={closePlan.fullDayEnd}
+              spoiled={closePlan.spoiled}
+            >
+              {closePlan.supplies.length ? (
+                <p className="mt-3 font-ui text-[11px] font-extrabold uppercase tracking-wide text-walnut/60">
+                  Stock for tonight’s close
                 </p>
               ) : null}
               {closePlan.supplies.length ? (
-                <ul className="mt-2 space-y-1 border-t border-walnut/10 pt-2">
-                  {closePlan.supplies.map((line) => (
-                    <li key={line.id} className="flex items-center gap-2 font-ui text-[11.5px]">
-                      <span
-                        className={`min-w-0 flex-1 ${line.have < line.need ? "font-bold text-copper" : "text-walnut/70"}`}
-                      >
-                        {line.have >= line.need ? "✓" : "⚠️"} {line.label}: {line.have}/{line.need}
-                      </span>
-                      {line.have < line.need ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            openMarketSupplies(
-                              go,
-                              getSupplyItem(line.id)?.section ?? "packaging",
-                              line.id,
-                              Math.max(
-                                1,
-                                Math.ceil(
-                                  (line.need - line.have) /
-                                    Math.max(1, getSupplyItem(line.id)?.packSize ?? 1),
-                                ),
-                              ),
-                            )
-                          }
-                          className="press min-h-12 shrink-0 rounded-full bg-walnut px-3 font-ui text-[10px] font-extrabold text-ivory"
-                        >
-                          Restock ›
-                        </button>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
+                <SupplyCheckGrid
+                  rows={closePlan.supplies.map((line): SupplyCheckRow => {
+                    const missing = Math.max(0, line.need - line.have);
+                    const pack = Math.max(1, getSupplyItem(line.id)?.packSize ?? 1);
+                    return {
+                      id: line.id,
+                      label: line.label,
+                      need: line.need,
+                      have: line.have,
+                      dirty: 0,
+                      missing,
+                      blocking: false,
+                      packs: Math.max(1, Math.ceil(missing / pack)),
+                      cost: 0,
+                    };
+                  })}
+                  softLabel="Low"
+                  onRestock={(row) =>
+                    openMarketSupplies(
+                      go,
+                      getSupplyItem(row.id)?.section ?? "packaging",
+                      row.id,
+                      row.packs,
+                    )
+                  }
+                />
               ) : null}
-            </div>
+            </ClosingPlan>
             <button
               type="button"
               onClick={() => go("business-cleanliness")}
@@ -540,98 +521,101 @@ export function DailyMaintenance({
                 {operationsAlerts} alerts
               </span>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => go("business-staff")}
-                className="press min-h-12 rounded-xl border border-walnut/10 bg-ivory/70 px-2 text-left font-ui text-[11.5px] font-extrabold text-walnut-dark"
-              >
-                👥 Team{" "}
-                <span className="block text-[10px] font-medium text-walnut/55">
-                  Review staff cover
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => go("business-refrigerator")}
-                className="press min-h-12 rounded-xl border border-walnut/10 bg-ivory/70 px-2 text-left font-ui text-[11.5px] font-extrabold text-walnut-dark"
-              >
-                ❄️ Equipment{" "}
-                <span className="block text-[10px] font-medium text-walnut/55">
-                  Check fridge and repairs
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => go("business-cleanliness")}
-                className="press min-h-12 rounded-xl border border-walnut/10 bg-ivory/70 px-2 text-left font-ui text-[11.5px] font-extrabold text-walnut-dark"
-              >
-                🧽 Cleaning{" "}
-                <span className="block text-[10px] font-medium text-walnut/55">
-                  Review all areas
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => go("inventory-supplies")}
-                className="press min-h-12 rounded-xl border border-walnut/10 bg-ivory/70 px-2 text-left font-ui text-[11.5px] font-extrabold text-walnut-dark"
-              >
-                📦 Supplies{" "}
-                <span className="block text-[10px] font-medium text-walnut/55">
-                  See all stock levels
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => go("business-suppliers")}
-                className="press min-h-12 rounded-xl border border-walnut/10 bg-ivory/70 px-2 text-left font-ui text-[11.5px] font-extrabold text-walnut-dark"
-              >
-                🚚 Suppliers{" "}
-                <span className="block text-[10px] font-medium text-walnut/55">
-                  Review deliveries & contracts
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => go("shop")}
-                className="press min-h-12 rounded-xl border border-walnut/10 bg-ivory/70 px-2 text-left font-ui text-[11.5px] font-extrabold text-walnut-dark"
-              >
-                🔪 Prep gear{" "}
-                <span className="block truncate text-[10px] font-medium text-walnut/55">
-                  {equippedKnife.name} · {equippedBoard.name} · {knifeSharpness}%{" "}
-                  {sharpnessLabel(knifeSharpness)}
-                </span>
-              </button>
-            </div>
+            <ul
+              className="mt-3 grid grid-cols-2 gap-2.5 land:grid-cols-3"
+              data-testid="other-checks"
+            >
+              {(
+                [
+                  {
+                    to: "business-staff",
+                    icon: "team",
+                    emoji: "👥",
+                    title: "Team",
+                    sub: "Review staff cover",
+                  },
+                  {
+                    to: "business-refrigerator",
+                    icon: "snowflake",
+                    emoji: "❄️",
+                    title: "Equipment",
+                    sub: "Check fridge and repairs",
+                  },
+                  {
+                    to: "business-cleanliness",
+                    icon: "sponge",
+                    emoji: "🧽",
+                    title: "Cleaning",
+                    sub: "Review all areas",
+                  },
+                  {
+                    to: "inventory-supplies",
+                    icon: "box",
+                    emoji: "📦",
+                    title: "Supplies",
+                    sub: "See all stock levels",
+                  },
+                  {
+                    to: "business-suppliers",
+                    icon: "truck",
+                    emoji: "🚚",
+                    title: "Suppliers",
+                    sub: "Review deliveries & contracts",
+                  },
+                  {
+                    to: "shop",
+                    icon: "knife",
+                    emoji: "🔪",
+                    title: "Prep gear",
+                    sub: `${equippedKnife.name} · ${equippedBoard.name} · ${knifeSharpness}% ${sharpnessLabel(knifeSharpness)}`,
+                  },
+                ] as const
+              ).map((c) => (
+                <li key={c.to}>
+                  <button
+                    type="button"
+                    onClick={() => go(c.to)}
+                    className="press flex min-h-[72px] w-full items-center gap-2.5 rounded-2xl border-2 border-gold/40 bg-gradient-to-b from-ivory to-cream p-2 text-left shadow-[0_3px_0_rgba(200,150,50,0.18)]"
+                  >
+                    <Plate name={c.icon} fallback={c.emoji} className="h-[52px] w-[52px]" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-display text-[14.5px] font-black leading-tight text-walnut-dark">
+                        {c.title}
+                      </span>
+                      <span className="block truncate font-ui text-[10.5px] font-bold text-walnut/55">
+                        {c.sub}
+                      </span>
+                    </span>
+                    <span aria-hidden="true" className="font-ui text-[18px] font-black text-copper">
+                      ›
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
             {missingTools.length > 0 ? (
               <div className="mt-3 rounded-xl border border-tomato/25 bg-tomato/5 p-3">
                 <p className="font-ui text-[11px] font-extrabold uppercase tracking-wide text-tomato">
                   🍳 Tools needed for today’s dishes
                 </p>
-                <ul className="mt-2 space-y-2">
-                  {missingTools.map((tool) => (
-                    <li
-                      key={tool.id}
-                      className="flex items-center gap-2 font-ui text-[12px] font-bold text-walnut-dark"
-                    >
-                      <span className="min-w-0 flex-1">
-                        {tool.label}: {tool.have}/{tool.need}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => openMarketSupplies(go, "culinary", tool.id, tool.packs)}
-                        className="press min-h-11 shrink-0 rounded-full bg-walnut px-3 text-[11px] font-extrabold text-ivory"
-                      >
-                        Get tool ›
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                <SupplyCheckGrid
+                  rows={missingTools.map((tool): SupplyCheckRow => ({
+                    id: tool.id,
+                    label: tool.label,
+                    need: tool.need,
+                    have: tool.have,
+                    dirty: 0,
+                    missing: tool.missing,
+                    blocking: true,
+                    packs: tool.packs,
+                    cost: 0,
+                  }))}
+                  action="Get tool"
+                  onRestock={(row) => openMarketSupplies(go, "culinary", row.id, row.packs)}
+                />
               </div>
             ) : plan?.tools.applies ? (
-              <p className="mt-3 rounded-xl bg-sage/10 px-3 py-2 font-ui text-[12px] font-bold text-olive">
-                ✓ Tools ready
-              </p>
+              <AllClear>Tools ready</AllClear>
             ) : null}
             {plan?.supplies.applies ? (
               <div className="mt-3 rounded-xl border border-walnut/10 bg-ivory/70 p-3">
@@ -644,39 +628,19 @@ export function DailyMaintenance({
                   </span>
                 </div>
                 {plan.supplies.rows.length ? (
-                  <ul className="mt-2 space-y-1.5">
-                    {plan.supplies.rows.map((row) => (
-                      <li
-                        key={`${row.id}-${row.guest ? "guest" : "service"}`}
-                        className="flex items-center gap-2 font-ui text-[11.5px]"
-                      >
-                        <span
-                          className={`min-w-0 flex-1 ${row.missing ? (row.blocking ? "font-bold text-tomato" : "font-bold text-copper") : "text-walnut/70"}`}
-                        >
-                          {row.missing ? "⚠️" : "✓"} {row.label}: {row.have}/{row.need}
-                          {row.guest ? " · optional" : ""}
-                        </span>
-                        {row.missing ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              openMarketSupplies(
-                                go,
-                                getSupplyItem(row.id)?.section ?? "service",
-                                row.id,
-                                row.packs,
-                              )
-                            }
-                            className="press min-h-12 shrink-0 rounded-full bg-walnut px-3 font-ui text-[10px] font-extrabold text-ivory"
-                          >
-                            Restock ›
-                          </button>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
+                  <SupplyCheckGrid
+                    rows={plan.supplies.rows}
+                    onRestock={(row) =>
+                      openMarketSupplies(
+                        go,
+                        getSupplyItem(row.id)?.section ?? "service",
+                        row.id,
+                        row.packs,
+                      )
+                    }
+                  />
                 ) : (
-                  <p className="mt-2 font-ui text-[11.5px] text-olive">✓ Nothing extra needed</p>
+                  <AllClear>Nothing extra needed</AllClear>
                 )}
               </div>
             ) : null}
@@ -690,36 +654,16 @@ export function DailyMaintenance({
                     {plan.staff.filter((person) => person.met).length}/{plan.staff.length} ready
                   </span>
                 </div>
-                <ul className="mt-2 space-y-1">
-                  {plan.staff.map((person) => (
-                    <li key={person.id} className="flex items-start gap-2 font-ui text-[11.5px]">
-                      <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-walnut/15">
-                        <StaffPortrait
-                          file={staffPortraitFile(person.id)}
-                          name={person.title}
-                          emoji={staffFallbackEmoji(person.id, person.kind === "specialist")}
-                          className="h-full w-full text-[16px]"
-                        />
-                      </span>
-                      <span>{person.met ? "✓" : "⚠️"}</span>
-                      <span
-                        className={`min-w-0 flex-1 ${person.met ? "text-walnut/70" : "font-bold text-copper"}`}
-                      >
-                        <b>{person.title}</b>{" "}
-                        <InfoTip label={`Why a ${person.title}`}>{person.why}</InfoTip>
-                      </span>
-                      {!person.met ? (
-                        <button
-                          type="button"
-                          onClick={() => openStaffFor(go, [person.id])}
-                          className="press min-h-12 shrink-0 rounded-full bg-walnut px-3 font-ui text-[10px] font-extrabold text-ivory"
-                        >
-                          Hire ›
-                        </button>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
+                <TeamGrid
+                  people={plan.staff.map((person) => ({
+                    id: person.id,
+                    title: person.title,
+                    specialist: person.kind === "specialist",
+                    met: person.met,
+                    why: <InfoTip label={`Why a ${person.title}`}>{person.why}</InfoTip>,
+                    onHire: () => openStaffFor(go, [person.id]),
+                  }))}
+                />
               </div>
             ) : null}
             <p className="mt-3 flex items-center gap-1.5 rounded-xl bg-cream px-3 py-2 font-ui text-[12px] text-walnut/60">

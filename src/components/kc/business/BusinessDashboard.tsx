@@ -1,4 +1,5 @@
 import type { DeliveryKind } from "@/game/restaurant/deliveries";
+import { MealPills } from "../ChoreTiles";
 import { useUnlockText } from "../navLevel";
 import { ENDLESS_RESTAURANT_NAME, businessDayAllowed } from "@/game/restaurant/endlessRestaurant";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
@@ -891,13 +892,7 @@ function CampaignDayCard({ save, go }: { save: SaveData; go: (s: ScreenId) => vo
             {d.closingDue ? "closing time" : d.opened ? "open" : "opens with your next level"}
           </span>
         </p>
-        <ul className="mt-2 space-y-1">
-          {services.map((sv) => (
-            <li key={sv.name} className="font-ui text-[13.5px] font-bold text-ivory/90">
-              {sv.done ? "✓" : "•"} {sv.name}
-            </li>
-          ))}
-        </ul>
+        <MealPills services={services} />
         {since !== null ? (
           <p className="mt-2 font-ui text-[13.5px] font-extrabold text-gold">
             Since opening: {since >= 0 ? "+" : "−"}

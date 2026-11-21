@@ -147,10 +147,16 @@ console.log("E. People are shown as people");
     /staffPortraitFile\(step\.focus\)/,
     "E4: a hire step on the guide card shows the person",
   );
+  // RULE CHANGE (developer 2026-11-21, "digitalized"): Daily Maintenance's required team and its blockers are TeamTiles (TeamTiles.tsx draws the portrait).
+  need(
+    "src/components/kc/TeamTiles.tsx",
+    /staffPortraitFile\(person\.id\)/,
+    "E5: Daily Maintenance's required team shows portraits (the team tiles)",
+  );
   need(
     "src/components/kc/DailyMaintenance.tsx",
-    /staffPortraitFile\(person\.id\)/,
-    "E5: Daily Maintenance's required team shows portraits",
+    /<TeamGrid/,
+    "E5b: Daily Maintenance draws its team with the team tiles",
   );
   // Moved with the full-screen sink (developer 2026-11-09): the strip and the list sheet draw the supply pictures (wash/SinkQueue.tsx).
   need(

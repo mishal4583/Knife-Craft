@@ -80,24 +80,29 @@ export function ShiftChecklist({
           {flash}
         </p>
       ) : null}
-      <ul className="mt-1 space-y-1">
+      <ul className="mt-2 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 land:grid-cols-3">
         {items.map((t) => (
           <li
             key={t.kind}
             data-chore-task={t.kind}
-            className="flex flex-wrap items-center gap-2 rounded-xl bg-cream/70 px-2 py-1"
+            className="flex min-w-0 flex-col gap-2 rounded-[18px] border-2 border-gold/45 bg-gradient-to-b from-ivory to-cream p-2.5 shadow-[0_3px_0_rgba(200,150,50,0.18)]"
           >
-            <span className="text-[18px]" aria-hidden>
-              {t.rule.icon}
-            </span>
-            <span className="min-w-[9rem] flex-[1_1_9rem] font-ui text-[13.5px] font-bold leading-snug text-walnut-dark">
-              {t.rule.label}
-            </span>
+            <div className="flex items-center gap-2.5">
+              <span
+                aria-hidden
+                className="relative grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-[radial-gradient(circle_at_50%_42%,rgba(255,255,255,0.95),rgba(240,222,186,0.7)_62%,rgba(220,190,140,0.25)_76%,transparent_78%)] text-[30px] drop-shadow-[0_3px_3px_rgba(60,35,15,0.25)]"
+              >
+                {t.rule.icon}
+              </span>
+              <span className="min-w-0 flex-1 font-ui text-[13.5px] font-extrabold leading-snug text-walnut-dark">
+                {t.rule.label}
+              </span>
+            </div>
             {t.needs.length === 0 ? (
               <KButton
                 size="sm"
                 variant="cream"
-                className="min-h-12 shrink-0"
+                className="min-h-12 w-full shrink-0"
                 onClick={() => cleaning.clean(t.kind)}
               >
                 {isInteractiveTask(t.kind) ? "🧽 Clean" : "Do it"}
@@ -110,7 +115,7 @@ export function ShiftChecklist({
                   data-need={id}
                   onClick={() => onBuy(id)}
                   className={cn(
-                    "press min-h-12 max-w-full shrink-0 rounded-full bg-tomato/90 px-3 py-1 font-ui text-[12px] font-extrabold leading-tight text-ivory",
+                    "press min-h-12 w-full max-w-full shrink-0 rounded-full bg-tomato/90 px-3 py-1 font-ui text-[12px] font-extrabold leading-tight text-ivory",
                   )}
                 >
                   Buy {getSupplyItem(id)?.name.split(" ·")[0]} ›
