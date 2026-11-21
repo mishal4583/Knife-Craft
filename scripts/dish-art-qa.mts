@@ -11,7 +11,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { CAMPAIGN_RECIPES } from "../src/game/recipes/campaignRecipes.ts";
 import { DISH_ART_IDS } from "../src/game/dishArtFiles.ts";
-import { dishArtUrl } from "../src/game/dishArt.ts";
+import { dishArtUrl, levelDishArts } from "../src/game/dishArt.ts";
+import { NAV_ART_IDS, navArtUrl } from "../src/game/navArt.ts";
+import { getLevels } from "../src/game/levels/LevelManager.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string, detail?: unknown) {
@@ -192,6 +194,59 @@ console.log("E. The Served card (developer 2026-11-21, from his concept)");
       /Back to Kitchen/.test(sv) &&
       /className="sv-btn-ico sv-wide-only"/.test(sv),
     "E5: the buttons keep their exact texts (the icons are drawings, not text; the browser suites click them by text)",
+  );
+}
+console.log(
+  "F. The Kitchen's Next Customer card and the rail (developer 2026-11-21, from his concept)",
+);
+{
+  const kitchen = read("src/components/kc/Kitchen.tsx");
+  const levels = getLevels() as unknown as {
+    id: string;
+    title: string;
+    recipeId: string;
+    recipePoolIds?: string[];
+    batchGroupRecipeIds?: string[];
+  }[];
+  const party = levels.find((l) => l.title === "Summer Salmon & Chicken");
+  assert(
+    !!party && levelDishArts(party as never).length === 2,
+    "F1: a party level shows every dish it serves ('Summer Salmon & Chicken': both pictures, not only the salmon)",
+    party && levelDishArts(party as never),
+  );
+  const counts = levels.map((l) => levelDishArts(l as never).length);
+  assert(
+    counts.every((n) => n >= 1 && n <= 3) && counts.some((n) => n === 3),
+    "F2: every one of the 91 levels shows 1 to 3 dish pictures on its card, three at most",
+    counts.filter((n) => n < 1 || n > 3).length,
+  );
+  assert(
+    levels.every((l) => {
+      const arts = levelDishArts(l as never);
+      return new Set(arts).size === arts.length;
+    }),
+    "F3: no dish is drawn twice",
+  );
+  assert(
+    /levelDishArts\(todayLevel\)/.test(kitchen) &&
+      /PLATE_CLUSTER/.test(kitchen) &&
+      /data-testid="kitchen-next-dish"/.test(kitchen) &&
+      /landx:pl-\[256px\]/.test(kitchen),
+    "F4: the Kitchen's card draws the plate cluster (one, two or three plates, more room on the left for three)",
+  );
+  assert(
+    ["kitchen", "shop", "restaurant-map"].every(
+      (id) =>
+        NAV_ART_IDS.has(id) &&
+        !!navArtUrl(id) &&
+        fs.existsSync(path.join(ROOT, "public", "nav", id + ".webp")),
+    ) && navArtUrl("nope") === null,
+    "F5: the rail's three places have their painted picture (a chef's hat, a crate, a laid table), each file is in public/nav/",
+  );
+  assert(
+    /navArtUrl\(n\.id\)/.test(kitchen) &&
+      /<span className="land:hidden">\{n\.glyph\}<\/span>/.test(kitchen),
+    "F6: the rail shows the painted picture in a wide window and keeps the icon on the upright phone's bar",
   );
 }
 console.log(failures === 0 ? "\nDISH ART QA: ALL PASS" : `\nDISH ART QA: ${failures} FAILURE(S)`);

@@ -63,7 +63,7 @@ import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 import { AskPaigeButton } from "./assistant/AskPaigeButton";
 import { useLandscape } from "./game/layoutMode";
 import { Users, CalendarDays, ConciergeBell } from "lucide-react";
-import { dishArtUrl } from "@/game/dishArt";
+import { levelDishArts } from "@/game/dishArt";
 import { navArtUrl } from "@/game/navArt";
 import { Corner, Sprig } from "./game/OrderArrivalCard";
 import { mgUrl, useMiniGameArt, warmMiniGameArt } from "./minigamesArt";
@@ -213,7 +213,7 @@ export function Kitchen({
   const todayUnlocked = isUnlocked(todayLevel, levelProgress);
   const todayCompleted = isCompleted(todayLevel.id, levelProgress);
   // The next customer's dish, painted (a wide window's card; no picture yet: the icon circle only).
-  const todayDishArt = todayUnlocked ? dishArtUrl(todayLevel.recipeId) : null;
+  const todayDishArts = todayUnlocked ? levelDishArts(todayLevel) : [];
   const [orderCardExpanded, setOrderCardExpanded] = useState(false);
   // Every level cleared: say so plainly — there is no hidden content left.
   const campaignComplete = getLevels().every((l) => isCompleted(l.id, levelProgress));
@@ -612,17 +612,41 @@ export function Kitchen({
             {dayStripText(clock)}
           </p>
         ) : null}
-        <div className="anim-up relative mx-auto rounded-[20px] border-2 border-[#e0a63a] bg-[linear-gradient(145deg,#fff9e9_0%,#fff0d0_52%,#f6dfb5_100%)] p-[9px] shadow-[0_7px_18px_rgba(34,18,8,0.38),inset_0_2px_0_rgba(255,255,255,0.9)] sm:p-[11px] landx:rounded-[26px] landx:p-[14px] landx:pl-[196px] landx:pr-[40px]">
-          {todayDishArt ? (
-            <img
-              src={todayDishArt}
-              alt=""
-              draggable={false}
+        <div
+          className={cn(
+            "anim-up relative mx-auto rounded-[20px] border-2 border-[#e0a63a] bg-[linear-gradient(145deg,#fff9e9_0%,#fff0d0_52%,#f6dfb5_100%)] p-[9px] shadow-[0_7px_18px_rgba(34,18,8,0.38),inset_0_2px_0_rgba(255,255,255,0.9)] sm:p-[11px] landx:rounded-[26px] landx:p-[14px] landx:pr-[40px]",
+            // three plates need more room on the left than one or two
+            todayDishArts.length === 3 ? "landx:pl-[256px]" : "landx:pl-[196px]",
+          )}
+        >
+          {todayDishArts.length > 0 ? (
+            <div
               data-testid="kitchen-next-dish"
-              className="pointer-events-none absolute -left-3 -top-7 hidden h-[168px] w-[168px] object-contain drop-shadow-[0_8px_8px_rgba(50,25,5,0.45)] landx:block"
-            />
+              data-count={todayDishArts.length}
+              className="pointer-events-none absolute -left-3 -top-7 hidden h-[168px] landx:block"
+              style={{ width: todayDishArts.length === 3 ? 250 : 202 }}
+            >
+              {todayDishArts.map((src, i) => {
+                const g = PLATE_CLUSTER[todayDishArts.length - 1]!;
+                return (
+                  <img
+                    key={src}
+                    src={src}
+                    alt=""
+                    draggable={false}
+                    className="absolute object-contain drop-shadow-[0_8px_8px_rgba(50,25,5,0.45)]"
+                    style={{
+                      width: g.size,
+                      height: g.size,
+                      left: g.x[i]!,
+                      top: g.y[i]!,
+                      zIndex: todayDishArts.length - i,
+                    }}
+                  />
+                );
+              })}
+            </div>
           ) : null}
-          <Corner className="oc-corner--tl pointer-events-none hidden landx:block" />
           <Corner className="oc-corner--bl pointer-events-none hidden landx:block" />
           <Corner className="oc-corner--br pointer-events-none hidden landx:block" />
           <div className="flex items-center justify-between gap-2">
@@ -1159,6 +1183,13 @@ function DishIngredientsToggle({ save, level }: { save: SaveData; level: LevelDe
   );
 }
 
+/** Where the plates of a level's dishes sit on the Next Customer card (one, two or three; the first in front). Sizes and offsets in px inside a 202 x 168 box (250 wide for three) that bleeds over the card's left edge. */
+const PLATE_CLUSTER = [
+  { size: 168, x: [0], y: [0] },
+  { size: 132, x: [0, 66], y: [4, 32] },
+  { size: 112, x: [0, 68, 136], y: [6, 40, 6] },
+] as const;
+
 /* ── Bottom navigation ─────────────────────────────────── */
 
 const NAV: { id: ScreenId; label: string; glyph: string }[] = [
@@ -1389,7 +1420,7 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
                     src={navArtUrl(n.id)!}
                     alt=""
                     draggable={false}
-                    className="hidden h-[52px] w-[52px] object-contain land:block"
+                    className="hidden h-[60px] w-[60px] object-contain drop-shadow-[0_2px_2px_rgba(30,12,2,0.45)] land:block"
                   />
                   <span className="land:hidden">{n.glyph}</span>
                 </>
@@ -1399,7 +1430,7 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
             </span>
             <span
               className={cn(
-                "font-ui text-[11px] font-extrabold leading-[14px] tracking-wide land:font-display land:text-[11px] land:font-black land:[@media(min-height:600px)]:text-[14px]",
+                "font-ui text-[11px] font-extrabold leading-[14px] tracking-wide land:font-display land:text-[11px] land:font-black land:[@media(min-height:600px)]:text-[13px]",
                 on ? "land:!text-[#3a1d0c]" : "land:!text-[#f8e6b4]",
               )}
               style={{
