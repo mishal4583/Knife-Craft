@@ -13,6 +13,8 @@
  */
 import { INGREDIENTS, TECHNIQUES } from "../src/game/definitions.ts";
 import { INGREDIENT_EMOJI } from "../src/game/knives/knifeDefinitions.ts";
+import { GRAPES_LEAVES } from "../src/game/definitions.ts";
+import { traceClusterPath } from "../src/game/ingredientShapes.ts";
 
 let failures = 0;
 function assert(cond: boolean, label: string) {
@@ -92,6 +94,23 @@ for (const id of NEW_IDS) {
   }
 }
 assert(ALL_TECHNIQUE_IDS.size === 11, `10b: still exactly 11 techniques total, none added (${ALL_TECHNIQUE_IDS.size})`);
+
+// ===== 11 (developer 2026-11-21, "the holes in the centre of the grape"): every leaf of a cluster is its OWN closed subpath. Without a moveTo, canvas `ellipse` joins the
+// previous leaf to the next with a straight line, the outline crosses itself and the overlaps of neighbouring berries wind to zero: wedge-shaped holes in the berries. =====
+{
+  const ops: string[] = [];
+  const rec = {
+    moveTo: () => ops.push("M"),
+    lineTo: () => ops.push("L"),
+    ellipse: () => ops.push("E"),
+    closePath: () => ops.push("Z"),
+  } as unknown as CanvasPath;
+  traceClusterPath(rec, 0, 0, GRAPES_LEAVES, 0);
+  assert(
+    ops.join("") === "MEZ".repeat(GRAPES_LEAVES.length),
+    "11: each grape berry is traced as moveTo + ellipse + closePath (a true union, no joining lines)",
+  );
+}
 
 console.log(failures === 0 ? "\nALL PASS" : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

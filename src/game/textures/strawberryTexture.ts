@@ -133,8 +133,8 @@ export function paintStrawberryTexture(
     ctx.ellipse(
       cx + (sd.x + 1 - ORIGIN.x) * s,
       cy + (sd.y + 1.6 - ORIGIN.y) * s,
-      5.4 * s,
-      4 * s,
+      3.8 * s,
+      2.8 * s,
       0,
       0,
       Math.PI * 2,
@@ -148,7 +148,7 @@ export function paintStrawberryTexture(
     ctx.globalAlpha = 0.95;
     ctx.fillStyle = "#f3dd9a";
     ctx.beginPath();
-    ctx.ellipse(0, 0, 3.1 * s, 2.1 * s, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, 2.2 * s, 1.5 * s, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }

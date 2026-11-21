@@ -572,15 +572,14 @@ function traceLeafSubpath(
   leaf: ClusterLeaf,
   pad: number,
 ): void {
-  ctx.ellipse(
-    cx + leaf.dx,
-    cy + leaf.dy,
-    leaf.rx + pad,
-    leaf.ry + pad,
-    leaf.rot ?? 0,
-    0,
-    Math.PI * 2,
-  );
+  // Developer 2026-11-21 ("the holes in the centre of the grape"): without a moveTo, `ellipse` JOINS the previous leaf's end point to this one's start with a
+  // straight line, so the leaves became one self-crossing outline and the overlaps of neighbouring berries wound to zero: wedge-shaped HOLES cut into the
+  // berries (the board showed through). Each leaf now starts its own closed subpath, so nonzero winding is a true union.
+  const rot = leaf.rot ?? 0;
+  const rx = leaf.rx + pad;
+  ctx.moveTo(cx + leaf.dx + rx * Math.cos(rot), cy + leaf.dy + rx * Math.sin(rot));
+  ctx.ellipse(cx + leaf.dx, cy + leaf.dy, rx, leaf.ry + pad, rot, 0, Math.PI * 2);
+  ctx.closePath();
 }
 
 /** Traces every leaf of a cluster into an already-`beginPath()`'d context — same calling convention as traceEllipsePath/traceOrganicPath/tracePolygonPath. Uses nonzero winding (the default), so overlapping leaves union into one silhouette rather than fighting each other. */

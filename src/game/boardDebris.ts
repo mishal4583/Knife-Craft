@@ -130,7 +130,8 @@ export const JUICE: Partial<Record<IngredientId, { color: number; amount: number
   peach: { color: 0xeea060, amount: 0.85 },
   kiwi: { color: 0x9cbc30, amount: 0.75 },
   pomegranate: { color: 0x9c0f2c, amount: 0.95 },
-  grapes: { color: 0x9a4a78, amount: 0.6 },
+  // Developer 2026-11-21: the grapes on the board are green, so their juice and skin are green too (it was purple).
+  grapes: { color: 0xb2cc58, amount: 0.6 },
   pear: { color: 0xe6dc98, amount: 0.65 },
   apple: { color: 0xe8d88e, amount: 0.45 },
   cucumber: { color: 0xc6dc9a, amount: 0.6 },
@@ -391,7 +392,7 @@ const LOOKS: Record<IngredientId, Look> = {
     ["skin", 0xd8c8a8],
   ],
   grapes: [
-    ["skin", 0x6a2a5a],
+    ["skin", 0x7a9a32],
     ["cube", 0xc8d890],
     ["seed", 0x8a6a3a],
   ],

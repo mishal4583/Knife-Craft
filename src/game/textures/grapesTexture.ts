@@ -39,38 +39,6 @@ export function paintGrapesTexture(
   const cy = ry + margin;
   ctx.clearRect(0, 0, cx * 2, cy * 2);
 
-  // Fill the gaps (developer 2026-11-21: "fill out the gaps in the grapes"): the berries sit close but not touching, so the board showed through between them.
-  // Under the berries every trio of near berries is filled as a triangle between their centres and every near pair is joined by a bar, all in the berry
-  // shade: the gaps close from the inside, and nothing bulges past the outline of the bunch.
-  const near = (a: ClusterLeaf, b: ClusterLeaf) =>
-    Math.hypot(a.dx - b.dx, a.dy - b.dy) <= (a.rx + b.rx) * 1.3;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.fillStyle = "#8FAE3A";
-  ctx.strokeStyle = "#8FAE3A";
-  for (let i = 0; i < leaves.length; i++) {
-    for (let j = i + 1; j < leaves.length; j++) {
-      const a = leaves[i]!;
-      const b = leaves[j]!;
-      if (!near(a, b)) continue;
-      ctx.lineWidth = Math.min(a.rx, b.rx) * 1.1;
-      ctx.beginPath();
-      ctx.moveTo(cx + a.dx, cy + a.dy);
-      ctx.lineTo(cx + b.dx, cy + b.dy);
-      ctx.stroke();
-      for (let k = j + 1; k < leaves.length; k++) {
-        const c = leaves[k]!;
-        if (!near(a, c) || !near(b, c)) continue;
-        ctx.beginPath();
-        ctx.moveTo(cx + a.dx, cy + a.dy);
-        ctx.lineTo(cx + b.dx, cy + b.dy);
-        ctx.lineTo(cx + c.dx, cy + c.dy);
-        ctx.closePath();
-        ctx.fill();
-      }
-    }
-  }
-
   for (let i = 0; i < leaves.length; i++) {
     const L = leaves[i]!;
     const t = TONES[i % TONES.length]!;
