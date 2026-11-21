@@ -62,6 +62,10 @@ import { ScrollCue } from "./common/ScrollCue";
 import { IngredientIcon } from "@/components/kc/common/IngredientIcon";
 import { AskPaigeButton } from "./assistant/AskPaigeButton";
 import { useLandscape } from "./game/layoutMode";
+import { Users, CalendarDays, ConciergeBell } from "lucide-react";
+import { dishArtUrl } from "@/game/dishArt";
+import { navArtUrl } from "@/game/navArt";
+import { Corner, Sprig } from "./game/OrderArrivalCard";
 import { mgUrl, useMiniGameArt, warmMiniGameArt } from "./minigamesArt";
 import { useAssistant } from "./assistant/AssistantContext";
 import { PaigeStage } from "./assistant/PaigeStage";
@@ -208,6 +212,8 @@ export function Kitchen({
   const todayLevel = pickTodayLevel(levelProgress);
   const todayUnlocked = isUnlocked(todayLevel, levelProgress);
   const todayCompleted = isCompleted(todayLevel.id, levelProgress);
+  // The next customer's dish, painted (a wide window's card; no picture yet: the icon circle only).
+  const todayDishArt = todayUnlocked ? dishArtUrl(todayLevel.recipeId) : null;
   const [orderCardExpanded, setOrderCardExpanded] = useState(false);
   // Every level cleared: say so plainly — there is no hidden content left.
   const campaignComplete = getLevels().every((l) => isCompleted(l.id, levelProgress));
@@ -260,7 +266,7 @@ export function Kitchen({
       data-testid="kitchen-rank"
       // One line each, never wider than the room the wallet and Settings leave
       // (audit 2026-10-08: at 320 px it wrapped into the Kitchen Upgrade sign).
-      className="press min-w-0 max-w-full shrink rounded-2xl border-2 border-[#e0a63a] bg-walnut-dark/45 px-3 py-2 text-left backdrop-blur-sm"
+      className="press min-w-0 max-w-full shrink rounded-2xl border-2 border-[#e0a63a] bg-walnut-dark/45 px-3 py-2 text-left backdrop-blur-sm landx:min-w-[236px] landx:bg-walnut-dark/70 landx:px-3.5 landx:py-2.5"
     >
       {RESTAURANT_MODE ? (
         <CityRankBadge save={save} />
@@ -363,7 +369,7 @@ export function Kitchen({
               type="button"
               data-testid="kitchen-table-cash"
               onClick={onCollectTableCash}
-              className="press mt-1.5 min-h-12 w-full rounded-[14px] border border-gold/60 bg-gold/85 px-3 py-2 text-left font-ui text-[13px] font-extrabold text-walnut-dark shadow-soft"
+              className="press mt-1.5 min-h-12 w-full rounded-[14px] border border-gold/60 bg-gold/85 px-3 py-2 text-left font-ui text-[13px] font-extrabold text-walnut-dark shadow-soft landx:mt-0 landx:w-auto landx:self-start landx:rounded-full landx:border-2 landx:border-[#e0a63a] landx:bg-[linear-gradient(#fff2c4,#f6d98a)] landx:px-5 landx:text-[17px] landx:shadow-[0_4px_10px_rgba(40,20,5,0.4)]"
             >
               💵 {formatUsd(pendingCashTotal(save))} on the table · Collect
             </button>
@@ -592,19 +598,39 @@ export function Kitchen({
 
       {/* Today's Order — collapsed by default so it keeps the kitchen visible;
           details and the order board expand on demand. */}
-      <div className="absolute inset-x-0 bottom-[104px] z-20 px-6 land:bottom-3 land:left-[92px] land:right-[92px] land:!mx-auto land:!max-w-[760px] land:px-0">
+      <div className="absolute inset-x-0 bottom-[104px] z-20 px-6 land:bottom-3 land:left-[92px] land:right-[92px] land:!mx-auto land:!max-w-[760px] land:px-0 landx:left-[132px] landx:!max-w-[1040px]">
         {clock ? (
           <p
             data-testid="day-strip"
             data-day-phase={clock.phase}
             className="mx-auto mb-2 w-fit max-w-full truncate rounded-full border-2 border-[#e0a63a] bg-walnut-dark/70 px-[10px] py-[5px] font-ui text-[12.5px] font-extrabold text-ivory shadow-soft backdrop-blur-sm [@media(max-height:700px)]:mb-1 [@media(max-height:700px)]:px-[8px] [@media(max-height:700px)]:py-[2px] [@media(max-height:700px)]:text-[11px]"
           >
+            <CalendarDays
+              className="mr-1.5 hidden h-[18px] w-[18px] align-[-3px] text-gold landx:inline"
+              aria-hidden="true"
+            />
             {dayStripText(clock)}
           </p>
         ) : null}
-        <div className="anim-up relative mx-auto rounded-[20px] border-2 border-[#e0a63a] bg-[linear-gradient(145deg,#fff9e9_0%,#fff0d0_52%,#f6dfb5_100%)] p-[9px] shadow-[0_7px_18px_rgba(34,18,8,0.38),inset_0_2px_0_rgba(255,255,255,0.9)] sm:p-[11px]">
+        <div className="anim-up relative mx-auto rounded-[20px] border-2 border-[#e0a63a] bg-[linear-gradient(145deg,#fff9e9_0%,#fff0d0_52%,#f6dfb5_100%)] p-[9px] shadow-[0_7px_18px_rgba(34,18,8,0.38),inset_0_2px_0_rgba(255,255,255,0.9)] sm:p-[11px] landx:rounded-[26px] landx:p-[14px] landx:pl-[196px] landx:pr-[40px]">
+          {todayDishArt ? (
+            <img
+              src={todayDishArt}
+              alt=""
+              draggable={false}
+              data-testid="kitchen-next-dish"
+              className="pointer-events-none absolute -left-3 -top-7 hidden h-[168px] w-[168px] object-contain drop-shadow-[0_8px_8px_rgba(50,25,5,0.45)] landx:block"
+            />
+          ) : null}
+          <Corner className="oc-corner--tl pointer-events-none hidden landx:block" />
+          <Corner className="oc-corner--bl pointer-events-none hidden landx:block" />
+          <Corner className="oc-corner--br pointer-events-none hidden landx:block" />
           <div className="flex items-center justify-between gap-2">
-            <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.19em] text-[#95602c]">
+            <p className="font-ui text-[10px] font-extrabold uppercase tracking-[0.19em] text-[#95602c] landx:text-[13px]">
+              <Users
+                className="mr-1.5 hidden h-[18px] w-[18px] align-[-3px] text-copper landx:inline"
+                aria-hidden="true"
+              />
               {campaignComplete
                 ? RESTAURANT_MODE
                   ? "🏆 Every recipe learned"
@@ -618,7 +644,7 @@ export function Kitchen({
               aria-expanded={orderCardExpanded}
               aria-controls="kitchen-order-details"
               onClick={() => setOrderCardExpanded((expanded) => !expanded)}
-              className="press inline-flex min-h-12 shrink-0 items-center gap-1 rounded-full border border-[#8f4d1e] bg-[linear-gradient(145deg,#a85d25,#754018)] px-2.5 font-ui text-[10px] font-extrabold text-[#fff5df] shadow-[0_2px_6px_rgba(83,41,13,0.32),inset_0_1px_0_rgba(255,255,255,0.25)] transition-transform active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-copper"
+              className="press inline-flex min-h-12 shrink-0 items-center gap-1 rounded-full border border-[#8f4d1e] bg-[linear-gradient(145deg,#a85d25,#754018)] px-2.5 font-ui text-[10px] font-extrabold landx:px-4 landx:text-[14px] text-[#fff5df] shadow-[0_2px_6px_rgba(83,41,13,0.32),inset_0_1px_0_rgba(255,255,255,0.25)] transition-transform active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-copper"
             >
               {orderCardExpanded ? "Hide Details" : "View Details"}
               <span aria-hidden className="text-[14px] leading-none">
@@ -628,10 +654,10 @@ export function Kitchen({
           </div>
           <div className="mt-1.5 flex items-center justify-between gap-2 [@media(max-height:620px)]:mt-0.5">
             <div className={`min-w-0 flex-1 ${todayUnlocked ? "" : "opacity-50"}`}>
-              <p className="line-clamp-2 font-display text-[18px] font-black leading-[1.06] text-[#392013] sm:text-[20px]">
+              <p className="line-clamp-2 font-display text-[18px] font-black leading-[1.06] text-[#392013] sm:text-[20px] landx:text-[30px] landx:[@media(max-height:620px)]:text-[22px]">
                 {todayLevel.title}
               </p>
-              <p className="mt-0.5 font-hand text-[13px] italic leading-snug text-[#795a3a] sm:text-[14px]">
+              <p className="mt-0.5 font-hand text-[13px] italic leading-snug text-[#795a3a] sm:text-[14px] landx:text-[18px]">
                 {campaignComplete
                   ? RESTAURANT_MODE
                     ? "📖 every recipe is yours · 🍽️ the restaurant runs on"
@@ -649,7 +675,7 @@ export function Kitchen({
               <span
                 role="img"
                 aria-label={`${todayLevel.title} dish`}
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[#edd8b4] bg-[radial-gradient(circle_at_35%_28%,#fffdf5,#ecdcbf)] text-[26px] shadow-[0_3px_6px_rgba(92,56,25,0.18),inset_0_2px_3px_rgba(255,255,255,0.9)] sm:h-12 sm:w-12"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[#edd8b4] bg-[radial-gradient(circle_at_35%_28%,#fffdf5,#ecdcbf)] text-[26px] shadow-[0_3px_6px_rgba(92,56,25,0.18),inset_0_2px_3px_rgba(255,255,255,0.9)] sm:h-12 sm:w-12 landx:h-[60px] landx:w-[60px] landx:text-[32px]"
               >
                 {todayUnlocked ? todayLevel.emoji : "🔒"}
               </span>
@@ -666,13 +692,16 @@ export function Kitchen({
                   ) : null}
                   <KButton
                     variant="sage"
-                    className="min-h-[48px] rounded-[14px] px-3 font-ui text-[12px] font-extrabold shadow-[0_3px_7px_rgba(36,62,37,0.24)] sm:px-4 sm:text-[13px]"
+                    className="min-h-[48px] rounded-[14px] px-3 font-ui text-[12px] font-extrabold shadow-[0_3px_7px_rgba(36,62,37,0.24)] sm:px-4 sm:text-[13px] landx:min-h-[60px] landx:rounded-full landx:border-2 landx:border-[#1f6a37] landx:px-7 landx:text-[19px] landx:[background:linear-gradient(#2f9a52,#1d7a3b)] landx:text-white"
                     onClick={() => {
                       if (!openService) return go("business");
                       onSelectLevel(openService.id);
                       go("gameplay");
                     }}
                   >
+                    {openService ? (
+                      <ConciergeBell className="hidden h-6 w-6 landx:inline" aria-hidden="true" />
+                    ) : null}
                     {openService ? "Open for service" : "🍽️ Run the restaurant"}
                   </KButton>
                 </div>
@@ -1166,8 +1195,30 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
     // Phone landscape: the bar becomes a rail down the left edge (styles.css pads the screen).
     <nav
       data-bottom-nav
-      className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-walnut-dark/40 bg-[linear-gradient(180deg,rgba(62,40,25,0.82),rgba(45,41,36,0.95))] px-2 pb-3 pt-2 backdrop-blur-sm land:inset-x-auto land:inset-y-0 land:left-0 land:w-[var(--kc-rail)] land:flex-col land:justify-center land:gap-3 land:border-r land:border-t-0 land:bg-[linear-gradient(90deg,rgba(62,40,25,0.9),rgba(45,41,36,0.96))] land:px-1 land:py-2"
+      className="absolute inset-x-0 bottom-0 z-30 flex items-center justify-around border-t border-walnut-dark/40 bg-[linear-gradient(180deg,rgba(62,40,25,0.82),rgba(45,41,36,0.95))] px-2 pb-3 pt-2 backdrop-blur-sm land:inset-x-auto land:inset-y-0 land:left-0 land:w-[var(--kc-rail)] land:flex-col land:justify-center land:gap-3 land:border-r-[3px] land:border-t-0 land:border-[#c9942c] land:bg-[linear-gradient(90deg,#4f2e16,#6b4120_60%,#59351a)] land:px-2 land:py-2 land:shadow-[4px_0_12px_rgba(20,8,2,0.45)]"
     >
+      <Sprig
+        className="hidden land:block"
+        style={{
+          left: "auto",
+          right: "-8px",
+          top: "8px",
+          width: "74px",
+          transform: "rotate(105deg)",
+        }}
+      />
+      <Sprig
+        flip
+        className="hidden land:block"
+        style={{
+          left: "auto",
+          right: "-8px",
+          top: "auto",
+          bottom: "8px",
+          width: "74px",
+          transform: "scaleX(-1) rotate(105deg)",
+        }}
+      />
       {/* Every screen with the bottom bar: "▾ More" / "▴ Top" for a list longer than the screen. */}
       <ScrollCue hidden={!!hint || !!pointer} />
       {hint ? (
@@ -1267,7 +1318,9 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
             data-nav={n.id}
             data-locked={locked || undefined}
             className={cn(
-              "press relative flex min-h-12 min-w-[56px] flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5 land:min-h-[54px] land:min-w-[60px]",
+              "press relative flex min-h-12 min-w-[56px] flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5 land:min-h-[88px] land:w-full land:rounded-[18px] land:border-2 land:border-[#b98a3e]/70 land:bg-[linear-gradient(#4a2a14,#331a0a)] land:shadow-[inset_0_0_0_1px_rgba(255,224,150,0.2),0_3px_6px_rgba(0,0,0,0.4)]",
+              on &&
+                "land:!border-[#f6cf6a] land:!bg-[linear-gradient(#fff0c6,#e9bf6a)] land:!shadow-[0_0_14px_rgba(255,214,120,0.75)]",
               pointer && !pointed && "opacity-40",
               pointed && "ring-2 ring-gold",
             )}
@@ -1317,7 +1370,10 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
               </span>
             ) : null}
             <span
-              className="text-[17.5px]"
+              className={cn(
+                "text-[17.5px] land:text-[34px] land:leading-none",
+                !locked && "land:!opacity-100 land:!filter-none",
+              )}
               style={{
                 filter: on ? "none" : "grayscale(0.5)",
                 opacity: locked ? 0.6 : on ? 1 : 0.72,
@@ -1327,12 +1383,25 @@ export function BottomNav({ active, go }: { active: ScreenId | null; go: (s: Scr
                 <span className="whitespace-nowrap font-ui text-[11px] font-extrabold text-ivory">
                   {u.badge(opensAt!)}
                 </span>
+              ) : navArtUrl(n.id) ? (
+                <>
+                  <img
+                    src={navArtUrl(n.id)!}
+                    alt=""
+                    draggable={false}
+                    className="hidden h-[52px] w-[52px] object-contain land:block"
+                  />
+                  <span className="land:hidden">{n.glyph}</span>
+                </>
               ) : (
                 n.glyph
               )}
             </span>
             <span
-              className="font-ui text-[11px] font-extrabold leading-[14px] tracking-wide"
+              className={cn(
+                "font-ui text-[11px] font-extrabold leading-[14px] tracking-wide land:font-display land:text-[11px] land:font-black land:[@media(min-height:600px)]:text-[14px]",
+                on ? "land:!text-[#3a1d0c]" : "land:!text-[#f8e6b4]",
+              )}
               style={{
                 color: on
                   ? "var(--color-gold)"

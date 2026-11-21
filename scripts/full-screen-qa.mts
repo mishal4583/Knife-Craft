@@ -159,7 +159,10 @@ function check(id: string, ok: unknown) {
       /<div data-kc-wide className="relative h-full w-full overflow-hidden bg-cream">/.test(
         kitchen,
       ) &&
+      // RULE CHANGE 2026-11-21 (developer's Kitchen concept): the Next Customer card is wider in a wide window (it carries the dish picture), `land:!max-w-[1040px]`, was 760
       /land:!max-w-\[760px\]/.test(kitchen) &&
+      /landx:!max-w-\[1040px\]/.test(kitchen) &&
+      /@custom-variant landx[\s\S]{0,120}min-height: 520px/.test(css) &&
       // RULE CHANGE 2026-11-20 (developer: "images are not properly integrated, only a random portion is visible"): a banner keeps its picture's own shape
       // (`.kc-banner`, aspect-ratio from `--kc-ratio`) instead of a fixed 120 / 168 px strip; no Tailwind `land:!h-[..]` is left on a banner (its `!important`
       // would beat the stylesheet)

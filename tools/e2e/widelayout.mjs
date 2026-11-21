@@ -260,12 +260,13 @@ for (const [w, h] of [
       : m.edgeFill);
   const covers = fitsWhole && marginsFilled;
   check(
-    `W2 at ${w}x${h} the Kitchen home fills the window with its wide picture; the restaurant map is the WHOLE wide plan fitted in the window, the garden carried on over any margin (12 rooms, 12 signs, no portrait map); the order card is at most 760 px`,
+    `W2 at ${w}x${h} the Kitchen home fills the window with its wide picture; the restaurant map is the WHOLE wide plan fitted in the window, the garden carried on over any margin (12 rooms, 12 signs, no portrait map); the order card is at most 1040 px`,
     k.wide &&
       k.framed === "full" &&
       k.rootW >= k.vw - 100 &&
       k.landArt >= 1 &&
-      Math.round(k.cardW) <= 760 &&
+      // RULE CHANGE 2026-11-21 (developer's Kitchen concept): the Next Customer card carries the dish picture, so in a wide window at least 520 px tall it is up to 1040 px (`landx:!max-w-[1040px]`); was 760
+      Math.round(k.cardW) <= 1040 &&
       m.wide &&
       m.framed === "full" &&
       covers &&

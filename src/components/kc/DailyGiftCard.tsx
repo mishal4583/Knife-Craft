@@ -72,13 +72,13 @@ export function DailyGiftCard({
       data-day={s.todayDay}
       data-done={s.done}
       className={cn(
-        "w-[168px] max-w-full rounded-[16px] border-2 px-2.5 py-2 text-left shadow-soft backdrop-blur-sm",
+        "w-[168px] max-w-full rounded-[16px] border-2 px-2.5 py-2 text-left shadow-soft backdrop-blur-sm landx:w-[236px] landx:px-3 landx:py-2.5",
         ready
           ? "press border-[#f0bd4a] bg-walnut-dark/70 ring-1 ring-gold/40"
           : "cursor-default border-[#e0a63a] bg-walnut-dark/55",
       )}
     >
-      <span className="block font-ui text-[10px] font-extrabold uppercase tracking-[0.14em] text-gold">
+      <span className="block font-ui text-[10px] font-extrabold uppercase tracking-[0.14em] text-gold landx:font-display landx:text-[17px] landx:font-black landx:normal-case landx:tracking-normal">
         🎁 Daily gift
       </span>
       <span
@@ -111,7 +111,7 @@ export function DailyGiftCard({
               data-gift-day={day}
               data-gift-done={done}
               className={cn(
-                "grid h-[18px] flex-1 place-items-center rounded-[6px] font-ui text-[9.5px] font-extrabold",
+                "grid h-[18px] flex-1 place-items-center rounded-[6px] font-ui text-[9.5px] font-extrabold landx:h-[24px] landx:max-w-[24px] landx:rounded-full landx:text-[12px]",
                 done
                   ? "bg-gold text-walnut-dark"
                   : isToday

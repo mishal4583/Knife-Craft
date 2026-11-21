@@ -50,14 +50,22 @@ export function Hat() {
   );
 }
 
-export function Sprig({ flip }: { flip?: boolean }) {
+export function Sprig({
+  flip,
+  className = "",
+  style,
+}: {
+  flip?: boolean;
+  className?: string;
+  style?: CSSProperties;
+}) {
   return (
     <svg
-      className="oc-sprig"
+      className={`oc-sprig ${className}`}
       viewBox="0 0 90 40"
       aria-hidden="true"
       focusable="false"
-      style={flip ? { transform: "scaleX(-1)" } : undefined}
+      style={{ ...(flip ? { transform: "scaleX(-1)" } : {}), ...style }}
     >
       <path
         d="M2 24C26 24 52 16 86 4"
@@ -136,7 +144,7 @@ export function Laurel({ flip }: { flip?: boolean }) {
   );
 }
 
-function Corner({ className }: { className: string }) {
+export function Corner({ className }: { className: string }) {
   return (
     <svg
       className={`oc-corner ${className}`}

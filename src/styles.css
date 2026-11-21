@@ -5,6 +5,14 @@
 @custom-variant dark (&:is(.dark *));
 /* Phone landscape (GameShell sets <html data-orient="landscape">). */
 @custom-variant land (&:where([data-orient="landscape"] *));
+/* A wide window that is also tall enough for the roomy layouts (>= 520 px): the Kitchen concept (developer 2026-11-21). A phone on its side (320-400 px tall) keeps the compact `land:` look. */
+@custom-variant landx {
+  @media (min-height: 520px) {
+    &:where([data-orient="landscape"] *) {
+      @slot;
+    }
+  }
+}
 
 /* ── Self-hosted fonts ─────────────────────────────────────
    Bundled locally (no Google Fonts CDN at runtime — Playables must not
@@ -1499,6 +1507,12 @@ html.kc-reduced-motion .kc-clean-sheen {
    it (the screen) starts after the rail. */
 :root {
   --kc-rail: 76px;
+}
+/* A wide window with room (the Kitchen concept, developer 2026-11-21): a wider rail for the big tiles; a short phone on its side keeps 76 px. */
+@media (min-height: 600px) {
+  [data-orient="landscape"] {
+    --kc-rail: 108px;
+  }
 }
 [data-orient="landscape"] :has(> nav[data-bottom-nav]) > :not(nav[data-bottom-nav]) {
   margin-left: var(--kc-rail);
