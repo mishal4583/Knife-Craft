@@ -27,8 +27,12 @@ export function setBootProgress(next: number): void {
 
 /** Shows or hides the "tap for music" line (browsers keep a page silent until the first tap). */
 export function setBootHint(show: boolean): void {
-  const hint = splash()?.querySelector<HTMLElement>(".bs-hint");
-  if (hint) hint.hidden = !show;
+  // Two of them: the upright layout's (in the LOADING line) and the wide picture's (a pill above the bar); only the visible layout shows.
+  splash()
+    ?.querySelectorAll<HTMLElement>(".bs-hint")
+    .forEach((hint) => {
+      hint.hidden = !show;
+    });
 }
 
 /** The bar is full: the screen fades away and leaves the DOM. Safe to call twice. */

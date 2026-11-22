@@ -215,5 +215,38 @@ console.log("D. The wiring");
   );
 }
 
+console.log("W. The wide loading screen (developer 2026-11-22: use the supplied image)");
+{
+  const html = read("index.html");
+  const file = path.join(LOADING, "wide.webp");
+  const size = fs.existsSync(file) ? webpSize(file) : null;
+  assert(
+    !!size && size.w === 1920 && size.h === 1080 && fs.statSync(file).size <= 340 * 1024,
+    "W1: public/loading/wide.webp is 1920 x 1080 and under 340 KB (scripts/make-loading-wide.py cuts it from Landscape Backdrops Assets/loading-screen-landscape-v2.png)",
+    size,
+  );
+  assert(
+    /<link\s+rel="preload"\s+as="image"\s+href="\.\/loading\/wide\.webp"[^>]*media="\(min-aspect-ratio: 13\/10\)"/.test(
+      html,
+    ) &&
+      /class="bs-wpic"[^>]*src="\.\/loading\/wide\.webp"|src="\.\/loading\/wide\.webp"[^>]*class="bs-wpic"/.test(
+        html.replace(/\s+/g, " "),
+      ),
+    "W2: a wide window preloads the picture (high priority, only for min-aspect-ratio 13/10) and the splash shows it",
+  );
+  assert(
+    /class="bs-wtrack"><span class="bs-wfill">/.test(html) &&
+      /width: calc\(var\(--p, 0\.18\) \* 100%\)/.test(html) &&
+      /left: 27\.97%/.test(html) &&
+      /top: 88\.06%/.test(html),
+    "W3: the real progress fill (--p, driven by bootSplash.ts) is drawn over the picture's empty track at its box (x 537, y 951 of 1920 x 1080)",
+  );
+  assert(
+    /querySelectorAll<HTMLElement>\("\.bs-hint"\)/.test(read("src/lib/bootSplash.ts")) &&
+      /classList\.add\("stuck"\)/.test(html),
+    "W4: the 'tap for music' hint and the 25 s 'still loading, tap to reload' message work in the wide layout too",
+  );
+}
+
 console.log(failures ? `\nLOADING SCREEN QA: ${failures} FAILED` : "\nLOADING SCREEN QA: ALL PASS");
 process.exit(failures ? 1 : 0);

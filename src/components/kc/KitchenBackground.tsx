@@ -68,8 +68,8 @@ export function KitchenBackground({
             : KITCHEN_SKIN_SRC[skin]
       }
       alt="The player's café kitchen"
-      width={thumb ? 240 : wide ? 1600 : 1080}
-      height={thumb ? 427 : wide ? 900 : 1920}
+      width={thumb ? 240 : wide ? 1920 : 1080}
+      height={thumb ? 427 : wide ? 1080 : 1920}
       loading={thumb ? "lazy" : "eager"}
       decoding="async"
       fetchPriority={thumb ? "low" : "high"}

@@ -94,7 +94,8 @@ function check(id: string, ok: unknown) {
   const sauce = read("src/components/kc/sauce/SauceStationGame.tsx");
   check(
     "F4 the Sauce Station's pantry tiles are at least 48 px tall and its short-screen layout is compact",
-    /h-\[clamp\(48px,9vh,84px\)\] flex-col/.test(sauce) &&
+    // RULE CHANGE (developer 2026-11-21: "make the ingredients a little bigger and show the name fully"): the tile is 70-108 px (64 px on a short screen), still above 48 px
+    /h-\[clamp\(70px,10\.5vh,108px\)\] flex-col/.test(sauce) &&
       /\[@media\(max-height:620px\)\]:h-10/.test(sauce) &&
       /\[@media\(max-height:620px\)\]:h-\[56px\]/.test(sauce),
   );

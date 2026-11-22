@@ -165,15 +165,22 @@ const sizes = [
   [320, 568],
   [390, 844],
   [1280, 720],
+  [1920, 1080],
+  [1500, 700],
+  [1000, 700],
 ];
 let allFit = true;
+const wideChecks = [];
 const detail = [];
 for (const [w, h] of sizes) {
   await seed(true);
   await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
   await slow();
   page.goto(GAME_URL, { waitUntil: "domcontentloaded" }).catch(() => {});
-  await page.waitForSelector(".bs-logo.in", { timeout: 30000 }).catch(() => {});
+  // RULE CHANGE (developer 2026-11-22): in a wide window the screen is ONE picture (.bs-wpic) with the real fill over its track (.bs-wtrack); the upright pieces are hidden.
+  await page
+    .waitForSelector(w / h >= 1.3 ? ".bs-wpic.in" : ".bs-logo.in", { timeout: 30000 })
+    .catch(() => {});
   await sleep(300);
   const r = await page.evaluate(() => {
     const box = (s) => {
@@ -183,8 +190,12 @@ for (const [w, h] of sizes) {
       return { l: b.left, t: b.top, r: b.right, b: b.bottom };
     };
     return {
-      logo: box("#boot-splash .bs-logo"),
-      bar: box("#boot-splash .bs-bar"),
+      logo: box(
+        innerWidth / innerHeight >= 1.3 ? "#boot-splash .bs-wtrack" : "#boot-splash .bs-logo",
+      ),
+      bar: box(
+        innerWidth / innerHeight >= 1.3 ? "#boot-splash .bs-wtrack" : "#boot-splash .bs-bar",
+      ),
       iw: innerWidth,
       ih: innerHeight,
       sideways: document.documentElement.scrollWidth > innerWidth + 1,
@@ -195,6 +206,56 @@ for (const [w, h] of sizes) {
   allFit = allFit && ok;
   const rd = (b) => b && [Math.round(b.l), Math.round(b.t), Math.round(b.r), Math.round(b.b)];
   detail.push({ w, h, ok, logo: rd(r.logo), bar: rd(r.bar) });
+  if (w / h >= 1.3) {
+    // The fill sits over the picture's empty track: its box is the picture's track box (x 537-1382, y 951-989 of 1920 x 1080), and it grows with the real progress.
+    const wide = await page.evaluate(() => {
+      const pic = document.querySelector("#boot-splash .bs-wpic")?.getBoundingClientRect().toJSON();
+      const tr = document
+        .querySelector("#boot-splash .bs-wtrack")
+        ?.getBoundingClientRect()
+        .toJSON();
+      const fill = document.querySelector("#boot-splash .bs-wfill");
+      const el = document.getElementById("boot-splash");
+      el?.style.setProperty("--p", "0.2");
+      return { pic, tr, fillIsGreen: !!fill };
+    });
+    await sleep(700);
+    wide.w1 = await page.evaluate(
+      () => document.querySelector("#boot-splash .bs-wfill")?.getBoundingClientRect().width ?? 0,
+    );
+    await page.evaluate(() =>
+      document.getElementById("boot-splash")?.style.setProperty("--p", "0.8"),
+    );
+    await sleep(700);
+    const w2 = await page.evaluate(
+      () => document.querySelector("#boot-splash .bs-wfill")?.getBoundingClientRect().width ?? 0,
+    );
+    const k = (wide.pic?.width ?? 1) / 1920;
+    const near = (a, b) => Math.abs(a - b) < 2.5;
+    const sized =
+      !!wide.pic &&
+      !!wide.tr &&
+      near(wide.tr.left, wide.pic.left + 537 * k) &&
+      near(wide.tr.top, wide.pic.top + 951 * k) &&
+      near(wide.tr.width, 845 * k) &&
+      wide.pic.width >= w - 1 &&
+      wide.pic.height >= h - 1;
+    wideChecks.push({
+      w,
+      h,
+      sized,
+      tr: wide.tr && [Math.round(wide.tr.left), Math.round(wide.tr.top), Math.round(wide.tr.width)],
+      pic: wide.pic && [
+        Math.round(wide.pic.left),
+        Math.round(wide.pic.top),
+        Math.round(wide.pic.width),
+        Math.round(wide.pic.height),
+      ],
+      grows: w2 > wide.w1 * 2,
+      w1: Math.round(wide.w1),
+      w2: Math.round(w2),
+    });
+  }
   await shot(page, `loading-${w}x${h}`);
   await page
     .waitForFunction(() => document.documentElement.dataset.booted === "1", { timeout: 60000 })
@@ -204,6 +265,12 @@ check(
   "L6 at 320 x 568, 390 x 844 and 1280 x 720 the logo and the bar are fully on screen, nothing scrolls sideways",
   allFit,
   detail,
+);
+
+check(
+  "L8 in a wide window (1280 x 720, 1920 x 1080, 1500 x 700, 1000 x 700) the picture covers the window, the real fill sits exactly over the picture's empty track and grows with the progress",
+  wideChecks.length === 4 && wideChecks.every((c) => c.sized && c.grows),
+  wideChecks,
 );
 
 const bad = logs.filter((l) => /error/i.test(l) && !/Failed to load resource|net::ERR/i.test(l));

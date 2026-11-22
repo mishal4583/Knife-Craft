@@ -38,7 +38,8 @@
     <link
       rel="preload"
       as="image"
-      href="./landscape-art/true/loading.webp"
+      href="./loading/wide.webp"
+      fetchpriority="high"
       media="(min-aspect-ratio: 13/10)"
     />
     <style>
@@ -58,24 +59,106 @@
         pointer-events: auto; /* taps never reach the game under it (it may be mounted already) */
         transition: opacity 0.4s ease;
       }
-      /* A wide window (developer 2026-11-20): the loading room is its own wide picture (landscape-art/true/loading.webp, composed wide, calm in the middle), and the
-         chef, the board, the logo and the bar sit in the middle of it in a column (.bs-col) as tall as the window. A phone held upright never asks for it. */
+      /* A wide window (developer 2026-11-22: "use this image as the loading screen"): the loading screen is ONE finished picture (loading/wide.webp, Codex: the chef cutting,
+         the KnifeCraft plaque, the kitchen, the bar frame and its LOADING plaque), covering the window like a background-size: cover (a stage as wide as the window or as the
+         picture's 16:9, whichever is bigger, centred, so a share of the picture is a share of the stage). The picture's own bar was painted out (scripts/make-loading-wide.py);
+         the REAL, growing green fill (.bs-wfill, --p) is drawn over its empty track at the picture's track box. The upright layout below is not used. A phone held upright never asks for it. */
+      .bs-wide {
+        display: none;
+      }
       @media (min-aspect-ratio: 13/10) {
         #boot-splash {
-          background: #2b1a0e url("./landscape-art/true/loading.webp") center / cover no-repeat;
+          background: #2b1a0e;
         }
         #boot-splash > div.bs-stage {
-          max-width: none;
-          background: none;
-        }
-        #boot-splash > div.bs-stage > img.bs-bg,
-        #boot-splash > div.bs-stage > div.bs-shade {
           display: none;
         }
-        #boot-splash > div.bs-stage > div.bs-col {
-          inset: 0 auto 0 50%;
-          width: calc(100dvh * 9 / 16);
+        #boot-splash > div.bs-wide {
+          display: block;
+          position: absolute;
+          inset: 0;
+          overflow: hidden;
+        }
+        .bs-wstage {
+          position: absolute;
+          left: 50%;
+          /* Wider than 16:9 the crop comes off the top (70 %) more than the bottom (30 %): the title keeps its lettering and the bar and its LOADING plaque stay on screen. */
+          top: calc((100dvh - max(100dvh, 56.25vw)) * 0.7);
+          width: max(100vw, 177.78dvh);
+          aspect-ratio: 16 / 9;
           transform: translateX(-50%);
+          container-type: inline-size;
+        }
+        #boot-splash .bs-wpic {
+          inset: 0;
+          width: 100%;
+          height: 100%;
+        }
+        /* The picture's track: x 537-1382, y 951-989 of 1920 x 1080. */
+        .bs-wtrack {
+          position: absolute;
+          left: 27.97%;
+          top: 88.06%;
+          width: 44%;
+          height: 3.5%;
+          overflow: hidden;
+          border-radius: 999px;
+        }
+        .bs-wfill {
+          position: absolute;
+          inset: 0 auto 0 0;
+          width: calc(var(--p, 0.18) * 100%);
+          overflow: hidden;
+          border-radius: 999px;
+          background: linear-gradient(180deg, #c8ff7a 0%, #5ed32f 45%, #2f9a1f 100%);
+          box-shadow:
+            inset 0 2px 0 rgba(255, 255, 255, 0.6),
+            inset 0 -2px 0 rgba(0, 70, 0, 0.3);
+          transition: width 0.35s ease-out;
+        }
+        .bs-wfill::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          width: 40%;
+          background: linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0),
+            rgba(255, 255, 255, 0.5),
+            rgba(255, 255, 255, 0)
+          );
+          animation: bs-shine 1.4s ease-in-out infinite;
+        }
+        /* The picture already says LOADING...; this line is for the hint "tap for music" (above the bar) and for the 25 s "still loading" message (a pill). */
+        #boot-splash .bs-wtext {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 83.2%;
+          text-align: center;
+          font:
+            800 0/1 Fraunces,
+            Georgia,
+            serif;
+          color: #fff6dc;
+        }
+        #boot-splash .bs-wtext .bs-hint {
+          font-size: 1.3cqw;
+          letter-spacing: 0.08em;
+          padding: 0.35cqw 1.2cqw;
+          border-radius: 999px;
+          background: rgba(43, 26, 14, 0.7);
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+        }
+        #boot-splash.stuck .bs-wtext {
+          font-size: 1.5cqw;
+          top: 82.6%;
+        }
+        #boot-splash.stuck .bs-wtext span.bs-msg {
+          display: inline-block;
+          padding: 0.5cqw 1.6cqw;
+          border-radius: 999px;
+          background: rgba(43, 26, 14, 0.82);
         }
       }
       #boot-splash.leaving {
@@ -244,6 +327,21 @@
   </head>
   <body>
     <div id="boot-splash" role="status" aria-label="Loading KnifeCraft">
+      <div class="bs-wide" aria-hidden="true">
+        <div class="bs-wstage">
+          <img
+            class="bs-wpic"
+            src="./loading/wide.webp"
+            alt=""
+            width="1920"
+            height="1080"
+            fetchpriority="high"
+            onload="this.classList.add('in')"
+          />
+          <span class="bs-wtrack"><span class="bs-wfill"></span></span>
+          <span class="bs-wtext"><span class="bs-hint" hidden>🎵 TAP FOR MUSIC</span></span>
+        </div>
+      </div>
       <div class="bs-stage">
         <img
           class="bs-bg"
@@ -312,6 +410,10 @@
         if (!el || document.documentElement.getAttribute("data-booted")) return;
         var t = el.querySelector(".bs-text");
         if (t) t.textContent = "STILL LOADING… TAP TO RELOAD";
+        // The wide picture says LOADING... itself: its message is a pill above the bar.
+        var w = el.querySelector(".bs-wtext");
+        if (w) w.innerHTML = '<span class="bs-msg">STILL LOADING… TAP TO RELOAD</span>';
+        el.classList.add("stuck");
         el.addEventListener("click", function () {
           location.reload();
         });

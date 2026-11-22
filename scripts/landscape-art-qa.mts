@@ -114,7 +114,8 @@ console.log("\nB. Real, the right size, light");
     }
     // the true pictures (Codex, composed wide from scratch): Kitchen 1600 x 900, maps 1920 x 1080; everything else 1440 x 810
     // RULE CHANGE 2026-11-20: every picture is a TRUE landscape one (landscape-art/true/): Kitchen, games, story and loading 1600 x 900; maps, Second Floor and dining rooms 1920 x 1080
-    const [ew, eh, maxKb] = /true\/(map-|second-floor|dining-|clip-)/.test(f)
+    // RULE CHANGE 2026-11-22: the six Kitchen pictures are the developer's new paintings at 1920 x 1080 (scripts/make-kitchen-wide.py)
+    const [ew, eh, maxKb] = /true\/(map-|second-floor|dining-|clip-|kitchen-)/.test(f)
       ? [1920, 1080, 600]
       : [1600, 900, 600];
     if (!riff || w !== ew || h !== eh || b.length > maxKb * 1024)
@@ -224,8 +225,32 @@ console.log("\nD. Everything else");
     "D7: each cooking film (and the oven film) sits in the middle of its own matching wide picture",
   );
   assert(
-    /min-aspect-ratio: 13\/10/.test(html) && /landscape-art\/true\/loading\.webp/.test(html),
-    "D5: the loading screen paints its room in a wide window only",
+    // RULE CHANGE (developer 2026-11-22: "use this image as the loading screen"): the wide loading screen is the ONE finished picture loading/wide.webp (scripts/make-loading-wide.py)
+    // with the real fill over its track, no longer landscape-art/true/loading.webp behind the upright pieces.
+    /min-aspect-ratio: 13\/10/.test(html) &&
+      /loading\/wide\.webp/.test(html) &&
+      /class="bs-wfill"/.test(html) &&
+      fs.existsSync(path.join(ROOT, "public", "loading", "wide.webp")),
+    "D5: the loading screen is the finished wide picture (with the real fill over its empty track) in a wide window only",
+  );
+  // Developer 2026-11-21: the Gemini-made 16:9 cooking films (scripts/make-wide-cooking-videos.py): played full frame in a landscape window by the kinds that have one.
+  const clip = read("src/components/kc/game/CookingClip.tsx");
+  const wideKinds = ["fruit", "salad"];
+  assert(
+    wideKinds.every(
+      (k) =>
+        new RegExp(`${k}: \{ webm: ${k}WideWebm, mp4: ${k}WideMp4, poster: ${k}WidePoster \}`).test(
+          clip,
+        ) &&
+        ["webm", "mp4"].every((e) =>
+          fs.existsSync(path.join(ROOT, "src/assets/video", `chef-${k}-wide.${e}`)),
+        ) &&
+        fs.existsSync(path.join(ROOT, "src/assets/video", `chef-${k}-wide-poster.webp`)),
+    ) &&
+      /const wide = landscape \? WIDE_CLIPS\[kind\] : undefined/.test(clip) &&
+      /data-testid="cooking-clip-wide"/.test(clip) &&
+      /<FilmBackdrop/.test(clip),
+    "D8: a landscape window plays the wide film FULL FRAME for the fruit and salad kinds (files built); the other kinds keep the portrait film on its backdrop; an upright phone keeps the portrait film",
   );
 }
 
