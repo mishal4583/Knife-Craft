@@ -331,9 +331,11 @@ check(
 await boot(page, saveAt(40, { soap: 0 }));
 await page.evaluate(() => document.querySelector('[data-nav="restaurant-map"]')?.click());
 await sleep(900);
-await openShortcut(page, "business");
+await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
 await sleep(700);
-await clickButton(page, /Cleanliness\d*$/);
+await page.evaluate(() => document.querySelector('[data-testid="minigames-shortcut"]')?.click());
+await sleep(500);
+await page.evaluate(() => document.querySelector('[data-testid="minigame-cleaning"]')?.click());
 await sleep(900);
 const card = await page.evaluate(
   () =>

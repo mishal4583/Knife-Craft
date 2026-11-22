@@ -152,11 +152,11 @@ try {
       ?.click(),
   );
   await sleep(900);
-  await page.evaluate(() => {
-    [...document.querySelectorAll('nav[aria-label="Business sections"] button')]
-      .find((x) => x.textContent.includes("Cleanliness"))
-      ?.click();
-  });
+  await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
+  await sleep(700);
+  await page.evaluate(() => document.querySelector('[data-testid="minigames-shortcut"]')?.click());
+  await sleep(500);
+  await page.evaluate(() => document.querySelector('[data-testid="minigame-cleaning"]')?.click());
   await sleep(1200);
   // The portrait is lazy-loaded below the fold: bring the card into view first, as a player scrolling would.
   await page.evaluate(() =>
@@ -248,11 +248,11 @@ try {
       ?.click(),
   );
   await sleep(900);
-  await page.evaluate(() => {
-    [...document.querySelectorAll('nav[aria-label="Business sections"] button')]
-      .find((x) => x.textContent.includes("Cleanliness"))
-      ?.click();
-  });
+  await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
+  await sleep(700);
+  await page.evaluate(() => document.querySelector('[data-testid="minigames-shortcut"]')?.click());
+  await sleep(500);
+  await page.evaluate(() => document.querySelector('[data-testid="minigame-cleaning"]')?.click());
   await sleep(1500);
   // open the Kitchen's card (the rows are inside it)
   await page.evaluate(() => document.querySelector('[data-ready-area="kitchen"]')?.click());

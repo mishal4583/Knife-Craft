@@ -5,6 +5,9 @@ import { miniGameViews, type MiniGameView } from "@/game/business/miniGames";
 import { useUnlockText } from "./navLevel";
 import type { ScreenId } from "./data";
 import { frameStyle, mgUrl, useMiniGameArt } from "./minigamesArt";
+import { CLEANING_FROM_LEVEL } from "@/game/config/cleaningStart";
+import { cleanlinessOf } from "@/game/restaurant/cleanliness";
+import { PaintedPic } from "./ChoreTiles";
 
 /**
  * The Kitchen's Mini-games sheet (developer 2026-11-17: every mini-game as a logo tile, each one open from its own level). A locked tile says which
@@ -172,6 +175,20 @@ export function MiniGamesSheet({
               />
             </li>
           ))}
+          <li
+            className="col-span-full flex min-w-0 flex-col"
+            data-testid="minigames-cleaning-section"
+          >
+            <CleaningSection
+              save={save}
+              level={level}
+              opensText={u.when(CLEANING_FROM_LEVEL)}
+              onOpen={() => {
+                onClose();
+                go("business-cleanliness");
+              }}
+            />
+          </li>
         </ul>
       </section>
     </div>
@@ -330,5 +347,82 @@ function Tile({
         {locked ? `opens ${opensText}` : text}
       </span>
     </button>
+  );
+}
+
+/**
+ * The Cleaning section (developer 2026-11-22: Cleanliness left the Business screen and sits under the Mini-games button as a section of its own): one
+ * wide card that opens the cleaning screen (rooms, supplies, the Cleaner; the cleaning games themselves are played from there). It opens at
+ * CLEANING_FROM_LEVEL and says how many jobs wait.
+ */
+function CleaningSection({
+  save,
+  level,
+  opensText,
+  onOpen,
+}: {
+  save: SaveData;
+  level: number;
+  opensText: string;
+  onOpen: () => void;
+}) {
+  const locked = level < CLEANING_FROM_LEVEL;
+  const waiting = locked ? 0 : cleanlinessOf(save).tasks.length;
+  const status = locked
+    ? `opens ${opensText}`
+    : waiting > 0
+      ? `${waiting} ${waiting === 1 ? "job" : "jobs"} waiting`
+      : "All clean";
+  return (
+    <div data-testid="minigames-cleaning">
+      <h3 className="mb-1.5 px-1 font-display text-[15px] font-black leading-none text-[#4a2410] [text-shadow:0_1px_0_rgba(255,255,255,0.6)]">
+        Cleaning
+      </h3>
+      <button
+        type="button"
+        data-testid="minigame-cleaning"
+        data-state={locked ? "locked" : waiting > 0 ? "ready" : "resting"}
+        aria-disabled={locked || undefined}
+        aria-label={locked ? `Cleanliness, locked, opens ${opensText}` : `Cleanliness, ${status}`}
+        onClick={locked ? undefined : onOpen}
+        className={cn(
+          "relative flex min-h-[72px] w-full items-center gap-3 rounded-[18px] border-2 px-3 py-2 text-left shadow-soft",
+          locked
+            ? "cursor-default border-walnut/20 bg-ivory/60 text-walnut/70"
+            : "press border-[#b8873f] bg-[linear-gradient(170deg,#fffaf0,#f6e2b6)] text-walnut-dark",
+        )}
+      >
+        <span
+          aria-hidden
+          className={cn(
+            "grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-[radial-gradient(circle_at_50%_42%,rgba(255,255,255,0.95),rgba(240,222,186,0.7)_62%,rgba(220,190,140,0.25))] p-1.5",
+            locked && "grayscale opacity-70",
+          )}
+        >
+          <PaintedPic name="broom" fallback="🧹" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-display text-[15px] font-black leading-tight">
+            Cleanliness
+          </span>
+          <span className="block font-ui text-[12.5px] font-semibold leading-snug text-walnut/70">
+            Kitchen · dining room · restroom · the Cleaner
+          </span>
+        </span>
+        <span
+          data-testid="mg-status-cleaning"
+          className={cn(
+            "shrink-0 rounded-full px-2.5 py-1 font-ui text-[12px] font-extrabold leading-tight",
+            locked
+              ? "bg-walnut/10 text-walnut/70"
+              : waiting > 0
+                ? "bg-copper text-ivory"
+                : "bg-[#e3efd0] text-[#4d7a35]",
+          )}
+        >
+          {status}
+        </span>
+      </button>
+    </div>
   );
 }

@@ -41,8 +41,6 @@ import { BusinessFinance } from "./BusinessFinance";
 import { BusinessHistory } from "./BusinessHistory";
 import { BusinessCleanliness } from "./BusinessCleanliness";
 import {
-  CLEANING_FROM_LEVEL,
-  cleanlinessOf,
   type CleanlinessAction,
   type CleanlinessActionResult,
   type DayCleanerOffer,
@@ -126,8 +124,7 @@ const TABS: Array<{ id: BusinessTab; label: string; emoji: string }> = [
   { id: "suppliers", label: "Suppliers", emoji: "🚚" },
   { id: "menu", label: "Menu", emoji: "🍽️" },
   { id: "operations", label: "Operations", emoji: "📋" },
-  // Restaurant build, from CLEANING_FROM_LEVEL (filtered in the component).
-  { id: "cleanliness", label: "Cleanliness", emoji: "🧹" },
+  // Cleanliness is NOT a Business section any more (developer 2026-11-22): it lives under the Kitchen's Mini-games button, as its own section.
 ];
 
 const SEVERITY_ICON: Record<BusinessAlertSeverity, string> = {
@@ -249,18 +246,14 @@ export function BusinessDashboard({
   }
 
   const shared = { save, go, preview, businessServiceSession, dayResult, endDay };
-  // Cleanliness & Maintenance: restaurant build, the whole section from its level.
-  const cleanlinessOpen =
-    RESTAURANT_MODE &&
-    !!cleanlinessAction &&
-    restaurantLevelOf(save.levelProgress) >= CLEANING_FROM_LEVEL;
+  // Cleanliness & Maintenance is its own screen (route `business-cleanliness`, opened from the Mini-games sheet's Cleaning section and the many links that
+  // lead to it): no Business tab strip and no Business header there.
+  const cleaningScreen = tab === "cleanliness";
   // The hub opens from Level 1 (firstLevels.ts BUSINESS_HUB_FROM_LEVEL) but its pages keep their own levels: a tab
   // whose page is still locked is not offered (the Overview and, from Day 2, Cleanliness come first).
   const level = restaurantLevelOf(save.levelProgress);
   const tabs = TABS.filter(
-    (t) =>
-      (t.id !== "cleanliness" || cleanlinessOpen) &&
-      (!RESTAURANT_MODE || !lockedScreenHint(BUSINESS_TAB_SCREEN[t.id], level)),
+    (t) => !RESTAURANT_MODE || !lockedScreenHint(BUSINESS_TAB_SCREEN[t.id], level),
   );
 
   return (
@@ -268,59 +261,62 @@ export function BusinessDashboard({
       <div className="absolute inset-0 bg-[radial-gradient(90%_50%_at_50%_0%,rgba(216,168,78,0.28),transparent_60%)]" />
       <div className="relative h-full overflow-y-auto no-scrollbar pb-24">
         <ScreenHeader
-          title="Business"
-          subtitle={RESTAURANT_MODE ? "your back office" : "your restaurant"}
+          title={cleaningScreen ? "Cleanliness" : "Business"}
+          subtitle={
+            cleaningScreen
+              ? "rooms · supplies · cleaner"
+              : RESTAURANT_MODE
+                ? "your back office"
+                : "your restaurant"
+          }
           onBack={() => go("kitchen")}
           right={<BusinessCash cents={save.credits} />}
         />
 
-        <nav
-          className={cn(
-            "category-tabs grid gap-2 px-4",
-            tabs.length > 6 ? "grid-cols-4 land:grid-cols-8" : "grid-cols-3 land:grid-cols-6",
-          )}
-          aria-label="Business sections"
-        >
-          {tabs.map((item) => {
-            const active = tab === item.id;
-            const badgeCount =
-              item.id === "operations"
-                ? needsAttention.length
-                : item.id === "cleanliness"
-                  ? cleanlinessOf(save).tasks.length
-                  : 0;
-            const badge = badgeCount > 0;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                aria-current={active ? "page" : undefined}
-                onClick={() => go(BUSINESS_TAB_SCREEN[item.id])}
-                className={cn(
-                  "press relative flex h-[60px] flex-col items-center justify-center gap-0.5 rounded-[18px] border px-0.5 land:h-[52px]",
-                  active
-                    ? "wood border-walnut-dark/50 text-ivory shadow-soft"
-                    : "card-warm border-walnut/15 text-walnut-dark",
-                )}
-              >
-                <span className="text-[19px] leading-none" aria-hidden>
-                  {item.emoji}
-                </span>
-                <span className="font-ui text-[11px] font-extrabold leading-tight">
-                  {item.label}
-                </span>
-                {badge ? (
-                  <span
-                    className="absolute right-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-copper px-1 font-ui text-[10px] font-black text-ivory"
-                    data-tab-badge={item.id}
-                  >
-                    {badgeCount}
+        {cleaningScreen ? null : (
+          <nav
+            className={cn(
+              "category-tabs grid gap-2 px-4",
+              tabs.length > 6 ? "grid-cols-4 land:grid-cols-8" : "grid-cols-3 land:grid-cols-6",
+            )}
+            aria-label="Business sections"
+          >
+            {tabs.map((item) => {
+              const active = tab === item.id;
+              const badgeCount = item.id === "operations" ? needsAttention.length : 0;
+              const badge = badgeCount > 0;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => go(BUSINESS_TAB_SCREEN[item.id])}
+                  className={cn(
+                    "press relative flex h-[60px] flex-col items-center justify-center gap-0.5 rounded-[18px] border px-0.5 land:h-[52px]",
+                    active
+                      ? "wood border-walnut-dark/50 text-ivory shadow-soft"
+                      : "card-warm border-walnut/15 text-walnut-dark",
+                  )}
+                >
+                  <span className="text-[19px] leading-none" aria-hidden>
+                    {item.emoji}
                   </span>
-                ) : null}
-              </button>
-            );
-          })}
-        </nav>
+                  <span className="font-ui text-[11px] font-extrabold leading-tight">
+                    {item.label}
+                  </span>
+                  {badge ? (
+                    <span
+                      className="absolute right-1.5 top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-copper px-1 font-ui text-[10px] font-black text-ivory"
+                      data-tab-badge={item.id}
+                    >
+                      {badgeCount}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </nav>
+        )}
 
         <div className="px-4 pt-4">
           {tab === "overview" ? (
@@ -394,13 +390,15 @@ export function BusinessDashboard({
           ) : null}
         </div>
 
-        <p className="px-8 pb-2 pt-5 text-center font-hand text-[15px] text-walnut/45">
-          {RESTAURANT_MODE
-            ? "🍽️ One restaurant · 💵 one wallet"
-            : "📅 Own calendar · 💵 one wallet with the kitchen"}
-        </p>
+        {cleaningScreen ? null : (
+          <p className="px-8 pb-2 pt-5 text-center font-hand text-[15px] text-walnut/45">
+            {RESTAURANT_MODE
+              ? "🍽️ One restaurant · 💵 one wallet"
+              : "📅 Own calendar · 💵 one wallet with the kitchen"}
+          </p>
+        )}
       </div>
-      <BottomNav active="business" go={go} />
+      <BottomNav active={cleaningScreen ? "kitchen" : "business"} go={go} />
     </div>
   );
 }

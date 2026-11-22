@@ -86,11 +86,11 @@ async function openTask(task) {
       ?.click(),
   );
   await sleep(800);
-  await page.evaluate(() =>
-    [...document.querySelectorAll('nav[aria-label="Business sections"] button')]
-      .find((x) => x.textContent.includes("Cleanliness"))
-      ?.click(),
-  );
+  await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
+  await sleep(700);
+  await page.evaluate(() => document.querySelector('[data-testid="minigames-shortcut"]')?.click());
+  await sleep(500);
+  await page.evaluate(() => document.querySelector('[data-testid="minigame-cleaning"]')?.click());
   await sleep(900);
   await page.evaluate(
     (a, t) => {

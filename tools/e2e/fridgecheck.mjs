@@ -124,11 +124,11 @@ async function openCleanliness() {
     .waitForSelector('nav[aria-label="Business sections"]', { timeout: 4000 })
     .catch(() => null);
   await sleep(400);
-  await page.evaluate(() => {
-    [...document.querySelectorAll('nav[aria-label="Business sections"] button')]
-      .find((x) => x.textContent.includes("Cleanliness"))
-      ?.click();
-  });
+  await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
+  await sleep(700);
+  await page.evaluate(() => document.querySelector('[data-testid="minigames-shortcut"]')?.click());
+  await sleep(500);
+  await page.evaluate(() => document.querySelector('[data-testid="minigame-cleaning"]')?.click());
   await sleep(800);
 }
 /** Opens the Kitchen card's tasks and taps the chore's Clean button. */

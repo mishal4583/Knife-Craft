@@ -302,6 +302,20 @@ console.log("F. The painted art (developer 2026-11-18)");
     all.every((v) => v.waiting === false),
     "F8: nothing is 'waiting' on a fresh save at Level 1 (no star on a locked game)",
   );
+  // developer 2026-11-22 ("remove cleanliness section from business and put it under minigames button as a separate section"): Cleanliness is a section of the
+  // Mini-games sheet, not a Business tab.
+  const sheetSrc = read("src/components/kc/MiniGamesSheet.tsx");
+  const dash = read("src/components/kc/business/BusinessDashboard.tsx");
+  const tabsBlock = dash.slice(dash.indexOf("const TABS"), dash.indexOf("const SEVERITY_ICON"));
+  assert(
+    /data-testid="minigames-cleaning-section"/.test(sheetSrc) &&
+      /data-testid="minigame-cleaning"/.test(sheetSrc) &&
+      /go\("business-cleanliness"\)/.test(sheetSrc) &&
+      /CLEANING_FROM_LEVEL/.test(sheetSrc) &&
+      !/id: "cleanliness"/.test(tabsBlock) &&
+      /const cleaningScreen = tab === "cleanliness"/.test(dash),
+    "F9: Cleanliness is its own section of the Mini-games sheet (opens the cleaning screen from CLEANING_FROM_LEVEL); the Business screen has no Cleanliness tab, and the cleaning screen has its own header without the tab strip",
+  );
 }
 
 console.log(failures ? `\n${failures} FAILED` : "\nMINI-GAMES SHELF: ALL PASS");

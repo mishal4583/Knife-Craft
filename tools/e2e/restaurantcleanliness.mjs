@@ -85,16 +85,23 @@ async function openCleanliness() {
     .waitForSelector('nav[aria-label="Business sections"]', { timeout: 4000 })
     .catch(() => null);
   await sleep(400);
+  // Cleanliness is its own section under the Kitchen's Mini-games button (developer 2026-11-22), no Business tab.
+  await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
+  await sleep(700);
+  await page.evaluate(() => document.querySelector('[data-testid="minigames-shortcut"]')?.click());
+  await sleep(500);
   const tab = await page.evaluate(() => {
-    const b = [...document.querySelectorAll('nav[aria-label="Business sections"] button')].find(
-      (x) => x.textContent.includes("Cleanliness"),
-    );
+    const b = document.querySelector('[data-testid="minigame-cleaning"]');
+    window.__cleaningCard = document.querySelector('[data-testid="mg-status-cleaning"]')?.textContent ?? null;
+    if (b?.getAttribute("aria-disabled") === "true") return false;
     b?.click();
     return !!b;
   });
+  cardStatus = await page.evaluate(() => window.__cleaningCard ?? null);
   await sleep(800);
   return tab;
 }
+let cardStatus = null;
 const view = () =>
   page.evaluate(() => {
     const el = document.querySelector('[data-testid="cleanliness"]');
@@ -133,7 +140,8 @@ await sleep(500);
 const afterIntro = await readSave(page);
 await shot(page, "cleanliness-l25");
 check(
-  "1 Level 25: Cleanliness tab + the guided intro (once); Kitchen, Dining, Restroom cards show the seeded tasks; the tab badge counts 5",
+  // RULE CHANGE (developer 2026-11-22): Cleanliness is a card in the Mini-games sheet, not a Business tab; the count of waiting jobs is on that card.
+  "1 Level 25: the Cleanliness card + the guided intro (once); Kitchen, Dining, Restroom cards show the seeded tasks; the card says 5 jobs waiting",
   tab1 &&
     !!v1 &&
     v1.intro &&
@@ -143,8 +151,8 @@ check(
     v1.areas["area-dining"]?.todo.includes("floor") &&
     v1.areas["area-restroom"]?.todo.includes("toilet") &&
     Object.values(v1.areas).every((a) => a.meter < 100 && a.status !== "clean") &&
-    v1.badge === "5",
-  v1,
+    cardStatus === "5 jobs waiting",
+  { ...v1, cardStatus },
 );
 
 // ---------- 2. Clean one task ----------
@@ -246,8 +254,7 @@ check(
     entries4[0].category === "staff-purchase" &&
     before4.credits - after4.credits === -entries4[0].amount &&
     v4.ready.every((r) => r === "ready") &&
-    v4.allReady &&
-    v4.badge === null,
+    v4.allReady,
   { offer4, v4, entries4, tasks: after4.business.cleanliness.tasks },
 );
 

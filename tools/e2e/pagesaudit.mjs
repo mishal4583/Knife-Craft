@@ -197,13 +197,20 @@ for (const size of SIZES) {
     "Suppliers",
     "Menu",
     "Operations",
-    "Cleanliness",
     "Overview",
   ]) {
     await visit(size, `business-${t}`, async () => {
       await clickText(new RegExp(`^\\S*\\s*${t}`));
     });
   }
+  // Cleanliness: its own section under the Kitchen's Mini-games button (developer 2026-11-22)
+  await visit(size, "cleanliness", async () => {
+    await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
+    await sleep(700);
+    await page.evaluate(() => document.querySelector('[data-testid="minigames-shortcut"]')?.click());
+    await sleep(500);
+    await page.evaluate(() => document.querySelector('[data-testid="minigame-cleaning"]')?.click());
+  });
   // Inventory
   await visit(size, "inventory", async () => {
     await openShortcut(page, "inventory");
