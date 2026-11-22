@@ -19,7 +19,7 @@ import {
   type CleaningToolId,
   type Point,
 } from "@/game/restaurant/cleaningDirt";
-import { AudioManager } from "@/game/AudioManager";
+import { AudioManager, type WashKind } from "@/game/AudioManager";
 import { reducedMotionOn } from "@/game/cashBurst";
 import { KButton } from "../common/primitives";
 import { paintStain, stainReach } from "./cleaning/dirtArt";
@@ -159,7 +159,18 @@ const TOOLS: Record<CleanArea, readonly ToolEntry[]> = {
 
 const MILESTONE_COPY = ["Looking better!", "Halfway there!", "Almost spotless!"] as const;
 
-/** How wide each tool works, and what it sounds like. */
+/** What each tool sounds like: one soft, recorded bed that follows the hand (developer 2026-11-22). */
+const TOOL_SOUND: Record<CleaningToolId, WashKind> = {
+  sponge: "scrub",
+  cloth: "wipe",
+  scraper: "scrape",
+  broom: "sweep",
+  mop: "mop",
+  "toilet-brush": "brush",
+  "glass-cloth": "glass",
+};
+
+/** How wide each tool works. */
 function toolRadius(tool: CleaningToolId): number {
   if (tool === "mop" || tool === "broom") return BRUSH_RADIUS * 1.25;
   if (tool === "scraper" || tool === "toilet-brush") return BRUSH_RADIUS * 0.85;
@@ -401,7 +412,7 @@ export function AreaCleaningPrototype({
     ctx.restore();
   }
 
-  /** A stain is gone: it fades, sparkles and pings; quick clears build a streak. */
+  /** A stain is gone: it fades and sparkles (no ping: the tool's own soft sound carries on); quick clears build a streak. */
   function clearStain(index: number) {
     if (play.cleared[index]) return;
     play.cleared[index] = 1;
@@ -413,7 +424,6 @@ export function AreaCleaningPrototype({
     setStreak(play.streak.count);
     const s = stains[index]!;
     fxRef.current?.sparkle(s.x, s.y, play.streak.count);
-    AudioManager.playSparkle(play.streak.count);
     setStainsLeft(stains.length - play.cleared.reduce((n, c) => n + c, 0));
     requestDraw();
   }
@@ -502,6 +512,11 @@ export function AreaCleaningPrototype({
       touched.add(mark.stain);
     });
     lastPointRef.current = current;
+    // The tool's sound follows the hand while it rubs (developer 2026-11-22): one soft recorded bed, a little fuller on dirt than on a clean spot.
+    AudioManager.washStroke(
+      TOOL_SOUND[activeTool],
+      (stroke === null ? 0.35 : Math.min(1, stroke / 18)) * (touched.size ? 1 : 0.6),
+    );
     if (touched.size) {
       if (!play.startedAt) play.startedAt = performance.now();
       for (const index of touched) {
@@ -509,7 +524,6 @@ export function AreaCleaningPrototype({
         if (play.pointsLeft[index]! <= 0) clearStain(index);
       }
       requestDraw();
-      // No scrub noise per stroke (developer 2026-11-13: it sounded like something knocking, "tak tak tak"): the sparkle of a cleaned stain stays.
       fxRef.current?.scrub(
         activeTool,
         current.x,

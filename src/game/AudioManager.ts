@@ -50,6 +50,19 @@ export type Part =
 
 const note = (hz: number, at: number, gain: number): Part => ({ hz, at, gain });
 
+/** The looped, recorded beds that follow a cleaning hand (`wash-<kind>`), and how loud each gets at full speed (all soft: it is a background of the touch). */
+export type WashKind = "wipe" | "scrub" | "rinse" | "mop" | "sweep" | "scrape" | "brush" | "glass";
+const WASH_PEAK: Record<WashKind, number> = {
+  wipe: 0.5,
+  scrub: 0.45,
+  rinse: 0.4,
+  mop: 0.5,
+  sweep: 0.5,
+  scrape: 0.42,
+  brush: 0.45,
+  glass: 0.5,
+};
+
 class AudioManagerImpl {
   private ctx: AudioContext | null = null;
   private contextResumePending: Promise<void> | null = null;
@@ -623,9 +636,10 @@ class AudioManagerImpl {
    * splash loop: "a more soothing sound, or a real wiping sound, that gives the player satisfaction"). While the cloth or sponge moves, ONE continuous
    * voice runs: a recorded, softened bed looped, whose loudness and speed follow the stroke. Call it on every move; it fades out by itself 170 ms after
    * the last call, so there is no tick and no stop to wire. `kind`: "wipe" is the dry-to-damp cloth over the cutting board, "scrub" the close, soapy
-   * rub of the sponge, "rinse" running water. `speed` is 0..1. Gated on the Sound setting.
+   * rub of the sponge, "rinse" running water; for the cleaning tools (developer 2026-11-22): "mop" a wet floor mop, "sweep" a broom's dry bristles, "scrape" a
+   * scraper, "brush" the toilet brush, "glass" the cloth on the mirror. `speed` is 0..1. Gated on the Sound setting.
    */
-  washStroke(kind: "wipe" | "scrub" | "rinse", speed: number): void {
+  washStroke(kind: WashKind, speed: number): void {
     if (!this.enabled) return;
     const ctx = this.ensureContext();
     if (!ctx) return;
@@ -640,7 +654,7 @@ class AudioManagerImpl {
       this.washVoice = voice;
     }
     // A slow stroke is a hush, a quick one a firmer rub; the pitch leans a little with the speed, so the sound breathes with the hand.
-    const peak = kind === "rinse" ? 0.4 : kind === "scrub" ? 0.45 : 0.5;
+    const peak = WASH_PEAK[kind];
     voice.gain.gain.setTargetAtTime(0.05 + peak * level, now, 0.07);
     voice.src.playbackRate.setTargetAtTime(0.94 + level * 0.14, now, 0.12);
     if (voice.timer) clearTimeout(voice.timer);
@@ -672,7 +686,7 @@ class AudioManagerImpl {
     setTimeout(end, 320);
   }
   private washVoice: {
-    kind: "wipe" | "scrub" | "rinse";
+    kind: WashKind;
     src: AudioBufferSourceNode;
     gain: GainNode;
     timer: number;

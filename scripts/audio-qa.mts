@@ -432,11 +432,31 @@ console.log("Z. Mini-game sounds");
       { fetched: fetched - wipeFetches, nodes: created - nodesAfter },
     );
   }
+  {
+    // developer 2026-11-22: every cleaning tool has its own soft recorded bed (no ping per stain either).
+    const area = read("src/components/kc/business/AreaCleaningPrototype.tsx");
+    const kinds = ["wipe", "scrub", "rinse", "mop", "sweep", "scrape", "brush", "glass"];
+    const map = area.slice(
+      area.indexOf("const TOOL_SOUND"),
+      area.indexOf("const TOOL_SOUND") + 400,
+    );
+    assert(
+      kinds.every(
+        (k) => (AUDIO_FILES as Record<string, { loop?: boolean }>)[`wash-${k}`]?.loop === true,
+      ) &&
+        ["sponge", "cloth", "scraper", "broom", "mop", "toilet-brush", "glass-cloth"].every((t) =>
+          new RegExp(`${t.includes("-") ? `"${t}"` : t}: "`).test(map),
+        ) &&
+        /washStroke\(\s*TOOL_SOUND\[activeTool\]/.test(area) &&
+        !/playSparkle\(|playScrub\(/.test(area),
+      "Z9: the sponge, cloth, scraper, broom, mop, toilet brush and glass cloth each have their own looped recorded bed that follows the hand; no ping when a stain goes",
+    );
+  }
   assert(
     ["wash-wipe", "wash-scrub", "wash-rinse"].every(
       (k) => (AUDIO_FILES as Record<string, { loop?: boolean }>)[k]?.loop === true,
     ) &&
-      /"wipe" \| "scrub" \| "rinse"/.test(stroke) &&
+      /kind: WashKind/.test(stroke) &&
       !/bubble/.test(stroke) &&
       /washStroke\(\s*"wipe"/.test(clothStep) &&
       !/playSparkle\(|playSfx\("squeak"\)|playScrub\(/.test(clothStep) &&

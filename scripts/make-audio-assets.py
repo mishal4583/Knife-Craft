@@ -240,13 +240,18 @@ def soft_bed(layers: list[tuple[np.ndarray, float]], seconds: float, level_db: f
     return rms_to(loop_of(mix, 0.3, seconds - 0.3, 0.3), level_db, peak_cap_db=-3.0)
 
 
-def friction(order: list[int]) -> list[np.ndarray]:
-    """The peel recordings (a real, dry friction), each levelled and softened: 250 Hz to 3.4 kHz."""
+def friction(order: list[int], lo: float = 250, hi: float = 3400) -> list[np.ndarray]:
+    """The peel recordings (a real, dry friction), each levelled and softened: 250 Hz to 3.4 kHz unless told otherwise."""
     out = []
     for i in order:
         x = trim(read(find(FOLEY, f"peel_pumpkin_0{i}")), lead_db=-45, tail_db=-45)
-        out.append(fade(band(peak_to(x, -6), 250, 3400), 40, 40))
+        out.append(fade(band(peak_to(x, -6), lo, hi), 40, 40))
     return out
+
+
+def scratch(stems: list[str], lo: float, hi: float) -> list[np.ndarray]:
+    """Kenney's scratch recordings, band-limited: the gritty scrape of a scraper or a brush."""
+    return [fade(band(peak_to(trim(read(find(KIF, s)), lead_db=-45, tail_db=-45), -6), lo, hi), 30, 30) for s in stems]
 
 
 def water(stems: list[str], top_hz: float) -> list[np.ndarray]:
@@ -263,6 +268,14 @@ emit(
     96,
     loop=True,
 )  # running water
+
+# The other cleaning tools (developer 2026-11-22: "better sounds for mopping and all other cleaning tasks"): each tool is one looped bed that follows the hand.
+cloth_body = fade(lowpass(trim(read(find(RPG, "cloth-heavy")), lead_db=-40, tail_db=-40), 700), 30, 30)
+emit("wash-mop", soft_bed([(joined(water(["water_splash-04", "water_splash-03", "water_splash-06"], 2600), 4.0), 0.0), (joined([cloth_body], 4.0, 0.08), -8.0)], 4.0, -21.0), 96, loop=True)  # a wet mop dragged over a floor
+emit("wash-sweep", soft_bed([(joined(friction([5, 1, 4, 2, 3], 900, 5500), 4.0), 0.0), (joined([cloth_body], 4.0, 0.08), -14.0)], 4.0, -22.0), 96, loop=True)  # dry bristles of a broom
+emit("wash-scrape", soft_bed([(joined(scratch(["scratch_004", "scratch_005"], 500, 4200), 4.0), 0.0), (joined(friction([3, 4], 300, 2500), 4.0), -6.0)], 4.0, -22.0), 96, loop=True)  # a scraper lifting baked-on food
+emit("wash-brush", soft_bed([(joined(friction([2, 1, 3], 300, 3000), 4.0), 0.0), (joined(scratch(["scratch_004"], 400, 3000), 4.0), -7.0), (joined(water(["water_splash-03", "water_splash-06"], 2600), 4.0), -9.0)], 4.0, -21.0), 96, loop=True)  # a toilet brush in the bowl
+emit("wash-glass", soft_bed([(joined(friction([4, 5, 3], 1500, 6500), 4.0), 0.0), (joined(scratch(["scratch_005"], 2000, 6000), 4.0), -9.0)], 4.0, -24.0), 96, loop=True)  # a cloth over the mirror
 
 # ---- the music: four calm moods, each a seamless loop --------------------------------------------------------------------------------------
 LEVEL = -21.0  # RMS of every track; the game's own faders set how loud each mood is
