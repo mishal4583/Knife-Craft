@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
 import { miniGameViews, type MiniGameView } from "@/game/business/miniGames";
@@ -34,6 +34,10 @@ export function MiniGamesSheet({
   const views = miniGameViews(save, level);
   const open = views.filter((v) => v.state !== "locked").length;
   const closeRef = useRef<HTMLButtonElement>(null);
+  // Two sections (developer 2026-11-22: Cleaning is a section of its own under this button, apart from the games and from Business).
+  const [section, setSection] = useState<"games" | "cleaning">("games");
+  const cleaningLocked = level < CLEANING_FROM_LEVEL;
+  const cleaningWaiting = cleaningLocked ? 0 : cleanlinessOf(save).tasks.length;
 
   // Focus goes into the dialog, stays inside it (Tab wraps) and returns to what opened it when it closes.
   const sheetRef = useRef<HTMLElement>(null);
@@ -132,7 +136,13 @@ export function MiniGamesSheet({
               data-testid="minigames-count"
               className="mt-0.5 font-hand text-[14px] italic leading-none text-[#795a3a] land:mt-0"
             >
-              {open} of {views.length} open
+              {section === "cleaning"
+                ? cleaningLocked
+                  ? "locked"
+                  : cleaningWaiting > 0
+                    ? `${cleaningWaiting} ${cleaningWaiting === 1 ? "job" : "jobs"} waiting`
+                    : "all clean"
+                : `${open} of ${views.length} open`}
             </p>
           </div>
           <button
@@ -161,23 +171,69 @@ export function MiniGamesSheet({
           </button>
         </div>
 
-        <ul className="relative -mx-4 mt-1 grid min-h-0 grid-cols-2 gap-x-2.5 gap-y-3 overflow-y-auto overscroll-contain px-4 pb-7 pt-5 [-webkit-overflow-scrolling:touch] [mask-image:linear-gradient(to_bottom,#000_calc(100%-22px),transparent)] land:mt-0 land:grid-cols-4 land:gap-x-2 land:gap-y-3 land:pt-5">
-          {views.map((v) => (
-            <li key={v.entry.id} className="flex min-w-0 flex-col">
-              <Tile
-                view={v}
-                opensText={u.when(v.entry.firstLevel)}
-                has={has}
-                onPlay={() => {
-                  onClose();
-                  go(v.entry.screen);
-                }}
-              />
-            </li>
-          ))}
-          <li
-            className="col-span-full flex min-w-0 flex-col"
+        <div
+          role="tablist"
+          aria-label="Mini-games sections"
+          data-testid="minigames-tabs"
+          className="relative mt-2 grid grid-cols-2 gap-2 land:mt-1"
+        >
+          {(
+            [
+              { id: "games", icon: "🎮", label: "Mini-games", badge: null },
+              { id: "cleaning", icon: "🧹", label: "Cleaning", badge: cleaningWaiting },
+            ] as const
+          ).map((t) => {
+            const on = section === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={on}
+                data-testid={`minigames-tab-${t.id}`}
+                onClick={() => setSection(t.id)}
+                className={cn(
+                  "press relative flex h-12 items-center justify-center gap-2 rounded-2xl border-2 font-ui text-[14.5px] font-extrabold",
+                  on
+                    ? "border-[#8f4d1e] bg-[linear-gradient(170deg,#b8742f,#8a4b1c)] text-[#fff5df] shadow-soft"
+                    : "border-[#c9a366] bg-[#fff6df]/80 text-[#4a2410]",
+                )}
+              >
+                <span aria-hidden>{t.icon}</span>
+                {t.label}
+                {t.badge ? (
+                  <span
+                    data-testid={`minigames-tab-badge-${t.id}`}
+                    className="grid h-6 min-w-6 place-items-center rounded-full bg-tomato px-1.5 font-ui text-[12px] font-black text-ivory"
+                  >
+                    {t.badge}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+
+        {section === "games" ? (
+          <ul className="relative -mx-4 mt-1 grid min-h-0 grid-cols-2 gap-x-2.5 gap-y-3 overflow-y-auto overscroll-contain px-4 pb-7 pt-5 [-webkit-overflow-scrolling:touch] [mask-image:linear-gradient(to_bottom,#000_calc(100%-22px),transparent)] land:mt-0 land:grid-cols-4 land:gap-x-2 land:gap-y-3 land:pt-5">
+            {views.map((v) => (
+              <li key={v.entry.id} className="flex min-w-0 flex-col">
+                <Tile
+                  view={v}
+                  opensText={u.when(v.entry.firstLevel)}
+                  has={has}
+                  onPlay={() => {
+                    onClose();
+                    go(v.entry.screen);
+                  }}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div
             data-testid="minigames-cleaning-section"
+            className="relative -mx-4 min-h-0 overflow-y-auto overscroll-contain px-4 pb-7 pt-4 [-webkit-overflow-scrolling:touch]"
           >
             <CleaningSection
               save={save}
@@ -188,8 +244,8 @@ export function MiniGamesSheet({
                 go("business-cleanliness");
               }}
             />
-          </li>
-        </ul>
+          </div>
+        )}
       </section>
     </div>
   );
@@ -375,9 +431,6 @@ function CleaningSection({
       : "All clean";
   return (
     <div data-testid="minigames-cleaning">
-      <h3 className="mb-1.5 px-1 font-display text-[15px] font-black leading-none text-[#4a2410] [text-shadow:0_1px_0_rgba(255,255,255,0.6)]">
-        Cleaning
-      </h3>
       <button
         type="button"
         data-testid="minigame-cleaning"

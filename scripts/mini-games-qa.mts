@@ -309,12 +309,14 @@ console.log("F. The painted art (developer 2026-11-18)");
   const tabsBlock = dash.slice(dash.indexOf("const TABS"), dash.indexOf("const SEVERITY_ICON"));
   assert(
     /data-testid="minigames-cleaning-section"/.test(sheetSrc) &&
+      /minigames-tab-\$\{t\.id\}/.test(sheetSrc) &&
+      /id: "cleaning"/.test(sheetSrc) &&
       /data-testid="minigame-cleaning"/.test(sheetSrc) &&
       /go\("business-cleanliness"\)/.test(sheetSrc) &&
       /CLEANING_FROM_LEVEL/.test(sheetSrc) &&
       !/id: "cleanliness"/.test(tabsBlock) &&
       /const cleaningScreen = tab === "cleanliness"/.test(dash),
-    "F9: Cleanliness is its own section of the Mini-games sheet (opens the cleaning screen from CLEANING_FROM_LEVEL); the Business screen has no Cleanliness tab, and the cleaning screen has its own header without the tab strip",
+    "F9: Cleanliness is its own tab (section) of the Mini-games sheet, apart from the games (opens the cleaning screen from CLEANING_FROM_LEVEL); the Business screen has no Cleanliness tab, and the cleaning screen has its own header without the tab strip",
   );
 }
 

@@ -209,7 +209,9 @@ for (const size of SIZES) {
     await sleep(700);
     await page.evaluate(() => document.querySelector('[data-testid="minigames-shortcut"]')?.click());
     await sleep(500);
-    await page.evaluate(() => document.querySelector('[data-testid="minigame-cleaning"]')?.click());
+    await page.evaluate(() => document.querySelector('[data-testid="minigames-tab-cleaning"]')?.click());
+  await new Promise((r) => setTimeout(r, 300));
+  await page.evaluate(() => document.querySelector('[data-testid="minigame-cleaning"]')?.click());
   });
   // Inventory
   await visit(size, "inventory", async () => {

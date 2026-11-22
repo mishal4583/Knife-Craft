@@ -156,6 +156,10 @@ try {
   await sleep(700);
   await page.evaluate(() => document.querySelector('[data-testid="minigames-shortcut"]')?.click());
   await sleep(500);
+  await page.evaluate(() =>
+    document.querySelector('[data-testid="minigames-tab-cleaning"]')?.click(),
+  );
+  await new Promise((r) => setTimeout(r, 300));
   await page.evaluate(() => document.querySelector('[data-testid="minigame-cleaning"]')?.click());
   await sleep(1200);
   // The portrait is lazy-loaded below the fold: bring the card into view first, as a player scrolling would.
@@ -252,6 +256,10 @@ try {
   await sleep(700);
   await page.evaluate(() => document.querySelector('[data-testid="minigames-shortcut"]')?.click());
   await sleep(500);
+  await page.evaluate(() =>
+    document.querySelector('[data-testid="minigames-tab-cleaning"]')?.click(),
+  );
+  await new Promise((r) => setTimeout(r, 300));
   await page.evaluate(() => document.querySelector('[data-testid="minigame-cleaning"]')?.click());
   await sleep(1500);
   // open the Kitchen's card (the rows are inside it)

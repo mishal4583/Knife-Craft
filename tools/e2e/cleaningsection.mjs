@@ -1,6 +1,6 @@
 // Cleanliness is its own section under the Kitchen's Mini-games button (developer 2026-11-22: "remove cleanliness section from business and put it under
 // minigames button as a separate section"), restaurant build, in a real browser:
-//   1. The Mini-games sheet has a "Cleaning" section with the Cleanliness card, saying how many jobs wait; the card is in the sheet's grid, not a game.
+//   1. The Mini-games sheet has two tabs, "Mini-games" and "Cleaning" (with the waiting-jobs count); the Cleaning tab holds the Cleanliness card, apart from the games.
 //   2. The Business screen has no Cleanliness tab any more.
 //   3. The card opens the cleaning screen: header "Cleanliness", no Business tab strip, the rooms' cards are there, and Back returns to the Kitchen.
 //   4. Below its level the card is locked (aria-disabled) and says when it opens.
@@ -63,6 +63,10 @@ const saveWith = (tasks, settings = {}, cleaned = 0) =>
   });
 
 const click = (sel) => page.evaluate((s) => document.querySelector(s)?.click(), sel);
+const openCleaningTab = async () => {
+  await click('[data-testid="minigames-tab-cleaning"]');
+  await sleep(300);
+};
 const openSheet = async () => {
   await click('[data-testid="minigames-shortcut"]');
   await page
@@ -74,12 +78,34 @@ const openSheet = async () => {
 await boot(page, saveWith(["grease", "tables"]));
 await sleep(800);
 await openSheet();
+const tabs = await page.evaluate(() => ({
+  games: document
+    .querySelector('[data-testid="minigames-tab-games"]')
+    ?.getAttribute("aria-selected"),
+  cleaning: document
+    .querySelector('[data-testid="minigames-tab-cleaning"]')
+    ?.getAttribute("aria-selected"),
+  badge:
+    document.querySelector('[data-testid="minigames-tab-badge-cleaning"]')?.textContent ?? null,
+  tabH: Math.round(
+    document.querySelector('[data-testid="minigames-tab-cleaning"]')?.getBoundingClientRect()
+      .height ?? 0,
+  ),
+  gamesShown: document.querySelectorAll(
+    '[data-testid^="minigame-"]:not([data-testid="minigame-cleaning"])',
+  ).length,
+  cardShown: !!document.querySelector('[data-testid="minigame-cleaning"]'),
+}));
+await shot(page, "cleaning-tab-closed-portrait");
+await openCleaningTab();
 const sec = await page.evaluate(() => {
   const s = document.querySelector('[data-testid="minigames-cleaning-section"]');
   const c = document.querySelector('[data-testid="minigame-cleaning"]');
   return {
     section: !!s,
-    heading: s?.querySelector("h3")?.textContent ?? null,
+    others: document.querySelectorAll(
+      '[data-testid^="minigame-"]:not([data-testid="minigame-cleaning"])',
+    ).length,
     inSheet: !!document.querySelector('[data-testid="minigames-sheet"]')?.contains(s),
     status: document.querySelector('[data-testid="mg-status-cleaning"]')?.textContent ?? null,
     state: c?.dataset.state ?? null,
@@ -88,13 +114,19 @@ const sec = await page.evaluate(() => {
   };
 });
 check(
-  "1 the Mini-games sheet has a Cleaning section with the Cleanliness card and its waiting jobs",
-  sec.section &&
+  "1 the sheet has a Mini-games tab and a Cleaning tab (2 waiting); the Cleaning tab holds the Cleanliness card and no game",
+  tabs.games === "true" &&
+    tabs.cleaning === "false" &&
+    tabs.badge === "2" &&
+    tabs.tabH >= 48 &&
+    !tabs.cardShown &&
+    tabs.gamesShown >= 6 &&
+    sec.section &&
     sec.inSheet &&
-    sec.heading === "Cleaning" &&
+    sec.others === 0 &&
     sec.status === "2 jobs waiting" &&
     sec.state === "ready",
-  sec,
+  { tabs, sec },
 );
 await shot(page, "cleaning-section-portrait");
 
@@ -124,6 +156,7 @@ check(
 await click('[data-nav="kitchen"]');
 await sleep(700);
 await openSheet();
+await openCleaningTab();
 await click('[data-testid="minigame-cleaning"]');
 await page.waitForSelector('[data-testid="cleanliness"]', { timeout: 8000 }).catch(() => null);
 await sleep(700);
@@ -155,6 +188,7 @@ check("3b Back returns to the Kitchen", back);
 await page.setViewport({ width: 320, height: 568, deviceScaleFactor: 1 });
 await sleep(600);
 await openSheet();
+await openCleaningTab();
 const narrow = await page.evaluate(() => {
   const s = document.querySelector('[data-testid="minigames-sheet"]');
   const c = document.querySelector('[data-testid="minigame-cleaning"]');
@@ -177,6 +211,7 @@ await click('[data-testid="minigames-close"]');
 await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
 await sleep(900);
 await openSheet();
+await openCleaningTab();
 const wide = await page.evaluate(() => {
   const c = document.querySelector('[data-testid="minigame-cleaning"]');
   c?.scrollIntoView({ block: "center" });
@@ -196,6 +231,7 @@ N = 2;
 await boot(page, saveWith([]));
 await sleep(800);
 await openSheet();
+await openCleaningTab();
 const low = await page.evaluate(() => {
   const c = document.querySelector('[data-testid="minigame-cleaning"]');
   return {

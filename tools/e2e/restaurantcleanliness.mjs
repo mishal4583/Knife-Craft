@@ -90,6 +90,8 @@ async function openCleanliness() {
   await sleep(700);
   await page.evaluate(() => document.querySelector('[data-testid="minigames-shortcut"]')?.click());
   await sleep(500);
+  await page.evaluate(() => document.querySelector('[data-testid="minigames-tab-cleaning"]')?.click());
+  await sleep(300);
   const tab = await page.evaluate(() => {
     const b = document.querySelector('[data-testid="minigame-cleaning"]');
     window.__cleaningCard = document.querySelector('[data-testid="mg-status-cleaning"]')?.textContent ?? null;

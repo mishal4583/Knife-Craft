@@ -68,6 +68,10 @@ async function openCleanliness() {
   await sleep(700);
   await page.evaluate(() => document.querySelector('[data-testid="minigames-shortcut"]')?.click());
   await sleep(500);
+  await page.evaluate(() =>
+    document.querySelector('[data-testid="minigames-tab-cleaning"]')?.click(),
+  );
+  await new Promise((r) => setTimeout(r, 300));
   await page.evaluate(() => document.querySelector('[data-testid="minigame-cleaning"]')?.click());
   await page
     .waitForSelector('[data-testid="cleanliness-staff"]', { timeout: 8000 })
