@@ -9,6 +9,9 @@
  * chef's hands have carried the plate away (RECIPE_COMPLETED) and before
  * the Knife Report.
  *
+ * - LANDSCAPE (developer 2026-11-21): a kind that has a 16:9 film (`WIDE_CLIPS`: fruit and salad so far, made with Gemini and built by
+ *   scripts/make-wide-cooking-videos.py) plays it FULL FRAME in a landscape window; the other kinds play their portrait film on its painted
+ *   backdrop (`FilmBackdrop`), and an upright phone always plays the portrait film. More kinds join by adding their wide files.
  * - Mounted as soon as plating starts (`playing` false: invisible, only
  *   buffering), so it is ready when the hands leave. Bundled locally
  *   (WebM VP9 first, H.264 MP4 fallback) — no network request.
@@ -24,6 +27,7 @@ import { useEffect, useRef, useState } from "react";
 import { AudioManager } from "@/game/AudioManager";
 import { PauseManager } from "@/game/PauseManager";
 import { FilmBackdrop } from "./FilmBackdrop";
+import { useLandscape } from "./layoutMode";
 import { landscapeClipArt, type ClipId } from "@/game/landscapeArt";
 import type { DishKind } from "@/game/recipes/dishKind";
 import cookingWebm from "@/assets/video/chef-cooking.webm";
@@ -44,6 +48,13 @@ import curryPoster from "@/assets/video/chef-curry-poster.webp";
 import breadWebm from "@/assets/video/chef-bread.webm";
 import breadMp4 from "@/assets/video/chef-bread.mp4";
 import breadPoster from "@/assets/video/chef-bread-poster.webp";
+// The LANDSCAPE films (developer 2026-11-21: Gemini-made 16:9 films, built by scripts/make-wide-cooking-videos.py). A kind with no wide film yet plays its portrait one.
+import fruitWideWebm from "@/assets/video/chef-fruit-wide.webm";
+import fruitWideMp4 from "@/assets/video/chef-fruit-wide.mp4";
+import fruitWidePoster from "@/assets/video/chef-fruit-wide-poster.webp";
+import saladWideWebm from "@/assets/video/chef-salad-wide.webm";
+import saladWideMp4 from "@/assets/video/chef-salad-wide.mp4";
+import saladWidePoster from "@/assets/video/chef-salad-wide-poster.webp";
 
 /** One film per kind of dish (dishKindFor): fruit cups with a honey drizzle, the chef tossing a salad, stirring a curry pot, topping bruschetta, cooking at the stove, or plating cut vegetables. */
 const CLIPS: Record<DishKind, { webm: string; mp4: string; poster: string }> = {
@@ -53,6 +64,12 @@ const CLIPS: Record<DishKind, { webm: string; mp4: string; poster: string }> = {
   bread: { webm: breadWebm, mp4: breadMp4, poster: breadPoster },
   cooked: { webm: cookingWebm, mp4: cookingMp4, poster: cookingPoster },
   plated: { webm: platingWebm, mp4: platingMp4, poster: platingPoster },
+};
+
+/** The wide (16:9) film of each kind that has one: played FULL FRAME in a landscape window instead of the portrait film on its painted backdrop (`FilmBackdrop`). */
+const WIDE_CLIPS: Partial<Record<DishKind, { webm: string; mp4: string; poster: string }>> = {
+  fruit: { webm: fruitWideWebm, mp4: fruitWideMp4, poster: fruitWidePoster },
+  salad: { webm: saladWideWebm, mp4: saladWideMp4, poster: saladWidePoster },
 };
 
 /** The wide background picture of each film (a landscape window: `FilmBackdrop`). */
@@ -91,7 +108,9 @@ export function CookingClip({
   /** Phase 3 (C): Rush Hour plays the film faster (the watchdogs count real time, so a faster film only ends sooner). */
   rate?: number;
 }) {
-  const clip = CLIPS[kind];
+  const landscape = useLandscape();
+  const wide = landscape ? WIDE_CLIPS[kind] : undefined;
+  const clip = wide ?? CLIPS[kind];
   const videoRef = useRef<HTMLVideoElement>(null);
   const doneRef = useRef(false);
   const shownAt = useRef(0);
@@ -160,6 +179,51 @@ export function CookingClip({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once when the film is due; finish/onDone are stable for this run
   }, [playing]);
 
+  /** The film itself (the portrait film, or the wide one in a landscape window). */
+  const videoEl = (
+    <video
+      ref={videoRef}
+      playsInline
+      muted
+      preload="auto"
+      poster={clip.poster}
+      disablePictureInPicture
+      onPlaying={() => setStarted(true)}
+      onEnded={finish}
+      onError={() => {
+        if (playing) finish();
+      }}
+      className="absolute inset-0 h-full w-full object-cover"
+    >
+      <source src={clip.webm} type="video/webm" />
+      <source
+        src={clip.mp4}
+        type="video/mp4"
+        // The last <source> failing is reported here, not on <video>.
+        onError={() => {
+          if (playing) finish();
+        }}
+      />
+    </video>
+  );
+  const skipButton = (place: React.CSSProperties, className: string) => (
+    <button
+      type="button"
+      aria-label="Skip cooking"
+      disabled={leaving}
+      onClick={(e) => {
+        e.stopPropagation();
+        finish();
+      }}
+      style={place}
+      className={className}
+    >
+      <span className="flex h-[38px] items-center rounded-full bg-walnut-dark/60 px-4 font-ui text-[13.5px] font-extrabold uppercase tracking-[0.16em] text-[#fff6e6] shadow-[0_2px_8px_rgba(0,0,0,0.25)] backdrop-blur-md">
+        Skip <span aria-hidden>&nbsp;›</span>
+      </span>
+    </button>
+  );
+
   return (
     <div
       role="dialog"
@@ -177,58 +241,34 @@ export function CookingClip({
     >
       {/* Landscape (a phone on its side, a desktop window; developer 2026-11-20): the film has its OWN wide picture (the same room and light, the film's frame in its middle);
           the film is drawn over the middle of it at the same scale and fades into it at both edges (`FilmBackdrop`). Portrait: the film fills the screen. */}
-      <FilmBackdrop
-        art={landscapeClipArt(CLIP_ART[kind])}
-        share={608 / 1920}
-        video={
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            preload="auto"
-            poster={clip.poster}
-            disablePictureInPicture
-            onPlaying={() => setStarted(true)}
-            onEnded={finish}
-            onError={() => {
-              if (playing) finish();
-            }}
-            className="absolute inset-0 h-full w-full object-cover"
-          >
-            <source src={clip.webm} type="video/webm" />
-            <source
-              src={clip.mp4}
-              type="video/mp4"
-              // The last <source> failing is reported here, not on <video>.
-              onError={() => {
-                if (playing) finish();
-              }}
-            />
-          </video>
-        }
-        overlay={
-          playing ? (
-            // Sits exactly over the corner where the source film carried an AI
-            // watermark (painted out of the files too, see WATERMARK_*), and
-            // stays through the fade-out so that corner is never bare.
-            <button
-              type="button"
-              aria-label="Skip cooking"
-              disabled={leaving}
-              onClick={(e) => {
-                e.stopPropagation();
-                finish();
-              }}
-              style={{ left: `${WATERMARK_X * 100}%`, top: `${WATERMARK_Y * 100}%` }}
-              className="absolute z-10 flex h-[52px] min-w-[84px] -translate-x-1/2 -translate-y-1/2 items-center justify-center"
-            >
-              <span className="flex h-[38px] items-center rounded-full bg-walnut-dark/60 px-4 font-ui text-[13.5px] font-extrabold uppercase tracking-[0.16em] text-[#fff6e6] shadow-[0_2px_8px_rgba(0,0,0,0.25)] backdrop-blur-md">
-                Skip <span aria-hidden>&nbsp;›</span>
-              </span>
-            </button>
-          ) : null
-        }
-      />
+      {wide ? (
+        // A wide film in a landscape window: the film IS the picture (16:9, covering the window), the skip control in its bottom-right corner (the film keeps that corner calm).
+        <div className="absolute inset-0" data-testid="cooking-clip-wide">
+          {videoEl}
+          {playing
+            ? skipButton(
+                { right: "3%", bottom: "5%" },
+                "absolute z-10 flex h-[52px] min-w-[84px] items-center justify-center",
+              )
+            : null}
+        </div>
+      ) : (
+        <FilmBackdrop
+          art={landscapeClipArt(CLIP_ART[kind])}
+          share={608 / 1920}
+          video={videoEl}
+          overlay={
+            playing
+              ? // Sits exactly over the corner where the source film carried an AI watermark (painted out of the files too, see WATERMARK_*),
+                // and stays through the fade-out so that corner is never bare.
+                skipButton(
+                  { left: `${WATERMARK_X * 100}%`, top: `${WATERMARK_Y * 100}%` },
+                  "absolute z-10 flex h-[52px] min-w-[84px] -translate-x-1/2 -translate-y-1/2 items-center justify-center",
+                )
+              : null
+          }
+        />
+      )}
       {playing && !started ? <span className="sr-only">Cooking…</span> : null}
     </div>
   );
