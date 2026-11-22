@@ -304,22 +304,27 @@ def water(stems: list[str], top_hz: float) -> list[np.ndarray]:
 
 cloth = lowpass(read(find(RPG, "cloth-heavy")), 1100)  # the soft body of a cloth being drawn over wood
 rub = joined(friction([1, 3, 2, 5, 4]), 4.0)
-emit("wash-wipe", soft_bed([(rub, 0.0), (joined([cloth], 4.0, 0.08), -9.0)], 4.0, -21.0), 96, loop=True)  # the cutting board's cloth
-emit("wash-scrub", soft_bed([(rub, 0.0), (joined(water(["water_splash-03", "water_splash-06"], 3000), 4.0), -7.0)], 4.0, -21.0), 96, loop=True)  # the soapy sponge
+emit("wash-wipe", soft_bed([(rub, 0.0), (joined([cloth], 4.0, 0.08), -9.0)], 4.0, -21.0), 64, loop=True)  # the cutting board's cloth
+emit("wash-scrub", soft_bed([(rub, 0.0), (joined(water(["water_splash-03", "water_splash-06"], 3000), 4.0), -7.0)], 4.0, -21.0), 64, loop=True)  # the soapy sponge
 emit(
     "wash-rinse",
     soft_bed([(joined(water(["water_splash-03", "water_splash-06"], 3400), 4.0), 0.0), (joined(water(["water_splash-04", "water_splash-01"], 2400), 4.0), -10.0)], 4.0, -22.0),
-    96,
+    64,
     loop=True,
 )  # running water
 
 # The other cleaning tools (developer 2026-11-22: "better sounds for mopping and all other cleaning tasks"): each tool is one looped bed that follows the hand.
 cloth_body = fade(lowpass(trim(read(find(RPG, "cloth-heavy")), lead_db=-40, tail_db=-40), 700), 30, 30)
-emit("wash-mop", soft_bed([(joined(water(["water_splash-04", "water_splash-03", "water_splash-06"], 2600), 4.0), 0.0), (joined([cloth_body], 4.0, 0.08), -8.0)], 4.0, -21.0), 96, loop=True)  # a wet mop dragged over a floor
-emit("wash-sweep", soft_bed([(joined(friction([5, 1, 4, 2, 3], 900, 5500), 4.0), 0.0), (joined([cloth_body], 4.0, 0.08), -14.0)], 4.0, -22.0), 96, loop=True)  # dry bristles of a broom
-emit("wash-scrape", soft_bed([(joined(scratch(["scratch_004", "scratch_005"], 500, 4200), 4.0), 0.0), (joined(friction([3, 4], 300, 2500), 4.0), -6.0)], 4.0, -22.0), 96, loop=True)  # a scraper lifting baked-on food
-emit("wash-brush", soft_bed([(joined(friction([2, 1, 3], 300, 3000), 4.0), 0.0), (joined(scratch(["scratch_004"], 400, 3000), 4.0), -7.0), (joined(water(["water_splash-03", "water_splash-06"], 2600), 4.0), -9.0)], 4.0, -21.0), 96, loop=True)  # a toilet brush in the bowl
-emit("wash-glass", soft_bed([(joined(friction([4, 5, 3], 1500, 6500), 4.0), 0.0), (joined(scratch(["scratch_005"], 2000, 6000), 4.0), -9.0)], 4.0, -24.0), 96, loop=True)  # a cloth over the mirror
+emit("wash-mop", soft_bed([(joined(water(["water_splash-04", "water_splash-03", "water_splash-06"], 2600), 4.0), 0.0), (joined([cloth_body], 4.0, 0.08), -8.0)], 4.0, -21.0), 64, loop=True)  # a wet mop dragged over a floor
+emit("wash-sweep", soft_bed([(joined(friction([5, 1, 4, 2, 3], 900, 5500), 4.0), 0.0), (joined([cloth_body], 4.0, 0.08), -14.0)], 4.0, -22.0), 64, loop=True)  # dry bristles of a broom
+emit("wash-scrape", soft_bed([(joined(scratch(["scratch_004", "scratch_005"], 500, 4200), 4.0), 0.0), (joined(friction([3, 4], 300, 2500), 4.0), -6.0)], 4.0, -22.0), 64, loop=True)  # a scraper lifting baked-on food
+emit("wash-brush", soft_bed([(joined(friction([2, 1, 3], 300, 3000), 4.0), 0.0), (joined(scratch(["scratch_004"], 400, 3000), 4.0), -7.0), (joined(water(["water_splash-03", "water_splash-06"], 2600), 4.0), -9.0)], 4.0, -21.0), 64, loop=True)  # a toilet brush in the bowl
+emit("wash-glass", soft_bed([(joined(friction([4, 5, 3], 1500, 6500), 4.0), 0.0), (joined(scratch(["scratch_005"], 2000, 6000), 4.0), -9.0)], 4.0, -24.0), 64, loop=True)  # a cloth over the mirror
+
+# Stirring the Sauce Station's bowl (developer 2026-11-22: "while stirring add a satisfying stirring sound"): one looped bed that follows the spoon or the whisk.
+bubbles = lowpass(read(find(RPG, "bubble")), 1400)
+emit("wash-stir", soft_bed([(joined(water(["water_splash-04", "water_splash-01"], 1800), 4.0), 0.0), (joined(friction([3, 4, 2], 300, 2000), 4.0), -7.0), (joined([fade(trim(bubbles), 20, 40)], 4.0, 0.1), -9.0)], 4.0, -21.0), 64, loop=True)  # a wooden spoon turning thick sauce
+emit("wash-whisk", soft_bed([(joined(water(["water_splash-02", "water_splash-04", "water_splash-01"], 5200), 4.0), 0.0), (joined(friction([5, 1], 1500, 5200), 4.0), -9.0)], 4.0, -22.0), 64, loop=True)  # a whisk beating a thin dressing
 
 # ---- the music: four calm moods, each a seamless loop --------------------------------------------------------------------------------------
 LEVEL = -21.0  # RMS of every track; the game's own faders set how loud each mood is

@@ -403,10 +403,12 @@ console.log("Z. Mini-game sounds");
   );
   assert(
     uses(park, "gameWin", "gameLose") &&
-      ["sauceLiquid", "sauceSpice", "sauceJar", "sauceProduce", "sauceWhisk", "sauceBottle"].every(
-        (n) => sauce.includes(`"${n}"`),
+      // RULE CHANGE (developer 2026-11-22: "while stirring add a satisfying stirring sound"): the whisk is no longer a swish per 240 ms (`sauceWhisk`) but
+      // a continuous stir bed (Z11).
+      ["sauceLiquid", "sauceSpice", "sauceJar", "sauceProduce", "sauceBottle"].every((n) =>
+        sauce.includes(`"${n}"`),
       ),
-    "Z7: Car Park has its win and loss; the Sauce Station sounds each kind of ingredient, the whisk and the bottle",
+    "Z7: Car Park has its win and loss; the Sauce Station sounds each kind of ingredient and the bottle",
   );
 
   // developer 2026-11-22: wiping the board and washing dishes sound like ONE soft, real wipe, not pings, bubbles, a squeak or splashes.
@@ -471,6 +473,17 @@ console.log("Z. Mini-game sounds");
     );
   }
 
+  {
+    // developer 2026-11-22: stirring the sauce is ONE soft recorded bed that follows the spoon or the whisk (not a swish every 240 ms).
+    const sauce = read("src/components/kc/sauce/SauceStationGame.tsx");
+    assert(
+      (AUDIO_FILES as Record<string, { loop?: boolean }>)["wash-stir"]?.loop === true &&
+        (AUDIO_FILES as Record<string, { loop?: boolean }>)["wash-whisk"]?.loop === true &&
+        /washStroke\(\s*sauce\.tool === "whisk" \? "whisk" : "stir"/.test(sauce) &&
+        !/playSfx\("sauceWhisk"\)/.test(sauce),
+      "Z11: the Sauce Station's spoon and whisk run one looped recorded bed (wash-stir / wash-whisk) that swells with the turning speed, also for the auto spoon; the old per-240 ms swish is gone",
+    );
+  }
   {
     // developer 2026-11-22: every cleaning tool has its own soft recorded bed (no ping per stain either).
     const area = read("src/components/kc/business/AreaCleaningPrototype.tsx");

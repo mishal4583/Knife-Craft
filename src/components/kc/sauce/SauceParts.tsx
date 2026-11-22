@@ -938,8 +938,8 @@ export function SauceStyles() {
       @keyframes sauce-belt{to{background-position-x:-512px}}
       @keyframes sauce-pour-idle{0%,100%{box-shadow:0 6px 0 #5a3410,0 10px 18px rgba(20,10,4,.45),0 0 0 0 rgba(255,214,140,.0),inset 0 2px 0 rgba(255,255,255,.45)}50%{box-shadow:0 6px 0 #5a3410,0 10px 18px rgba(20,10,4,.45),0 0 18px 4px rgba(255,214,140,.55),inset 0 2px 0 rgba(255,255,255,.45)}}
       .sauce-pour-idle{animation:sauce-pour-idle 1.8s ease-in-out infinite}
-      @keyframes sauce-pour-go{0%,100%{scale:1}50%{scale:1.035}}
-      .sauce-pour-go{animation:sauce-pour-go .32s ease-in-out infinite}
+      @keyframes sauce-pour-go{0%,100%{box-shadow:0 6px 0 #5a3410,0 10px 18px rgba(20,10,4,.45),0 0 10px 2px rgba(255,214,140,.45),inset 0 2px 0 rgba(255,255,255,.45)}50%{box-shadow:0 6px 0 #5a3410,0 10px 18px rgba(20,10,4,.45),0 0 26px 8px rgba(255,214,140,.85),inset 0 2px 0 rgba(255,255,255,.45)}}
+      .sauce-pour-go{animation:sauce-pour-go .7s ease-in-out infinite}
       @keyframes sauce-hint{0%,100%{scale:1;box-shadow:0 0 0 0 rgba(255,210,90,0)}50%{scale:1.09;box-shadow:0 0 0 5px rgba(255,210,90,.95),0 0 18px 6px rgba(255,190,60,.75)}}
       .sauce-hint{animation:sauce-hint .9s ease-in-out infinite;z-index:5}
       @keyframes sauce-hint-hand{0%,100%{translate:0 0}50%{translate:0 -7px}}

@@ -52,7 +52,7 @@ export type Part =
 const note = (hz: number, at: number, gain: number): Part => ({ hz, at, gain });
 
 /** The looped, recorded beds that follow a cleaning hand (`wash-<kind>`), and how loud each gets at full speed (all soft: it is a background of the touch). */
-export type WashKind = "wipe" | "scrub" | "rinse" | "mop" | "sweep" | "scrape" | "brush" | "glass";
+export type WashKind = "wipe" | "scrub" | "rinse" | "mop" | "sweep" | "scrape" | "brush" | "glass" | "stir" | "whisk";
 const WASH_PEAK: Record<WashKind, number> = {
   wipe: 0.5,
   scrub: 0.45,
@@ -62,6 +62,8 @@ const WASH_PEAK: Record<WashKind, number> = {
   scrape: 0.42,
   brush: 0.45,
   glass: 0.5,
+  stir: 0.55,
+  whisk: 0.65,
 };
 
 class AudioManagerImpl {
@@ -631,7 +633,8 @@ class AudioManagerImpl {
    * voice runs: a recorded, softened bed looped, whose loudness and speed follow the stroke. Call it on every move; it fades out by itself 170 ms after
    * the last call, so there is no tick and no stop to wire. `kind`: "wipe" is the dry-to-damp cloth over the cutting board, "scrub" the close, soapy
    * rub of the sponge, "rinse" running water; for the cleaning tools (developer 2026-11-22): "mop" a wet floor mop, "sweep" a broom's dry bristles, "scrape" a
-   * scraper, "brush" the toilet brush, "glass" the cloth on the mirror. `speed` is 0..1. Gated on the Sound setting.
+   * scraper, "brush" the toilet brush, "glass" the cloth on the mirror; for the Sauce Station (developer 2026-11-22) "stir" a spoon turning thick sauce and
+   * "whisk" a whisk beating a thin one. `speed` is 0..1. Gated on the Sound setting.
    */
   washStroke(kind: WashKind, speed: number): void {
     if (!this.enabled) return;

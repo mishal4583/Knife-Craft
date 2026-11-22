@@ -833,10 +833,13 @@ console.log("M. 2026-11-11: the pot's liquid, Play again, the Pour button");
       /data-testid="sauce-pour"/.test(gameSrc) &&
       /LET GO NOW!/.test(gameSrc) &&
       /Too much!/.test(gameSrc) &&
-      /navigator\.vibrate\?\.\(14\)/.test(gameSrc) &&
+      // RULE CHANGE (developer 2026-11-22: "when the bottle is about to be filled till the line the page automatically shakes or shivers"): no phone buzz and no
+      // scale pulse on the line any more; the button only glows.
+      !/navigator\.vibrate/.test(gameSrc) &&
+      !/scale:1\.035/.test(parts) &&
       /sauce-pour-idle/.test(parts) &&
       /\.sauce-pour-idle,\.sauce-pour-go\{animation:none\}/.test(parts),
-    "M3: the Pour button shows the sauce rising in it, 'LET GO NOW!' on the line (with a small buzz), 'Too much!' past it, breathes when idle, and Reduced Motion turns its animation off",
+    "M3: the Pour button shows the sauce rising in it, 'LET GO NOW!' on the line (a glow only: no buzz, no shaking), 'Too much!' past it, breathes when idle, and Reduced Motion turns its animation off",
   );
   assert(
     /sameSauceId/.test(gameSrc) &&
@@ -856,7 +859,8 @@ console.log("M. 2026-11-11: the pot's liquid, Play again, the Pour button");
     "M5b: in a wide window the bowl is let down onto the table",
   );
   assert(
-    /h-\[clamp\(70px,10\.5vh,108px\)\]/.test(gameSrc) &&
+    // RULE CHANGE (developer 2026-11-22: "make this a little more big"): the tile height grew from clamp(70px,10.5vh,108px) to clamp(84px,12.5vh,128px).
+    /h-\[clamp\(84px,12\.5vh,128px\)\]/.test(gameSrc) &&
       !/w-full truncate rounded-md border/.test(gameSrc),
     "M5c: the pantry tiles are bigger and their name is never cut with an ellipsis",
   );

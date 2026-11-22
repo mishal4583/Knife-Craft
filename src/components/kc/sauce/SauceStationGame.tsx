@@ -259,8 +259,6 @@ function Round({
   const oilLog = useRef<{ t: number; v: number }[]>([]);
   const autoRef = useRef(false);
   const lastMove = useRef(0);
-  /** When the whisk last made its sound (a soft swish about every 240 ms while it turns). */
-  const lastWhiskAt = useRef(0);
   const lastAng = useRef<number | null>(null);
   /** The whisk's unwrapped angle and its recent samples: the speed is the net turn over `OMEGA_WINDOW_MS`. */
   const cumAng = useRef(0);
@@ -317,6 +315,13 @@ function Round({
         blendRef.current = nb;
         setBlend(nb);
         setOmega(w);
+        // The sound of stirring: ONE soft recorded bed (a spoon turning thick sauce, a whisk beating a thin one) that swells with the speed of the turn, and
+        // runs by itself for the auto spoon (developer 2026-11-22; it fades 170 ms after the last call, so there is nothing to stop).
+        if (hasAny && w > 0.15)
+          AudioManager.washStroke(
+            sauce.tool === "whisk" ? "whisk" : "stir",
+            Math.min(1, w / (sauce.tool === "whisk" ? 3.2 : 2)),
+          );
         // the clock shows whole seconds: draw once a second (it used to re-render the whole round 20 times a second)
         const secNow = Math.ceil(msRef.current / 1000);
         if (secNow !== shownSecRef.current) {
@@ -486,10 +491,6 @@ function Round({
     }
     lastAng.current = ang;
     lastMove.current = now;
-    if (omegaRef.current > 0.3 && now - lastWhiskAt.current > 240) {
-      lastWhiskAt.current = now;
-      AudioManager.playSfx("sauceWhisk");
-    }
   };
   const onToolDown = (e: React.PointerEvent) => {
     if (phaseRef.current !== "mix") return;
@@ -1332,8 +1333,8 @@ function PantryTile({
         onPointerCancel={onUp}
         onContextMenu={(e) => e.preventDefault()}
         className={cn(
-          // Developer 2026-11-21 ("make the ingredients a little bigger and show the name fully"): taller tiles, a bigger picture, the name on up to two lines.
-          "press relative flex h-[clamp(70px,10.5vh,108px)] flex-col items-center justify-end rounded-xl px-0 pb-0 pt-1 [@media(max-height:620px)]:h-[64px]",
+          // Developer 2026-11-21 ("make the ingredients a little bigger and show the name fully"): taller tiles, a bigger picture, the name on up to two lines; 2026-11-22 ("make this a little more big"): bigger again.
+          "press relative flex h-[clamp(84px,12.5vh,128px)] flex-col items-center justify-end rounded-xl px-0 pb-0 pt-1 [@media(max-height:620px)]:h-[64px]",
           disabled && "opacity-60",
           hint && "sauce-hint",
         )}
@@ -1358,11 +1359,11 @@ function PantryTile({
           alt=""
           draggable={false}
           className="pointer-events-none relative z-[1] min-h-0 flex-1 select-none object-contain drop-shadow-[0_4px_3px_rgba(40,20,5,0.5)]"
-          style={{ maxHeight: "calc(100% - 28px)" }}
+          style={{ maxHeight: "calc(100% - 30px)" }}
         />
         <span
           className={cn(
-            "relative z-[2] -mt-0.5 flex min-h-[26px] w-full items-center justify-center whitespace-normal break-words rounded-md border px-0.5 text-center font-ui text-[10.5px] font-extrabold leading-[12px] text-walnut-dark shadow-[0_2px_0_rgba(60,30,10,0.45)] land:text-[11px]",
+            "relative z-[2] -mt-0.5 flex min-h-[28px] w-full items-center justify-center whitespace-normal break-words rounded-md border px-0.5 text-center font-ui text-[11px] font-extrabold leading-[13px] text-walnut-dark shadow-[0_2px_0_rgba(60,30,10,0.45)] land:text-[12px]",
             need === 0
               ? "border-[#5a9a3f] bg-[#cfe6b8]"
               : "border-[#a9743a] bg-[linear-gradient(180deg,#f3dcaa,#e2bd7a)]",
@@ -1632,18 +1633,7 @@ export function PourButton({
   const over = pouring && !good && fill > FILL_LINE;
   const progress = Math.min(1, Math.max(0, fill / FILL_LINE));
   const state = disabled ? "off" : over ? "over" : onLine ? "line" : pouring ? "pour" : "idle";
-  // A short buzz the moment the level reaches the line (where the phone can).
-  const wasOnLine = useRef(false);
-  useEffect(() => {
-    if (onLine && !wasOnLine.current && !reducedMotion) {
-      try {
-        navigator.vibrate?.(14);
-      } catch {
-        /* optional */
-      }
-    }
-    wasOnLine.current = onLine;
-  }, [onLine, reducedMotion]);
+  // No buzz and no shaking when the level reaches the line (developer 2026-11-22: "the page automatically shakes or shivers"): only the button's glow pulses.
   const rim =
     state === "line"
       ? "#e8b43a"
