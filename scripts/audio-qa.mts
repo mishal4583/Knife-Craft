@@ -408,6 +408,41 @@ console.log("Z. Mini-game sounds");
       ),
     "Z7: Car Park has its win and loss; the Sauce Station sounds each kind of ingredient, the whisk and the bottle",
   );
+
+  // developer 2026-11-22: wiping the board and washing dishes sound like ONE soft, real wipe, not pings, bubbles, a squeak or splashes.
+  const am = read("src/game/AudioManager.ts");
+  const stroke = am.slice(am.indexOf("washStroke("), am.indexOf("private stopWashVoice"));
+  const prep = read("src/game/scenes/PreparationScene.ts");
+  const clothStep = prep.slice(
+    prep.indexOf("private stepCloth"),
+    prep.indexOf("private finishCleanup"),
+  );
+  const sink = read("src/components/kc/restaurant/WashUpSink.tsx");
+  {
+    // Run: a stroke of the cloth starts ONE looped voice (the bed is fetched), further strokes only steer it.
+    const wipeFetches = fetched;
+    AudioManager.washStroke("wipe", 0.6);
+    await new Promise((r) => setTimeout(r, 30));
+    AudioManager.washStroke("wipe", 0.8);
+    const nodesAfter = created;
+    AudioManager.washStroke("wipe", 0.4);
+    assert(
+      fetched > wipeFetches && created === nodesAfter,
+      "Z8b: a wipe stroke fetches the cloth bed once and the next strokes make no new nodes (one continuous voice, no per-stroke sound)",
+      { fetched: fetched - wipeFetches, nodes: created - nodesAfter },
+    );
+  }
+  assert(
+    ["wash-wipe", "wash-scrub", "wash-rinse"].every(
+      (k) => (AUDIO_FILES as Record<string, { loop?: boolean }>)[k]?.loop === true,
+    ) &&
+      /"wipe" \| "scrub" \| "rinse"/.test(stroke) &&
+      !/bubble/.test(stroke) &&
+      /washStroke\(\s*"wipe"/.test(clothStep) &&
+      !/playSparkle\(|playSfx\("squeak"\)|playScrub\(/.test(clothStep) &&
+      !/playSparkle\(/.test(sink),
+    "Z8: the board's cloth, the sponge and the rinse each run ONE looped, recorded, soft bed that follows the hand (wash-wipe / wash-scrub / wash-rinse); no ping per patch or stain, no bubble, no squeak",
+  );
 }
 
 AudioManager.setMusicMood("off");

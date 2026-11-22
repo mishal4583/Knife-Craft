@@ -532,7 +532,6 @@ export function WashUpSink({
       }, STREAK_WINDOW_MS + 60);
       streakTimerRef.current = sid;
       timersRef.current.add(sid);
-      AudioManager.playSparkle(streakRef.current.count);
       if (!reduced) buzz(10);
     }
     fxRef.current?.sparkle(s.x, s.y, quiet ? 1 : streakRef.current.count);

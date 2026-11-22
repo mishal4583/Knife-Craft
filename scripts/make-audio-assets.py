@@ -196,17 +196,73 @@ for i in range(1, 6):
     x = trim(read(find(FOLEY, f"peel_pumpkin_0{i}")), lead_db=-40, tail_db=-42)
     emit(f"peel{i}", fade(peak_to(x, -9), 4, 40), 96)  # recorded very quietly: brought up to level
 
-# ---- two continuous washing beds (looped): soapy rubbing and running water ------------------------------------------------------------------
-def bed(stems: list[str], peak: float, seconds: float, xfade: float = 0.25) -> np.ndarray:
-    parts = [peak_to(trim(read(find(WATER, s)), lead_db=-50, tail_db=-50), -6) for s in stems]
-    out = np.concatenate(parts)
-    while len(out) < int((seconds + xfade) * SR):
-        out = np.concatenate([out, out])
-    return peak_to(loop_of(out, xfade, seconds, xfade), peak)
+# ---- the washing and wiping beds (looped): one continuous, soft voice that follows the sponge or the cloth ------------------------------------------------
+# developer 2026-11-22: "remove the current sound effects while wiping the board or doing dishes and add a more soothing sound, or a real wiping sound,
+# that gives the player satisfaction". The old beds were bare water splashes with glassy pings and bubbles on top. The new ones are the real friction of a
+# peel being worked over a surface (the pumpkin peels) and real running water, each softened (the harsh top cut away, the low body kept) and levelled by
+# loudness, so a wipe is a smooth, dry-to-damp "shhh" and a rinse is a steady, gentle flow. Filtering a recording is still a recording.
+from scipy.signal import butter, sosfilt
 
 
-emit("wash-scrub", bed(["water_splash-03", "water_splash-06"], -14, 2.0), 80, loop=True)
-emit("wash-rinse", bed(["water_splash-01", "water_splash-04"], -12, 2.4), 80, loop=True)
+def band(x: np.ndarray, lo: float, hi: float) -> np.ndarray:
+    return sosfilt(butter(2, [lo, hi], btype="band", fs=SR, output="sos"), x)
+
+
+def lowpass(x: np.ndarray, hi: float) -> np.ndarray:
+    return sosfilt(butter(2, hi, btype="low", fs=SR, output="sos"), x)
+
+
+def joined(parts: list[np.ndarray], seconds: float, xfade: float = 0.12) -> np.ndarray:
+    """The pieces laid end to end, each crossfaded into the next (equal power), repeated until `seconds` long."""
+    k = int(xfade * SR)
+    t = np.linspace(0, np.pi / 2, k)
+    out = parts[0].copy()
+    i = 1
+    while len(out) < int((seconds + 0.6) * SR):
+        nxt = parts[i % len(parts)]
+        out = np.concatenate([out[:-k], out[-k:] * np.cos(t) + nxt[:k] * np.sin(t), nxt[k:]])
+        i += 1
+    return out
+
+
+def level_out(x: np.ndarray, win: float = 0.2, amount: float = 1.0) -> np.ndarray:
+    """Evens out a recording's loudness (its silences and its single loud splashes) with a slow gain: a continuous bed has no gaps and no bangs."""
+    e = np.sqrt(np.convolve(x**2, np.ones(int(win * SR)) / int(win * SR), "same"))
+    ref = np.median(e[e > 0]) if (e > 0).any() else 1.0
+    gain = (ref / np.maximum(e, ref * 0.03)) ** amount
+    return x * lowpass(gain, 12.0)
+
+
+def soft_bed(layers: list[tuple[np.ndarray, float]], seconds: float, level_db: float) -> np.ndarray:
+    """Layers (a sound, its gain in dB) summed, looped seamlessly, set to a loudness (RMS) that the game's own fader then scales."""
+    n = int((seconds + 0.3) * SR)
+    mix = level_out(sum(x[:n] * 10 ** (g / 20) for x, g in layers))
+    return rms_to(loop_of(mix, 0.3, seconds - 0.3, 0.3), level_db, peak_cap_db=-3.0)
+
+
+def friction(order: list[int]) -> list[np.ndarray]:
+    """The peel recordings (a real, dry friction), each levelled and softened: 250 Hz to 3.4 kHz."""
+    out = []
+    for i in order:
+        x = trim(read(find(FOLEY, f"peel_pumpkin_0{i}")), lead_db=-45, tail_db=-45)
+        out.append(fade(band(peak_to(x, -6), 250, 3400), 40, 40))
+    return out
+
+
+def water(stems: list[str], top_hz: float) -> list[np.ndarray]:
+    return [fade(band(peak_to(trim(read(find(WATER, s)), lead_db=-50, tail_db=-50), -6), 120, top_hz), 40, 40) for s in stems]
+
+
+cloth = lowpass(read(find(RPG, "cloth-heavy")), 1100)  # the soft body of a cloth being drawn over wood
+rub = joined(friction([1, 3, 2, 5, 4]), 4.0)
+emit("wash-wipe", soft_bed([(rub, 0.0), (joined([cloth], 4.0, 0.08), -9.0)], 4.0, -21.0), 96, loop=True)  # the cutting board's cloth
+emit("wash-scrub", soft_bed([(rub, 0.0), (joined(water(["water_splash-03", "water_splash-06"], 3000), 4.0), -7.0)], 4.0, -21.0), 96, loop=True)  # the soapy sponge
+emit(
+    "wash-rinse",
+    soft_bed([(joined(water(["water_splash-03", "water_splash-06"], 3400), 4.0), 0.0), (joined(water(["water_splash-04", "water_splash-01"], 2400), 4.0), -10.0)], 4.0, -22.0),
+    96,
+    loop=True,
+)  # running water
 
 # ---- the music: four calm moods, each a seamless loop --------------------------------------------------------------------------------------
 LEVEL = -21.0  # RMS of every track; the game's own faders set how loud each mood is

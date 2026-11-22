@@ -3578,6 +3578,7 @@ export class PreparationScene extends Phaser.Scene {
     const c = this.cleanup;
     if (!c || c.finishing) return;
     const prevX = c.x;
+    const prevY = c.y;
     const k = c.dragging ? 0.38 : 0.2;
     c.x += (c.tx - c.x) * k;
     c.y += (c.ty - c.y) * k;
@@ -3607,18 +3608,16 @@ export class PreparationScene extends Phaser.Scene {
         const r = wipeDebris(c.last.u, c.last.v, uv.u, uv.v);
         c.lastRubAt = now;
         this.debrisDirty = true;
-        // No scrub noise per stroke (developer 2026-11-13: "tak tak tak", like knocking on the board); the glint and its chime stay.
+        // The sound of the wipe is ONE soft, continuous cloth that follows the hand (developer 2026-11-22: no per-stroke noise, no pings per patch,
+        // "a real wiping sound that gives the player satisfaction"); the recorded bed is the same for every piece, only its loudness follows the speed.
+        AudioManager.washStroke("wipe", Phaser.Math.Clamp(Math.hypot(c.x - prevX, c.y - prevY) / (w * 0.16), 0, 1));
         // A patch of the film wiped clean: a little glint where it was.
         if (r.patches > 0) {
           this.spawnSparkle(c.x + Phaser.Math.Between(-20, 20), c.y + Phaser.Math.Between(-6, 6));
-          if (r.cleared === 0) AudioManager.playSparkle(1 + (c.streak % 5));
         }
         if (r.cleared > 0) {
           if (now - c.lastClearAt > 900) c.streak = 0;
-          for (let i = 0; i < r.cleared; i++) {
-            c.streak++;
-            AudioManager.playSparkle(Math.min(c.streak, 12));
-          }
+          c.streak += r.cleared;
           c.lastClearAt = now;
           this.spawnSparkle(c.x + Phaser.Math.Between(-12, 12), c.y);
           if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(8);
@@ -3674,7 +3673,6 @@ export class PreparationScene extends Phaser.Scene {
     if (!c || c.finishing) return;
     c.finishing = true;
     c.dragging = false;
-    AudioManager.playSfx("squeak");
     if (this.reducedMotion()) {
       this.endCleanup("done");
       return;

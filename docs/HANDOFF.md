@@ -1,5 +1,7 @@
 # KnifeCraft — Handoff (Playgama edition)
 
+- Wiping and washing sound (developer 2026-11-22: "remove the current sound effects while wiping the cutting board or doing dishes and add a more soothing, real wiping sound"): the board's cloth, the sponge and the rinse each run ONE looped recorded bed that follows the hand (`AudioManager.washStroke("wipe" | "scrub" | "rinse", speed)`; beds `wash-wipe`, `wash-scrub`, `wash-rinse` built in `make-audio-assets.py` from the pumpkin-peel friction, `cloth-heavy` and the water recordings, softened and levelled). Gone: the glassy ping per patch/stain (`playSparkle`), the bubbles, the finish squeak, the splash loop. Kept: the spotless chime at the end. `AreaCleaningPrototype` (restroom/dining) still has its pings. I cannot hear audio: the developer should listen and say what to change (each bed is a few lines in the script). `audio-qa` Z8/Z8b, `dish-washing-qa` R7 (RULE CHANGE). `tools/e2e/dishwashing*.mjs` and `cleaningfeel` 2b fail identically at HEAD (stale).
+
 - Kitchen golden frames, part 2 (developer 2026-11-18): the wallet pill (`Coin gold`, Kitchen only; the other screens keep the copper chip), the day strip and the Next Customer card now carry the same `border-2 border-[#e0a63a]` as the HUD icons, City Ranking and Daily Gift; padding was reduced by the border's width so no box changed size.
 
 ## Mobile and mobile landscape sweep (developer 2026-11-18: "optimize the game for mobile and mobile landscape orientation")

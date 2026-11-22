@@ -434,12 +434,14 @@ console.log("W. Wiring");
       /washStroke\(\s*"scrub"/.test(game) &&
       /washStroke\(\s*"rinse"/.test(game) &&
       !/playScrub\(/.test(game) &&
-      /playSparkle\(/.test(game) &&
+      // RULE CHANGE (developer 2026-11-22: "remove the current sound effects while doing dishes ... add a more soothing, real wiping sound"): no glassy
+      // ping per stain any more; the one soft wash voice and the spotless chime at the end remain.
+      !/playSparkle\(/.test(game) &&
       /playSpotless\(/.test(game) &&
       /new CleaningFx|CleaningFx\(/.test(game) &&
       /reducedMotionOn\(\)/.test(game) &&
       !/Math\.random\(/.test(game + read("src/game/restaurant/dishDirt.ts")),
-    "R7: the sink uses the rooms' feel engine (a smooth wash sound, not the per-stroke tick, sparkles, suds, spotless chime; reduced motion honoured), seeded",
+    "R7: the sink uses the rooms' feel engine (a smooth wash sound, not the per-stroke tick or a ping per stain; suds, spotless chime; reduced motion honoured), seeded",
   );
   // developer 2026-11-16 (twice): the dirt follows the SCRUBBING, never a clock. A stain's lightness is its wear all the way to nothing, and only the
   // specks the game wipes by itself melt out, quickly.

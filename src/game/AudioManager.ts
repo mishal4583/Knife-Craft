@@ -619,12 +619,13 @@ class AudioManagerImpl {
   private lastScrubAt = -Infinity;
 
   /**
-   * Dishwashing (developer 2026-11-16: the "tak tak" of `playScrub` is replaced by a smooth wipe). While the sponge moves, ONE continuous voice runs: a
-   * recorded bed (soapy rubbing, or running water) looped, whose loudness and speed follow the stroke, with a recorded bubble now and then. Call it on
-   * every pointer move; it fades out by itself 170 ms after the last call, so there is no tick and no stop to wire. `kind` "scrub" is the close, soapy
-   * rub; "rinse" is running water. `speed` is 0..1. Gated on the Sound setting.
+   * Wiping and washing (developer 2026-11-16: the "tak tak" of `playScrub` is replaced by a smooth wipe; developer 2026-11-22: no pings, no bubbles, no
+   * splash loop: "a more soothing sound, or a real wiping sound, that gives the player satisfaction"). While the cloth or sponge moves, ONE continuous
+   * voice runs: a recorded, softened bed looped, whose loudness and speed follow the stroke. Call it on every move; it fades out by itself 170 ms after
+   * the last call, so there is no tick and no stop to wire. `kind`: "wipe" is the dry-to-damp cloth over the cutting board, "scrub" the close, soapy
+   * rub of the sponge, "rinse" running water. `speed` is 0..1. Gated on the Sound setting.
    */
-  washStroke(kind: "scrub" | "rinse", speed: number): void {
+  washStroke(kind: "wipe" | "scrub" | "rinse", speed: number): void {
     if (!this.enabled) return;
     const ctx = this.ensureContext();
     if (!ctx) return;
@@ -633,27 +634,15 @@ class AudioManagerImpl {
     let voice = this.washVoice;
     if (!voice || voice.kind !== kind) {
       this.stopWashVoice(true);
-      const started = this.play(kind === "scrub" ? "wash-scrub" : "wash-rinse", {
-        gain: 0.0001,
-        loop: true,
-      });
+      const started = this.play(`wash-${kind}`, { gain: 0.0001, loop: true });
       if (!started) return; // the bed is still being fetched: the next stroke starts it
-      voice = { kind, src: started.src, gain: started.gain, lastBubble: 0, timer: 0 };
+      voice = { kind, src: started.src, gain: started.gain, timer: 0 };
       this.washVoice = voice;
     }
-    const peak = kind === "scrub" ? 0.55 : 0.5;
-    voice.gain.gain.setTargetAtTime(0.06 + peak * level, now, 0.045);
-    voice.src.playbackRate.setTargetAtTime(0.92 + level * 0.2, now, 0.1);
-    // A soft bubble, sometimes, on a lively stroke.
-    const nowMs = typeof performance !== "undefined" ? performance.now() : Date.now();
-    if (level > 0.3 && nowMs - voice.lastBubble > 130 + Math.random() * 170) {
-      voice.lastBubble = nowMs;
-      this.play("bubble", {
-        gain: 0.1 + 0.1 * level,
-        rate: (kind === "scrub" ? 0.9 : 1.2) * (0.9 + Math.random() * 0.3),
-        dur: 0.2,
-      });
-    }
+    // A slow stroke is a hush, a quick one a firmer rub; the pitch leans a little with the speed, so the sound breathes with the hand.
+    const peak = kind === "rinse" ? 0.4 : kind === "scrub" ? 0.45 : 0.5;
+    voice.gain.gain.setTargetAtTime(0.05 + peak * level, now, 0.07);
+    voice.src.playbackRate.setTargetAtTime(0.94 + level * 0.14, now, 0.12);
     if (voice.timer) clearTimeout(voice.timer);
     voice.timer = setTimeout(() => this.stopWashVoice(false), 170) as unknown as number;
   }
@@ -683,10 +672,9 @@ class AudioManagerImpl {
     setTimeout(end, 320);
   }
   private washVoice: {
-    kind: "scrub" | "rinse";
+    kind: "wipe" | "scrub" | "rinse";
     src: AudioBufferSourceNode;
     gain: GainNode;
-    lastBubble: number;
     timer: number;
   } | null = null;
 
