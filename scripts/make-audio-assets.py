@@ -17,6 +17,7 @@ import subprocess
 from pathlib import Path
 
 import numpy as np
+from scipy.signal import butter, sosfilt
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "scripts" / ".audio-src"
@@ -124,6 +125,18 @@ def loop_of(x: np.ndarray, start: float, length: float, xfade: float) -> np.ndar
     return out
 
 
+def band(x: np.ndarray, lo: float, hi: float) -> np.ndarray:
+    return sosfilt(butter(2, [lo, hi], btype="band", fs=SR, output="sos"), x)
+
+
+def highpass(x: np.ndarray, lo: float) -> np.ndarray:
+    return sosfilt(butter(2, lo, btype="high", fs=SR, output="sos"), x)
+
+
+def lowpass(x: np.ndarray, hi: float) -> np.ndarray:
+    return sosfilt(butter(2, hi, btype="low", fs=SR, output="sos"), x)
+
+
 files: dict[str, dict] = {}
 
 
@@ -196,20 +209,51 @@ for i in range(1, 6):
     x = trim(read(find(FOLEY, f"peel_pumpkin_0{i}")), lead_db=-40, tail_db=-42)
     emit(f"peel{i}", fade(peak_to(x, -9), 4, 40), 96)  # recorded very quietly: brought up to level
 
+# ---- knife on a wooden board, one family per kind of ingredient (developer 2026-11-22: "realistic cutting sounds ... different for different ingredients") ----------------
+# Real recordings of knives going through food on a board (Freesound CC0, see fetch-audio-sources.py). Each family is a few single cuts (id, start s, length s):
+# a chop keeps its own board thud and a little of its ring; the longer ones (bread, melon, meat, cheese, citrus) are a stroke of the blade through the food.
+CUTS = {
+    "crunch": [(163275, 0.462, 0.125), (764468, 2.355, 0.097), (755233, 0.072, 0.132), (755234, 4.617, 0.352)],  # carrot, cucumber, apple, celery ...
+    "juicy": [(87508, 33.369, 0.096), (812387, 6.875, 0.119), (812387, 13.781, 0.094), (87508, 49.698, 0.116)],  # tomato, strawberry, peach ...
+    "leaf": [(760374, 8.525, 0.076), (125521, 8.65, 0.496), (125521, 7.18, 0.488)],  # lettuce, cabbage, herbs
+    "bulb": [(718595, 0.141, 0.512), (766124, 12.453, 0.078), (766124, 1.871, 0.082), (826735, 19.226, 0.083)],  # onion, garlic, ginger
+    "bread": [(87506, 18.393, 0.55), (87506, 19.707, 0.55), (487030, 23.0, 0.55), (487030, 4.282, 0.55)],  # a bread knife through a crust
+    "melon": [(752214, 12.108, 0.55), (752214, 6.955, 0.55)],  # watermelon, pineapple
+    "citrus": [(703058, 1.209, 0.55), (703058, 4.34, 0.55)],  # lemon, orange, lime
+    "mushroom": [(828969, 12.432, 0.071), (360795, 1.016, 0.493), (828969, 12.707, 0.071), (360795, 4.159, 0.473)],  # mushroom, tofu, eggplant
+    "cheese": [(87507, 4.997, 0.55), (87507, 2.414, 0.55)],  # mozzarella, cheddar, butter
+    "meat": [(593682, 0.08, 0.55), (593682, 4.5, 0.55)],  # chicken, steak, salmon
+}
+cut_src: dict[int, np.ndarray] = {}
+
+
+def cut_clip(x: np.ndarray, start: float, length: float) -> np.ndarray:
+    """One cut out of a recording: it starts right at the blade's attack (the first strong rise after `start`, so there is no lead-in to feel late), the low
+    rumble of handling the board is filtered off (below 120 Hz a knife has nothing to say), and the end rings out and fades."""
+    a = int(start * SR)
+    n_len = int((min(0.34, length + 0.10) if length < 0.2 else length) * SR)
+    seg = highpass(x[max(0, a - int(0.004 * SR)) : a + n_len + int(0.6 * SR)], 120)
+    e = env(seg, 3.0)
+    first = int(np.argmax(e > e.max() * 0.35))
+    s0 = max(0, first - int(0.006 * SR))
+    return seg[s0 : s0 + n_len]
+
+
+for fam, clips in CUTS.items():
+    for n, (sid, start, length) in enumerate(clips, start=1):
+        if sid not in cut_src:
+            cut_src[sid] = read(SRC / "cuts" / f"{sid}.mp3")
+        emit(f"cut-{fam}{n}", fade(rms_to(cut_clip(cut_src[sid], start, length), -24.0, peak_cap_db=-3.0), 2, 70), 96)
+# the board itself: the thud of a blade meeting a wooden board, from a recording of a knife on a board
+board = read(SRC / "cuts" / "847873.mp3")
+a = int(22.4636 * SR)
+emit("boardtap", fade(peak_to(board[a - int(0.004 * SR) : a + int(0.16 * SR)], -6.0), 2, 60), 96)
+
 # ---- the washing and wiping beds (looped): one continuous, soft voice that follows the sponge or the cloth ------------------------------------------------
 # developer 2026-11-22: "remove the current sound effects while wiping the board or doing dishes and add a more soothing sound, or a real wiping sound,
 # that gives the player satisfaction". The old beds were bare water splashes with glassy pings and bubbles on top. The new ones are the real friction of a
 # peel being worked over a surface (the pumpkin peels) and real running water, each softened (the harsh top cut away, the low body kept) and levelled by
 # loudness, so a wipe is a smooth, dry-to-damp "shhh" and a rinse is a steady, gentle flow. Filtering a recording is still a recording.
-from scipy.signal import butter, sosfilt
-
-
-def band(x: np.ndarray, lo: float, hi: float) -> np.ndarray:
-    return sosfilt(butter(2, [lo, hi], btype="band", fs=SR, output="sos"), x)
-
-
-def lowpass(x: np.ndarray, hi: float) -> np.ndarray:
-    return sosfilt(butter(2, hi, btype="low", fs=SR, output="sos"), x)
 
 
 def joined(parts: list[np.ndarray], seconds: float, xfade: float = 0.12) -> np.ndarray:

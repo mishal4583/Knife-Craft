@@ -433,6 +433,45 @@ console.log("Z. Mini-game sounds");
     );
   }
   {
+    // developer 2026-11-22 ("realistic cutting sounds ... different for different ingredients"): every ingredient has a family of recorded knife-on-board cuts.
+    const { CUT_FAMILY, CUT_FILES, STROKE_FAMILIES } =
+      await import("../src/game/audio/cutSounds.ts");
+    const { INGREDIENTS } = await import("../src/game/definitions.ts");
+    const ids = Object.keys(INGREDIENTS);
+    const missing = ids.filter((id) => !(id in CUT_FAMILY));
+    const filesOk = Object.values(CUT_FILES).every(
+      (list) => list.length >= 2 && list.every((f) => f in AUDIO_FILES),
+    );
+    const families = new Set(Object.values(CUT_FAMILY));
+    assert(
+      missing.length === 0 &&
+        filesOk &&
+        families.size >= 10 &&
+        "boardtap" in AUDIO_FILES &&
+        CUT_FAMILY["carrot"] !== CUT_FAMILY["tomato"] &&
+        CUT_FAMILY["tomato"] !== CUT_FAMILY["lettuce"] &&
+        CUT_FAMILY["bread"] !== CUT_FAMILY["chicken"] &&
+        STROKE_FAMILIES.has("meat") &&
+        !STROKE_FAMILIES.has("crunch"),
+      "Z10: every ingredient has a family of recorded knife-on-board cuts (carrot, tomato, lettuce, bread and chicken each sound different); a stroke family also taps the board",
+      { missing, families: [...families] },
+    );
+    // run: a cut of a chopped food makes ONE sound (its own recording), a stroke through bread or meat two (the stroke and the board tap)
+    await new Promise((r) => setTimeout(r, 30));
+    const n0 = created;
+    AudioManager.playIngredientSlice("carrot", 0.7, 90);
+    const chop = created - n0;
+    const n1 = created;
+    AudioManager.playIngredientSlice("chicken", 0.7, 90);
+    const stroke = created - n1;
+    assert(
+      chop > 0 && stroke > chop,
+      "Z10b: a chopped food plays its one recorded cut; a stroke through meat also taps the board (the recordings are fetched at the first tap)",
+      { chop, stroke },
+    );
+  }
+
+  {
     // developer 2026-11-22: every cleaning tool has its own soft recorded bed (no ping per stain either).
     const area = read("src/components/kc/business/AreaCleaningPrototype.tsx");
     const kinds = ["wipe", "scrub", "rinse", "mop", "sweep", "scrape", "brush", "glass"];

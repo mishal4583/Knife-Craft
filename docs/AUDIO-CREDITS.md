@@ -48,3 +48,32 @@ and from the existing voices (`SFX` in `AudioManager.ts`):
 - **Dessert Run:** a waiter sent off (`runSend`), a cube picked off the dessert (`runPick`), dropped on the cart (`runDrop`), a guest served (`runServe`), all spots busy (the existing wrong).
 - **Sauce Station:** liquids, spices, jars and chopped heaps each sound like themselves going into the bowl (`sauceLiquid`, `sauceSpice`, `sauceJar`, `sauceProduce`), the whisk (`sauceWhisk`), the bottle (`sauceBottle`).
 - **Every round:** `gameWin` (four rising notes) and `gameLose` (the error and a low bong): Car Park, Dessert Run and Unload the Van.
+
+## Cutting sounds: knife on a wooden board (developer 2026-11-22)
+
+Real recordings of knives cutting food, one family per kind of ingredient (`cut-<family>1..4.mp3`, `boardtap.mp3`; the ingredient-to-family table is `src/game/audio/cutSounds.ts`).
+All are **CC0** uploads on Freesound (each page was opened and its licence read as "Creative Commons 0" on 2026-11-22). Freesound only lets a logged-in user download the original, so the build uses the
+site's own public high-quality preview file of each sound (`scripts/fetch-audio-sources.py`); each is cut to single cuts, aligned to the blade's attack, filtered above 120 Hz and levelled.
+
+| Family    | Recording                                  | Author            | Licence page                                                  |
+| --------- | ------------------------------------------ | ----------------- | ------------------------------------------------------------- |
+| crunch    | Cutting Zucchini                           | qubodup           | https://freesound.org/people/qubodup/sounds/163275/           |
+| crunch    | Cutting Cucumber                           | CarikaDarvall     | https://freesound.org/people/CarikaDarvall/sounds/764468/     |
+| crunch    | cutting apple with knife                   | OutbreakProtocol  | https://freesound.org/people/OutbreakProtocol/sounds/755233/  |
+| crunch    | cutting apple with knife (2)               | OutbreakProtocol  | https://freesound.org/people/OutbreakProtocol/sounds/755234/  |
+| juicy     | Cutting Tomato.flac                        | qubodup           | https://freesound.org/people/qubodup/sounds/87508/            |
+| juicy     | cutting tomato                             | frodeims          | https://freesound.org/people/frodeims/sounds/812387/          |
+| leaf      | Chopping Lettuce on a Cutting Board        | Colonnades        | https://freesound.org/people/Colonnades/sounds/760374/        |
+| leaf      | chopping-lettuce.wav                       | krissyeliot       | https://freesound.org/people/krissyeliot/sounds/125521/       |
+| bulb      | Garlic Cut, Single                         | lexjharold        | https://freesound.org/people/lexjharold/sounds/718595/        |
+| bulb      | FOODCook-Onion Chopping_CRB_OwSfx          | Christiaan_Bot00+ | https://freesound.org/people/Christiaan_Bot00+/sounds/766124/ |
+| bulb      | FOODCook_onion chop two_MPA_FCS2           | miguelperezang    | https://freesound.org/people/miguelperezang/sounds/826735/    |
+| bread     | cuttingBread.flac                          | qubodup           | https://freesound.org/people/qubodup/sounds/87506/            |
+| bread     | Bread Knife Cutting Sourdough Bread        | RobertWedderburn  | https://freesound.org/people/RobertWedderburn/sounds/487030/  |
+| melon     | Cutting Ripe Watermelon                    | qubodup           | https://freesound.org/people/qubodup/sounds/752214/           |
+| citrus    | Cutting Lemon Or Orange                    | IENBA             | https://freesound.org/people/IENBA/sounds/703058/             |
+| mushroom  | A real chef cuts mushrooms into thin slice | MisterJohnson69   | https://freesound.org/people/MisterJohnson69/sounds/828969/   |
+| mushroom  | snijden_champignons_1.wav                  | dutchlady         | https://freesound.org/people/dutchlady/sounds/360795/         |
+| cheese    | cuttingMozarella.flac                      | qubodup           | https://freesound.org/people/qubodup/sounds/87507/            |
+| meat      | CUTTING MEAT WITH DULL KNIFE               | levypeck          | https://freesound.org/people/levypeck/sounds/593682/          |
+| board tap | Kitchen Cutting Board 01                   | bernhoftbret      | https://freesound.org/people/bernhoftbret/sounds/847873/      |

@@ -16,6 +16,7 @@
 import { isAdActive, isAudioEnabled, onAdActiveChange, onAudioEnabledChange } from "./PlayablesSDK";
 import { PauseManager } from "./PauseManager";
 import { INGREDIENTS, PLATING, type IngredientId } from "./definitions";
+import { CUT_FAMILY, CUT_FILES, STROKE_FAMILIES } from "./audio/cutSounds";
 import { AUDIO_FILES, type AudioId } from "./audio/audioFiles";
 
 type AudioContextCtor = typeof AudioContext;
@@ -512,9 +513,10 @@ class AudioManagerImpl {
   private sliceNext = 0;
 
   /**
-   * The active ingredient's cutting sound: a recorded knife cut (three recordings, taken in turn) and, when the reveal ends, the knock of the blade on
-   * the board. Each ingredient's own audio profile (definitions.ts `audio`) still shapes it: how fast the recording plays (its pitch), how loud, and
-   * for the wet ingredients (a low-pass profile) how dark. `vel` is 0..1 stroke speed; `durMs` is the reveal duration this cut is playing out over.
+   * The active ingredient's cutting sound (developer 2026-11-22): a RECORDED knife cut on a wooden board, of the family that belongs to this food
+   * (`audio/cutSounds.ts`: crunchy vegetables, juicy fruit, leaves, bulbs, bread, melon, citrus, mushrooms, cheese, meat, dense roots), a different
+   * recording each time. A stroke through the food (bread, melon, meat ...) ends with a real board tap when the blade lands. The ingredient's own audio
+   * profile (definitions.ts `audio`) still sets how loud. `vel` is 0..1 stroke speed; `durMs` is the reveal duration this cut is playing out over.
    *
    * `pitchMult`/`gainMult` (Phase 8, default 1) are the EQUIPPED KNIFE's own subtle audio identity (KnifeAudioProfile) — layered ON TOP of the
    * ingredient's own profile, never replacing it: think "ingredient sound x knife sound", not a second competing voice.
@@ -531,33 +533,25 @@ class AudioManagerImpl {
     if (!ctx) return;
     const A = INGREDIENTS[ingredientId].audio;
     const v = Math.max(0, Math.min(1, vel));
-    const body = (A.glideMin + A.glideSpan * 0.5) / 700;
-    const rate = Math.max(
-      0.8,
-      Math.min(1.3, Math.pow(body, 0.18) * (0.94 + 0.12 * v) * pitchMult * this.jitter()),
-    );
+    // A real recording of a knife through THIS kind of food (developer 2026-11-22), a different one each time, nearly at its own pitch: the knife's own
+    // identity (`pitchMult`) and the swing's speed only lean it a little.
+    const family = CUT_FAMILY[ingredientId] ?? "dense";
+    const files = CUT_FILES[family];
+    const id = files[this.sliceNext++ % files.length]!;
+    const rate = Math.max(0.9, Math.min(1.12, (0.97 + 0.06 * v) * pitchMult * this.jitter()));
     const gain =
-      Math.max(0.2, Math.min(0.9, (0.4 + 0.9 * (A.transPeak + A.transVel * v)) * 0.8)) *
+      Math.max(0.25, Math.min(0.85, (0.45 + 0.8 * (A.transPeak + A.transVel * v)) * 0.8)) *
       gainMult *
       this.jitter();
-    const tail = (A.tailMs * (1.5 - A.tailVel * v)) / 1000;
-    const id = (["slice1", "slice2", "slice3"] as const)[this.sliceNext++ % 3]!;
-    this.play(id, {
-      gain,
-      rate,
-      dur: Math.max(0.3, Math.min(0.9, durMs / 1000 + tail)),
-      // a wet ingredient (a low-pass profile) is darker; a dry or bright one keeps the whole recording
-      filter:
-        A.glideType === "lowpass"
-          ? { type: "lowpass", freq: Math.max(2200, (A.glideMin + A.glideSpan * v) * 4), q: 0.5 }
-          : undefined,
-    });
-    // board contact at reveal completion: pitch + volume by impact speed
-    this.play("knock", {
-      at: durMs / 1000,
-      gain: Math.min(0.7, A.thunkGain * (0.45 + A.thunkVel * v) * 1.3) * gainMult,
-      rate: Math.max(0.8, Math.min(1.3, (A.thunkHz / 95) * (0.92 + 0.16 * v) * pitchMult)),
-    });
+    this.play(id, { gain, rate });
+    // A stroke through the food (bread, melon, meat ...) ends with the blade meeting the board: a real board tap, by the swing's speed.
+    if (STROKE_FAMILIES.has(family)) {
+      this.play("boardtap", {
+        at: durMs / 1000,
+        gain: Math.min(0.7, A.thunkGain * (0.45 + A.thunkVel * v) * 1.3) * gainMult,
+        rate: Math.max(0.85, Math.min(1.15, (0.95 + 0.1 * v) * pitchMult)),
+      });
+    }
   }
 
   /** When the last plate sound started (ms, performance clock) — the throttle. */
