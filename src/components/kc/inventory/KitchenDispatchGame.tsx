@@ -8,6 +8,7 @@ import {
   type CSSProperties,
 } from "react";
 import type { SaveData } from "@/game/SaveManager";
+import { AudioManager } from "@/game/AudioManager";
 import { InfoTip } from "@/components/kc/common/InfoTip";
 import { StageSides } from "@/components/kc/common/StageSides";
 import { TurnUprightCard } from "@/components/kc/common/TurnUprightCard";
@@ -255,12 +256,22 @@ export function KitchenDispatchGame({
           timeRef.current = 0;
           phaseRef.current = "lost";
           setPhase("lost");
+          AudioManager.playSfx("gameLose");
         }
       }
       const whole = Math.ceil(timeRef.current);
       if (whole !== shownSecond) {
         shownSecond = whole;
         setSecondsLeft(timeRef.current);
+        // the last ten seconds tick (not while the clock is frozen or the game is paused)
+        if (
+          whole > 0 &&
+          whole <= 10 &&
+          phaseRef.current === "play" &&
+          !pausedRef.current &&
+          freezeRef.current <= 0
+        )
+          AudioManager.playSfx("sortTick");
       }
       leavingRef.current = leavingRef.current.filter((l) => now - l.start < 1100);
       // every crate glides toward its cell
@@ -326,12 +337,16 @@ export function KitchenDispatchGame({
     timers.current.push(
       window.setTimeout(() => {
         // an Undo inside this delay can bring a crate back: win only if the board is still clear
-        if (phaseRef.current === "play" && roundCleared(roundRef.current)) setPhaseBoth("won");
+        if (phaseRef.current === "play" && roundCleared(roundRef.current)) {
+          setPhaseBoth("won");
+          AudioManager.playSfx("gameWin");
+        }
       }, WIN_DELAY_MS),
     );
   };
   /** A crate has gone out of its gate: it slides away, and the board may be clear. */
-  const sendOut = (brick: Brick, gate: Leaving["gate"], next: CrateRound) => {
+  const sendOut = (brick: Brick, gate: Leaving["gate"], next: CrateRound, sound = true) => {
+    if (sound) AudioManager.playSfx("crateOut");
     say(`✓ ${CRATE_ITEM_NAMES[foodOf(next.board, brick.color)]} sent out`);
     leavingRef.current = [...leavingRef.current, { brick, gate, start: performance.now() }];
     visRef.current.delete(brick.id);
@@ -350,13 +365,15 @@ export function KitchenDispatchGame({
       if (!b) return;
       const gate = round.board.gates.find((g) => g.color === b.color);
       if (!gate) return;
-      sendOut(b, gate, rocketBrick(round, b.id));
+      AudioManager.playSfx("crateRocket");
+      sendOut(b, gate, rocketBrick(round, b.id), false);
       setArmed(null);
       return;
     }
     if (armedNow === "hammer") {
       const w = wallAtCell(round.board, cx, cy);
       if (!w) return;
+      AudioManager.playSfx("crateSmash");
       setRoundBoth(hammerWall(round, w.id));
       setArmed(null);
       say("Smashed!");
@@ -376,6 +393,7 @@ export function KitchenDispatchGame({
       moved: false,
     };
     dragIdRef.current = brick.id;
+    AudioManager.playSfx("crateGrab");
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch {
@@ -391,6 +409,8 @@ export function KitchenDispatchGame({
     const res = dragBrick(roundRef.current, d.id, Math.round(fx - d.offX), Math.round(fy - d.offY));
     if (!res.moved) return;
     d.moved = true;
+    // a soft scrape as the crate glides to a new cell (the one-name gap keeps a fast drag from stuttering)
+    if (!res.out) AudioManager.playSfx("crateSlide");
     if (res.out && res.brick) {
       const next = finishDrag(res.round, d.from, { moved: true, out: true });
       dragRef.current = null;
@@ -411,6 +431,7 @@ export function KitchenDispatchGame({
   const playing = phase === "play" && !paused && !held;
   const arm = (kind: "rocket" | "hammer") => {
     if (!playing) return;
+    AudioManager.playSfx("tap");
     if (armedRef.current === kind) return setArmed(null);
     setArmed(kind);
     say(kind === "rocket" ? "Tap a crate to launch it" : "Tap a dark block to smash it");
@@ -418,6 +439,7 @@ export function KitchenDispatchGame({
   const onFreeze = () => {
     if (!playing || roundRef.current.freezes <= 0 || freezeRef.current > 0) return;
     freezeRef.current = FREEZE_SECONDS;
+    AudioManager.playSfx("crateFreeze");
     setFrozen(true);
     setRoundBoth(freezeRound(roundRef.current));
     say(`Clock frozen for ${FREEZE_SECONDS} seconds`);
@@ -426,6 +448,7 @@ export function KitchenDispatchGame({
     if (!playing || roundRef.current.undos <= 0 || roundRef.current.history.length === 0) return;
     const next = undoRound(roundRef.current);
     if (next === roundRef.current) return;
+    AudioManager.playSfx("crateUndo");
     const ids = new Set(next.board.bricks.map((b) => b.id));
     leavingRef.current = leavingRef.current.filter((l) => !ids.has(l.brick.id));
     setRoundBoth(next);

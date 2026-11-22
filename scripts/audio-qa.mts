@@ -114,15 +114,18 @@ console.log("S. Effects");
   );
   assert(
     // Rule changed (developer 2026-11-03): Fridge Sort added five effects (pick, place, wrong, combo, tick) after the first ten.
+    // RULE CHANGE (developer 2026-11-22): the mini-games got their own 19 effects after the first sixteen (Unload the Van 7, Dessert Run 4, Sauce Station 6, round win / loss 2).
     names.join() ===
-      "tap,coin,till,bell,plate,delivery,lightsOff,squeak,levelComplete,story,sortPick,sortPlace,sortWrong,sortCombo,sortTick,carHorn" &&
+      "tap,coin,till,bell,plate,delivery,lightsOff,squeak,levelComplete,story,sortPick,sortPlace,sortWrong,sortCombo,sortTick,carHorn," +
+        "crateGrab,crateSlide,crateOut,crateRocket,crateSmash,crateFreeze,crateUndo,runSend,runPick,runDrop,runServe," +
+        "sauceLiquid,sauceSpice,sauceJar,sauceProduce,sauceWhisk,sauceBottle,gameWin,gameLose" &&
       names.every(
         (n) =>
           SFX[n].length > 0 &&
           SFX[n].every((x: { gain?: number }) => (x.gain ?? 1) > 0 && (x.gain ?? 1) <= 0.7),
       ) &&
       ids.every((id) => id in AUDIO_FILES),
-    "S1: sixteen named effects (ten + the five Fridge Sort ones + the Car Park horn, 2026-11-15), each a recording that exists in the audio list or a note played from a recorded voice, none louder than 0.7",
+    "S1: thirty-five named effects (sixteen, then the mini-games' nineteen, 2026-11-22), each a recording that exists in the audio list or a note played from a recorded voice, none louder than 0.7",
   );
   assert(
     fetched >=
@@ -316,6 +319,94 @@ console.log("W. Wiring");
   assert(
     /primeOutput/.test(am) && /createBuffer\(1, 1, 22050\)/.test(am) && /statechange/.test(am),
     "X3: Safari: a real tap plays one silent sample to open the output, and a state change to running wakes the music",
+  );
+}
+
+// ── Z. The mini-games' own sounds (developer 2026-11-22: "add suitable sound effects to Unload the Van and the other mini-games") ──
+console.log("Z. Mini-game sounds");
+{
+  const { SFX } = await import("../src/game/AudioManager.ts");
+  const { AUDIO_FILES } = await import("../src/game/audio/audioFiles.ts");
+  const names = [
+    "crateGrab",
+    "crateSlide",
+    "crateOut",
+    "crateRocket",
+    "crateSmash",
+    "crateFreeze",
+    "crateUndo",
+    "runSend",
+    "runPick",
+    "runDrop",
+    "runServe",
+    "sauceLiquid",
+    "sauceSpice",
+    "sauceJar",
+    "sauceProduce",
+    "sauceWhisk",
+    "sauceBottle",
+    "gameWin",
+    "gameLose",
+  ];
+  const table = SFX as Record<string, readonly { id?: string; hz?: number }[]>;
+  assert(
+    names.every((n) => Array.isArray(table[n]) && table[n]!.length > 0),
+    "Z1: every mini-game sound is in the effects table",
+    names.filter((n) => !table[n]),
+  );
+  const ids = names.flatMap((n) => table[n]!.map((p) => p.id).filter(Boolean)) as string[];
+  assert(
+    ids.every((id) => id in AUDIO_FILES) &&
+      !names.some((n) => table[n]!.some((p) => !p.id && !p.hz)),
+    "Z2: each one is built from recordings (or notes played from recorded voices): every file it names exists in the manifest",
+    ids.filter((id) => !(id in AUDIO_FILES)),
+  );
+  const files = ["whoosh", "clank", "door", "pop", "beads", "slide", "back", "bottle"];
+  assert(
+    files.every((f) =>
+      fs.existsSync(
+        path.join(path.resolve(import.meta.dirname, ".."), "public", "audio", `${f}.mp3`),
+      ),
+    ) && /sfx\("whoosh"/.test(read("scripts/make-audio-assets.py")),
+    "Z3: the eight new recordings are built from the CC0 packs by scripts/make-audio-assets.py into public/audio",
+  );
+  const credits = read("docs/AUDIO-CREDITS.md");
+  assert(
+    /whoosh/.test(credits) && /clank/.test(credits) && /Unload the Van/.test(credits),
+    "Z4: docs/AUDIO-CREDITS.md lists the new mini-game sounds and their CC0 sources",
+  );
+  const van = read("src/components/kc/inventory/KitchenDispatchGame.tsx");
+  const run = read("src/components/kc/inventory/DessertRunGame.tsx");
+  const park = read("src/components/kc/inventory/CarParkGame.tsx");
+  const sauce = read("src/components/kc/sauce/SauceStationGame.tsx");
+  const uses = (src: string, ...n: string[]) => n.every((x) => src.includes(`playSfx("${x}")`));
+  assert(
+    uses(
+      van,
+      "crateGrab",
+      "crateSlide",
+      "crateOut",
+      "crateRocket",
+      "crateSmash",
+      "crateFreeze",
+      "crateUndo",
+      "sortTick",
+      "gameWin",
+      "gameLose",
+    ),
+    "Z5: Unload the Van sounds a crate lifted, gliding and out of its door, the rocket, the hammer, the freeze, Undo, the last ten seconds, the win and the loss",
+  );
+  assert(
+    uses(run, "runSend", "runPick", "runDrop", "runServe", "sortWrong", "gameWin", "gameLose") &&
+      /state\.phase === "won"/.test(run),
+    "Z6: Dessert Run sounds a waiter sent off, a cube picked, dropped on the cart, a guest served, all spots busy, the win and the jam (read from the screen: the simulation is untouched)",
+  );
+  assert(
+    uses(park, "gameWin", "gameLose") &&
+      ["sauceLiquid", "sauceSpice", "sauceJar", "sauceProduce", "sauceWhisk", "sauceBottle"].every(
+        (n) => sauce.includes(`"${n}"`),
+      ),
+    "Z7: Car Park has its win and loss; the Sauce Station sounds each kind of ingredient, the whisk and the bottle",
   );
 }
 

@@ -193,6 +193,7 @@ export function CarParkGame({
       AudioManager.playSfx("carHorn");
       if (next >= 3) {
         setPhase("failed");
+        AudioManager.playSfx("gameLose");
         onAction({ kind: "failed", honks: next });
       }
     }
@@ -210,6 +211,7 @@ export function CarParkGame({
     const stars = starsFor(misses, towed);
     onAction({ kind: "finish", honks: misses, towUsed: towed, stars });
     setPhase("won");
+    AudioManager.playSfx("gameWin");
   }
   function retry() {
     sentResult.current = false;

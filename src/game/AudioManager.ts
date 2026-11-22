@@ -794,7 +794,30 @@ export type SfxName =
   | "sortWrong"
   | "sortCombo"
   | "sortTick"
-  | "carHorn";
+  | "carHorn"
+  // Unload the Van (developer 2026-11-22): a crate lifted, gliding, out through its door, the rocket, the hammer, the frozen clock, Undo, a clean board, the clock running out.
+  | "crateGrab"
+  | "crateSlide"
+  | "crateOut"
+  | "crateRocket"
+  | "crateSmash"
+  | "crateFreeze"
+  | "crateUndo"
+  // Dessert Run: a waiter sent off, a cube picked off the dessert, dropped on the cart, a guest served, all five spots busy.
+  | "runSend"
+  | "runPick"
+  | "runDrop"
+  | "runServe"
+  // Sauce Station: a liquid, a spice, a jar and a chopped heap going into the bowl, the whisk turning, the bottle filling.
+  | "sauceLiquid"
+  | "sauceSpice"
+  | "sauceJar"
+  | "sauceProduce"
+  | "sauceWhisk"
+  | "sauceBottle"
+  // the end of a mini-game round (Car Park, Dessert Run, Unload the Van): cleared, or lost.
+  | "gameWin"
+  | "gameLose";
 
 /** The named sounds: short, quiet, warm (W3, developer 2026-10-12); each is recorded audio from public/audio (the notes are played from recorded voices). */
 export const SFX: Record<SfxName, readonly Part[]> = {
@@ -825,6 +848,41 @@ export const SFX: Record<SfxName, readonly Part[]> = {
   carHorn: [
     { id: "horn", gain: 0.5, rate: 0.85 },
     { id: "horn", at: 0.19, gain: 0.5, rate: 0.72 },
+  ],
+  // ── Unload the Van ──
+  crateGrab: [{ id: "knock", gain: 0.4, rate: 0.9 }],
+  crateSlide: [{ id: "slide", gain: 0.35 }],
+  crateOut: [{ id: "door", gain: 0.5 }, note(988, 0.1, 0.35), note(1319, 0.17, 0.35)],
+  crateRocket: [
+    { id: "whoosh", gain: 0.6 },
+    { id: "bell", at: 0.08, gain: 0.3, rate: 1.4 },
+  ],
+  crateSmash: [
+    { id: "clank", gain: 0.6 },
+    { id: "thud", at: 0.03, gain: 0.45, rate: 0.8 },
+  ],
+  crateFreeze: [note(1760, 0, 0.35), note(2349, 0.08, 0.3), note(2794, 0.16, 0.25)],
+  crateUndo: [{ id: "back", gain: 0.5 }],
+  // ── Dessert Run ──
+  runSend: [{ id: "whoosh", gain: 0.3, rate: 0.9 }],
+  runPick: [{ id: "pop", gain: 0.3, rate: 1.15 }],
+  runDrop: [{ id: "beads", gain: 0.7 }],
+  runServe: [{ id: "coin", gain: 0.3, rate: 1.1 }],
+  // ── Sauce Station ──
+  sauceLiquid: [{ id: "bottle", gain: 0.45 }],
+  sauceSpice: [{ id: "beads", gain: 0.7, rate: 1.15 }],
+  sauceJar: [
+    { id: "pop", gain: 0.45, rate: 0.8 },
+    { id: "plate", at: 0.05, gain: 0.25, rate: 0.9 },
+  ],
+  sauceProduce: [{ id: "plate", gain: 0.35, rate: 1.2 }],
+  sauceWhisk: [{ id: "slide", gain: 0.3, rate: 1.1 }],
+  sauceBottle: [{ id: "bottle", gain: 0.5, rate: 0.9 }],
+  // ── a round ends ──
+  gameWin: [note(523, 0, 0.5), note(659, 0.12, 0.5), note(784, 0.24, 0.5), note(1047, 0.36, 0.55)],
+  gameLose: [
+    { id: "wrong", gain: 0.5 },
+    { id: "bong", at: 0.12, gain: 0.45, rate: 0.7 },
   ],
 };
 const SFX_MIN_GAP_MS = 60;

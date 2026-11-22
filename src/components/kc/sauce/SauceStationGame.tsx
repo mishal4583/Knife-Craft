@@ -259,6 +259,8 @@ function Round({
   const oilLog = useRef<{ t: number; v: number }[]>([]);
   const autoRef = useRef(false);
   const lastMove = useRef(0);
+  /** When the whisk last made its sound (a soft swish about every 240 ms while it turns). */
+  const lastWhiskAt = useRef(0);
   const lastAng = useRef<number | null>(null);
   /** The whisk's unwrapped angle and its recent samples: the speed is the net turn over `OMEGA_WINDOW_MS`. */
   const cumAng = useRef(0);
@@ -387,7 +389,19 @@ function Round({
       scoopsRef.current = next;
       setScoops(next);
       setLog((l) => [...l, item.id]);
-      AudioManager.playSfx("sortPick");
+      // each kind of ingredient sounds like itself going into the bowl (developer 2026-11-22)
+      AudioManager.playSfx(
+        item.kind === "oil" ||
+          item.kind === "acid" ||
+          item.kind === "liquid" ||
+          item.kind === "cream"
+          ? "sauceLiquid"
+          : item.kind === "spice"
+            ? "sauceSpice"
+            : item.kind === "produce"
+              ? "sauceProduce"
+              : "sauceJar",
+      );
       // new things need mixing in
       blendRef.current = Math.max(0, blendRef.current - 0.1 * item.scoop);
       setBlend(blendRef.current);
@@ -472,6 +486,10 @@ function Round({
     }
     lastAng.current = ang;
     lastMove.current = now;
+    if (omegaRef.current > 0.3 && now - lastWhiskAt.current > 240) {
+      lastWhiskAt.current = now;
+      AudioManager.playSfx("sauceWhisk");
+    }
   };
   const onToolDown = (e: React.PointerEvent) => {
     if (phaseRef.current !== "mix") return;
@@ -574,7 +592,7 @@ function Round({
     if (phaseRef.current !== "bottle" || pourRef.current.on || cappedRef.current) return;
     pourRef.current = { on: true, held: 0 };
     setPouring(true);
-    AudioManager.playSfx("tap");
+    AudioManager.playSfx("sauceBottle");
   };
   const releasePour = () => {
     if (!pourRef.current.on) return;

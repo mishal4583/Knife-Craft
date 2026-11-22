@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { SaveData } from "@/game/SaveManager";
+import { AudioManager } from "@/game/AudioManager";
 import { InfoTip } from "@/components/kc/common/InfoTip";
 import { StageSides } from "@/components/kc/common/StageSides";
 import { TurnUprightCard } from "@/components/kc/common/TurnUprightCard";
@@ -110,6 +111,8 @@ export function DessertRunGame({
     let acc = 0;
     let shownPhase: Phase = "play";
     let shownDelivered = 0;
+    // What the sounds follow (developer 2026-11-22): the simulation is never touched, the screen only notices what changed since the last frame.
+    let heard = { cubes: -1, delivered: 0, served: 0 };
     // While paused or when the round is over nothing moves: repaint at about ten frames a second instead of every frame (it keeps the guests' bob).
     let lastDraw = -Infinity;
     const loop = (now: number) => {
@@ -129,9 +132,22 @@ export function DessertRunGame({
           view.shake = view.shake.filter((s) => s.t < SHAKE_S);
         }
         if (view.notice && now > view.noticeUntil) view.notice = "";
+        if (!pausedRef.current) {
+          let cubes = 0;
+          for (let i = 0; i < state.grid.length; i++) if (state.grid[i]! >= 0) cubes++;
+          const served = state.served.reduce((n, g) => n + g.length, 0);
+          if (heard.cubes >= 0) {
+            if (cubes < heard.cubes) AudioManager.playSfx("runPick");
+            if (state.delivered > heard.delivered) AudioManager.playSfx("runDrop");
+            if (served > heard.served) AudioManager.playSfx("runServe");
+          }
+          heard = { cubes, delivered: state.delivered, served };
+        }
         if (state.phase !== shownPhase) {
           shownPhase = state.phase;
           setPhase(state.phase);
+          if (state.phase === "won") AudioManager.playSfx("gameWin");
+          else if (state.phase === "jam") AudioManager.playSfx("gameLose");
         }
         if (state.delivered !== shownDelivered) {
           shownDelivered = state.delivered;
@@ -210,8 +226,11 @@ export function DessertRunGame({
     const lane = laneUnder(e);
     if (state && view.pressedLane !== null && lane === view.pressedLane) {
       const result = tapLane(state, lane);
-      if (result === "sent") view.hintOn = false;
-      else if (result === "full") {
+      if (result === "sent") {
+        view.hintOn = false;
+        AudioManager.playSfx("runSend");
+      } else if (result === "full") {
+        AudioManager.playSfx("sortWrong");
         view.shake.push({ lane, t: 0 });
         say("All five spots are busy");
       }

@@ -177,6 +177,16 @@ sfx("scrub-dry", RPG, "cloth-heavy", peak=-5)
 sfx("scrub-brush", KIF, "scratch_004", peak=-6)
 sfx("bubble", RPG, "bubble", peak=-8)
 
+# ---- the mini-games' own sounds (developer 2026-11-22: sound effects for Unload the Van and the other mini-games), all from the CC0 packs already used above ----------------
+sfx("whoosh", RPG, "swing2", peak=-6)  # a booster launching a crate, a waiter setting off
+sfx("clank", RPG, "metal-small2", peak=-5)  # the hammer smashing a block
+sfx("door", RPG, "door", peak=-6, end=0.5)  # a crate going out through its door
+sfx("pop", RPG, "bubble2", peak=-8)  # a cube picked off the dessert, a pantry jar
+sfx("beads", RPG, "beads", peak=-9)  # cubes landing on the serving cart, a shaker of spice
+sfx("slide", KIF, "scroll_002", peak=-9, end=0.3)  # a crate gliding over the floor
+sfx("back", KIF, "back_002", peak=-7)  # Undo
+sfx("bottle", RPG, "bottle", peak=-7)  # liquids poured into the bowl, the bottle being filled
+
 # ---- cutting and peeling: real knife-and-pumpkin recordings (one cut per file) ---------------------------------------------------------------
 for i, stem in enumerate(["cut_pumpkin_01", "cut_pumpkin_02", "cut_pumpkin_03"], start=1):
     x = read(find(FOLEY, stem))
