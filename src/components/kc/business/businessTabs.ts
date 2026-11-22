@@ -9,7 +9,9 @@ export type BusinessTab =
   | "menu"
   | "operations"
   // Restaurant build, from CLEANING_FROM_LEVEL (restaurant/cleanliness.ts).
-  | "cleanliness";
+  | "cleanliness"
+  // The Inspection screen: opened from Operations, own header, not in the tab strip.
+  | "inspection";
 
 /**
  * The Business screen ids (existing routes) and the tab each one opens.
@@ -26,6 +28,7 @@ export const BUSINESS_TAB_SCREEN: Record<BusinessTab, ScreenId> = {
   menu: "business-menu",
   operations: "business-inspections",
   cleanliness: "business-cleanliness",
+  inspection: "business-inspection",
 };
 
 export function businessTabForScreen(screen: ScreenId): BusinessTab | null {
@@ -48,6 +51,8 @@ export function businessTabForScreen(screen: ScreenId): BusinessTab | null {
       return "operations";
     case "business-cleanliness":
       return "cleanliness";
+    case "business-inspection":
+      return "inspection";
     default:
       return null;
   }

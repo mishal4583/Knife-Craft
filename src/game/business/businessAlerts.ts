@@ -43,6 +43,7 @@ export type BusinessAlertSeverity = "critical" | "warning" | "info" | "ok";
 export type BusinessAlertScreen =
   | "business-refrigerator"
   | "business-inspections"
+  | "business-inspection"
   | "business-suppliers"
   | "business-staff"
   /** Inventory (bottom bar) — the restaurant's stock control. */
@@ -327,7 +328,7 @@ export function businessAlertsFor(
       severity: report.overall === "FAIL" ? "critical" : "warning",
       title: report.overall === "FAIL" ? "Inspection Would Fail" : "Inspection Warning",
       detail: `${problems}. ${fineText}`,
-      action: { kind: "navigate", label: "View Inspection", screen: "business-inspections" },
+      action: { kind: "navigate", label: "View Inspection", screen: "business-inspection" },
       notify: true,
     });
   }

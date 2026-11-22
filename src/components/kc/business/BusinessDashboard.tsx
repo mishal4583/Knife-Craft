@@ -36,7 +36,7 @@ import { PaceCard } from "./PaceCard";
 import { BusinessSuppliers } from "./BusinessSuppliers";
 import { BusinessMenu } from "./BusinessMenu";
 import { BusinessSectionBanner } from "./BusinessSectionBanner";
-import { BusinessInspections } from "./BusinessInspections";
+import { InspectionScreen, InspectionSummary } from "./BusinessInspections";
 import { BusinessFinance } from "./BusinessFinance";
 import { BusinessHistory } from "./BusinessHistory";
 import { BusinessCleanliness } from "./BusinessCleanliness";
@@ -235,6 +235,10 @@ export function BusinessDashboard({
     }
     // Rush Restock renders its own buttons (RushRestockActions), never this one.
     if (alert.action.kind === "rush-restock") return;
+    runRepair();
+  }
+
+  function runRepair() {
     const result = performRefrigeratorMaintenance();
     setRepairMessage(
       result.ok
@@ -249,6 +253,9 @@ export function BusinessDashboard({
   // Cleanliness & Maintenance is its own screen (route `business-cleanliness`, opened from the Mini-games sheet's Cleaning section and the many links that
   // lead to it): no Business tab strip and no Business header there.
   const cleaningScreen = tab === "cleanliness";
+  // The Inspection screen (developer 2026-11-22) is a screen of its own too: its own header, Back to Operations, no tab strip.
+  const inspectionScreen = tab === "inspection";
+  const detailScreen = cleaningScreen || inspectionScreen;
   // The hub opens from Level 1 (firstLevels.ts BUSINESS_HUB_FROM_LEVEL) but its pages keep their own levels: a tab
   // whose page is still locked is not offered (the Overview and, from Day 2, Cleanliness come first).
   const level = restaurantLevelOf(save.levelProgress);
@@ -261,19 +268,21 @@ export function BusinessDashboard({
       <div className="absolute inset-0 bg-[radial-gradient(90%_50%_at_50%_0%,rgba(216,168,78,0.28),transparent_60%)]" />
       <div className="relative h-full overflow-y-auto no-scrollbar pb-24">
         <ScreenHeader
-          title={cleaningScreen ? "Cleanliness" : "Business"}
+          title={cleaningScreen ? "Cleanliness" : inspectionScreen ? "Inspection" : "Business"}
           subtitle={
             cleaningScreen
               ? "rooms · supplies · cleaner"
-              : RESTAURANT_MODE
-                ? "your back office"
-                : "your restaurant"
+              : inspectionScreen
+                ? "checks · fixes · fines"
+                : RESTAURANT_MODE
+                  ? "your back office"
+                  : "your restaurant"
           }
-          onBack={() => go("kitchen")}
+          onBack={() => go(inspectionScreen ? "business-inspections" : "kitchen")}
           right={<BusinessCash cents={save.credits} />}
         />
 
-        {cleaningScreen ? null : (
+        {detailScreen ? null : (
           <nav
             className={cn(
               "category-tabs grid gap-2 px-4",
@@ -378,6 +387,14 @@ export function BusinessDashboard({
               {...(dayCleaner ? { dayCleaner } : {})}
             />
           ) : null}
+          {tab === "inspection" ? (
+            <InspectionScreen
+              save={save}
+              go={go}
+              onRepair={runRepair}
+              repairMessage={repairMessage}
+            />
+          ) : null}
           {tab === "operations" ? (
             <Operations
               {...shared}
@@ -390,7 +407,7 @@ export function BusinessDashboard({
           ) : null}
         </div>
 
-        {cleaningScreen ? null : (
+        {detailScreen ? null : (
           <p className="px-8 pb-2 pt-5 text-center font-hand text-[15px] text-walnut/45">
             {RESTAURANT_MODE
               ? "🍽️ One restaurant · 💵 one wallet"
@@ -1424,7 +1441,7 @@ function Operations({
         <DaySummary result={dayResult} day={save.business.calendar.businessDay - 1} go={go} />
       ) : null}
 
-      <BusinessInspections save={save} />
+      <InspectionSummary save={save} go={go} />
       <BusinessFinance save={save} />
       <BusinessHistory save={save} />
       <OperationsAnalytics save={save} />

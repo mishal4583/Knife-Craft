@@ -202,9 +202,11 @@ console.log("W. Wiring and the release build");
   );
   assert(
     // RULE CHANGE (developer 2026-11-22: Cleanliness left the Business screen): the header is "Cleanliness" only on the cleaning screen, and is still titled
-    // Business with "your back office" in the restaurant build everywhere else.
-    /title=\{cleaningScreen \? "Cleanliness" : "Business"\}/.test(dash) &&
-      /RESTAURANT_MODE\s*\? "your back office"\s*: "your restaurant"/.test(dash),
+    // Business with "your back office" in the restaurant build everywhere else. RULE CHANGE (developer 2026-11-22: the Inspection screen): it is also "Inspection" on the
+    // inspection screen opened from Operations.
+    /title=\{cleaningScreen \? "Cleanliness" : inspectionScreen \? "Inspection" : "Business"\}/.test(
+      dash,
+    ) && /RESTAURANT_MODE\s*\? "your back office"\s*: "your restaurant"/.test(dash),
     'W6: the back office is titled Business, "your back office" in the restaurant build (developer 2026-10-15)',
   );
   const mod = code("src/game/restaurant/restaurantBackOffice.ts");
