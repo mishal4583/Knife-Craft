@@ -10,12 +10,15 @@ import {
 } from "@/game/cooking/ovenStep";
 import { AudioManager } from "@/game/AudioManager";
 import { KButton } from "../common/primitives";
-import { FilmBackdrop } from "./FilmBackdrop";
 import { useLandscape } from "./layoutMode";
-import { landscapeClipArt } from "@/game/landscapeArt";
 import ovenWebm from "@/assets/video/oven-bread.webm";
 import ovenMp4 from "@/assets/video/oven-bread.mp4";
 import ovenPoster from "@/assets/video/oven-bread-poster.webp";
+// The LANDSCAPE oven film (developer 2026-11-23): composed from the developer's two Gemini clips by scripts/make-oven-bread-wide-video.py (16:9, 8.0 s, silent, the same
+// timeline as the portrait film: 1.5 s going in, then the 6.5 s bake from pale through golden to burnt).
+import ovenWideWebm from "@/assets/video/oven-bread-wide.webm";
+import ovenWideMp4 from "@/assets/video/oven-bread-wide.mp4";
+import ovenWidePoster from "@/assets/video/oven-bread-wide-poster.webp";
 
 /** The film runs on its own clock; if it drifts further than this from the bake, it is moved back (seconds). */
 const FILM_DRIFT_S = 0.25;
@@ -59,7 +62,8 @@ export function OvenStep({
   const filmRef = useRef<HTMLVideoElement | null>(null);
   const [filmFailed, setFilmFailed] = useState(false);
   const useFilm = !reducedMotion && !filmFailed;
-  // A landscape window (developer 2026-11-20): the film is as tall as the window, in the middle of its own wide oven picture, with the title and the controls over it.
+  // A landscape window (developer 2026-11-23, replacing the 2026-11-20 portrait film in the middle of a painted oven picture): the 16:9 oven film IS the picture,
+  // covering the window, with the title top left and the meter and "Take it out" in a panel at the bottom right (the loaf sits in the middle of the frame).
   const wide = useLandscape();
   const bakeStart = useRef<number | null>(null);
   const finished = useRef(false);
@@ -138,9 +142,25 @@ export function OvenStep({
       film.removeEventListener("playing", onPlaying);
       film.removeEventListener("error", onError);
     };
-  }, [reducedMotion]);
+    // The wide and the upright film are different <video> elements: a window turned while baking starts the other one from the bake clock.
+  }, [reducedMotion, wide]);
 
-  const filmVideo = (
+  const filmVideo = wide ? (
+    <video
+      ref={filmRef}
+      className="h-full w-full object-cover object-[50%_75%]"
+      muted
+      playsInline
+      preload="auto"
+      poster={ovenWidePoster}
+      disablePictureInPicture
+      controlsList="nodownload noremoteplayback"
+      data-testid="oven-film-wide"
+    >
+      <source src={ovenWideWebm} type="video/webm" />
+      <source src={ovenWideMp4} type="video/mp4" />
+    </video>
+  ) : (
     <video
       ref={filmRef}
       className="h-full w-full object-cover"
@@ -193,57 +213,48 @@ export function OvenStep({
   if (wide && useFilm)
     return (
       <div
-        className="absolute inset-0 z-[55] bg-walnut-dark text-center"
+        className="absolute inset-0 z-[55] overflow-hidden bg-walnut-dark text-center"
         data-testid="oven-step"
         data-state={state}
         data-zone={result ?? zone}
         data-film="on"
+        data-film-wide="on"
         role="dialog"
         aria-label={`Baking ${dish.name}`}
       >
-        <FilmBackdrop
-          art={landscapeClipArt("oven-bread")}
-          share={864 / 1920}
-          video={
-            <div className="absolute inset-0" aria-hidden="true" data-testid="oven-film">
-              {filmVideo}
+        <div className="absolute inset-0" aria-hidden="true" data-testid="oven-film">
+          {filmVideo}
+        </div>
+        <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-walnut-dark/80 to-transparent px-6 pb-8 pt-5 text-left">
+          <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.2em] text-gold">
+            🔥 Into the oven
+          </p>
+          <p className="font-display text-[20px] font-extrabold leading-tight text-ivory">
+            {dish.emoji} {dish.name}
+          </p>
+        </div>
+        <div
+          className="absolute bottom-5 right-5 flex w-[clamp(200px,24vw,320px)] flex-col items-center gap-2 rounded-[20px] border-2 border-[#e0a63a]/60 bg-walnut-dark/75 p-3 shadow-lift backdrop-blur-sm"
+          data-testid="oven-controls"
+        >
+          {meter}
+          {state === "done" && result ? (
+            <p className="anim-pop font-hand text-[22px] text-ivory" data-testid="oven-result">
+              {DONENESS_LINE[result]}
+            </p>
+          ) : (
+            <div className="w-full">
+              <KButton
+                full
+                variant="copper"
+                disabled={state !== "baking"}
+                onClick={() => takeOut(doneness)}
+              >
+                🧤 Take it out
+              </KButton>
             </div>
-          }
-          overlay={
-            <>
-              <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-walnut-dark/80 to-transparent px-6 pb-8 pt-5">
-                <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.2em] text-gold">
-                  🔥 Into the oven
-                </p>
-                <p className="font-display text-[20px] font-extrabold leading-tight text-ivory">
-                  {dish.emoji} {dish.name}
-                </p>
-              </div>
-              <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-3 bg-gradient-to-t from-walnut-dark/85 via-walnut-dark/60 to-transparent px-10 pb-6 pt-14">
-                {meter}
-                {state === "done" && result ? (
-                  <p
-                    className="anim-pop font-hand text-[22px] text-ivory"
-                    data-testid="oven-result"
-                  >
-                    {DONENESS_LINE[result]}
-                  </p>
-                ) : (
-                  <div className="w-full max-w-[300px]">
-                    <KButton
-                      full
-                      variant="copper"
-                      disabled={state !== "baking"}
-                      onClick={() => takeOut(doneness)}
-                    >
-                      🧤 Take it out
-                    </KButton>
-                  </div>
-                )}
-              </div>
-            </>
-          }
-        />
+          )}
+        </div>
       </div>
     );
   return (

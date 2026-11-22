@@ -220,9 +220,12 @@ console.log("\nD. Everything else");
     "D6: the service floor and the served card's room show the stage's wide dining picture in a landscape window",
   );
   assert(
+    // RULE CHANGE (developer 2026-11-23: the landscape oven film arrived, composed from the two Gemini clips): the oven film is no longer a portrait film in the middle of a
+    // painted oven picture; the 16:9 film (oven-bread-wide.*) covers the window and the controls sit over it. The cooking films' portrait path keeps its matching picture.
     /landscapeClipArt\(CLIP_ART\[kind\]\)/.test(read("src/components/kc/game/CookingClip.tsx")) &&
-      /landscapeClipArt\("oven-bread"\)/.test(read("src/components/kc/game/OvenStep.tsx")),
-    "D7: each cooking film (and the oven film) sits in the middle of its own matching wide picture",
+      /oven-bread-wide\.webm/.test(read("src/components/kc/game/OvenStep.tsx")) &&
+      !/FilmBackdrop/.test(read("src/components/kc/game/OvenStep.tsx")),
+    "D7: each portrait cooking film sits in the middle of its own matching wide picture; the oven film is the full-frame 16:9 film",
   );
   assert(
     // RULE CHANGE (developer 2026-11-22: "use this image as the loading screen"): the wide loading screen is the ONE finished picture loading/wide.webp (scripts/make-loading-wide.py)
