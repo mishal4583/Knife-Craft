@@ -68,6 +68,42 @@ export function rr(
   else ctx.rect(x, y, w, h);
 }
 
+/**
+ * What a waiting waiter is waiting FOR (developer 2026-11-22: "waiting waiters are not showing what they are waiting for"): a small tag with a cube of the colour
+ * it needs, none of which is within reach yet, and the word. `cx` is the tag's middle, `y` the middle of its line.
+ */
+export function drawWaitingTag(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  y: number,
+  hex: string,
+  size = 1,
+) {
+  const h = 22 * size;
+  const cube = 14 * size;
+  ctx.font = `800 ${12 * size}px ${FONT}`;
+  const text = ctx.measureText("waiting").width;
+  const w = cube + 5 * size + text + 12 * size;
+  ctx.fillStyle = "rgba(30,18,10,.78)";
+  rr(ctx, cx - w / 2, y - h / 2, w, h, h / 2);
+  ctx.fill();
+  const cx0 = cx - w / 2 + 6 * size;
+  ctx.fillStyle = shade(hex, -0.3);
+  rr(ctx, cx0, y - cube / 2 + 1.5, cube, cube, 3.5 * size);
+  ctx.fill();
+  ctx.fillStyle = hex;
+  rr(ctx, cx0, y - cube / 2, cube, cube - 1.5, 3.5 * size);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,.85)";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = "#fff";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText("waiting", cx0 + cube + 5 * size, y + 0.5);
+  ctx.textBaseline = "alphabetic";
+}
+
 const cubeCache = new Map<string, HTMLCanvasElement>();
 /**
  * One toy-block tile, drawn once per colour at 3x. Like the developer's reference mosaics (Colony Flow) but with NO
@@ -600,15 +636,7 @@ export function drawRun(ctx: CanvasRenderingContext2D, state: RunState, view: Dr
     ctx.font = `800 18px ${FONT}`;
     ctx.textAlign = "center";
     ctx.fillText(String(Math.max(0, spot.n)), c.x + 30, c.y + 35);
-    if (waiting) {
-      ctx.fillStyle = "#fff";
-      ctx.strokeStyle = "rgba(0,0,0,.55)";
-      ctx.lineWidth = 3;
-      ctx.font = `800 13px ${FONT}`;
-      ctx.textAlign = "left";
-      ctx.strokeText("waiting", c.x - SPOT_W / 2 + 6, c.y - 36);
-      ctx.fillText("waiting", c.x - SPOT_W / 2 + 6, c.y - 36);
-    }
+    if (waiting) drawWaitingTag(ctx, c.x, c.y - 38, spot.hex, 1.05);
   }
 
   // ---- the queue

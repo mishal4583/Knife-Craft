@@ -31,6 +31,7 @@ import {
   shade,
   tileSprite,
   type DrawView,
+  drawWaitingTag,
 } from "./dessertRunDraw";
 
 /**
@@ -385,15 +386,7 @@ export function drawRunWide(ctx: CanvasRenderingContext2D, state: RunState, view
     ctx.font = `800 15px ${FONT}`;
     ctx.textAlign = "center";
     ctx.fillText(String(Math.max(0, spot.n)), c.x + 22, c.y + 39);
-    if (waiting) {
-      ctx.fillStyle = "#fff";
-      ctx.strokeStyle = "rgba(0,0,0,.55)";
-      ctx.lineWidth = 3;
-      ctx.font = `800 12px ${FONT}`;
-      ctx.textAlign = "left";
-      ctx.strokeText("waiting", c.x - 38, c.y + 44);
-      ctx.fillText("waiting", c.x - 38, c.y + 44);
-    }
+    if (waiting) drawWaitingTag(ctx, c.x, c.y + 61, spot.hex);
   }
 
   // ---- the queue: one COLUMN a lane, the front waiter on top, "+N" under a column with more waiters than the three shown
