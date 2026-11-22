@@ -2,6 +2,9 @@ import { collectableTotal } from "@/game/progression/achievements";
 import { useUnlockText } from "./navLevel";
 import { dayClockFor, dayStripText, type DayLight } from "@/game/restaurant/dayClock";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { CLEANING_FROM_LEVEL } from "@/game/config/cleaningStart";
+import { cleanlinessOf } from "@/game/restaurant/cleanliness";
+import { PaintedPic } from "./ChoreTiles";
 import { ENDLESS_RESTAURANT_NAME } from "@/game/restaurant/endlessRestaurant";
 import { useContext, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -249,6 +252,7 @@ export function Kitchen({
   // The Mini-games button's painted controller, and every picture of the sheet it opens, fetched a moment after the Kitchen is up (never in its first
   // load) so the sheet shows its art on the first tap (minigamesArt.ts).
   const miniGameArt = useMiniGameArt(["shortcut-icon"]);
+  const cleaningWaiting = reached < CLEANING_FROM_LEVEL ? 0 : cleanlinessOf(save).tasks.length;
   useEffect(() => {
     if (!RESTAURANT_MODE) return;
     const t = window.setTimeout(warmMiniGameArt, 1500);
@@ -389,6 +393,10 @@ export function Kitchen({
           "absolute right-3 top-[16%] z-20 flex flex-col items-end gap-2 [--pill:56px] [@media(max-height:620px)]:[--pill:48px] [@media(max-height:700px)]:top-[13%] [@media(max-height:700px)]:gap-1.5 land:!top-[68px]",
           // Settings and Paige join the column, which then starts right under the wallet
           !stacked && "!top-[58px] [@media(max-height:760px)]:[--pill:48px]",
+          // Five round buttons now (Cleaning sits under Mini-games, developer 2026-11-22): on a short upright phone they must end above the day strip,
+          // so the column uses 48 px buttons from 700 px of height (it was 56) and, under 620 px, starts higher with a 2 px gap (the strip gives way below).
+          stacked &&
+            "[@media(max-height:700px)]:[--pill:48px] [@media(max-height:620px)]:!top-[70px] [@media(max-height:620px)]:!gap-0.5",
         )}
       >
         {stacked ? null : settingsButton}
@@ -582,6 +590,69 @@ export function Kitchen({
             </span>
           </button>
         ) : null}
+
+        {/* Cleaning (developer 2026-11-22, third ask: "under the Mini-games button, a separate section from Mini-games and Business"): its own button
+            right under Mini-games. The same tap-to-expand, tap-again-to-open pattern as the others; the badge counts the jobs waiting. */}
+        {RESTAURANT_MODE ? (
+          <button
+            type="button"
+            data-testid="cleaning-shortcut"
+            aria-expanded={expandedShortcut === "cleaning"}
+            aria-disabled={reached < CLEANING_FROM_LEVEL || undefined}
+            aria-label={
+              reached < CLEANING_FROM_LEVEL
+                ? `Cleaning, opens ${u.when(CLEANING_FROM_LEVEL)}${expandedShortcut === "cleaning" ? ". Locked" : ". Tap to expand"}`
+                : `Cleaning${cleaningWaiting ? `, ${cleaningWaiting} ${cleaningWaiting === 1 ? "job" : "jobs"} waiting` : ""}${expandedShortcut === "cleaning" ? ". Tap again to open" : ". Tap to expand"}`
+            }
+            onPointerEnter={(event) => {
+              if (event.pointerType === "mouse") setExpandedShortcut("cleaning");
+            }}
+            onPointerLeave={(event) => {
+              if (event.pointerType === "mouse") setExpandedShortcut(null);
+            }}
+            onFocus={(event) => {
+              if (event.currentTarget.matches(":focus-visible")) setExpandedShortcut("cleaning");
+            }}
+            onBlur={() => setExpandedShortcut(null)}
+            onClick={() => {
+              if (expandedShortcut !== "cleaning") {
+                setExpandedShortcut("cleaning");
+                return;
+              }
+              if (reached >= CLEANING_FROM_LEVEL) go("business-cleanliness");
+            }}
+            className={cn(
+              "press group relative inline-flex h-[var(--pill)] w-[var(--pill)] shrink-0 items-center justify-start overflow-visible rounded-full border-[3px] border-[#e0a63a] bg-[linear-gradient(145deg,#fff7dc_0%,#f5d998_100%)] px-[calc((var(--pill)-40px)/2-3px)] font-ui text-[13px] font-extrabold text-walnut-dark shadow-[0_4px_0_rgba(111,66,28,0.48),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,255,255,0.95)] transition-[width,transform,box-shadow] duration-300 ease-out motion-reduce:transition-none hover:w-[166px] focus-visible:w-[166px] active:translate-y-0.5 active:shadow-[0_2px_0_rgba(111,66,28,0.48),0_4px_8px_rgba(35,18,8,0.3)]",
+              expandedShortcut === "cleaning" && "w-[166px]",
+              reached < CLEANING_FROM_LEVEL && "opacity-75",
+            )}
+          >
+            <span
+              aria-hidden
+              className="grid h-10 w-10 shrink-0 place-items-center p-1 text-[22px] leading-none"
+            >
+              {reached < CLEANING_FROM_LEVEL ? "🔒" : <PaintedPic name="broom" fallback="🧹" />}
+            </span>
+            <span
+              aria-hidden="true"
+              className={cn(
+                "ml-0 max-w-0 overflow-hidden whitespace-nowrap text-left opacity-0 transition-[max-width,opacity,margin] duration-200 group-hover:ml-1 group-hover:max-w-[104px] group-hover:opacity-100 group-focus-visible:ml-1 group-focus-visible:max-w-[104px] group-focus-visible:opacity-100",
+                expandedShortcut === "cleaning" && "ml-1 max-w-[104px] opacity-100",
+              )}
+            >
+              {reached < CLEANING_FROM_LEVEL ? u.lv(CLEANING_FROM_LEVEL) : "Cleaning"}
+            </span>
+            {cleaningWaiting > 0 ? (
+              <span
+                aria-hidden
+                data-testid="cleaning-shortcut-badge"
+                className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full border-2 border-[#fff3db] bg-[#e53c32] font-ui text-[12px] font-black leading-none text-white shadow-md"
+              >
+                !
+              </span>
+            ) : null}
+          </button>
+        ) : null}
       </div>
 
       {RESTAURANT_MODE && miniGamesOpen ? (
@@ -603,7 +674,7 @@ export function Kitchen({
           <p
             data-testid="day-strip"
             data-day-phase={clock.phase}
-            className="mx-auto mb-2 w-fit max-w-full truncate rounded-full border-2 border-[#e0a63a] bg-walnut-dark/70 px-[10px] py-[5px] font-ui text-[12.5px] font-extrabold text-ivory shadow-soft backdrop-blur-sm [@media(max-height:700px)]:mb-1 [@media(max-height:700px)]:px-[8px] [@media(max-height:700px)]:py-[2px] [@media(max-height:700px)]:text-[11px]"
+            className="mx-auto mb-2 w-fit max-w-full truncate rounded-full border-2 border-[#e0a63a] bg-walnut-dark/70 px-[10px] py-[5px] font-ui text-[12.5px] font-extrabold text-ivory shadow-soft backdrop-blur-sm [@media(max-height:700px)]:mb-1 [@media(max-height:700px)]:px-[8px] [@media(max-height:700px)]:py-[2px] [@media(max-height:700px)]:text-[11px] [@media(max-height:620px)]:max-w-[calc(100%-72px)] land:!max-w-full"
           >
             <CalendarDays
               className="mr-1.5 hidden h-[18px] w-[18px] align-[-3px] text-gold landx:inline"

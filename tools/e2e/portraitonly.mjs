@@ -301,12 +301,12 @@ const sinkSave = seedSave({
   story: { introDone: true, milestoneMask: 4095, finaleSeen: true },
 });
 await open(sinkSave, 1280, 720);
-// Business > Cleanliness > the Dishwashing card's Wash (the way dishwashing.mjs step 4 reaches the sink)
-await page.evaluate(() => document.querySelector('[data-nav="restaurant-map"]')?.click());
-await sleep(900);
-await openShortcut(page, "business");
-await sleep(700);
-await clickButton(page, /Cleanliness\d*$/).catch(() => {});
+// RULE CHANGE (developer 2026-11-22: Cleanliness is its own round button under Mini-games, not a Business tab): Kitchen > Cleaning button (tap to expand, tap again to open) >
+// the Dishwashing card's Wash.
+for (let i = 0; i < 2; i++) {
+  await page.evaluate(() => document.querySelector('[data-testid="cleaning-shortcut"]')?.click());
+  await sleep(500);
+}
 await sleep(900);
 await page.evaluate(() =>
   [
