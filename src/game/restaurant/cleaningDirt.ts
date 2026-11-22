@@ -244,6 +244,23 @@ type LandGeo = {
   dining: { tops: Zone[]; floor: Zone[] };
   restroom: { bowls: Zone[] | null; sinks: Zone[]; mirror: Zone[]; floor: Zone[] };
 };
+/**
+ * Things that hang IN FRONT of the cooking line in the 16:9 kitchen paintings: the pendant lamps (developer 2026-11-22: "the grease on top of the light bulb").
+ * No stain and no grease streak is laid on them (a lamp is never dirty from the cooktop), measured from the art in scene units (960×540).
+ */
+export const LAND_KEEP_OUT: Partial<Record<KitchenMapArtStage, readonly Zone[]>> = {
+  growing: [rect(425, 60, 482, 102), rect(468, 98, 524, 137), rect(520, 134, 582, 188)],
+  "flourishing-cafe": [rect(392, 138, 450, 182), rect(472, 112, 528, 152), rect(543, 85, 598, 132)],
+  grand: [rect(380, 100, 425, 152), rect(415, 120, 465, 168), rect(468, 128, 522, 192)],
+};
+
+/** Whether a stain of radius `r` at (x, y) would touch one of the stage's hanging lamps. */
+function onKeepOut(stage: KitchenMapArtStage, x: number, y: number, r: number): boolean {
+  return (LAND_KEEP_OUT[stage] ?? []).some(
+    (z) => x > z.x - r && x < z.x + z.w + r && y > z.y - r && y < z.y + z.h + r,
+  );
+}
+
 export const LAND_GEO: Record<KitchenMapArtStage, LandGeo> = {
   humble: {
     kitchen: {
@@ -610,8 +627,30 @@ function greaseStreaks(
   return [0.3, 0.55, 0.8].map((f, i) => {
     const y = line.y + line.h * f;
     const inset = i * line.w * 0.06;
-    return [x1 + inset, y, x2 - inset, y];
+    const run: [number, number, number, number] = [x1 + inset, y, x2 - inset, y];
+    return orient === "landscape" ? clearOfLamps(stage, run) : run;
   });
+}
+
+/** A streak keeps to its longest stretch that is clear of the hanging lamps (still ONE streak, so the count never changes). */
+function clearOfLamps(
+  stage: KitchenMapArtStage,
+  run: [number, number, number, number],
+): [number, number, number, number] {
+  const [x1, y, x2] = run;
+  let free: [number, number][] = [[x1, x2]];
+  for (const z of LAND_KEEP_OUT[stage] ?? []) {
+    if (y < z.y - 10 || y > z.y + z.h + 10) continue; // a streak is about 20 thick
+    free = free.flatMap(([a, b]) => {
+      const lo = z.x - 6;
+      const hi = z.x + z.w + 6;
+      if (hi <= a || lo >= b) return [[a, b] as [number, number]];
+      return ([[a, Math.min(b, lo)], [Math.max(a, hi), b]] as [number, number][]).filter(([c, d]) => d - c > 12);
+    });
+  }
+  if (free.length === 0) return run;
+  const best = free.reduce((m, f) => (f[1] - f[0] > m[1] - m[0] ? f : m));
+  return [best[0], y, best[1], y];
 }
 
 const pick = <T>(rnd: () => number, list: readonly T[]): T =>
@@ -749,6 +788,7 @@ function taskStains(
     const zone = zones[Math.floor(rnd() * zones.length)]!;
     const x = Math.min(width - r, Math.max(r, zone.x + rnd() * zone.w));
     const y = Math.min(height - r, Math.max(r, zone.y + rnd() * zone.h));
+    if (land && area === "kitchen" && onKeepOut(stage, x, y, r)) continue; // never on a hanging lamp
     // Small zones (the toilet bowl, the taps) may share; elsewhere keep stains apart.
     const small = zone.w * zone.h < 4000 && !(zone.w === WALK_CELL && zone.h === WALK_CELL);
     const spacing = small ? 0.35 : 0.75;

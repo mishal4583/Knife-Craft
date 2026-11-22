@@ -60,6 +60,8 @@ import { giftStreakState, streakRewardOnTake } from "@/game/daily/giftStreak";
 import { PERSONALITY_CADENCE } from "@/game/customers/personalities";
 import { inspectBusiness } from "@/game/business/businessInspection";
 import { GameShell } from "@/components/kc/game/GameShell";
+import { useLandscape } from "@/components/kc/game/layoutMode";
+import { landscapeKitchenArt } from "@/game/landscapeArt";
 import { type ScreenId } from "@/components/kc/data";
 import { SaveManager, type SaveData } from "@/game/SaveManager";
 import { PauseManager } from "@/game/PauseManager";
@@ -589,14 +591,17 @@ function LoadingScreen() {
  * under the intro's outro, and while the cutting engine is still loading, so
  * the film dissolves straight into the kitchen — never a blank flash.
  */
-function KitchenPlate() {
+function KitchenPlate({ art, skin }: { art?: string | undefined; skin?: string | undefined }) {
+  // The SAME picture Preparation draws, in the same window shape (developer 2026-11-22: after "Open restaurant" a zoomed, cropped PORTRAIT kitchen showed in a
+  // wide window before the cooking screen): the built kitchen's landscape painting when wide, its portrait painting otherwise.
+  const wide = useLandscape();
   return (
     <div className="absolute inset-0 overflow-hidden bg-cream" data-testid="kitchen-plate">
       <img
-        src={kitchenBg}
+        src={wide ? landscapeKitchenArt(skin ?? "skin-01") : (art ?? kitchenBg)}
         alt=""
-        width={540}
-        height={960}
+        width={wide ? 1920 : 540}
+        height={wide ? 1080 : 960}
         className="absolute inset-0 h-full w-full object-cover"
       />
     </div>
@@ -4758,11 +4763,11 @@ export function App() {
     >
       {/* Preparation is a lazy chunk (lazyPreparation.ts) — normally already
           preloaded by the time a level opens, so this fallback rarely shows. */}
-      <Suspense fallback={screen === "gameplay" ? <KitchenPlate /> : <LoadingScreen />}>
+      <Suspense fallback={screen === "gameplay" ? <KitchenPlate art={cuttingKitchenArt} skin={cuttingKitchenSkin} /> : <LoadingScreen />}>
         {/* Nothing runs under the intro (W2) or the naming card: Level 1 mounts when they end. */}
         {showIntro || askRestaurantName ? (
           introPlate || askRestaurantName ? (
-            <KitchenPlate />
+            <KitchenPlate art={cuttingKitchenArt} skin={cuttingKitchenSkin} />
           ) : null
         ) : showServicePrep && currentServiceOrder ? (
           <Preparation

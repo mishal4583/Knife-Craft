@@ -45,6 +45,7 @@ import {
   LAND_SCENE,
   landDirtZones,
   landscapeCleaningSupports,
+  LAND_KEEP_OUT,
   diningRug,
   strengthOpacity,
   strengthToughness,
@@ -497,6 +498,39 @@ console.log("L  phone landscape");
         fs.existsSync(path.join(root, `public/landscape-art/cleaning/${area}-${st}.webp`)),
         `landscape art ${area}-${st} exists`,
       );
+}
+
+console.log("K  hanging lamps");
+{
+  // developer 2026-11-22 ("the grease on top of the light bulb"): in the 16:9 kitchens no stain and no grease streak lies on a pendant lamp.
+  const bad: string[] = [];
+  let checked = 0;
+  for (const [stage, boxes] of Object.entries(LAND_KEEP_OUT) as [
+    string,
+    { x: number; y: number; w: number; h: number }[],
+  ][])
+    for (const task of ["grease", "degrease", "equipment", "deep-kitchen", "wipe-boards"] as const)
+      for (let variant = 0; variant < 12; variant++)
+        for (const st of makeStains("kitchen", task, stage as never, false, variant, "landscape")) {
+          checked++;
+          const half = st.kind === "grease" ? st.r * st.stretch : st.r * 0.5;
+          for (const z of boxes) {
+            const hit =
+              st.x + half > z.x &&
+              st.x - half < z.x + z.w &&
+              st.y + st.r > z.y &&
+              st.y - st.r < z.y + z.h;
+            if (hit)
+              bad.push(
+                `${stage}/${task}/${variant} ${st.kind} at ${Math.round(st.x)},${Math.round(st.y)}`,
+              );
+          }
+        }
+  assert(
+    checked > 100 && bad.length === 0,
+    "K1: no stain or grease streak lies on a hanging lamp in the growing, flourishing and grand kitchens",
+    bad.slice(0, 5),
+  );
 }
 
 console.log("R  seeded only");
