@@ -1,8 +1,9 @@
-// The LANDSCAPE cooking films (developer 2026-11-21: Gemini-made 16:9 films for the fruit and the salad dishes), restaurant build, in a real service at Level 4:
+// The LANDSCAPE cooking films (developer 2026-11-21: Gemini-made 16:9 films; 2026-11-22: all six kinds), restaurant build, in a real service at Level 4:
 //   1. in a wide window the fruit dish plays its wide film FULL FRAME (data-testid="cooking-clip-wide", chef-fruit-wide, ~4.3 s) and it really plays, with SKIP › in the bottom-right corner;
 //   2. in a wide window the salad dish plays chef-salad-wide (3.0 s);
 //   3. on an upright phone the same fruit dish still plays the PORTRAIT film on the plain screen (no wide, no backdrop);
-//   4. a kind with no wide film yet (a curry) keeps the portrait film on its painted backdrop in a wide window (the old way);
+//   4. RULE CHANGE (developer 2026-11-22: the curry, bread, cooking and plating films arrived): the curry dish plays chef-curry-wide full frame too (it kept the portrait film on its
+//      backdrop before), and so do bread (chef-bread-wide), another cooked dish (chef-cooking-wide) and a plated one (chef-plating-wide), each with SKIP › and no backdrop;
 //   5. no console errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import { MOVED_IN_BUSINESS, launch, boot, seedSave, sleep, shot, clickButton } from "./harness.mjs";
@@ -60,11 +61,31 @@ const clipShown = () =>
   document.querySelector('[data-testid="cooking-clip"]')?.getAttribute("aria-hidden") === "false";
 
 const { browser, page, logs } = await launch();
+// The film can show and end between two polls of the solver: a sampler in the page keeps the last look at the film (window.__film), whenever it was up.
+await page.evaluateOnNewDocument(() => {
+  setInterval(() => {
+    const host = document.querySelector('[data-testid="cooking-clip"]');
+    const v = host?.querySelector("video");
+    if (!host || host.getAttribute("aria-hidden") !== "false" || !v) return;
+    window.__film = {
+      wide: !!document.querySelector('[data-testid="cooking-clip-wide"]'),
+      backdrop: !!document.querySelector('[data-testid="film-backdrop"]'),
+      src: v.currentSrc.replace(/^.*\//, ""),
+      t: v.currentTime,
+      paused: v.paused,
+      duration: v.duration,
+      skip: !!document.querySelector('[aria-label="Skip cooking"]'),
+    };
+  }, 150);
+});
 
 /** Plays a one-dish service until the cooking film shows; returns what the film is. */
 async function filmOnce(label, recipeId, ids, size, shotName) {
   await page.setViewport({ ...size, deviceScaleFactor: 1, hasTouch: size.width < 500 });
   await boot(page, seed(recipeId, ids));
+  await page.evaluate(() => {
+    window.__film = undefined;
+  });
   await sleep(2500);
   await clickButton(page, /^Open for service$/);
   await sleep(1500);
@@ -81,6 +102,7 @@ async function filmOnce(label, recipeId, ids, size, shotName) {
   await playToReport(page, { maxMs: 120000, until: clipShown, ...(geom ? { geom } : {}) });
   await sleep(1300);
   const info = await page.evaluate(() => {
+    if (window.__film) return window.__film;
     const v = document.querySelector('[data-testid="cooking-clip"] video');
     return {
       wide: !!document.querySelector('[data-testid="cooking-clip-wide"]'),
@@ -149,18 +171,54 @@ try {
     p,
   );
 
-  const c = await filmFor(
-    "curry wide",
-    "camp-pumpkin-curry-dice",
-    ["pumpkin", "onion", "garlic"],
-    { width: 1280, height: 720 },
-    "widefilm-curry",
-  );
-  check(
-    "4 a kind with no wide film yet keeps the portrait film on its backdrop in a wide window",
-    !c.wide && c.backdrop && /chef-curry-/.test(c.src ?? "") && !/wide/.test(c.src ?? ""),
-    c,
-  );
+  const wideKinds = [
+    [
+      "curry wide",
+      "camp-pumpkin-curry-dice",
+      ["pumpkin", "onion", "garlic"],
+      "chef-curry-wide",
+      5.38,
+      "widefilm-curry",
+    ],
+    [
+      "bread wide",
+      // The only campaign bread dish with no oven step (an oven dish plays the oven film instead of the cooking film).
+      "camp-peach-cheddar-board",
+      ["peach", "cheddar", "baguette"],
+      "chef-bread-wide",
+      5.88,
+      "widefilm-bread",
+    ],
+    [
+      "cooked wide",
+      "camp-pepper-fajita-julienne",
+      ["pepper", "onion"],
+      "chef-cooking-wide",
+      3.86,
+      "widefilm-cooked",
+    ],
+    [
+      "plated wide",
+      "camp-garden-tomato-cucumber",
+      ["tomato", "cucumber"],
+      "chef-plating-wide",
+      5.29,
+      "widefilm-plated",
+    ],
+  ];
+  for (const [label, recipe, ids, file, secs, shotName] of wideKinds) {
+    const c = await filmFor(label, recipe, ids, { width: 1280, height: 720 }, shotName);
+    check(
+      `4 ${label}: ${file} plays full frame, with SKIP ›, no backdrop`,
+      c.wide &&
+        !c.backdrop &&
+        (c.src ?? "").includes(file) &&
+        c.t > 0 &&
+        c.skip &&
+        Math.abs(c.duration - secs) < 0.3,
+      c,
+    );
+  }
 } catch (e) {
   check("run", false, String(e).slice(0, 200));
 }

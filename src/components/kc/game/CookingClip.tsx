@@ -9,9 +9,9 @@
  * chef's hands have carried the plate away (RECIPE_COMPLETED) and before
  * the Knife Report.
  *
- * - LANDSCAPE (developer 2026-11-21): a kind that has a 16:9 film (`WIDE_CLIPS`: fruit and salad so far, made with Gemini and built by
- *   scripts/make-wide-cooking-videos.py) plays it FULL FRAME in a landscape window; the other kinds play their portrait film on its painted
- *   backdrop (`FilmBackdrop`), and an upright phone always plays the portrait film. More kinds join by adding their wide files.
+ * - LANDSCAPE (developer 2026-11-21): a kind that has a 16:9 film (`WIDE_CLIPS`: fruit, salad, curry, bread, cooked and plated, made with Gemini and built by
+ *   scripts/make-wide-cooking-videos.py) plays it FULL FRAME in a landscape window; a kind with no wide film would play its portrait film on its
+ *   painted backdrop (`FilmBackdrop`), and an upright phone always plays the portrait film. (The oven's bread film is not one of the six: still portrait.)
  * - Mounted as soon as plating starts (`playing` false: invisible, only
  *   buffering), so it is ready when the hands leave. Bundled locally
  *   (WebM VP9 first, H.264 MP4 fallback) — no network request.
@@ -55,6 +55,18 @@ import fruitWidePoster from "@/assets/video/chef-fruit-wide-poster.webp";
 import saladWideWebm from "@/assets/video/chef-salad-wide.webm";
 import saladWideMp4 from "@/assets/video/chef-salad-wide.mp4";
 import saladWidePoster from "@/assets/video/chef-salad-wide-poster.webp";
+import curryWideWebm from "@/assets/video/chef-curry-wide.webm";
+import curryWideMp4 from "@/assets/video/chef-curry-wide.mp4";
+import curryWidePoster from "@/assets/video/chef-curry-wide-poster.webp";
+import breadWideWebm from "@/assets/video/chef-bread-wide.webm";
+import breadWideMp4 from "@/assets/video/chef-bread-wide.mp4";
+import breadWidePoster from "@/assets/video/chef-bread-wide-poster.webp";
+import cookingWideWebm from "@/assets/video/chef-cooking-wide.webm";
+import cookingWideMp4 from "@/assets/video/chef-cooking-wide.mp4";
+import cookingWidePoster from "@/assets/video/chef-cooking-wide-poster.webp";
+import platingWideWebm from "@/assets/video/chef-plating-wide.webm";
+import platingWideMp4 from "@/assets/video/chef-plating-wide.mp4";
+import platingWidePoster from "@/assets/video/chef-plating-wide-poster.webp";
 
 /** One film per kind of dish (dishKindFor): fruit cups with a honey drizzle, the chef tossing a salad, stirring a curry pot, topping bruschetta, cooking at the stove, or plating cut vegetables. */
 const CLIPS: Record<DishKind, { webm: string; mp4: string; poster: string }> = {
@@ -70,6 +82,10 @@ const CLIPS: Record<DishKind, { webm: string; mp4: string; poster: string }> = {
 const WIDE_CLIPS: Partial<Record<DishKind, { webm: string; mp4: string; poster: string }>> = {
   fruit: { webm: fruitWideWebm, mp4: fruitWideMp4, poster: fruitWidePoster },
   salad: { webm: saladWideWebm, mp4: saladWideMp4, poster: saladWidePoster },
+  curry: { webm: curryWideWebm, mp4: curryWideMp4, poster: curryWidePoster },
+  bread: { webm: breadWideWebm, mp4: breadWideMp4, poster: breadWidePoster },
+  cooked: { webm: cookingWideWebm, mp4: cookingWideMp4, poster: cookingWidePoster },
+  plated: { webm: platingWideWebm, mp4: platingWideMp4, poster: platingWidePoster },
 };
 
 /** The wide background picture of each film (a landscape window: `FilmBackdrop`). */

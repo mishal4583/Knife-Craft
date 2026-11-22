@@ -21,14 +21,16 @@ W, H = 1024, 576
 DELOGO = "delogo=x=1128:y=563:w=64:h=64"
 
 # kind -> (hand-off sub-folder / file stem, keep from (s), keep for (s), speed). The fruit clip came out 10 s long; the film should be about 4 s: its last 6.3 s (the mint
-# on the glass, then the honey) at 1.5x = 4.2 s. The salad clip is 3.0 s and stays whole.
+# on the glass, then the honey) at 1.5x = 4.2 s. The salad clip is 3.0 s and stays whole. The curry clip is 10 s: from 2.0 s (the stir, then the chef pulling back over the
+# pot) at 1.5x = 5.3 s. The bread clip (5.8 s) and the cooking clip (3.9 s) stay whole. The plating clip is 13.8 s (tomatoes, the chef, the plate, the herbs, the finished plate):
+# its last 7.3 s (the plate arriving, the herbs, the finished plate) at 1.4x = 5.2 s. The game never waits longer than 7 s (CookingClip MAX_PLAY_MS).
 KINDS = {
     "fruit": ("01-chef-fruit", 3.6, 6.3, 1.5),
     "salad": ("02-chef-salad", 0.0, 3.0, 1.0),
-    "curry": ("03-chef-curry", 0.0, None, 1.0),
+    "curry": ("03-chef-curry", 2.0, 8.0, 1.5),
     "bread": ("04-chef-bread", 0.0, None, 1.0),
     "cooked": ("05-chef-cooking", 0.0, None, 1.0),
-    "plated": ("06-chef-plating", 0.0, None, 1.0),
+    "plated": ("06-chef-plating", 6.5, 7.3, 1.4),
 }
 FILE_OF = {"fruit": "chef-fruit", "salad": "chef-salad", "curry": "chef-curry", "bread": "chef-bread", "cooked": "chef-cooking", "plated": "chef-plating"}
 
