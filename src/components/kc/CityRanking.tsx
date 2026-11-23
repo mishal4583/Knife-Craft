@@ -9,6 +9,15 @@ import { cityRanking, type CityRanking } from "@/game/restaurant/cityRanking";
 import { LAST_CAMPAIGN_LEVEL } from "@/game/restaurant/restaurantProgression";
 import { RANKING_NEWS_FROM_LEVEL } from "@/game/config/earlyLevels";
 import { PRESTIGE_FROM_LEVEL, restaurantPrestige } from "@/game/restaurant/restaurantPrestige";
+import { chefRecordOf } from "@/game/restaurant/chefRecord";
+import {
+  LEAGUE_FROM_LEVEL,
+  PROMOTION_RANK,
+  dayOfWeek,
+  leagueView,
+  weekStartOf,
+} from "@/game/restaurant/cityLeague";
+import { useToday } from "./useToday";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { chefSays, rivalChefOf } from "@/game/restaurant/rivalChefs";
 import {
@@ -263,6 +272,77 @@ export function PrestigeCard({ save }: { save: SaveData }) {
           </div>
         ))}
       </div>
+    </Panel>
+  );
+}
+
+/**
+ * THE CITY LEAGUE (Chef Pride plan, Phase 5, developer 2026-11-23): this week's table of ten, the player and nine of the city's restaurants, in the player's league. The week
+ * runs Monday to Sunday of the device's calendar; the top three go up a league and nothing ever goes down. A contest against the game's restaurants, not other players
+ * (restaurant/cityLeague.ts). It opens with `LEAGUE_FROM_LEVEL`.
+ */
+export function LeagueCard({ save }: { save: SaveData }) {
+  const today = useToday();
+  const level = restaurantLevelOf(save.levelProgress);
+  if (level < LEAGUE_FROM_LEVEL) return null;
+  const rec = chefRecordOf(save);
+  const v = leagueView(rec, today, level);
+  if (!v) return null;
+  const last = rec.league?.last ?? null;
+  const daysLeft = 7 - dayOfWeek(today);
+  return (
+    <Panel className="p-4" data-testid="league-card" data-league={v.league.tier}>
+      <Eyebrow>City league · this week</Eyebrow>
+      <p
+        className="mt-1 font-display text-[22px] font-black leading-tight text-walnut-dark"
+        data-testid="league-name"
+      >
+        🏅 {v.league.name} League
+      </p>
+      <p className="font-hand text-[16px] leading-snug text-walnut/70">
+        {v.league.identity} ·{" "}
+        {daysLeft === 0
+          ? "last day of the week"
+          : `${daysLeft} ${daysLeft === 1 ? "day" : "days"} left`}
+      </p>
+      <p
+        className="mt-1.5 font-ui text-[12.5px] font-bold text-walnut/75"
+        data-testid="league-goal"
+      >
+        {v.rank <= PROMOTION_RANK
+          ? v.next
+            ? `In the promotion places (top ${PROMOTION_RANK}) for ${v.next.name}`
+            : "In the top places of the highest league"
+          : `${v.toPromotion ?? 1} more points to reach the top ${PROMOTION_RANK}`}
+      </p>
+      <ol className="mt-2 space-y-0.5" data-testid="league-table">
+        {v.table.map((r, i) => (
+          <li
+            key={r.id}
+            data-row={r.player ? "player" : "rival"}
+            className={cn(
+              "flex items-center justify-between gap-2 rounded-lg px-2 py-0.5 font-ui text-[12.5px] font-bold",
+              r.player ? "bg-gold/30 text-walnut-dark" : "text-walnut/75",
+              i + 1 === PROMOTION_RANK && "border-b border-dashed border-walnut/25",
+            )}
+          >
+            <span className="min-w-0 truncate">
+              <span className="inline-block w-5 text-walnut/50">{i + 1}</span>
+              {r.emoji} {r.name}
+            </span>
+            <span className="shrink-0 font-extrabold text-olive">{r.points}</span>
+          </li>
+        ))}
+      </ol>
+      {last ? (
+        <p className="mt-2 font-ui text-[12px] font-bold text-walnut/60" data-testid="league-last">
+          Last week ({weekStartOf(last.week)}): #{last.rank} of 10
+          {last.promoted ? ", promoted" : ""}
+        </p>
+      ) : null}
+      <p className="mt-1.5 font-hand text-[14px] leading-snug text-walnut/55">
+        The city's restaurants compete each week. Nobody drops down a league.
+      </p>
     </Panel>
   );
 }

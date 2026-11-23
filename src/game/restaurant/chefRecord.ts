@@ -24,6 +24,24 @@ export type ChallengeState = {
   progress: number;
 };
 
+/** The last finished league week (restaurant/cityLeague.ts): its league, where the player finished among the ten, whether it earned a promotion, and whether the player was told. */
+export type LeagueResult = {
+  week: string;
+  tier: number;
+  rank: number;
+  points: number;
+  promoted: boolean;
+  shown: boolean;
+};
+
+/** The local weekly league (restaurant/cityLeague.ts): the week it is counting (the Monday's date), the league (0-4), this week's points and the last finished week. */
+export type LeagueState = {
+  week: string;
+  tier: number;
+  points: number;
+  last: LeagueResult | null;
+};
+
 export type ChefRecord = {
   /** Plates finished (every kind of run counts). */
   plates: number;
@@ -51,6 +69,8 @@ export type ChefRecord = {
   /** Today's dare, or null (the dare of another day is ignored). Dares won, ever (the dares ladder). */
   challenge: ChallengeState | null;
   daresWon: number;
+  /** The local weekly city league, or null before the first points. */
+  league: LeagueState | null;
   /** Short markers of what was already announced (`title:…`, `rival:…`): each line shows once. Kept short. */
   seen: string[];
 };
@@ -112,12 +132,34 @@ export const DEFAULT_CHEF_RECORD: ChefRecord = {
   bestServicePerfects: 0,
   challenge: null,
   daresWon: 0,
+  league: null,
   seen: [],
 };
 
 /** The save's chef record (clamped; defaults when absent). */
 export function chefRecordOf(save: SaveData): ChefRecord {
   return clampChefRecord(save.business.chefRecord);
+}
+
+const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
+
+function clampLeague(raw: unknown): LeagueState | null {
+  if (!raw || typeof raw !== "object") return null;
+  const l = raw as Partial<Record<keyof LeagueState, unknown>>;
+  if (typeof l.week !== "string" || !DAY_KEY.test(l.week)) return null;
+  const lr = l.last as Partial<Record<keyof LeagueResult, unknown>> | null | undefined;
+  const last: LeagueResult | null =
+    lr && typeof lr === "object" && typeof lr.week === "string" && DAY_KEY.test(lr.week)
+      ? {
+          week: lr.week,
+          tier: Math.min(4, whole(lr.tier)),
+          rank: Math.min(10, Math.max(1, whole(lr.rank))),
+          points: whole(lr.points),
+          promoted: lr.promoted === true,
+          shown: lr.shown === true,
+        }
+      : null;
+  return { week: l.week, tier: Math.min(4, whole(l.tier)), points: whole(l.points), last };
 }
 
 function clampChallenge(raw: unknown): ChallengeState | null {
@@ -154,6 +196,7 @@ export function clampChefRecord(raw: unknown): ChefRecord {
     bestServicePerfects: whole(r.bestServicePerfects),
     challenge: clampChallenge(r.challenge),
     daresWon: whole(r.daresWon),
+    league: clampLeague(r.league),
     seen: Array.isArray(r.seen)
       ? r.seen.filter((s): s is string => typeof s === "string").slice(-SEEN_KEPT)
       : [],

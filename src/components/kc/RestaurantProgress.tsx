@@ -9,7 +9,13 @@ import { BottomNav } from "./Kitchen";
 import { KnifeGlyph } from "./Workshop";
 import { BoardPreview } from "./Boards";
 import { KitchenBackground } from "./KitchenBackground";
-import { ChefTitleCard, CityLeaderboard, CityRankHero, PrestigeCard } from "./CityRanking";
+import {
+  ChefTitleCard,
+  CityLeaderboard,
+  CityRankHero,
+  LeagueCard,
+  PrestigeCard,
+} from "./CityRanking";
 import { cn } from "@/lib/utils";
 import { opensInMarket } from "@/game/levels/levelMastery";
 import type { SaveData } from "@/game/SaveManager";
@@ -92,6 +98,7 @@ export function RestaurantProgress({ go, save }: { go: (s: ScreenId) => void; sa
               <CityRankHero save={save} />
               <ChefTitleCard save={save} />
               <PrestigeCard save={save} />
+              <LeagueCard save={save} />
               <CityLeaderboard save={save} />
             </>
           ) : (

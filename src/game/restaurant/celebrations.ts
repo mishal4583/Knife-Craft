@@ -13,7 +13,7 @@ export const SPOTLESS_RUN_FOR_THANKS = 2;
 
 export type Celebration = {
   /** Stable id of the kind: "rank", "title", "popularity", "spotless" or "chest" (the card's data attribute). */
-  kind: "rank" | "popularity" | "spotless" | "chest" | "title" | "prestige";
+  kind: "rank" | "popularity" | "spotless" | "chest" | "title" | "prestige" | "league";
   emoji: string;
   title: string;
   /** The facts, one short line each. */
@@ -94,5 +94,42 @@ export function celebrationFor(input: CelebrationInput): Celebration | null {
     lines,
     paige,
     pose: input.rank || thanks || titled || prestiged ? "cheer" : "clap",
+  };
+}
+
+/** What the week-end card of the city league says (restaurant/cityLeague.ts). */
+export type LeagueWeekEnd = {
+  /** The league the week was played in, and the one the player is in now. */
+  league: string;
+  identity: string;
+  nowLeague: string;
+  nowIdentity: string;
+  rank: number;
+  size: number;
+  points: number;
+  promoted: boolean;
+  /** The best rival of the week and a line from their chef, when known. */
+  rival?: { name: string; line: string };
+};
+
+/**
+ * THE LEAGUE WEEK'S RESULT (Chef Pride plan, Phase 5): shown once, the first time the Kitchen is visited after a league week ended. A promotion is a celebration; any other
+ * finish is a calm "good week", never a penalty (there is no demotion).
+ */
+export function leagueCelebration(w: LeagueWeekEnd): Celebration {
+  const lines = [`${w.league} League · #${w.rank} of ${w.size} · ${w.points} points`];
+  if (w.promoted) lines.push(`🏅 Promoted to ${w.nowLeague} League · ${w.nowIdentity}`);
+  if (w.rival) lines.push(w.rival.line);
+  return {
+    kind: "league",
+    emoji: w.promoted ? "🏅" : "🏆",
+    title: w.promoted
+      ? `Promoted to ${w.nowLeague} League!`
+      : `Week finished #${w.rank} of ${w.size}`,
+    lines,
+    paige: w.promoted
+      ? "A promotion! Look who is playing with the big kitchens now."
+      : "A good week, Chef! The table starts fresh on Monday.",
+    pose: w.promoted ? "cheer" : "clap",
   };
 }

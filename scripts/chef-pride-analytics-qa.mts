@@ -43,6 +43,7 @@ const PRIDE = [
   "rival_passed",
   "title_earned",
   "prestige_reached",
+  "league_week_end",
   "dare_offered",
   "dare_taken",
   "dare_declined",
@@ -56,7 +57,7 @@ console.log("A. The code and the document list the same events");
   const rows = [...DOC.matchAll(/^\|\s*`([a-z0-9_]+)`/gm)].map((m) => m[1]!);
   const documented = new Set(rows);
   for (const n of PRIDE) assert(documented.has(n), `A2: ${n} is in the measurement document`);
-  const futureOnly = new Set(["league_week_end", "moment_shared"]);
+  const futureOnly = new Set(["moment_shared"]);
   const extra = [...documented].filter((n) => !sentNames.has(n) && !futureOnly.has(n));
   assert(
     extra.length === 0,

@@ -162,6 +162,18 @@ import { chefSays, rivalChefOf } from "@/game/restaurant/rivalChefs";
 import { announceTitles, identityById, type EarnedTitle } from "@/game/progression/chefTitles";
 import { announcePrestige, type PrestigeTier } from "@/game/restaurant/restaurantPrestige";
 import {
+  LEAGUES,
+  LEAGUE_FROM_LEVEL,
+  LEAGUE_SIZE,
+  addLeaguePoints,
+  markLeagueShown,
+  pendingLeagueResult,
+  pointsForPlate,
+  pointsForService,
+  settleLeague,
+  weekTable,
+} from "@/game/restaurant/cityLeague";
+import {
   advanceDareOnDay,
   advanceDareOnPlate,
   advanceDareOnService,
@@ -178,7 +190,11 @@ import {
   serviceNews,
   type RunStats,
 } from "@/game/restaurant/chefRecord";
-import { celebrationFor, type Celebration } from "@/game/restaurant/celebrations";
+import {
+  celebrationFor,
+  leagueCelebration,
+  type Celebration,
+} from "@/game/restaurant/celebrations";
 import { afterServeChips, nextCustomerHidden } from "@/game/restaurant/afterServe";
 import { newSauceRoundsRewardId } from "@/game/ads/sauceRoundsAd";
 import { levelTeaser } from "@/game/restaurant/levelTeasers";
@@ -1209,8 +1225,15 @@ export function App() {
         restaurantLevelOf(next.levelProgress),
         run,
       );
-      if (dared.rec !== before)
-        next = { ...next, business: { ...next.business, chefRecord: dared.rec } };
+      let rec = dared.rec;
+      // …and earns league points (restaurant/cityLeague.ts: from Level 10, a table of ten against the city's restaurants).
+      rec = addLeaguePoints(
+        rec,
+        dailyKeyFor(new Date()),
+        restaurantLevelOf(next.levelProgress),
+        pointsForPlate(run),
+      );
+      if (rec !== before) next = { ...next, business: { ...next.business, chefRecord: rec } };
       if (dared.won) {
         // (the same as noteDareWin, inline so `persist` stays free of component functions)
         dareWinsRef.current = [...dareWinsRef.current, dared.won.title];
@@ -3759,6 +3782,19 @@ export function App() {
         nextSave = { ...nextSave, business: { ...nextSave.business, chefRecord: dareService.rec } };
         noteDareWin(dareService.won);
       }
+      // Chef Pride (Phase 5): a finished service earns league points (more when it was spotless).
+      nextSave = {
+        ...nextSave,
+        business: {
+          ...nextSave.business,
+          chefRecord: addLeaguePoints(
+            chefRecordOf(nextSave),
+            dailyKeyFor(new Date()),
+            restaurantLevelOf(nextSave.levelProgress),
+            pointsForService({ spotless: spotlessStreak > 0 }),
+          ),
+        },
+      };
       const dareWins = dareWinsRef.current;
       dareWinsRef.current = [];
       if (shift && dareWins.length)
@@ -4386,6 +4422,45 @@ export function App() {
     keepNoticeRef.current = true;
     onSelectLevel(roll.to);
   });
+  // Chef Pride (Phase 5): a city league week that ended is settled once when the Kitchen is next seen (the top three go up a league, nobody goes down), and its result is
+  // told once, on the Kitchen, when nothing else is on screen.
+  useEffect(() => {
+    if (!save || !RESTAURANT_MODE || screen !== "kitchen") return;
+    if (restaurantLevelOf(save.levelProgress) < LEAGUE_FROM_LEVEL) return;
+    const rec = chefRecordOf(save);
+    const settled = settleLeague(rec, dailyKeyFor(new Date()));
+    if (settled !== rec) {
+      persist({ ...save, business: { ...save.business, chefRecord: settled } });
+      return;
+    }
+    const pending = pendingLeagueResult(rec);
+    if (!pending || celebration || levelRewardNotice || storyEvent) return;
+    const was = LEAGUES[pending.tier] ?? LEAGUES[0]!;
+    const now = LEAGUES[rec.league?.tier ?? pending.tier] ?? was;
+    const top = weekTable(pending.week, pending.tier, pending.points, "final").find(
+      (r) => !r.player,
+    );
+    const chef = top ? rivalChefOf(top.id) : undefined;
+    setCelebration(
+      leagueCelebration({
+        league: was.name,
+        identity: was.identity,
+        nowLeague: now.name,
+        nowIdentity: now.identity,
+        rank: pending.rank,
+        size: LEAGUE_SIZE,
+        points: pending.points,
+        promoted: pending.promoted,
+        ...(top && chef ? { rival: { name: top.name, line: chefSays(chef, "dare") } } : {}),
+      }),
+    );
+    sendAnalyticsEvent("league_week_end", {
+      tier: pending.tier,
+      rank: pending.rank,
+      promoted: pending.promoted,
+    });
+    persist({ ...save, business: { ...save.business, chefRecord: markLeagueShown(rec) } });
+  }, [save, screen, celebration, levelRewardNotice, storyEvent]);
   // Cash left on the table is optional to collect (developer 2026-10-30): it waits, saved with
   // the order, until the player collects it (Kitchen button, or the Collect cash button); the next
   // served order's cash first takes it in (withPendingCash), and closing needs it in the till.
