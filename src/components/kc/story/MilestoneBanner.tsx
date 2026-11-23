@@ -29,6 +29,7 @@ export function MilestoneBanner({
   kicker,
   line,
   rows,
+  stats,
   notes,
   quote,
   grand = false,
@@ -40,6 +41,8 @@ export function MilestoneBanner({
   line: string;
   /** Optional label / value lines under `line` (the Level Complete earnings breakdown). */
   rows?: ReadonlyArray<{ label: string; value: string; strong?: boolean }>;
+  /** Optional big-number tiles above the rows (Chef Pride: this service's orders, accuracy, perfect cuts). */
+  stats?: ReadonlyArray<{ value: string; label: string }>;
   /** Optional one-line notes under the rows (a section that opened, a new day). */
   notes?: ReadonlyArray<string>;
   /** Grandma's line (Levels 1–15, restaurant/firstLevels.ts). */
@@ -139,6 +142,23 @@ export function MilestoneBanner({
           >
             {line}
           </p>
+          {stats?.length ? (
+            <div
+              className="mt-2 grid grid-cols-3 gap-2 border-t border-walnut/15 pt-2"
+              data-testid="banner-stats"
+            >
+              {stats.map((s) => (
+                <div key={s.label} className="min-w-0">
+                  <p className="font-display text-[22px] font-black leading-none text-walnut-dark">
+                    {s.value}
+                  </p>
+                  <p className="mt-0.5 truncate font-ui text-[11px] font-extrabold uppercase tracking-[0.08em] text-walnut/60">
+                    {s.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : null}
           {rows?.length ? (
             <div
               className="mt-2 space-y-0.5 border-t border-walnut/15 pt-2 font-ui text-[13.5px] font-bold text-walnut/75"

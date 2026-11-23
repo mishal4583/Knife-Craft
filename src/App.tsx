@@ -157,6 +157,14 @@ import {
   withTodaysSpecialServed,
 } from "@/game/restaurant/restaurantEvents";
 import { rankChange } from "@/game/restaurant/cityRanking";
+import { chefSays, rivalChefOf } from "@/game/restaurant/rivalChefs";
+import {
+  applyRun,
+  applyService,
+  chefRecordOf,
+  serviceNews,
+  type RunStats,
+} from "@/game/restaurant/chefRecord";
 import { celebrationFor, type Celebration } from "@/game/restaurant/celebrations";
 import { afterServeChips, nextCustomerHidden } from "@/game/restaurant/afterServe";
 import { newSauceRoundsRewardId } from "@/game/ads/sauceRoundsAd";
@@ -703,6 +711,13 @@ export function App() {
     levelId: "",
     scores: [],
   });
+  // Chef Pride (developer 2026-11-23): the plate just finished (kept until the next save, which carries it into the chef's record) and this service's
+  // perfect cuts. Session only, like the scores above.
+  const pendingRunRef = useRef<RunStats | null>(null);
+  const serviceRunsRef = useRef<{ levelId: string; perfects: number }>({
+    levelId: "",
+    perfects: 0,
+  });
   const keepNoticeRef = useRef(false);
   const [campaignServiceSession, setCampaignServiceSession] = useState<ServiceSession | null>(null);
   // Customers who ordered the same dish are cut one plate after another, cooked once and served
@@ -802,6 +817,8 @@ export function App() {
     newDay?: number;
     /** Supplier credit repaid from this level's earnings, and what's still owed. */
     credit?: { repaid: number; owed: number };
+    /** Chef Pride: this service's plates, average accuracy and perfect cuts, and what beat a real earlier mark (restaurant/chefRecord.ts). */
+    shift?: { orders: number; accuracy: number; perfects: number; news: string[] };
   } | null>(null);
 
   // Platform ads (Playgama Bridge). `saveRef` always holds the latest committed save, so code
@@ -1164,7 +1181,14 @@ export function App() {
    * (Economy V2.5), and refuses a save whose wallet breaks the invariant
    * (never negative, whole cents — economy/wallet.ts). */
   function persist(next: SaveData) {
-    const synced = syncKitchenUpgradeOwnership(next);
+    // Chef Pride: the plate that just finished rides along with the save its result is written in (never a second, stale save).
+    let incoming = next;
+    if (pendingRunRef.current) {
+      const run = pendingRunRef.current;
+      pendingRunRef.current = null;
+      incoming = applyRun(incoming, run);
+    }
+    const synced = syncKitchenUpgradeOwnership(incoming);
     // Economy V2.5 — a milestone reached by this change is paid right here,
     // once (milestoneRewards.ts: the ledger entry is the record).
     const { save: rewarded, granted } = grantEarnedMilestoneRewards(synced, legacyOnly);
@@ -3078,6 +3102,17 @@ export function App() {
     return 0;
   }
 
+  /** Chef Pride: a plate was finished (called by Preparation just before its result is saved). */
+  function noteRunStats(stats: RunStats) {
+    pendingRunRef.current = stats;
+    const levelId = campaignServiceSession?.levelId ?? activeLevelId;
+    const t = serviceRunsRef.current;
+    serviceRunsRef.current = {
+      levelId,
+      perfects: (t.levelId === levelId ? t.perfects : 0) + stats.perfects,
+    };
+  }
+
   /** Keeps a served plate's score for the Service Report (a replay pays nothing and is not reported). */
   function noteServedScore(levelId: string, score: number | null | undefined, isReplay: boolean) {
     if (isReplay || typeof score !== "number") return;
@@ -3627,6 +3662,24 @@ export function App() {
         }
       }
     }
+    // Chef Pride: this service's plates and perfect cuts go into the chef's record; the card says what beat a real earlier mark.
+    let shift: { orders: number; accuracy: number; perfects: number; news: string[] } | null = null;
+    if (RESTAURANT_MODE && isFirstCompletion) {
+      const tally = serviceScoresRef.current;
+      const scores = tally.levelId === level.id ? tally.scores : [];
+      if (scores.length > 0) {
+        const runs = serviceRunsRef.current;
+        const service = {
+          orders: scores.length,
+          accuracy: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
+          perfects: runs.levelId === level.id ? runs.perfects : 0,
+        };
+        const news = serviceNews(chefRecordOf(nextSave), service).map((n) => n.text);
+        nextSave = applyService(nextSave, service);
+        shift = { ...service, news };
+        if (news.length) sendAnalyticsEvent("record_broken", { kind: "accuracy" });
+      }
+    }
     const brokenNow = restaurantSuppliesOf(nextSave).brokenTotal - brokenBefore;
     // First levels: before Level 21 the day closes quietly, and Level Complete says so.
     const dayBefore = restaurantDayOf(nextSave).day;
@@ -3695,6 +3748,7 @@ export function App() {
         ...(opened.length || fridgeNotes.length ? { opened: [...fridgeNotes, ...opened] } : {}),
         ...(newDay !== null ? { newDay } : {}),
         ...(credit ? { credit } : {}),
+        ...(shift ? { shift } : {}),
         ...(moved
           ? {
               cityRank: {
@@ -3709,12 +3763,18 @@ export function App() {
     // Congratulations (developer 2026-11-08): a climb in the ranking, rising popularity or a spotless run gets its own card.
     if (RESTAURANT_MODE && isFirstCompletion) {
       const rise = rankChange(save, finalSave);
+      // Chef Pride (Phase 2): the last rival passed answers in their chef's voice.
+      const lastPassed = rise?.passed[rise.passed.length - 1];
+      const rivalChef = lastPassed ? rivalChefOf(lastPassed.id) : undefined;
+      if (rise && rivalChef)
+        sendAnalyticsEvent("rival_passed", { rank_to: rise.to, passed: rise.passed.length });
       const c = celebrationFor({
         rank: rise
           ? {
               from: rise.from,
               to: rise.to,
               passed: rise.passed.map((r) => `${r.emoji} ${r.name}`).join(", "),
+              ...(rivalChef ? { rival: chefSays(rivalChef, "beaten") } : {}),
             }
           : null,
         popularity: {
@@ -4763,7 +4823,15 @@ export function App() {
     >
       {/* Preparation is a lazy chunk (lazyPreparation.ts) — normally already
           preloaded by the time a level opens, so this fallback rarely shows. */}
-      <Suspense fallback={screen === "gameplay" ? <KitchenPlate art={cuttingKitchenArt} skin={cuttingKitchenSkin} /> : <LoadingScreen />}>
+      <Suspense
+        fallback={
+          screen === "gameplay" ? (
+            <KitchenPlate art={cuttingKitchenArt} skin={cuttingKitchenSkin} />
+          ) : (
+            <LoadingScreen />
+          )
+        }
+      >
         {/* Nothing runs under the intro (W2) or the naming card: Level 1 mounts when they end. */}
         {showIntro || askRestaurantName ? (
           introPlate || askRestaurantName ? (
@@ -4950,6 +5018,8 @@ export function App() {
                   ? recordBatchGroupResult
                   : recordBusinessServiceResult
             }
+            onRunStats={noteRunStats}
+            chefRecord={chefRecordOf(save)}
             credits={save.credits}
             previousBest={
               // Business orders don't read or write Campaign recipe progress (V3-16 isolation fix).
@@ -5000,6 +5070,8 @@ export function App() {
               go(sessionExitScreen);
             }}
             onComplete={sessionOnComplete}
+            onRunStats={noteRunStats}
+            chefRecord={chefRecordOf(save)}
             credits={save.credits}
             previousBest={previousBest}
             knife={equippedKnife}
@@ -5317,9 +5389,22 @@ export function App() {
                 ms: 2600,
               }
             : {})}
-          {...(levelRewardNotice.opened || levelRewardNotice.newDay
+          {...(levelRewardNotice.shift
+            ? {
+                stats: [
+                  { value: String(levelRewardNotice.shift.orders), label: "Orders" },
+                  { value: `${levelRewardNotice.shift.accuracy}%`, label: "Accuracy" },
+                  { value: String(levelRewardNotice.shift.perfects), label: "Perfects" },
+                ],
+                ms: 3400,
+              }
+            : {})}
+          {...(levelRewardNotice.opened ||
+          levelRewardNotice.newDay ||
+          levelRewardNotice.shift?.news.length
             ? {
                 notes: [
+                  ...(levelRewardNotice.shift?.news.map((n) => `★ ${n}`) ?? []),
                   ...(levelRewardNotice.opened ?? []),
                   ...(levelRewardNotice.newDay
                     ? [`☀️ Day ${levelRewardNotice.newDay} begins`]

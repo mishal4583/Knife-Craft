@@ -7,6 +7,9 @@ import type { SaveData } from "@/game/SaveManager";
 import { restaurantNameOf } from "@/game/restaurant/restaurantName";
 import { cityRanking, type CityRanking } from "@/game/restaurant/cityRanking";
 import { LAST_CAMPAIGN_LEVEL } from "@/game/restaurant/restaurantProgression";
+import { RANKING_NEWS_FROM_LEVEL } from "@/game/config/earlyLevels";
+import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
+import { chefSays, rivalChefOf } from "@/game/restaurant/rivalChefs";
 
 /** "1,880 pts" */
 const pts = (n: number) => `${n.toLocaleString("en-US")} pts`;
@@ -19,6 +22,11 @@ const pts = (n: number) => `${n.toLocaleString("en-US")} pts`;
 export function CityRankHero({ save }: { save: SaveData }) {
   const u = useUnlockText();
   const c = cityRanking(save);
+  // Chef Pride (Phase 2): from the ranking news, the next rival's chef says something (rivalChefs.ts).
+  const chef =
+    c.next && restaurantLevelOf(save.levelProgress) >= RANKING_NEWS_FROM_LEVEL
+      ? rivalChefOf(c.next.id)
+      : undefined;
   return (
     <div
       className="relative overflow-hidden rounded-[26px] border border-walnut-dark/50 wood p-5 shadow-lift"
@@ -39,6 +47,14 @@ export function CityRankHero({ save }: { save: SaveData }) {
             <p className="mt-1.5 font-ui text-[12px] font-bold text-ivory/75">
               Next: pass {c.next.emoji} {c.next.name} {u.when(c.next.passedAtLevel)}
             </p>
+            {chef ? (
+              <p
+                className="mt-1 font-hand text-[16px] leading-snug text-gold/90"
+                data-testid="rival-chef-line"
+              >
+                👨‍🍳 {chefSays(chef, "dare")}
+              </p>
+            ) : null}
           </div>
         ) : (
           <p className="mt-2 font-ui text-[12.5px] font-bold text-ivory/75">
@@ -70,8 +86,8 @@ export function CityLeaderboard({ save }: { save: SaveData }) {
       <Panel className="p-4">
         <Eyebrow>🏙️ City restaurant guide</Eyebrow>
         <p className="mt-0.5 font-hand text-[15px] leading-snug text-walnut/70">
-          Every campaign service you complete builds your reputation. Finish all {LAST_CAMPAIGN_LEVEL} to be the
-          city's best.
+          Every campaign service you complete builds your reputation. Finish all{" "}
+          {LAST_CAMPAIGN_LEVEL} to be the city's best.
         </p>
         <ol className="mt-2">
           {rows.map((row, i) => {

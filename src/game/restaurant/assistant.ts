@@ -36,6 +36,9 @@ import {
   type RestaurantSystemId,
 } from "./restaurantProgression";
 import { restaurantLevelOf } from "./restaurantMenu";
+import { RANKING_NEWS_FROM_LEVEL } from "../config/earlyLevels";
+import { RIVALS, cityRanking } from "./cityRanking";
+import { FEATURED_RIVALS, chefCallName } from "./rivalChefs";
 
 export const ASSISTANT_NAME = "Paige";
 
@@ -203,6 +206,36 @@ const milestoneBeats = (): AssistantBeat[] =>
       priority: 20,
       when: (save: SaveData) => completed(save) >= Number(n) && completed(save) < Number(n) + 2,
     }));
+
+/**
+ * THE RIVAL CHEFS (Chef Pride plan, Phase 2, developer 2026-11-23): a few rival restaurants (the FEATURED ones in rivalChefs.ts, spaced several levels apart) get one
+ * Paige message, just before the level that passes them: who is next and what their chef says. Once each (`seen`); only from the ranking news (Level 8) and only while that
+ * rival really is the next to pass; she says it in two short lines and sends the player to Progress. "Tips: Off" and the Kitchen-only rule are the host's, as for every beat.
+ */
+const rivalBeats = (): AssistantBeat[] =>
+  FEATURED_RIVALS.flatMap((chef) => {
+    const rival = RIVALS.find((r) => r.id === chef.id);
+    if (!rival) return [];
+    return [
+      {
+        id: `rival:${chef.id}`,
+        lines: [
+          {
+            text: `${rival.name} is next, and ${chefCallName(chef)} is talking big.`,
+            pose: "point",
+          },
+          { text: `"${chef.dare}"`, pose: "think" },
+        ],
+        go: "rack",
+        priority: 36,
+        when: (save: SaveData, level: number) =>
+          level >= RANKING_NEWS_FROM_LEVEL &&
+          level >= rival.passedAtLevel - 1 &&
+          level <= rival.passedAtLevel &&
+          cityRanking(save).next?.id === rival.id,
+      },
+    ];
+  });
 
 /**
  * THE SECOND FLOOR REMINDERS (developer 2026-11-11; restaurant/floorAdvice.ts decides when): "Paige reminds the player to visit the Second Floor and buy machines when
@@ -450,6 +483,7 @@ export const ASSISTANT_BEATS: readonly AssistantBeat[] = [
   ...systemBeats(),
   ...milestoneBeats(),
   ...floorNudgeBeats(),
+  ...rivalBeats(),
   {
     id: "finale",
     lines: [

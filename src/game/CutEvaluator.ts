@@ -32,7 +32,7 @@ export const SCORING = {
 } as const;
 
 /** knifecraft.html CONFIG.scoring.GRADE_THRESHOLDS, unchanged. */
-const GRADE_THRESHOLDS: [number, QualityLabel][] = [
+export const GRADE_THRESHOLDS: [number, QualityLabel][] = [
   [95, "Masterful"],
   [85, "Clean"],
   [70, "Honest"],

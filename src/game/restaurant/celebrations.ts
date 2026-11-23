@@ -24,8 +24,8 @@ export type Celebration = {
 };
 
 export type CelebrationInput = {
-  /** The city ranking climbed (rankChange), or null. */
-  rank: { from: number; to: number; passed: string } | null;
+  /** The city ranking climbed (rankChange), or null. `rival`: the last rival passed and what their chef says (rivalChefs.ts), when known. */
+  rank: { from: number; to: number; passed: string; rival?: string } | null;
   /** Popularity (0-100) before and after, or null when it was not measured this time. */
   popularity: { before: number; after: number } | null;
   /** The spotless streak after this service (serviceReport), 0 when it was not spotless or not measured. */
@@ -44,6 +44,8 @@ export function celebrationFor(input: CelebrationInput): Celebration | null {
   if (input.rank) {
     lines.push(`#${input.rank.from} → #${input.rank.to} in the city`);
     if (input.rank.passed) lines.push(`You passed ${input.rank.passed}`);
+    // Chef Pride (Phase 2): the passed rival's chef answers, in their own voice.
+    if (input.rank.rival) lines.push(input.rank.rival);
   }
   if (popUp) lines.push(`⭐ Popularity ${popUp.before} → ${popUp.after}`);
   if (thanks) lines.push(`✨ ${input.spotlessStreak} spotless services in a row`);

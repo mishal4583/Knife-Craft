@@ -22,6 +22,7 @@ import type { PrepStep, SpecialsPayload } from "@/game/events";
 import { CHAOS, CHAOS_COPY } from "@/game/kitchenChaos";
 import { VARIANTS } from "@/game/specialVariants";
 import { specialsReportLines } from "@/game/specialsReport";
+import { nearMiss, runNews, type ChefRecord, type RunStats } from "@/game/restaurant/chefRecord";
 import {
   PERSONALITIES,
   personalityForOrder,
@@ -165,6 +166,8 @@ export function Preparation({
   levelGuide,
   onExit,
   onComplete,
+  onRunStats,
+  chefRecord,
   credits,
   previousBest,
   knife = knifeOrDefault(DEFAULT_KNIFE_ID),
@@ -294,6 +297,10 @@ export function Preparation({
   onExit: () => void;
   /** Returns this run's coin reward (0 on replay — Law 2 — or always 0 for a service session, where payment is deferred to the explicit Serve action) so OrderComplete can show it without a second App->Preparation round trip. */
   onComplete: (score: number, portions?: number) => number;
+  /** Chef Pride (developer 2026-11-23): what this finished plate did (perfect cuts, longest combo, cuts, unpaused time), handed over just before `onComplete`; the app keeps it in the chef's record. */
+  onRunStats?: (stats: RunStats) => void;
+  /** The chef's record BEFORE this plate: the Knife Report says when the plate beat a real earlier mark. */
+  chefRecord?: ChefRecord;
   credits: number;
   previousBest: number;
   knife?: KnifeDefinition;
@@ -559,6 +566,13 @@ export function Preparation({
   // Phase 4 (A7): the run's longest combo (for this visit's record) and the
   // recipe-book page this dish wrote, if any (shown after the Knife Report).
   const bestCombo = useRef(0);
+  // Chef Pride: this plate's perfect cuts, cuts and unpaused time (the chef's record), and the lines the Knife Report adds.
+  const runPerfects = useRef(0);
+  const runCuts = useRef(0);
+  const runMs = useRef(0);
+  const chefRecordRef = useRef(chefRecord);
+  chefRecordRef.current = chefRecord;
+  const [prideLines, setPrideLines] = useState<{ id: string; text: string; good: boolean }[]>([]);
   const [bookNote, setBookNote] = useState<{
     tier: PresentationTier | null;
     variant: SpecialsPayload["variant"];
@@ -654,6 +668,15 @@ export function Preparation({
     }, 250);
     return () => window.clearInterval(tick);
   }, [personality, phase, paused, regularPar, floorMode]);
+  // Chef Pride: this plate's own clock, unpaused cutting time only (the customer's arrival and a platform pause are not the chef's time).
+  useEffect(() => {
+    if (phase !== "prep") return;
+    const tick = window.setInterval(() => {
+      if (paused || floorMode) return;
+      runMs.current += 250;
+    }, 250);
+    return () => window.clearInterval(tick);
+  }, [phase, paused, floorMode]);
   // The cutting board is the game's active play: its frame rate is sampled (telemetry).
   useEffect(() => startPerformanceSampling(), []);
 
@@ -794,6 +817,8 @@ export function Preparation({
           nextCombo,
         );
         if (event.payload.isPerfect) perfectSteps.current.add(stepIndexNow.current);
+        runCuts.current += 1;
+        if (event.payload.isPerfect) runPerfects.current += 1;
         // Phase 3 (C): Grandma's Challenge reads the same combo.
         if (orderChaos.current === "grandma" && nextCombo > grandmaBest.current) {
           grandmaBest.current = nextCombo;
@@ -830,6 +855,23 @@ export function Preparation({
           idealPath: idealPaths.current,
           playerPath: playerPaths.current,
         });
+        // Chef Pride: did this plate beat a real earlier mark? And is it a hair under the next grade? (the lines the Knife Report adds)
+        {
+          const rec = chefRecordRef.current;
+          const lines: { id: string; text: string; good: boolean }[] = [];
+          if (rec)
+            for (const n of runNews(rec, {
+              score: overall,
+              perfects: runPerfects.current,
+              bestCombo: bestCombo.current,
+              cuts: runCuts.current,
+              ms: runMs.current,
+            }))
+              lines.push({ id: `pride-${n.kind}`, text: `★ ${n.text}`, good: true });
+          const near = nearMiss(overall);
+          if (near) lines.push({ id: "pride-near", text: near, good: false });
+          setPrideLines(lines);
+        }
         // Phase 6: the Kitchen Moments this finished run earned — computed once,
         // here, from the run's own result (never on a render).
         {
@@ -881,6 +923,14 @@ export function Preparation({
   useEffect(() => {
     if (phase !== "complete" || awarded.current || !result) return;
     awarded.current = true;
+    // Chef Pride: the plate goes into the chef's record in the same save as its result.
+    onRunStats?.({
+      score: result.score,
+      perfects: runPerfects.current,
+      bestCombo: bestCombo.current,
+      cuts: runCuts.current,
+      ms: runMs.current,
+    });
     setRewardCoins(onComplete(result.score, portions));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onComplete/result are stable for this run
   }, [phase]);
@@ -909,6 +959,10 @@ export function Preparation({
 
   function restart() {
     bestCombo.current = 0;
+    runPerfects.current = 0;
+    runCuts.current = 0;
+    runMs.current = 0;
+    setPrideLines([]);
     prepMs.current = 0;
     regularChecked.current = false;
     if (regularTimer.current !== null) window.clearTimeout(regularTimer.current);
@@ -1668,16 +1722,19 @@ export function Preparation({
           stepName={steps.length > 1 ? "Preparation" : activeTechnique.name}
           result={result}
           previousBest={baselineBest.current}
-          specials={specialsReportLines({
-            chaos: orderSpecials.chaos,
-            variant: orderSpecials.variant,
-            grandmaBest: grandmaBest.current,
-            evenness: result.evenness,
-            avalanche: avalanche
-              ? { sliced: avalanche.total - avalanche.left, total: avalanche.total }
-              : null,
-            inspection,
-          })}
+          specials={[
+            ...specialsReportLines({
+              chaos: orderSpecials.chaos,
+              variant: orderSpecials.variant,
+              grandmaBest: grandmaBest.current,
+              evenness: result.evenness,
+              avalanche: avalanche
+                ? { sliced: avalanche.total - avalanche.left, total: avalanche.total }
+                : null,
+              inspection,
+            }),
+            ...prideLines,
+          ]}
           onRetry={restart}
           onContinue={continueFromReport}
         />

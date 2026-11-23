@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>KnifeCraft Chef Pride: the detailed plan</title>
+<style>
+  @page { size: A4; margin: 14mm 15mm 15mm 15mm; }
+  @page :first { margin: 0; }
+  :root {
+    --cream:#fff6e0; --paper:#fffdf6; --walnut:#4a2410; --walnut2:#6b3d1c; --copper:#b8742f;
+    --gold:#d9a63a; --olive:#5b6b3a; --sage:#e3efd0; --tomato:#c9473a; --line:#e6d6b0; --ink:#2b1a0e; --mute:#7a6650;
+    --blue:#2f6f9f;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: "Segoe UI", "Nunito", Arial, sans-serif; color: var(--ink); font-size: 10pt; line-height: 1.4; margin: 0; }
+  h1,h2,h3,h4 { font-family: Georgia, "Fraunces", serif; color: var(--walnut); margin: 0; line-height: 1.15; }
+  h1 { font-size: 30pt; }
+  h2 { font-size: 19pt; margin: 0 0 8px; padding-bottom: 6px; border-bottom: 3px solid var(--gold); }
+  h3 { font-size: 13pt; margin: 16px 0 5px; color: var(--copper); }
+  h4 { font-size: 10.5pt; margin: 10px 0 3px; color: var(--walnut2); text-transform: uppercase; letter-spacing: .08em; font-family: "Segoe UI", Arial, sans-serif; }
+  p { margin: 5px 0; }
+  ul, ol { margin: 4px 0 6px 18px; padding: 0; }
+  li { margin: 2px 0; }
+  .page { page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+  .cover { height: 297mm; display: flex; flex-direction: column; justify-content: center; background: linear-gradient(160deg,#4a2410 0%,#6b3d1c 55%,#8a4b1c 100%); color: #fff6e0; margin: 0; padding: 28mm 24mm; width: 210mm; }
+  .cover h1 { color: #fff6e0; font-size: 38pt; }
+  .cover .sub { font-size: 14pt; margin-top: 14px; color: #f3dfb0; max-width: 150mm; }
+  .cover .meta { margin-top: 40px; font-size: 10pt; color: #e8cf9c; line-height: 1.7; }
+  .cover .tag { display:inline-block; background: var(--gold); color: var(--walnut); font-weight: 800; padding: 4px 12px; border-radius: 20px; font-size: 9.5pt; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 18px; }
+  .lead { font-size: 11.5pt; color: var(--walnut2); }
+  .box { border: 1.5px solid var(--line); background: var(--paper); border-radius: 10px; padding: 9px 12px; margin: 8px 0; }
+  .box.good { background: #f1f7e4; border-color: #c6dba0; }
+  .box.warn { background: #fdf0e0; border-color: #ecc590; }
+  .box.stop { background: #fbe9e6; border-color: #e6aaa3; }
+  .box.info { background: #eaf3fa; border-color: #b4d2e8; }
+  .box b.t { display:block; font-size: 9pt; text-transform: uppercase; letter-spacing:.1em; color: var(--copper); margin-bottom: 2px; }
+  table { width: 100%; border-collapse: collapse; margin: 7px 0; font-size: 9.4pt; }
+  th { background: var(--walnut); color: #fff6e0; text-align: left; padding: 5px 7px; font-weight: 700; }
+  td { padding: 5px 7px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:nth-child(even) td { background: #fffaf0; }
+  .pill { display:inline-block; padding: 1px 9px; border-radius: 12px; font-size: 8.4pt; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+  .done { background:#d4ecc0; color:#2f5a1a; } .next { background:#fde3a8; color:#7a4a05; } .later { background:#e4e4ec; color:#444a66; } .opt { background:#f6d9d4; color:#8a2d22; }
+  .cols { display: flex; gap: 14px; align-items: flex-start; }
+  .cols > * { flex: 1; }
+  .figure { text-align: center; }
+  .cap { font-size: 8.6pt; color: var(--mute); margin-top: 4px; text-align: center; font-style: italic; }
+  .keep { break-inside: avoid; page-break-inside: avoid; }
+  .small { font-size: 9pt; color: var(--mute); }
+  code { font-family: Consolas, monospace; font-size: 8.8pt; background: #f3e8cc; padding: 0 4px; border-radius: 3px; }
+  .phasehead { display:flex; align-items:center; gap: 12px; margin-bottom: 6px; }
+  .num { width: 42px; height: 42px; border-radius: 50%; background: var(--copper); color:#fff; font-family: Georgia, serif; font-weight: 800; font-size: 19pt; display:grid; place-items:center; flex: 0 0 auto; }
+  .kv { display: grid; grid-template-columns: 34mm 1fr; gap: 3px 10px; font-size: 9.6pt; margin: 6px 0; }
+  .kv b { color: var(--walnut2); }
+
+  /* ---- mock screens ---- */
+  .phone { width: 62mm; border: 3px solid #2a1a10; border-radius: 22px; background: #5a3d28; padding: 9px 7px; margin: 0 auto; box-shadow: 0 3px 10px rgba(0,0,0,.25); position: relative; overflow: hidden; }
+  .phone.wide { width: 100%; border-radius: 12px; padding: 12px; }
+  .scr { background: linear-gradient(#8a5b36,#5e3d26); border-radius: 14px; padding: 9px 7px; min-height: 74mm; position: relative; }
+  .mcard { background: linear-gradient(145deg,#fffaf0,#f6e2b6); border: 2px solid #c9a366; border-radius: 12px; padding: 8px 9px; color: var(--walnut); box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+  .mcard .k { font-size: 6.6pt; font-weight: 800; letter-spacing: .16em; color: var(--copper); text-transform: uppercase; text-align:center; }
+  .mcard .big { font-family: Georgia, serif; font-weight: 900; font-size: 15pt; text-align:center; line-height: 1.05; margin: 2px 0; }
+  .mcard .hand { font-family: "Segoe Script","Caveat",cursive; font-size: 9pt; text-align:center; color: var(--olive); }
+  .mcard .sp { font-size: 7.4pt; font-weight: 800; text-align: center; color: var(--copper); margin-top: 3px; }
+  .mcard .sp.n { color: #8a7a64; }
+  .mcard hr { border: 0; border-top: 1px solid #d9c49a; margin: 5px 0; }
+  .tiles { display:grid; grid-template-columns: repeat(3,1fr); gap: 4px; text-align:center; }
+  .tiles b { display:block; font-family: Georgia, serif; font-size: 14pt; line-height: 1; color: var(--walnut); }
+  .tiles span { font-size: 5.8pt; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #8a7a64; }
+  .row { display:flex; justify-content: space-between; font-size: 7.6pt; font-weight: 700; margin: 1px 0; }
+  .row i { font-style: normal; color: var(--olive); font-weight: 800; }
+  .btn { display:block; text-align:center; border-radius: 9px; padding: 5px; font-weight: 800; font-size: 7.8pt; margin-top: 5px; }
+  .btn.g { background: linear-gradient(#58c36a,#2f9a47); color:#fff; } .btn.c { background:#fff; color: var(--walnut); border: 1.5px solid #d9c49a; } .btn.w { background: linear-gradient(#b8742f,#8a4b1c); color:#fff6df; }
+  .bubble { background: #fffaf0; border: 2px solid #c9a366; border-radius: 12px; padding: 7px 9px; color: var(--walnut); font-size: 8pt; position: relative; }
+  .bubble .who { position:absolute; top:-8px; left: 10px; background: var(--copper); color:#fff; font-size: 6pt; font-weight: 800; padding: 1px 8px; border-radius: 8px; letter-spacing:.12em; }
+  .bar { height: 5px; background: #e2d2ac; border-radius: 4px; overflow: hidden; margin: 3px 0; } .bar i { display:block; height:100%; background: linear-gradient(90deg,#d9a63a,#b8742f); }
+  .chip { display:inline-block; font-size: 6.6pt; font-weight: 800; padding: 1px 7px; border-radius: 9px; background: #efe0b9; color: var(--walnut); margin: 1px; }
+  .chip.g { background: var(--gold); } .chip.o { background: var(--sage); color: #3d5a24; } .chip.r { background:#f1c9c2; color: #8a2d22; }
+  .rail { position:absolute; right: 6px; top: 8px; width: 24px; display:flex; flex-direction:column; gap: 4px; }
+  .rail span { width: 24px; height: 24px; border-radius:50%; background: #fff2cc; border: 2px solid #e0a63a; font-size: 9pt; display:grid; place-items:center; }
+  .hud { background: rgba(74,36,16,.8); border: 1.5px solid #e0a63a; border-radius: 9px; padding: 4px 7px; color: #fff6e0; font-size: 6.4pt; margin-bottom: 4px; width: 78%; }
+  .hud b { font-size: 8.6pt; display:block; }
+  .shot { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; }
+  .scorebar { font-size: 7pt; margin-top: 3px; }
+  .share { width: 56mm; margin: 0 auto; aspect-ratio: 4/5; border-radius: 12px; background: radial-gradient(circle at 50% 30%, #8a5b36, #3d2414); border: 3px solid #d9a63a; color: #fff6e0; padding: 10px; text-align:center; display:flex; flex-direction:column; justify-content: space-between; }
+  .share .t { font-size: 6.4pt; letter-spacing:.22em; color:#e8cf9c; font-weight:800; }
+  .share .h { font-family: Georgia, serif; font-size: 18pt; font-weight: 900; line-height: 1; }
+  .share .s { font-size: 8pt; color: #f3dfb0; }
+</style>
+</head>
+<body>
+
+<!-- ================= COVER ================= -->
+<section class="page"><div class="cover">
+  <div><span class="tag">Detailed plan · for approval before Phase 2</span></div>
+  <h1>Chef Pride</h1>
+  <div class="sub">How KnifeCraft makes players feel skilled, recognised and a little bit competitive, while it stays a cozy restaurant game. Every phase: what it is, how it will look, how we build it, what we expect, how we measure it, and what could go wrong.</div>
+  <div class="meta">
+    KnifeCraft · Playgama edition<br>
+    Written 23 November 2026 · built on the developer's six ideas and the Codex plan<br>
+    Status: Phases 0 and 1 are built (not yet committed). Phases 2 to 6 are planned. Phase 7 (measuring) runs alongside.<br>
+    All screens in this document are drawings of the planned design, not screenshots, unless it says so.
+  </div>
+</div></section>
+
+<!-- ================= 1. THE IDEA ================= -->
+<section class="page">
+  <h2>1. The idea in plain words</h2>
+  <p class="lead">Young players come back to a game when it makes them feel good about themselves and gives them something to prove. This is often called "touching the ego". It works, and it is easy to do badly. This plan does it the honest way: the game tells the player true things about their own skill, gives them a rival with a personality, and offers optional challenges. It never insults, never lies with numbers and never punishes a missed day.</p>
+
+  <h3>Three feelings we are building</h3>
+  <table>
+    <tr><th style="width:32%">Feeling</th><th>What the player thinks</th><th style="width:30%">Where it lives in the game</th></tr>
+    <tr><td><b>I am skilled</b></td><td>"I cut cleaner than I did last week, and the game noticed."</td><td>Knife Report, Level Complete card, titles, dares</td></tr>
+    <tr><td><b>Look what I built</b></td><td>"My restaurant is getting famous."</td><td>Prestige tiers, trophies, restaurant name plaque</td></tr>
+    <tr><td><b>I can be the best</b></td><td>"I want to beat that rival chef."</td><td>Named rival chefs, city ranking, weekly league, share cards</td></tr>
+  </table>
+
+  <h3>What we will not do (rules every phase must pass)</h3>
+  <div class="cols">
+    <div class="box stop"><b class="t">Never</b>
+      <ul>
+        <li>Show a number that is not true of this player's own data. No "only 8% of chefs can do this": the game has no data on other players.</li>
+        <li>Insult or shame the player. Rivals tease the <i>situation</i>, never the person.</li>
+        <li>Punish a missed day or break a streak as a penalty.</li>
+        <li>Spam notifications or pop-ups: one message per screen visit, and Paige's "tips off" silences them.</li>
+        <li>Sell an advantage. Ego rewards are titles and badges, never money, and no ad is attached in the first release.</li>
+      </ul></div>
+    <div class="box good"><b class="t">Always</b>
+      <ul>
+        <li>Say exactly what happened ("Longest combo yet: 12"), with the real number.</li>
+        <li>Make challenges optional and never block progress.</li>
+        <li>Keep the cozy restaurant mood: warm words, a wink, never a harsh tone.</li>
+        <li>Keep copy short; longer explanations sit behind the (i) button.</li>
+        <li>Follow platform rules: no outside network calls, sharing only when the player taps, hidden on YouTube.</li>
+      </ul></div>
+  </div>
+
+  <h3>Why the order matters</h3>
+  <p>Each phase builds on the one before. The first release (Phases 0 to 3) is mostly words, small saved numbers and screens we already have, so it cannot break the economy. We then <b>measure for about two weeks</b> before building the bigger, riskier features (prestige, league, share cards).</p>
+</section>
+
+<!-- ================= 2. WHAT EXISTS ================= -->
+<section class="page">
+  <h2>2. What the game already gives us</h2>
+  <p>We checked the code before planning. This is why the plan reuses existing systems and does not add new money, new save files or new servers.</p>
+  <table>
+    <tr><th style="width:28%">Existing piece</th><th>What it already does</th><th style="width:34%">How we reuse it</th></tr>
+    <tr><td>Knife Report</td><td>Grades each plate (Learning, Rustic, Honest, Clean, Masterful) and shows "New Best!" only when a score truly improves.</td><td>Adds record and near-miss lines under the grade.</td></tr>
+    <tr><td>Level Complete card</td><td>Shows pay, new day, city rank change, Grandma's quote.</td><td>Adds the service tiles and "accuracy up" line.</td></tr>
+    <tr><td>City ranking</td><td>49 fixed named rival restaurants plus the player (50 total). A rival is passed at a fixed level.</td><td>Gives each rival a chef, a voice, and a daily dare.</td></tr>
+    <tr><td>Achievements</td><td>Ladders with tiers and optional titles; some are badge-only (no money).</td><td>Titles are new badge-only ladders. No economy change.</td></tr>
+    <tr><td>Paige (assistant)</td><td>Pop-up tips, one per screen visit, can be silenced, never nags.</td><td>Delivers rival lines and "record" messages.</td></tr>
+    <tr><td>Kitchen Moment share card</td><td>Draws a 1080x1350 picture on a canvas and shares it or saves it (hidden on YouTube).</td><td>Phase 6 reuses this for chef cards.</td></tr>
+    <tr><td>Seeded daily keys</td><td>A calendar-day key and a fixed random generator.</td><td>Daily dare and weekly league use them: same result for everyone, no randomness for money.</td></tr>
+    <tr><td>Save rules</td><td>New data goes under <code>business</code> as one optional field; old saves keep working.</td><td>All new data lives in <code>business.chefRecord</code>.</td></tr>
+  </table>
+
+  <h3>Limits we found (they shape the plan)</h3>
+  <div class="box warn"><b class="t">Platform and data limits</b>
+    <ul>
+      <li><b>No real leaderboard</b> on Playgama or CrazyGames (the two main platforms), and the game has no server. So the league is local, against the 49 rivals. It works everywhere and never shows fake "other players".</li>
+      <li><b>Sharing:</b> the platform's share button is unsupported on Playgama, CrazyGames, Yandex and YouTube. We use the phone's own share sheet, or Save image, only when the player taps.</li>
+      <li><b>No waste per cut:</b> the game only tracks spoilage per day. "Zero waste" therefore means a day with no spoiled stock.</li>
+      <li><b>No server clock:</b> days and weeks are the device's own calendar. That is fine because nothing here moves money.</li>
+      <li><b>Law 4 (the plate is the score):</b> the Knife Report shows words, not digits. Near-miss lines therefore use words only.</li>
+    </ul></div>
+</section>
+
+<!-- ================= 3. ROADMAP ================= -->
+<section class="page">
+  <h2>3. The roadmap at a glance</h2>
+  <table>
+    <tr><th style="width:11%">Phase</th><th style="width:22%">Name</th><th>What the player gets</th><th style="width:12%">Effort</th><th style="width:10%">Risk</th><th style="width:11%">Status</th></tr>
+    <tr><td>0</td><td>Foundations</td><td>(Invisible) the game remembers personal bests.</td><td>Small</td><td>Low</td><td><span class="pill done">Built</span></td></tr>
+    <tr><td>1</td><td>Recognition</td><td>Record lines, near-miss line, service tiles, "accuracy up".</td><td>Small</td><td>Low</td><td><span class="pill done">Built</span></td></tr>
+    <tr><td>2</td><td>Rival chefs</td><td>The next restaurant to pass has a chef and a voice.</td><td>Medium</td><td>Low</td><td><span class="pill next">Next</span></td></tr>
+    <tr><td>3a</td><td>Titles</td><td>Six chef identities with tiered titles.</td><td>Medium</td><td>Low</td><td><span class="pill next">Planned</span></td></tr>
+    <tr><td>3b</td><td>Dares</td><td>One optional daily challenge.</td><td>Medium</td><td>Medium</td><td><span class="pill next">Planned</span></td></tr>
+    <tr><td>7</td><td>Measure</td><td>(Invisible) we learn if 1 to 3 worked.</td><td>Small</td><td>Low</td><td><span class="pill next">With 1 to 3</span></td></tr>
+    <tr><td>4</td><td>Prestige</td><td>Long-term restaurant tiers and trophies.</td><td>Medium + art</td><td>Low</td><td><span class="pill later">After measuring</span></td></tr>
+    <tr><td>5</td><td>Local weekly league</td><td>Weekly contest vs the city rivals, Apprentice to Legendary.</td><td>Large</td><td>Medium</td><td><span class="pill later">After measuring</span></td></tr>
+    <tr><td>6</td><td>Share cards</td><td>Shareable "THE PERFECT 50" style pictures.</td><td>Medium</td><td>Medium</td><td><span class="pill later">After measuring</span></td></tr>
+  </table>
+  <div class="box info"><b class="t">Decisions already taken with the developer</b>
+    The weekly league is <b>local</b> (against the 49 city rivals). The <b>first release</b> is Phases 1 to 3, then we measure before 4 to 6.</div>
+
+  <h3>A player's first weeks, after the whole first release</h3>
+  <table>
+    <tr><th style="width:18%">When</th><th>What the player meets</th></tr>
+    <tr><td>Level 1 to 5</td><td>First plates. The Knife Report starts saying "A hair from Masterful. One more try?" when they are close. Nothing says "record" yet, because the first plate only sets a mark.</td></tr>
+    <tr><td>Level 6</td><td>The first daily dare appears, opt-in: "Think you're ready for this?"</td></tr>
+    <tr><td>Level 8</td><td>The city ranking opens up. The next rival now has a chef's name and a dare line.</td></tr>
+    <tr><td>Each service</td><td>The Level Complete card shows Orders, Accuracy, Perfects. When accuracy beats the last service: "★ Accuracy up from 81% to 92%".</td></tr>
+    <tr><td>Each rival passed</td><td>A short celebration card with the rival chef's grudging reply.</td></tr>
+    <tr><td>First title</td><td>"Steady Hand" after 25 perfect cuts, shown on the Progress screen and the Achievements list.</td></tr>
+  </table>
+</section>
+
+<!-- ================= PHASE 0 ================= -->
+<section class="page">
+  <div class="phasehead"><div class="num">0</div><div><h2 style="border:0;margin:0;padding:0">Phase 0 · Foundations</h2><span class="pill done">Built · not committed</span></div></div>
+  <p class="lead">The game's memory of the chef. Nothing new is visible yet, but every later phase reads from it.</p>
+
+  <div class="kv">
+    <b>Goal</b><span>Remember the player's personal bests so the game can say true things about them.</span>
+    <b>Player sees</b><span>Nothing directly. Phase 1 makes it visible.</span>
+    <b>Data</b><span>One optional field, <code>business.chefRecord</code>, read through <code>chefRecordOf(save)</code> which clamps bad values. No new top-level save field; old saves read as zeros.</span>
+  </div>
+
+  <h3>What is remembered</h3>
+  <table>
+    <tr><th style="width:30%">Field</th><th>Meaning</th></tr>
+    <tr><td><code>plates</code>, <code>perfectCuts</code>, <code>bestPerfects</code></td><td>Plates finished, perfect cuts ever, most perfect cuts in one plate.</td></tr>
+    <tr><td><code>bestCombo</code></td><td>The longest cut combo of any plate.</td></tr>
+    <tr><td><code>masterful</code>, <code>runClean</code>, <code>bestRunClean</code>, <code>runMasterful</code>, <code>bestRunMasterful</code></td><td>Masterful plates (95+), and the current and best run of "Clean or better" (85+) and of Masterful plates in a row.</td></tr>
+    <tr><td><code>fastestMs</code></td><td>The fastest fair plate (at least 4 s and 3 cuts, unpaused time only).</td></tr>
+    <tr><td><code>services</code>, <code>bestServiceAccuracy</code>, <code>lastServiceAccuracy</code>, <code>bestServicePerfects</code></td><td>Services recorded, best and last average plate accuracy, most perfect cuts in a service.</td></tr>
+    <tr><td><code>seen</code></td><td>Short markers of messages already shown, so each line appears once (kept to the last 60).</td></tr>
+  </table>
+
+  <h3>How it is built</h3>
+  <ol>
+    <li><b>Pure rule file</b> <code>restaurant/chefRecord.ts</code>: no money, no clock, no random number, no network. It only turns a finished plate or service into new numbers and into "news".</li>
+    <li><b>Preparation screen</b> counts perfect cuts, cuts and the unpaused cutting time during a plate, and hands them over just before the result is saved.</li>
+    <li><b>One save</b>: the plate rides along in the same save as its result, so there is never a second, out-of-date save.</li>
+    <li><b>Service totals</b>: when a first completion finishes a service, its average accuracy and perfect cuts are added.</li>
+  </ol>
+
+  <h3>Result and how we checked it</h3>
+  <div class="cols">
+    <div class="box good"><b class="t">Result</b>Everything later (records, titles, dares, league) has one reliable place to read from. Zero effect on money or difficulty.</div>
+    <div class="box"><b class="t">Tests</b><code>chef-record-qa</code> (all pass): old saves, damaged saves, plate and service maths, "news only on a strict improvement", no money or random in the rule file, wiring.</div>
+  </div>
+</section>
+
+<!-- ================= PHASE 1 ================= -->
+<section class="page">
+  <div class="phasehead"><div class="num">1</div><div><h2 style="border:0;margin:0;padding:0">Phase 1 · Recognition</h2><span class="pill done">Built · not committed</span></div></div>
+  <p class="lead">"The game knows I'm getting better." Every plate and every service says one specific, true thing about what the player did.</p>
+
+  <div class="cols">
+    <div>
+      <h4>Before</h4>
+      <p>The Knife Report shows the grade ("Clean"), a kind line, and "New Best!" with digits only when the dish's best score improves. A finished service shows pay and a new day, and nothing about how well the player cooked.</p>
+      <h4>After</h4>
+      <ul>
+        <li>The Knife Report adds <b>record lines</b> when a number strictly beats a real earlier mark.</li>
+        <li>A plate a few points under the next grade says so, <b>in words only</b>.</li>
+        <li>The Level Complete card shows <b>three tiles</b> and, when earned, an <b>accuracy-up line</b>.</li>
+      </ul>
+    </div>
+    <div class="figure keep">
+      <div class="phone"><div class="scr">
+        <div class="mcard">
+          <div class="k">Knife Report</div>
+          <div class="hand" style="color:#8a6a3a">Tomato &amp; Cucumber Plate · Preparation</div>
+          <div class="big">Clean</div>
+          <div class="hand">Tidy work, chef.</div>
+          <div class="sp">★ Longest combo yet: 12</div>
+          <div class="sp">★ Fastest plate yet: 14 s</div>
+          <div class="sp n">A hair from Masterful. One more try?</div>
+          <hr>
+          <div class="row"><span>Evenness</span><i>92</i></div>
+          <div class="row"><span>Consistency</span><i>88</i></div>
+          <div class="btn c">Prepare Again</div><div class="btn g">Continue</div>
+        </div>
+      </div></div>
+      <div class="cap">Knife Report with the Phase 1 lines (drawing)</div>
+    </div>
+  </div>
+
+  <h3>The exact rules</h3>
+  <table>
+    <tr><th style="width:26%">Line</th><th>Shown when</th><th style="width:30%">Never shown when</th></tr>
+    <tr><td>★ Longest combo yet: N</td><td>This plate's combo is strictly more than the saved best (and the saved best is above 0).</td><td>First plate; equal combo.</td></tr>
+    <tr><td>★ Fastest plate yet: N s</td><td>Faster than the saved fastest, at least 4 s, at least 3 cuts, and the rounded seconds are lower.</td><td>Paused time; tiny plates; a gain under one second.</td></tr>
+    <tr><td>★ Most perfect cuts in a plate: N</td><td>More perfect cuts than ever in one plate.</td><td>First plate; equal.</td></tr>
+    <tr><td>A hair from Masterful. One more try?</td><td>Score is 1 to 4 points under the next grade, from Honest (70) up.</td><td>Below 70; already Masterful. Has no digits (Law 4).</td></tr>
+    <tr><td>★ Accuracy up from 81% to 92%</td><td>The service's average plate score is higher than the last service's. If it also beats the best it says "Your most accurate service yet: 92%".</td><td>First service; equal; lower.</td></tr>
+  </table>
+
+  <div class="keep"><h3>Example: the end of a service</h3>
+  <div class="cols">
+    <div class="figure keep">
+      <div class="phone"><div class="scr" style="min-height:62mm">
+        <div class="mcard">
+          <div class="k">Level Complete</div>
+          <div class="hand">$151.00 Completion Reward</div>
+          <hr>
+          <div class="tiles"><div><b>3</b><span>Orders</span></div><div><b>92%</b><span>Accuracy</span></div><div><b>7</b><span>Perfects</span></div></div>
+          <hr>
+          <div class="row"><span>Earned this level</span><i>+$151.00</i></div>
+          <hr>
+          <div class="sp">★ Accuracy up from 81% to 92%</div>
+          <div class="sp" style="color:#3a2a14">☀ Day 2 begins</div>
+        </div>
+      </div></div>
+      <div class="cap">Level Complete card (a real rendering of the built component)</div>
+    </div>
+    <div>
+      <h4>What we expect</h4>
+      <ul>
+        <li>Players see a reason to replay a plate: "one more try" when near a grade, and a visible record to chase.</li>
+        <li>Better players see proof of progress; weaker players are not shamed, because a line appears only for a real improvement.</li>
+        <li>No change to difficulty, pay or economy.</li>
+      </ul>
+      <h4>What we measure</h4>
+      <ul>
+        <li><code>record_broken</code> events per player per day.</li>
+        <li>How often "Prepare Again" follows a near-miss line.</li>
+        <li>Services per session before and after.</li>
+      </ul>
+      <div class="box warn"><b class="t">Known gaps</b>The tiles are verified by source checks and a rendered picture, not in a full browser service (the test player cannot finish a multi-order service reliably). Please look at it in a real service.</div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ================= PHASE 2 ================= -->
+<section class="page">
+  <div class="phasehead"><div class="num">2</div><div><h2 style="border:0;margin:0;padding:0">Phase 2 · Rival chefs with a voice</h2><span class="pill next">Next</span></div></div>
+  <p class="lead">Today the ranking says "Next: pass The Pita Pocket". A number is easy to ignore. A character who teases you is not.</p>
+
+  <div class="kv">
+    <b>Goal</b><span>Turn the next restaurant to pass into a person the player wants to beat.</span>
+    <b>Player sees</b><span>A chef's name and one playful line under "Next: pass ..." on Progress, a reply when a rival is passed, and sometimes a short Paige message before the level that will pass them.</span>
+    <b>Opens</b><span>From Level 8, like the ranking news the game already has.</span>
+    <b>Data</b><span>New file <code>rivalChefs.ts</code> (copy only, no save data). Which lines were seen is kept as short markers in <code>chefRecord.seen</code>.</span>
+  </div>
+
+  <div class="cols">
+    <div class="figure keep">
+      <div class="phone"><div class="scr" style="min-height:56mm">
+        <div class="mcard">
+          <div class="k">City ranking</div>
+          <div class="big" style="font-size:13pt">🏆 #47 of 50</div>
+          <div class="bar"><i style="width:62%"></i></div>
+          <div class="row"><span>Next: pass The Pita Pocket</span><i>Lv 9</i></div>
+          <hr>
+          <div class="hand" style="text-align:left">👨‍🍳 Chef Dario: “Fast hands are cheap. Steady hands win services.”</div>
+        </div>
+      </div></div>
+      <div class="cap">Progress screen: the rival's line (drawing)</div>
+    </div>
+    <div class="figure keep">
+      <div class="phone"><div class="scr" style="min-height:56mm">
+        <div class="mcard" style="margin-top:8px">
+          <div class="k">You passed</div>
+          <div class="big" style="font-size:12pt">#47 → #46</div>
+          <div class="hand">🥙 The Pita Pocket</div>
+          <hr>
+          <div class="hand" style="color:#4a2410">Chef Dario: “…Nice plating. Don't get used to it.”</div>
+        </div>
+      </div></div>
+      <div class="cap">Celebration card when the rival is passed (drawing)</div>
+    </div>
+  </div>
+
+  <h3>The three kinds of line</h3>
+  <table>
+    <tr><th style="width:15%">Kind</th><th style="width:25%">When</th><th>Example (placeholders for the developer to approve)</th></tr>
+    <tr><td><b>dare</b></td><td>While this rival is the next to pass</td><td>"Fast hands are cheap. Steady hands win services." · "Bean There says you crumble under a full dining room."</td></tr>
+    <tr><td><b>beaten</b></td><td>The moment the player passes them</td><td>"…Nice plating. Don't get used to it." · "Fine. You are in the top half now. Enjoy the view."</td></tr>
+    <tr><td><b>respect</b></td><td>Later, once the player is far ahead</td><td>"Still cooking? Good. Keep the pot warm for me."</td></tr>
+  </table>
+  <p class="small">The 49 rivals already have a name, emoji, cuisine and district. Plan: the first dozen rivals the player meets get hand-written lines and chef names; the rest use templates by cuisine and district, picked by a fixed hash of the rival's id so nobody is blank and the lines never change between plays.</p>
+</section>
+
+<section class="page">
+  <h3 style="margin-top:0">Phase 2 · Where each line shows up</h3>
+  <table>
+    <tr><th style="width:24%">Surface</th><th>Behaviour</th><th style="width:30%">Why it is safe</th></tr>
+    <tr><td>Progress screen (<code>CityRankHero</code>)</td><td>Rival chef name and the <i>dare</i> line under "Next: pass ...".</td><td>A screen that already shows the rival; no new screen.</td></tr>
+    <tr><td>Kitchen rank card</td><td>Rival chef's name only when the window is at least 600 px tall.</td><td>The Kitchen is already tight (five round buttons); no new card.</td></tr>
+    <tr><td>Celebration card</td><td>The <i>beaten</i> line when <code>rankChange()</code> says a rival was passed.</td><td>Reuses the existing celebration path.</td></tr>
+    <tr><td>Paige pre-level beat</td><td>Optional one line before a level that would pass a rival. Kitchen screen only, only when Paige is hired with tips on, at least 3 levels apart, never saved except a "seen" marker.</td><td>Follows her no-nag rules; "Later" and tips-off silence it.</td></tr>
+  </table>
+
+  <div class="cols">
+    <div class="figure keep">
+      <div class="phone"><div class="scr" style="min-height:46mm">
+        <div class="bubble"><span class="who">PAIGE</span><br>Dario says you can't handle a full house. Level 9 is your answer, Chef.<br>
+          <span class="btn w" style="display:inline-block;padding:3px 10px;margin-right:4px">Go there ›</span><span class="btn c" style="display:inline-block;padding:3px 10px">Later</span></div>
+      </div></div>
+      <div class="cap">Paige's rival message (drawing)</div>
+    </div>
+    <div>
+      <h4>Rules for the copy</h4>
+      <ul>
+        <li>At most 90 characters per line and at most one emoji (same limits Paige already has).</li>
+        <li>Teases the <i>competition</i>, never the player. A banned-word check in the QA suite enforces it.</li>
+        <li>No digits that claim a percentage of players.</li>
+        <li>Each line shows once (a marker per rival and kind).</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>How we build it</h3>
+  <ol>
+    <li>Write <code>rivalChefs.ts</code>: for each rival id, a chef name and up to three lines (dare, beaten, respect). First 12 by hand, the rest from cuisine and district templates.</li>
+    <li>Add a pure function <code>rivalLine(rival, kind)</code> that picks a line deterministically (hash of the id).</li>
+    <li>Show the dare line in <code>CityRankHero</code> and, on tall windows, the chef's name in <code>CityRankBadge</code> (the Kitchen card).</li>
+    <li>Extend <code>celebrationFor</code> with the <i>beaten</i> line when a rival is passed (the call site already receives the passed rivals).</li>
+    <li>Add a transient Paige beat on the same no-save path her mini-game praise uses; mark it in <code>chefRecord.seen</code>.</li>
+    <li>Wide and PC layouts: check the Progress hero, the celebration card and the Paige bubble at 1815x867 and 1280x720.</li>
+  </ol>
+
+  <div class="cols">
+    <div class="box good"><b class="t">Expected result</b>The ranking becomes a story: each level has a person to beat, and passing a rival is a small moment, not a number change. We expect more "one more service" behaviour near a rival level.</div>
+    <div class="box"><b class="t">Tests</b>New <code>rival-chefs-qa</code> (every rival has lines, length and emoji limits, no insults, no percentage claims) and a browser test (celebration shows the reply once; Paige's message respects "Later").</div>
+  </div>
+  <div class="box warn"><b class="t">Risks</b>Writing 49 characters takes time: templates cover the gaps. Tone: the developer approves every hand-written line before release. Optional later: painted rival portraits (an art request), not required.</div>
+</section>
+
+<!-- ================= PHASE 3a ================= -->
+<section class="page">
+  <div class="phasehead"><div class="num">3a</div><div><h2 style="border:0;margin:0;padding:0">Phase 3a · Chef titles</h2><span class="pill next">Planned</span></div></div>
+  <p class="lead">"What kind of chef am I?" Six identities, each with four earned tiers. Titles come from real play, never from money.</p>
+
+  <table>
+    <tr><th style="width:17%">Identity</th><th style="width:25%">Measured by</th><th>Tiers (proposed thresholds, to be tuned after Phase 7)</th></tr>
+    <tr><td><b>Precision</b></td><td>Perfect cuts, lifetime</td><td>25 <b>Steady Hand</b> · 100 <b>Precision Chef</b> · 300 <b>Master of the Edge</b> · 800 <b>Knife Legend</b></td></tr>
+    <tr><td><b>Speed</b></td><td>Plates at Clean or better finished under 30 s (new counter)</td><td>10 <b>Quick Hands</b> · 40 <b>Line Sprinter</b> · 120 <b>Speed Chef</b> · 300 <b>Lightning Chef</b></td></tr>
+    <tr><td><b>Organizer</b></td><td>Fridge Sort perfect rounds</td><td>5 <b>Tidy Shelves</b> · 20 <b>Stock Keeper</b> · 60 <b>Master Organizer</b> · 150 <b>Pantry Legend</b></td></tr>
+    <tr><td><b>Cleanliness</b></td><td>Spotless services</td><td>5 <b>Clean Counter</b> · 20 <b>Spotless Chef</b> · 60 <b>Hygiene Hero</b> · 150 <b>Sparkle Legend</b></td></tr>
+    <tr><td><b>Customer Favourite</b></td><td>Popularity score (0 to 100)</td><td>65 <b>Local Favourite</b> · 80 <b>Crowd Pleaser</b> · 92 <b>Town Darling</b> · 100 <b>Beloved</b></td></tr>
+    <tr><td><b>Restaurateur</b></td><td>City ranking</td><td>Top 25 <b>Rising Name</b> · Top 10 <b>Known Chef</b> · Top 3 <b>Executive Chef</b> · #1 <b>Legendary Restaurateur</b></td></tr>
+  </table>
+  <p class="small">Four of the six use numbers the game already keeps (perfect cuts from Phase 0, Fridge Sort rounds, spotless services, popularity, rank). Speed needs one new counter added to the record in this phase.</p>
+
+  <div class="cols">
+    <div class="figure keep">
+      <div class="phone"><div class="scr" style="min-height:58mm">
+        <div class="mcard">
+          <div class="k">Your chef title</div>
+          <div class="big" style="font-size:12.5pt">Precision Chef</div>
+          <div class="hand">96 of 300 perfect cuts to <b>Master of the Edge</b></div>
+          <div class="bar"><i style="width:32%"></i></div>
+          <hr>
+          <span class="chip g">Precision ★★</span><span class="chip">Speed ★</span><span class="chip o">Cleanliness ★★★</span><span class="chip">Organizer —</span>
+        </div>
+      </div></div>
+      <div class="cap">Title on the Progress screen (drawing)</div>
+    </div>
+    <div>
+      <h4>How it is built</h4>
+      <ol>
+        <li>New pure file <code>chefTitles.ts</code> with the six ladders and a function that returns the identity the player leads (highest progress to the next tier; ties by a fixed order).</li>
+        <li>Register each ladder as <b>badge-only</b> achievements (<code>reward: 0</code>) so they appear in the Achievements screen automatically and add no money. The existing economy tests stay green.</li>
+        <li>Show the current title on Progress (and the Kitchen rank card on tall windows).</li>
+        <li>"Title earned" appears once on the Level Complete card and as a celebration card.</li>
+        <li>Add a <code>quickClean</code> counter to the record for the Speed identity.</li>
+      </ol>
+      <h4>Expected result</h4>
+      <p>Players get a second goal besides money, and a public identity they can screenshot. Different players lead with different identities (a careful cutter, a speed runner, a tidy manager), which suits the game's variety.</p>
+    </div>
+  </div>
+  <div class="box warn"><b class="t">Open question for the developer</b>Should the displayed title be automatic (the one you lead), or should the player choose among earned titles? Automatic is simpler; choosing adds identity. Recommendation: automatic first, a picker later if players ask for it.</div>
+</section>
+
+<!-- ================= PHASE 3b ================= -->
+<section class="page">
+  <div class="phasehead"><div class="num">3b</div><div><h2 style="border:0;margin:0;padding:0">Phase 3b · Optional dares</h2><span class="pill next">Planned</span></div></div>
+  <p class="lead">"You probably can't do this." One optional challenge a day, picked the same way for everyone, never forced and never required to progress.</p>
+
+  <table>
+    <tr><th style="width:17%">Dare</th><th>Exact rule</th><th style="width:30%">Uses</th></tr>
+    <tr><td><b>No Mercy Prep</b></td><td>Cook 5 plates in a row at Clean (85+) or better today.</td><td><code>runClean</code> (already tracked)</td></tr>
+    <tr><td><b>Perfect Chef</b></td><td>Cook 3 Masterful plates (95+) in a row today.</td><td><code>runMasterful</code> (already tracked)</td></tr>
+    <tr><td><b>Speed Demon</b></td><td>Finish one plate of 6 or more cuts in under 30 s and score Clean or better.</td><td>Plate time (Phase 0)</td></tr>
+    <tr><td><b>Zero Waste</b></td><td>Close a business day with no spoiled stock.</td><td>Day-close spoilage figure</td></tr>
+    <tr><td><b>Clean Freak</b></td><td>Finish a service marked spotless.</td><td>Service hygiene (from dine-in, Level 31)</td></tr>
+    <tr><td><i>Kitchen Chaos</i></td><td><i>Deferred: the game does not yet measure several orders at once.</i></td><td>Later</td></tr>
+  </table>
+
+  <div class="cols">
+    <div class="figure keep">
+      <div class="phone"><div class="scr" style="min-height:62mm">
+        <div class="mcard">
+          <div class="k">Next customer</div>
+          <div class="hand" style="color:#4a2410">Toast &amp; Caprese</div>
+          <hr>
+          <div class="sp" style="text-align:left;color:#4a2410">⚔ Today's dare · No Mercy Prep</div>
+          <div class="hand" style="text-align:left">“Think you're ready for this? Five clean plates in a row.”</div>
+          <div class="bar"><i style="width:40%"></i></div>
+          <div class="row"><span>2 of 5 done</span><i>no deadline</i></div>
+          <div class="btn w">Take the dare</div><div class="btn c">Not today</div>
+        </div>
+      </div></div>
+      <div class="cap">Dare row in the Next Customer details (drawing)</div>
+    </div>
+    <div>
+      <h4>Rules</h4>
+      <ul>
+        <li><b>Opt-in.</b> Nothing happens until the player taps "Take the dare". "Not today" leaves no trace.</li>
+        <li><b>One a day</b>, chosen by a fixed hash of the calendar day among the dares the player has unlocked. Everyone sees the same dare that day.</li>
+        <li><b>No punishment.</b> A missed or failed dare costs nothing and does not break anything.</li>
+        <li><b>Reward</b> is a badge and a step on a "dares won" ladder (3 / 10 / 30 / 100). No money, no ad.</li>
+        <li>Opens at Level 6. Each dare also needs its feature to be unlocked.</li>
+        <li>The rival can "issue" the dare (Phase 2 voice): "Dario dares you:".</li>
+      </ul>
+      <h4>Where progress shows</h4>
+      <p>On the dare row, and on the Level Complete card: "★ Dare won: No Mercy Prep".</p>
+    </div>
+  </div>
+
+  <h3>How we build it</h3>
+  <ol>
+    <li><code>skillChallenges.ts</code> (pure): the dare list, each with a <code>check</code> function reading the chef record, the day, or the service result; plus the daily pick using the same calendar-day key the daily gift uses.</li>
+    <li>State in <code>chefRecord.challenge</code> (<code>day, id, accepted, progress, done</code>); resets when the calendar day changes.</li>
+    <li>Evaluate after each plate, each service, and each day close (for Zero Waste).</li>
+    <li>UI: the dare row in the Next Customer details (no new screen, no layout risk) and a line on the Level Complete card.</li>
+  </ol>
+  <div class="cols">
+    <div class="box good"><b class="t">Expected result</b>A reason to come back tomorrow ("what is today's dare?") without any streak pressure, and a way for skilled players to test themselves.</div>
+    <div class="box warn"><b class="t">Risks</b>A dare that is too easy or too hard feels flat: thresholds are tuned from Phase 7 data. "Zero Waste" depends on the stock system, so its eligibility is checked per level.</div>
+  </div>
+</section>
+
+<!-- ================= PHASE 7 ================= -->
+<section class="page">
+  <div class="phasehead"><div class="num">7</div><div><h2 style="border:0;margin:0;padding:0">Phase 7 · Measure before building more</h2><span class="pill next">Runs with 1 to 3</span></div></div>
+  <p class="lead">More engagement is not automatically more revenue. After the first release we look at real data for about two weeks and only then decide on Phases 4 to 6.</p>
+
+  <h3>New analytics events (flat, no personal data)</h3>
+  <table>
+    <tr><th style="width:26%">Event</th><th>Data</th><th style="width:30%">Answers</th></tr>
+    <tr><td><code>record_broken</code></td><td>kind (combo, speed, perfects, accuracy)</td><td>Do players reach records?</td></tr>
+    <tr><td><code>rival_beat_shown</code></td><td>rival index</td><td>Do rival moments appear and where?</td></tr>
+    <tr><td><code>dare_taken</code>, <code>dare_completed</code></td><td>dare id</td><td>Acceptance and completion per dare</td></tr>
+    <tr><td><code>title_earned</code></td><td>identity, tier</td><td>Which identities players lead</td></tr>
+    <tr><td><code>league_week_end</code> (Phase 5)</td><td>tier, finish</td><td>League engagement</td></tr>
+    <tr><td><code>moment_shared</code> (Phase 6)</td><td>kind, method</td><td>Sharing use</td></tr>
+  </table>
+
+  <h3>What we compare (before vs after the release)</h3>
+  <table>
+    <tr><th style="width:32%">Measure</th><th>Why it matters</th></tr>
+    <tr><td>Return on day 1 and day 7</td><td>The main retention signal.</td></tr>
+    <tr><td>Sessions per player per day and services per session</td><td>Are players staying longer or coming back more often?</td></tr>
+    <tr><td>"Prepare Again" after a near-miss line</td><td>Does the "one more try" nudge work?</td></tr>
+    <tr><td>Dare acceptance and completion</td><td>Is the challenge interesting and fair?</td></tr>
+    <tr><td>Rewarded-ad views per player</td><td>Revenue stays the goal; engagement must not come at ad's expense.</td></tr>
+    <tr><td>Complaints or confusion (feedback, moderator notes)</td><td>Tone and trust.</td></tr>
+  </table>
+
+  <div class="box info"><b class="t">Decision rule (proposed, to be agreed)</b>
+    Build Phases 4 to 6 only if, over two weeks, at least one of these improves clearly versus the baseline: day-7 return, sessions per player per day, or dare acceptance of at least a quarter of eligible players, <b>and</b> rewarded-ad views per player do not drop. If nothing moves, we adjust copy and thresholds of Phases 1 to 3 first.</div>
+  <div class="box warn"><b class="t">Important caveat</b>The live telemetry on Playgama reflects an older build, so we first check the <code>game_version</code> on events and compare like with like. All targets here are hypotheses to test, not promises.</div>
+</section>
+
+<!-- ================= PHASE 4 ================= -->
+<section class="page">
+  <div class="phasehead"><div class="num">4</div><div><h2 style="border:0;margin:0;padding:0">Phase 4 · Restaurant prestige</h2><span class="pill later">After measuring</span></div></div>
+  <p class="lead">"Look what I built." A long-term tier for the restaurant itself, separate from the chef's titles.</p>
+  <table>
+    <tr><th style="width:24%">Prestige tier</th><th>Feel</th></tr>
+    <tr><td>Neighbourhood Spot</td><td>Where every restaurant starts.</td></tr>
+    <tr><td>Local Favourite</td><td>The street knows you.</td></tr>
+    <tr><td>City Landmark</td><td>People travel for your food.</td></tr>
+    <tr><td>Culinary Destination</td><td>Critics write about you.</td></tr>
+    <tr><td>Living Legend</td><td>The restaurant is a story.</td></tr>
+  </table>
+  <div class="cols">
+    <div>
+      <h4>How it is computed</h4>
+      <p>A pure file <code>restaurantPrestige.ts</code> turns what the game already keeps into points: the kitchen stage, lifetime Endless stars, popularity, the spotless record and the city rank. Tier boundaries are chosen so most players pass one tier every few days of play at the start and slower later. No new stored data: it is derived each time.</p>
+      <h4>What the player sees</h4>
+      <ul>
+        <li>A prestige card on Restaurant Progress with a bar to the next tier.</li>
+        <li>Cosmetic rewards: a restaurant name plaque style and Kitchen trophies. These need new art, requested from Codex like the rail icons; until then the tier name alone is shown.</li>
+      </ul>
+      <h4>Expected result</h4>
+      <p>A reason to keep investing in the restaurant when money no longer matters, and something to show off.</p>
+    </div>
+    <div class="figure keep">
+      <div class="phone"><div class="scr" style="min-height:62mm">
+        <div class="mcard">
+          <div class="k">Restaurant prestige</div>
+          <div class="big" style="font-size:12pt">Local Favourite</div>
+          <div class="bar"><i style="width:58%"></i></div>
+          <div class="row"><span>to City Landmark</span><i>58%</i></div>
+          <hr>
+          <div class="row"><span>Kitchen stage</span><i>Growing</i></div>
+          <div class="row"><span>Popularity</span><i>74</i></div>
+          <div class="row"><span>Spotless services</span><i>12</i></div>
+          <div class="row"><span>City rank</span><i>#14</i></div>
+        </div>
+      </div></div>
+      <div class="cap">Prestige card on Progress (drawing)</div>
+    </div>
+  </div>
+  <div class="box warn"><b class="t">Risks</b>Needs painted art for the cosmetic part. Too many tiers dilutes meaning: five is the limit. Same guardrails: no money, no population claims.</div>
+</section>
+
+<!-- ================= PHASE 5 ================= -->
+<section class="page">
+  <div class="phasehead"><div class="num">5</div><div><h2 style="border:0;margin:0;padding:0">Phase 5 · Local weekly city league</h2><span class="pill later">After measuring</span></div></div>
+  <p class="lead">A weekly contest against the city's restaurants, with named league tiers. It is local on purpose: no server, no fake players, same rules on every platform.</p>
+
+  <table>
+    <tr><th style="width:22%">League</th><th style="width:26%">Chef identity</th><th>Meaning</th></tr>
+    <tr><td>Bronze</td><td>Apprentice Chef</td><td>New players start here.</td></tr>
+    <tr><td>Silver</td><td>Skilled Chef</td><td>Finish the week in the top third of your group to move up.</td></tr>
+    <tr><td>Gold</td><td>Master Chef</td><td></td></tr>
+    <tr><td>Platinum</td><td>Executive Chef</td><td></td></tr>
+    <tr><td>Diamond</td><td>Legendary Chef</td><td>The top tier.</td></tr>
+  </table>
+
+  <div class="cols">
+    <div>
+      <h4>How a week works</h4>
+      <ol>
+        <li>A week is the device's calendar week (Monday to Sunday).</li>
+        <li>The player earns <b>league points</b> from real play: perfect cuts, services done, spotless services, and a bonus for high accuracy.</li>
+        <li>Ten rival restaurants (picked from the 49 by a seeded generator for that week) get weekly points from a fixed formula scaled to the player's tier, so the contest is always fair and never impossible.</li>
+        <li>On the first Kitchen visit of the new week, a result card shows the finish and any move up. <b>Staying is the floor:</b> no demotion shame.</li>
+      </ol>
+      <h4>How it is built</h4>
+      <p><code>cityLeague.ts</code> (pure) with a week key built on the daily key, the seeded generator for rivals' points, and state in <code>chefRecord.league</code> (<code>week, tier, points, history</code>). A league card in the ranking screen. The label always says <i>"the city's restaurants"</i>, never "other players".</p>
+    </div>
+    <div class="figure keep">
+      <div class="phone"><div class="scr" style="min-height:70mm">
+        <div class="mcard">
+          <div class="k">Week 47 · Silver League</div>
+          <div class="big" style="font-size:12pt">You finished #3 of 10</div>
+          <div class="hand">Moving up to Gold · Master Chef</div>
+          <hr>
+          <div class="row"><span>1. 🍝 La Tavola</span><i>412</i></div>
+          <div class="row"><span>2. 🥙 The Pita Pocket</span><i>398</i></div>
+          <div class="row" style="background:#f6e2b6;border-radius:4px;padding:1px 3px"><span>3. You</span><i>385</i></div>
+          <div class="row"><span>4. ☕ Bean There</span><i>340</i></div>
+          <hr>
+          <div class="sp">Chef Dario: “Next week I'm not going easy.”</div>
+        </div>
+      </div></div>
+      <div class="cap">Weekly result card (drawing; numbers are examples)</div>
+    </div>
+  </div>
+  <div class="box warn"><b class="t">Risks and honesty</b>It is a contest against the game's restaurants, not against people, and the card says so. The device clock can be changed, but nothing here pays money, so there is no exploit worth defending. Optional later: send the weekly score to the Bridge leaderboard only on platforms that support it (Yandex, Y8).</div>
+</section>
+
+<!-- ================= PHASE 6 ================= -->
+<section class="page">
+  <div class="phasehead"><div class="num">6</div><div><h2 style="border:0;margin:0;padding:0">Phase 6 · Shareable chef cards</h2><span class="pill later">After measuring</span></div></div>
+  <p class="lead">A picture worth showing off: the player's record, title or league result, ready to post. It also advertises the game for free.</p>
+  <div class="cols">
+    <div>
+      <h4>When a card is offered</h4>
+      <ul>
+        <li>A new title is earned.</li>
+        <li>A big record (for example 50 perfect cuts in one service).</li>
+        <li>A league promotion.</li>
+        <li>A rival is passed (with the rival's reply on the card).</li>
+      </ul>
+      <h4>How it works</h4>
+      <ol>
+        <li>The existing Kitchen Moment card renderer draws the picture on a canvas (1080x1350, the game's own fonts and kitchen picture). No new library.</li>
+        <li>The player taps <b>Share</b>: the phone's share sheet opens with the picture, or <b>Save image</b> if sharing is not available.</li>
+        <li>The button never appears on YouTube, and nothing is ever shared automatically.</li>
+      </ol>
+      <h4>Expected result</h4>
+      <p>Some players will post their achievements, which brings new players at no cost. How many is unknown: that is why we measure <code>moment_shared</code> before investing more.</p>
+    </div>
+    <div class="figure keep">
+      <div class="share">
+        <div class="t">KNIFECRAFT · CHEF ACHIEVEMENT</div>
+        <div><div class="h">THE PERFECT 50</div><div class="s" style="margin-top:4px">50 perfect cuts in one service</div></div>
+        <div class="s">No wasted ingredients.<br><b style="color:#d9a63a">PRECISION CHEF</b><br>Can you beat this record?</div>
+      </div>
+      <div class="cap">Example share card (drawing)</div>
+    </div>
+  </div>
+  <div class="box warn"><b class="t">Rules from the platforms</b>Share only from a direct player tap. No clipboard use. No outside network call. The platform's own share button is unsupported on our main platforms, so the card uses the phone's share sheet or Save image.</div>
+</section>
+
+<!-- ================= RISKS ================= -->
+<section class="page">
+  <h2>4. Risks, and what we do about them</h2>
+  <table>
+    <tr><th style="width:26%">Risk</th><th>What could happen</th><th style="width:36%">How we handle it</th></tr>
+    <tr><td>Tone goes wrong</td><td>A line feels mean or cringe and annoys players or platform moderators.</td><td>The developer approves every hand-written line; a QA suite blocks insult words and percentage claims; rivals tease situations only.</td></tr>
+    <tr><td>Pop-up fatigue</td><td>Too many messages make the game feel naggy.</td><td>One message per screen visit; gaps between rival messages; Paige's "tips off" silences them; everything is opt-in or one line.</td></tr>
+    <tr><td>Fake-feeling numbers</td><td>Players distrust invented statistics.</td><td>Only the player's own data; no population claims; league labelled as the city's restaurants.</td></tr>
+    <tr><td>Economy side effects</td><td>Ego rewards change pay or difficulty.</td><td>Titles and badges are badge-only (no money); the economy test suites must stay unchanged.</td></tr>
+    <tr><td>Layout crowding</td><td>The Kitchen is already tight, especially on small phones.</td><td>New content goes on existing screens or hides on short windows; every phase is tested at 320x568 to 1815x867.</td></tr>
+    <tr><td>Platform rejection</td><td>Sharing or social prompts break platform rules.</td><td>Share only on tap; hidden on YouTube; no outside calls; only the Bridge touches the platform.</td></tr>
+    <tr><td>Wrong thresholds</td><td>Titles or dares are too easy or too hard.</td><td>All thresholds are marked "proposed" and tuned from Phase 7 data before the next phase.</td></tr>
+    <tr><td>Engagement without revenue</td><td>More play does not mean more ad or purchase income.</td><td>Phase 7 compares rewarded-ad views; the decision rule requires they do not drop.</td></tr>
+  </table>
+
+  <h2 style="margin-top:12px">5. Testing approach (every phase)</h2>
+  <ul>
+    <li><b>Gates:</b> type-check, lint, formatting on changed files, build, preflight.</li>
+    <li><b>New QA suite per phase</b> (pure rules): records, rival lines, titles, dares, league, prestige. Each checks old saves, clamping, no money/random/clock in rule files and copy safety.</li>
+    <li><b>Existing suites that must stay green:</b> UI copy, save safety, migration, city ranking, achievements and economy baselines, assistant, layout, ads.</li>
+    <li><b>Browser tests</b> at 320x568, 360x640, 390x844, 768x1024, 1280x720, 1815x867 and a phone on its side (740x360): nothing sideways, 48 px touch targets, nothing covering controls, no console errors.</li>
+    <li><b>Old-save check</b> every time: a save from before the change loads and plays.</li>
+    <li>Commit only after the developer says so; each phase is its own commit with a note of any rule change to an old test.</li>
+  </ul>
+</section>
+
+<section class="page">
+  <h2>6. Order of work, and what we need from you</h2>
+  <table>
+    <tr><th style="width:8%">Step</th><th style="width:30%">Work</th><th>Done when</th><th style="width:22%">Needs from developer</th></tr>
+    <tr><td>1</td><td>Commit Phases 0 and 1</td><td>Pushed and deployed; the Level Complete tiles checked in a real service.</td><td>"Commit and push" and a look at the tiles</td></tr>
+    <tr><td>2</td><td>Phase 2 · Rival chefs</td><td>Lines in Progress, celebration and Paige; tests pass.</td><td>Approve chef names and the first 12 hand-written lines</td></tr>
+    <tr><td>3</td><td>Phase 3a · Titles</td><td>Six ladders in Achievements; title on Progress.</td><td>Approve title names and thresholds; pick automatic vs chosen title</td></tr>
+    <tr><td>4</td><td>Phase 3b · Dares</td><td>Daily dare opt-in works end to end.</td><td>Approve dare list and copy</td></tr>
+    <tr><td>5</td><td>Release and measure (Phase 7)</td><td>Two weeks of data on the new events.</td><td>Playgama release steps (sandbox publishing always needs your yes)</td></tr>
+    <tr><td>6</td><td>Decide on Phases 4 to 6</td><td>Decision rule applied.</td><td>Your call; art requests for prestige and rival portraits if yes</td></tr>
+  </table>
+
+  <h3 style="margin-top:10px">Questions to settle before Phase 2</h3>
+  <ol>
+    <li>Do you want to approve the rival chef <b>names and lines</b> yourself, or should I draft all 49 and you edit?</li>
+    <li>Should rival chefs get <b>painted portraits</b> (a Codex art request) or stay emoji for now?</li>
+    <li>Titles: <b>automatic</b> or <b>player-chosen</b>?</li>
+    <li>Dares: is Level 6 the right unlock, and do you want the rival to issue them from day one?</li>
+    <li>Are the proposed <b>thresholds</b> (perfect cuts 25/100/300/800, etc.) in the right range for how you imagine a good player?</li>
+  </ol>
+
+  <h2 style="margin-top:10px">Appendix · Files this plan touches</h2>
+  <table>
+    <tr><th style="width:40%">File</th><th>Role</th></tr>
+    <tr><td><code>src/game/restaurant/chefRecord.ts</code></td><td>The record and "news" rules (built).</td></tr>
+    <tr><td><code>src/components/kc/game/Preparation.tsx</code>, <code>KnifeReport.tsx</code></td><td>Plate stats and Knife Report lines (built).</td></tr>
+    <tr><td><code>src/App.tsx</code>, <code>MilestoneBanner.tsx</code></td><td>Saving the plate, the service, the Level Complete tiles (built).</td></tr>
+    <tr><td><code>restaurant/rivalChefs.ts</code> (new), <code>celebrations.ts</code>, <code>kc/CityRanking.tsx</code></td><td>Phase 2.</td></tr>
+    <tr><td><code>progression/chefTitles.ts</code> (new), <code>achievements.ts</code></td><td>Phase 3a.</td></tr>
+    <tr><td><code>restaurant/skillChallenges.ts</code> (new), <code>Kitchen.tsx</code></td><td>Phase 3b.</td></tr>
+    <tr><td><code>restaurantPrestige.ts</code>, <code>cityLeague.ts</code> (new); <code>momentCard.ts</code>, <code>MomentPreview.tsx</code>; <code>PlayablesSDK.ts</code> (analytics only)</td><td>Phases 4, 5, 6.</td></tr>
+      </table>
+  <p class="small">The shorter working plan is saved as <code>docs/planning/CHEF-PRIDE-PLAN-2026-11-23.md</code>. This document is the detailed version for approval.</p>
+</section>
+
+</body>
+</html>

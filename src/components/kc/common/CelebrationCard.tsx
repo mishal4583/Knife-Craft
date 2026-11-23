@@ -50,7 +50,16 @@ export function CelebrationCard({
           </h2>
           <ul className="mt-1.5 space-y-0.5" data-testid="celebration-lines">
             {celebration.lines.map((l) => (
-              <li key={l} className="font-ui text-[15px] font-bold text-walnut-dark">
+              <li
+                key={l}
+                className={
+                  // Chef Pride (Phase 2): a rival chef's reply is in the chef's own hand.
+                  /^Chef \S+: /.test(l)
+                    ? "pt-0.5 font-hand text-[17px] leading-snug text-copper"
+                    : "font-ui text-[15px] font-bold text-walnut-dark"
+                }
+                {...(/^Chef \S+: /.test(l) ? { "data-testid": "celebration-rival" } : {})}
+              >
                 {l}
               </li>
             ))}

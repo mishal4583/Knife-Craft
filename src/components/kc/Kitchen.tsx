@@ -58,6 +58,8 @@ import {
 import { getCafeProgress } from "@/game/cafe/CafeProgressionManager";
 import { CAFE_MILESTONES } from "@/game/cafe/cafeDefinitions";
 import { cityRanking } from "@/game/restaurant/cityRanking";
+import { RANKING_NEWS_FROM_LEVEL } from "@/game/config/earlyLevels";
+import { chefCallName, rivalChefOf } from "@/game/restaurant/rivalChefs";
 import { kitchenUpgradeOrDefault } from "@/game/kitchen/kitchenUpgradeDefinitions";
 import { nextKitchenUpgrade } from "@/game/kitchen/nextKitchenUpgrade";
 import type { SaveData } from "@/game/SaveManager";
@@ -1571,6 +1573,11 @@ function NextKitchenStrip({ save, go }: { save: SaveData; go: (s: ScreenId) => v
 function CityRankBadge({ save }: { save: SaveData }) {
   const u = useUnlockText();
   const c = cityRanking(save);
+  // Chef Pride (Phase 2): on a tall window, from the ranking news, the next rival's chef (the card stays two lines on a short one).
+  const chef =
+    c.next && restaurantLevelOf(save.levelProgress) >= RANKING_NEWS_FROM_LEVEL
+      ? rivalChefOf(c.next.id)
+      : undefined;
   return (
     <>
       <p className="truncate whitespace-nowrap font-ui text-[10px] font-extrabold uppercase tracking-[0.14em] text-gold">
@@ -1594,6 +1601,14 @@ function CityRankBadge({ save }: { save: SaveData }) {
           ? `Next: pass ${c.next.name} · ${u.lv(c.next.passedAtLevel)}`
           : "The city's best restaurant"}
       </p>
+      {chef ? (
+        <p
+          data-testid="kitchen-rival-chef"
+          className="mt-0.5 hidden truncate whitespace-nowrap font-hand text-[12.5px] leading-none text-gold/90 [@media(min-height:700px)]:block"
+        >
+          {chefCallName(chef)}: “{chef.dare}”
+        </p>
+      ) : null}
     </>
   );
 }

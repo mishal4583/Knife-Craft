@@ -6,6 +6,7 @@ import type { RestaurantMigrationState } from "../restaurant/restaurantMigration
 import type { SupplierCreditState } from "../restaurant/supplierCredit";
 import type { GrandmasToolsState } from "../restaurant/kitchenTools";
 import type { RestaurantRecord } from "../restaurant/serviceReport";
+import type { ChefRecord } from "../restaurant/chefRecord";
 import type { CleanlinessState } from "../restaurant/cleanliness";
 import type { DeliveriesState } from "../restaurant/deliveries";
 import type { SecondFloorState } from "../restaurant/secondFloor";
@@ -126,6 +127,11 @@ export type BusinessState = {
    * supplies plan D). Optional; absent = nothing recorded yet.
    */
   restaurantRecord?: RestaurantRecord;
+  /**
+   * The chef's own record (Chef Pride plan, developer 2026-11-23): perfect cuts, longest combo, fastest plate, runs of clean plates and a service's
+   * accuracy against the last one (restaurant/chefRecord.ts). Presentation only, no money. Optional; absent = nothing recorded yet.
+   */
+  chefRecord?: ChefRecord;
   /**
    * Unified Restaurant (RESTAURANT_MODE): Cleanliness & Maintenance — open
    * cleaning tasks, opened supply units, the Cleaner's areas
