@@ -38,7 +38,7 @@ import type { LevelDefinition } from "@/game/levels/levelTypes";
 import { KButton, Coin, DustMotes } from "./common/primitives";
 import { PointerHand } from "./common/PointerHand";
 import { firstRunHand } from "@/game/restaurant/firstRunGuide";
-import { gameReady } from "@/game/PlayablesSDK";
+import { gameReady, sendAnalyticsEvent } from "@/game/PlayablesSDK";
 import { dollars, formatUsd, formatUsdChange } from "@/game/money";
 import { pendingCashTotal } from "@/game/economy/pendingCash";
 import { DailyGiftCard } from "./DailyGiftCard";
@@ -240,6 +240,14 @@ export function Kitchen({
   const dare: DareView | null =
     RESTAURANT_MODE && onDare ? dareToday(chefRecordOf(save), today, reached) : null;
   const dareOffered = dare?.status === "offered";
+  // Measured (Chef Pride, Phase 7): an offered dare counts once per day and visit of the app, so the share who take it can be read (dare_taken / dare_offered).
+  const offeredKey = dareOffered ? `${today}:${dare?.dare.id}` : null;
+  useEffect(() => {
+    if (!offeredKey || OFFERED_DARES_SENT.has(offeredKey)) return;
+    OFFERED_DARES_SENT.add(offeredKey);
+    const id = offeredKey.slice(offeredKey.indexOf(":") + 1);
+    sendAnalyticsEvent("dare_offered", { id });
+  }, [offeredKey]);
   const todayNumber = levelNumber(todayLevel.id);
   const tip =
     RESTAURANT_MODE && todayUnlocked && !todayCompleted ? grandmaTipFor(todayNumber) : null;
@@ -1586,6 +1594,9 @@ function NextKitchenStrip({ save, go }: { save: SaveData; go: (s: ScreenId) => v
     </button>
   );
 }
+
+/** The offered dares already counted in this run of the app ("<day>:<dare id>"). */
+const OFFERED_DARES_SENT = new Set<string>();
 
 /**
  * TODAY'S DARE (Chef Pride plan, Phase 3b, developer 2026-11-23): one optional challenge a day (restaurant/skillChallenges.ts). Offered with a playful line (the next

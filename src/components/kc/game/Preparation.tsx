@@ -4,7 +4,7 @@ import { paidLevelReward } from "@/game/levels/levelRewards";
 import { GameBridge, type GameBridgeEvent } from "@/game/GameBridge";
 import { PauseManager } from "@/game/PauseManager";
 import { AudioManager } from "@/game/AudioManager";
-import { gameReady, levelPaused, levelResumed } from "@/game/PlayablesSDK";
+import { gameReady, levelPaused, levelResumed, sendAnalyticsEvent } from "@/game/PlayablesSDK";
 import { startPerformanceSampling } from "@/game/telemetry/performanceSample";
 import {
   COMBO,
@@ -869,8 +869,11 @@ export function Preparation({
               bestCombo: bestCombo.current,
               cuts: runCuts.current,
               ms: runMs.current,
-            }))
+            })) {
               lines.push({ id: `pride-${n.kind}`, text: `★ ${n.text}`, good: true });
+              // Measured (Chef Pride, Phase 7): which records players actually break, never the numbers themselves.
+              sendAnalyticsEvent("record_broken", { kind: n.kind });
+            }
           const dare = dareLine?.({ score: overall, cuts: runCuts.current, ms: runMs.current });
           if (dare)
             lines.push({ id: "pride-dare", text: `⚔ ${dare}`, good: /^Dare won/.test(dare) });

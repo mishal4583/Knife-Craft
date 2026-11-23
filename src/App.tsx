@@ -3146,8 +3146,9 @@ export function App() {
     const rec = chefRecordOf(cur);
     const next = action === "take" ? takeDare(rec, day, level) : declineDare(rec, day, level);
     if (next === rec) return;
-    if (action === "take")
-      sendAnalyticsEvent("dare_taken", { id: dareToday(next, day, level)?.dare.id ?? "" });
+    const dareId = dareToday(next, day, level)?.dare.id ?? "";
+    if (action === "take") sendAnalyticsEvent("dare_taken", { id: dareId });
+    else sendAnalyticsEvent("dare_declined", { id: dareId });
     persist({ ...cur, business: { ...cur.business, chefRecord: next } });
   }
 
