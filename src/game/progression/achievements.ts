@@ -28,6 +28,8 @@ import { endlessStarsOf } from "../restaurant/restaurantStanding";
 import { fridgeSortOf } from "../business/fridgeSort";
 import { restaurantRecordOf } from "../restaurant/serviceReport";
 import { restaurantSuppliesOf } from "../restaurant/serviceSupplies";
+import { CHEF_IDENTITIES, type ChefIdentity } from "./chefTitles";
+import { chefRecordOf } from "../restaurant/chefRecord";
 
 export type AchievementGroup = "Restaurant" | "Kitchen" | "Service" | "Business";
 
@@ -280,6 +282,46 @@ const LADDERS: readonly Ladder[] = [
   },
 ];
 
+/**
+ * The chef titles (Chef Pride plan, Phase 3a): each identity is a BADGE-ONLY ladder (`reward: 0`, ids `ach-chef-<identity>-<target>`), so the titles list in the
+ * Achievements tab and move no money. Tier names and thresholds live in chefTitles.ts.
+ */
+const chefLadder = (i: ChefIdentity): Ladder => ({
+  key: `chef-${i.id}`,
+  group: i.group,
+  icon: i.icon,
+  unit: i.unit,
+  title: (t) => i.tiers.find((x) => x.target === t)?.title ?? i.name,
+  description: i.describe,
+  tiers: () => i.tiers.map((t) => ({ target: t.target, reward: 0, title: t.title })),
+  value: i.value,
+});
+const DARE_TITLES: Record<number, string> = {
+  3: "Dare Taker",
+  10: "Daredevil",
+  30: "Fearless Chef",
+  100: "Dare Legend",
+};
+const CHEF_LADDERS: readonly Ladder[] = [
+  ...CHEF_IDENTITIES.map(chefLadder),
+  {
+    // Chef Pride, Phase 3b: the optional daily dares won (restaurant/skillChallenges.ts), badge only.
+    key: "dares",
+    group: "Kitchen",
+    icon: "⚔️",
+    unit: "dares won",
+    title: (t) => DARE_TITLES[t] ?? `${t} dares won`,
+    description: (t) => `Win ${t} daily dares.`,
+    tiers: () =>
+      Object.keys(DARE_TITLES).map((t) => ({
+        target: Number(t),
+        reward: 0,
+        title: DARE_TITLES[Number(t)]!,
+      })),
+    value: (s) => chefRecordOf(s).daresWon,
+  },
+];
+
 /** Which group an old milestone shows in. */
 function milestoneGroup(id: string): AchievementGroup {
   if (id.startsWith("knife-") || id.includes("kitchen") || id.includes("blacksmith"))
@@ -332,7 +374,7 @@ export function achievementsFor(save: SaveData): Achievement[] {
     knives: p.knives.length,
     boards: p.boards.length,
   };
-  for (const ladder of LADDERS) {
+  for (const ladder of [...LADDERS, ...CHEF_LADDERS]) {
     const value = Math.max(0, ladder.value(save));
     const seen = new Set<number>();
     for (const tier of ladder.tiers(totals[ladder.key] ?? 0)) {

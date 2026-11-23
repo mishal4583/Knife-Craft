@@ -42,6 +42,7 @@ import { gameReady } from "@/game/PlayablesSDK";
 import { dollars, formatUsd, formatUsdChange } from "@/game/money";
 import { pendingCashTotal } from "@/game/economy/pendingCash";
 import { DailyGiftCard } from "./DailyGiftCard";
+import { useToday } from "./useToday";
 import { KitchenBackground } from "./KitchenBackground";
 import type { ScreenId } from "./data";
 import { getLevels, isUnlocked, isCompleted, type LevelProgress } from "@/game/levels/LevelManager";
@@ -60,6 +61,9 @@ import { CAFE_MILESTONES } from "@/game/cafe/cafeDefinitions";
 import { cityRanking } from "@/game/restaurant/cityRanking";
 import { RANKING_NEWS_FROM_LEVEL } from "@/game/config/earlyLevels";
 import { chefCallName, rivalChefOf } from "@/game/restaurant/rivalChefs";
+import { CHEF_TITLES_FROM_LEVEL, leadingTitle } from "@/game/progression/chefTitles";
+import { chefRecordOf } from "@/game/restaurant/chefRecord";
+import { dareProgressText, dareToday, type DareView } from "@/game/restaurant/skillChallenges";
 import { kitchenUpgradeOrDefault } from "@/game/kitchen/kitchenUpgradeDefinitions";
 import { nextKitchenUpgrade } from "@/game/kitchen/nextKitchenUpgrade";
 import type { SaveData } from "@/game/SaveManager";
@@ -182,10 +186,13 @@ export function Kitchen({
   onSelectLevel,
   onOpenDailyGift,
   onCollectTableCash,
+  onDare,
 }: {
   go: (s: ScreenId) => void;
   save: SaveData;
   onSelectLevel: (levelId: string) => void;
+  /** Chef Pride (Phase 3b): the player takes today's dare, or says "Not today". */
+  onDare?: (action: "take" | "decline") => void;
   /** Collects the cash a served order left on the table (optional; it must be in before closing). */
   onCollectTableCash?: () => void;
   /** Phase 5 (B3): opens today's gift sheet (App's openDailyGift) — the one place a gift is taken. */
@@ -220,6 +227,7 @@ export function Kitchen({
   // The next customer's dish, painted (a wide window's card; no picture yet: the icon circle only).
   const todayDishArts = todayUnlocked ? levelDishArts(todayLevel) : [];
   const [orderCardExpanded, setOrderCardExpanded] = useState(false);
+
   // Every level cleared: say so plainly — there is no hidden content left.
   const campaignComplete = getLevels().every((l) => isCompleted(l.id, levelProgress));
   // Phase 1 (developer 2026-10-30): the restaurant build's one button opens the next service;
@@ -227,6 +235,11 @@ export function Kitchen({
   const openService = RESTAURANT_MODE ? nextServiceLevel(levelProgress) : null;
   // First levels (restaurant build): a place that hasn't opened yet shows its level.
   const reached = restaurantLevelOf(levelProgress);
+  // Chef Pride (Phase 3b): today's optional dare, in the Next Customer details (a marker on "View Details" while it is still offered).
+  const today = useToday();
+  const dare: DareView | null =
+    RESTAURANT_MODE && onDare ? dareToday(chefRecordOf(save), today, reached) : null;
+  const dareOffered = dare?.status === "offered";
   const todayNumber = levelNumber(todayLevel.id);
   const tip =
     RESTAURANT_MODE && todayUnlocked && !todayCompleted ? grandmaTipFor(todayNumber) : null;
@@ -743,6 +756,7 @@ export function Kitchen({
               onClick={() => setOrderCardExpanded((expanded) => !expanded)}
               className="press inline-flex min-h-12 shrink-0 items-center gap-1 rounded-full border border-[#8f4d1e] bg-[linear-gradient(145deg,#a85d25,#754018)] px-2.5 font-ui text-[10px] font-extrabold landx:px-4 landx:text-[14px] text-[#fff5df] shadow-[0_2px_6px_rgba(83,41,13,0.32),inset_0_1px_0_rgba(255,255,255,0.25)] transition-transform active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-copper"
             >
+              {dareOffered && !orderCardExpanded ? "⚔ " : ""}
               {orderCardExpanded ? "Hide Details" : "View Details"}
               <span aria-hidden className="text-[14px] leading-none">
                 {orderCardExpanded ? "⌃" : "›"}
@@ -834,6 +848,9 @@ export function Kitchen({
               >
                 👵 {tip.text}
               </p>
+            ) : null}
+            {dare && dare.status !== "declined" && onDare ? (
+              <DareRow save={save} view={dare} reached={reached} onDare={onDare} />
             ) : null}
             {showDishIngredients ? <DishIngredientsToggle save={save} level={todayLevel} /> : null}
             <div className="mt-2.5 flex gap-2">
@@ -1570,9 +1587,91 @@ function NextKitchenStrip({ save, go }: { save: SaveData; go: (s: ScreenId) => v
   );
 }
 
+/**
+ * TODAY'S DARE (Chef Pride plan, Phase 3b, developer 2026-11-23): one optional challenge a day (restaurant/skillChallenges.ts). Offered with a playful line (the next
+ * rival's chef "dares" the player from the ranking news), taken with one tap, never forced: "Not today" hides it, a won dare says so. Nothing is lost by ignoring it.
+ */
+function DareRow({
+  save,
+  view,
+  reached,
+  onDare,
+}: {
+  save: SaveData;
+  view: DareView;
+  reached: number;
+  onDare: (action: "take" | "decline") => void;
+}) {
+  const next = cityRanking(save).next;
+  const chef = next && reached >= RANKING_NEWS_FROM_LEVEL ? rivalChefOf(next.id) : undefined;
+  const { dare, status } = view;
+  const progress = dareProgressText(view);
+  return (
+    <div
+      className="mt-2 rounded-xl border border-copper/35 bg-[#fff3d6]/80 px-2.5 py-2"
+      data-testid="kitchen-dare"
+      data-dare={dare.id}
+      data-status={status}
+    >
+      <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.12em] text-copper">
+        {dare.icon} {chef ? `${chefCallName(chef)} dares you` : "Today's dare"} · {dare.title}
+      </p>
+      {status === "won" ? (
+        <p className="font-hand text-[15px] leading-snug text-olive" data-testid="kitchen-dare-won">
+          ★ Dare won! A new one tomorrow.
+        </p>
+      ) : (
+        <>
+          <p className="font-hand text-[15px] leading-snug text-walnut-dark">
+            {status === "offered" ? `“${dare.say}”` : dare.ask}
+          </p>
+          {status === "accepted" && dare.goal > 1 ? (
+            <div className="mt-1" data-testid="kitchen-dare-progress">
+              <span className="block h-[5px] overflow-hidden rounded-full bg-walnut/15">
+                <span
+                  className="block h-full rounded-full bg-copper"
+                  style={{ width: `${Math.round((view.progress / dare.goal) * 100)}%` }}
+                />
+              </span>
+              <p className="mt-0.5 font-ui text-[11.5px] font-bold text-walnut/70">{progress}</p>
+            </div>
+          ) : null}
+          {status === "offered" ? (
+            <div className="mt-1.5 flex gap-2">
+              <KButton
+                variant="copper"
+                size="sm"
+                full
+                className="h-12"
+                data-testid="kitchen-dare-take"
+                onClick={() => onDare("take")}
+              >
+                Take the dare
+              </KButton>
+              <KButton
+                variant="cream"
+                size="sm"
+                full
+                className="h-12"
+                data-testid="kitchen-dare-decline"
+                onClick={() => onDare("decline")}
+              >
+                Not today
+              </KButton>
+            </div>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+}
+
 function CityRankBadge({ save }: { save: SaveData }) {
   const u = useUnlockText();
   const c = cityRanking(save);
+  // Chef Pride (Phase 3a): the title the player wears, next to the rank, on a tall window only.
+  const lead =
+    restaurantLevelOf(save.levelProgress) >= CHEF_TITLES_FROM_LEVEL ? leadingTitle(save) : null;
   // Chef Pride (Phase 2): on a tall window, from the ranking news, the next rival's chef (the card stays two lines on a short one).
   const chef =
     c.next && restaurantLevelOf(save.levelProgress) >= RANKING_NEWS_FROM_LEVEL
@@ -1585,6 +1684,14 @@ function CityRankBadge({ save }: { save: SaveData }) {
       </p>
       <p className="truncate whitespace-nowrap font-display text-[15.5px] font-black leading-tight text-ivory">
         🏆 #{c.rank} <span className="text-ivory/70">of {c.total}</span>
+        {lead ? (
+          <span
+            data-testid="kitchen-chef-title"
+            className="ml-2 hidden font-hand text-[14px] font-normal text-gold [@media(min-height:700px)]:inline"
+          >
+            {lead.title}
+          </span>
+        ) : null}
       </p>
       {/* On a short screen (320 x 568) the decorative bar goes, so the three cards fit above the order card. */}
       <span className="mt-1.5 block h-[4px] w-24 overflow-hidden rounded-full bg-ivory/25 [@media(max-height:600px)]:hidden">

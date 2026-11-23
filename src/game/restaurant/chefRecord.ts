@@ -16,6 +16,14 @@ import type { SaveData } from "../SaveManager";
 import { GRADE_THRESHOLDS } from "../CutEvaluator";
 import type { QualityLabel } from "@/types/game";
 
+/** Today's optional dare (skillChallenges.ts): the calendar day it belongs to, which dare, what the player did with it and how far it got. */
+export type ChallengeState = {
+  day: string;
+  id: string;
+  state: "accepted" | "declined" | "won";
+  progress: number;
+};
+
 export type ChefRecord = {
   /** Plates finished (every kind of run counts). */
   plates: number;
@@ -33,11 +41,16 @@ export type ChefRecord = {
   bestRunMasterful: number;
   /** The fastest finished plate, in ms (0 = none yet). Only a plate that ran unpaused counts. */
   fastestMs: number;
+  /** Plates at Clean (85+) or better finished in under QUICK_MS, ever (the Speed title, progression/chefTitles.ts). */
+  quickClean: number;
   /** Services recorded here, the best average plate accuracy of a service (0-100), the last one, and the most perfect cuts in one service. */
   services: number;
   bestServiceAccuracy: number;
   lastServiceAccuracy: number;
   bestServicePerfects: number;
+  /** Today's dare, or null (the dare of another day is ignored). Dares won, ever (the dares ladder). */
+  challenge: ChallengeState | null;
+  daresWon: number;
   /** Short markers of what was already announced (`title:…`, `rival:…`): each line shows once. Kept short. */
   seen: string[];
 };
@@ -67,6 +80,8 @@ export type ServiceStats = {
 export type RecordNews = { kind: "perfects" | "combo" | "speed" | "accuracy"; text: string };
 
 export const CLEAN_FROM = 85;
+/** A plate under this many ms, at Clean or better, counts as a quick plate (Speed title). */
+export const QUICK_MS = 30000;
 export const MASTERFUL_FROM = 95;
 /** A plate shorter than this is not a fair "fastest" (a smash or a peel only). */
 export const MIN_FAST_MS = 4000;
@@ -90,16 +105,28 @@ export const DEFAULT_CHEF_RECORD: ChefRecord = {
   runMasterful: 0,
   bestRunMasterful: 0,
   fastestMs: 0,
+  quickClean: 0,
   services: 0,
   bestServiceAccuracy: 0,
   lastServiceAccuracy: 0,
   bestServicePerfects: 0,
+  challenge: null,
+  daresWon: 0,
   seen: [],
 };
 
 /** The save's chef record (clamped; defaults when absent). */
 export function chefRecordOf(save: SaveData): ChefRecord {
   return clampChefRecord(save.business.chefRecord);
+}
+
+function clampChallenge(raw: unknown): ChallengeState | null {
+  if (!raw || typeof raw !== "object") return null;
+  const c = raw as Partial<Record<keyof ChallengeState, unknown>>;
+  if (typeof c.day !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(c.day)) return null;
+  if (typeof c.id !== "string" || c.id.length === 0 || c.id.length > 32) return null;
+  if (c.state !== "accepted" && c.state !== "declined" && c.state !== "won") return null;
+  return { day: c.day, id: c.id, state: c.state, progress: Math.min(99, whole(c.progress)) };
 }
 
 /** Clamps any stored shape to a valid record (old saves, hand-edited saves). */
@@ -120,10 +147,13 @@ export function clampChefRecord(raw: unknown): ChefRecord {
     runMasterful,
     bestRunMasterful: Math.max(runMasterful, whole(r.bestRunMasterful)),
     fastestMs: whole(r.fastestMs),
+    quickClean: whole(r.quickClean),
     services: whole(r.services),
     bestServiceAccuracy: pct(r.bestServiceAccuracy),
     lastServiceAccuracy: pct(r.lastServiceAccuracy),
     bestServicePerfects: whole(r.bestServicePerfects),
+    challenge: clampChallenge(r.challenge),
+    daresWon: whole(r.daresWon),
     seen: Array.isArray(r.seen)
       ? r.seen.filter((s): s is string => typeof s === "string").slice(-SEEN_KEPT)
       : [],
@@ -152,6 +182,7 @@ export function recordRun(rec: ChefRecord, run: RunStats): ChefRecord {
     runMasterful,
     bestRunMasterful: Math.max(rec.bestRunMasterful, runMasterful),
     fastestMs: fair && (rec.fastestMs === 0 || ms < rec.fastestMs) ? ms : rec.fastestMs,
+    quickClean: rec.quickClean + (fair && clean && ms < QUICK_MS ? 1 : 0),
   };
 }
 

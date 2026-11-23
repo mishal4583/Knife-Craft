@@ -352,7 +352,8 @@ const L = (...e: EconomyLedgerEntry[]) => ({ economyLedger: e });
   );
 }
 {
-  const card = code("src/components/kc/DailyGiftCard.tsx");
+  // RULE CHANGE (developer 2026-11-23, Chef Pride Phase 3b): the day hook moved to its own file (`useToday.ts`) so the Kitchen's dare row shares it; the card still re-reads the day through it.
+  const card = code("src/components/kc/DailyGiftCard.tsx") + code("src/components/kc/useToday.ts");
   assert(
     /onClick=\{ready \? onOpen : undefined\}/.test(card) &&
       !/takeDailyGift|persist\(|appendLedgerEntry/.test(card) &&
@@ -415,8 +416,10 @@ console.log("\nE. Save and money");
   });
   const changed = daily.split("\n").filter((l) => /^[+-][^+-]/.test(l));
   assert(
-    changed.length === 2 && changed.every((l) => /previousDayKey\(key: string\)/.test(l)),
-    "E4: Today's Special and its streak are untouched (only previousDayKey is now exported)",
+    // RULE CHANGE (Chef Pride Phase 3b): `hashString` is exported too (the daily dare picks by the same fixed hash); nothing else in the file changed.
+    changed.length === 4 &&
+      changed.every((l) => /previousDayKey\(key: string\)|hashString\(s: string\)/.test(l)),
+    "E4: Today's Special and its streak are untouched (only previousDayKey and hashString are now exported)",
     changed,
   );
   assert(

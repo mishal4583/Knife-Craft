@@ -323,10 +323,11 @@ console.log("W. Wiring");
       /if \(firstPlay && restaurantDayOf\(base\)\.closingDue\) \{\s*closingHoldRef\.current = true;/.test(
         app,
       ) &&
+      // RULE CHANGE (developer 2026-11-23, Chef Pride Phase 3b): both closing sites call `closeDayDared`, the same `closeDay` plus a look at whether any stock spoiled (the Zero Waste dare).
       // A real restaurant's day (2026-10-11): closing then adds the next morning's
       // opening chores (choresAfterClose wraps the same closeDay; a Cleaner on duty washes the
       // sink first, cleanerClosing — developer 2026-10-23).
-      /restaurantDayOf\(s\)\.closingDue && !dayCeremonyAt\(restaurantLevel\)\s*\? (?:choresAfterClose\()?closeDay\((?:cleanerClosing\(s\)\.save|s), restaurantLevel\)/.test(
+      /restaurantDayOf\(s\)\.closingDue && !dayCeremonyAt\(restaurantLevel\)\s*\? (?:choresAfterClose\()?closeDay(?:Dared)?\((?:cleanerClosing\(s\)\.save|s), restaurantLevel\)/.test(
         app,
       ) &&
       /beginLevel\(id, opensDay \? openDay\(save, levelNumber\(id\)\) : undefined\)/.test(app) &&
@@ -334,7 +335,7 @@ console.log("W. Wiring");
         app,
       ) &&
       // …and the night's standing orders (deliveries.ts afterNight wraps it too).
-      /(?:persist\(|const night = )\s*(?:afterNight\(\s*)?(?:choresAfterClose\(\s*)?closeDay\((?:cleanerClosing\(save\)\.save|save), restaurantLevelOf\(save\.levelProgress\)\)/.test(
+      /(?:persist\(|const night = )\s*(?:afterNight\(\s*)?(?:choresAfterClose\(\s*)?closeDay(?:Dared)?\((?:cleanerClosing\(save\)\.save|save), restaurantLevelOf\(save\.levelProgress\)\)/.test(
         app,
       ) &&
       /closingDue &&\s*dayCeremonyAt\(restaurantLevelOf\(save\.levelProgress\)\) &&/.test(app),

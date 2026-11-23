@@ -235,7 +235,7 @@ export function OvenStep({
         </div>
         <div
           className="absolute bottom-5 right-5 flex w-[clamp(200px,24vw,320px)] flex-col items-center gap-2 rounded-[20px] border-2 border-[#e0a63a]/60 bg-walnut-dark/75 p-3 shadow-lift backdrop-blur-sm"
-          data-testid="oven-controls"
+          data-testid="oven-panel"
         >
           {meter}
           {state === "done" && result ? (

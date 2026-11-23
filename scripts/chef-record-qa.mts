@@ -81,12 +81,14 @@ console.log("A. The record");
   );
   const out = applyRun({ ...DEFAULT_SAVE }, run());
   assert(
-    out.business.chefRecord?.plates === 1 &&
-      !Object.keys(out).some((k) => !(k in DEFAULT_SAVE)),
+    out.business.chefRecord?.plates === 1 && !Object.keys(out).some((k) => !(k in DEFAULT_SAVE)),
     "A3: a plate is written under business.chefRecord and adds no top-level save field",
   );
   const src = read("src/game/SaveManager.ts");
-  assert(!/chefRecord/.test(src), "A4: SaveManager keeps no chef field of its own (business is merged as before)");
+  assert(
+    !/chefRecord/.test(src),
+    "A4: SaveManager keeps no chef field of its own (business is merged as before)",
+  );
   assert(
     !Object.prototype.hasOwnProperty.call(DEFAULT_SAVE.business, "chefRecord"),
     "A5: DEFAULT_SAVE.business does not list the optional field",
@@ -108,9 +110,15 @@ console.log("B. A plate");
     "B1: perfects, combo, Masterful and the runs are counted",
   );
   r = recordRun(r, run({ score: 88 }));
-  assert(r.runClean === 2 && r.runMasterful === 0 && r.bestRunMasterful === 1, "B2: a Clean plate extends the clean run and ends the Masterful one (the best is kept)");
+  assert(
+    r.runClean === 2 && r.runMasterful === 0 && r.bestRunMasterful === 1,
+    "B2: a Clean plate extends the clean run and ends the Masterful one (the best is kept)",
+  );
   r = recordRun(r, run({ score: 60 }));
-  assert(r.runClean === 0 && r.bestRunClean === 2, "B3: a weaker plate ends the run; the best run stays");
+  assert(
+    r.runClean === 0 && r.bestRunClean === 2,
+    "B3: a weaker plate ends the run; the best run stays",
+  );
   assert(r.perfectCuts === 7 && r.plates === 3, "B4: totals add up");
   const fast = recordRun(DEFAULT_CHEF_RECORD, run({ ms: 15000 }));
   assert(fast.fastestMs === 15000, "B5: a fair plate sets the fastest time");
@@ -131,23 +139,44 @@ console.log("C. A service");
 {
   let r = recordService(DEFAULT_CHEF_RECORD, { orders: 3, accuracy: 82, perfects: 4 });
   assert(
-    r.services === 1 && r.bestServiceAccuracy === 82 && r.lastServiceAccuracy === 82 && r.bestServicePerfects === 4,
+    r.services === 1 &&
+      r.bestServiceAccuracy === 82 &&
+      r.lastServiceAccuracy === 82 &&
+      r.bestServicePerfects === 4,
     "C1: the first service sets the marks",
   );
   r = recordService(r, { orders: 2, accuracy: 74, perfects: 1 });
-  assert(r.bestServiceAccuracy === 82 && r.lastServiceAccuracy === 74 && r.bestServicePerfects === 4, "C2: a weaker service keeps the best, remembers the last");
-  assert(recordService(r, { orders: 0, accuracy: 100, perfects: 9 }) === r, "C3: a service with no plates records nothing");
+  assert(
+    r.bestServiceAccuracy === 82 && r.lastServiceAccuracy === 74 && r.bestServicePerfects === 4,
+    "C2: a weaker service keeps the best, remembers the last",
+  );
+  assert(
+    recordService(r, { orders: 0, accuracy: 100, perfects: 9 }) === r,
+    "C3: a service with no plates records nothing",
+  );
   const s = applyService({ ...DEFAULT_SAVE }, { orders: 1, accuracy: 90, perfects: 0 });
-  assert(s.business.chefRecord?.services === 1, "C4: applyService writes under business.chefRecord");
+  assert(
+    s.business.chefRecord?.services === 1,
+    "C4: applyService writes under business.chefRecord",
+  );
 }
 
 console.log("D. News is true");
 {
   const fresh = DEFAULT_CHEF_RECORD;
-  assert(runNews(fresh, run({ perfects: 5, bestCombo: 20, ms: 9000 })).length === 0, "D1: a first plate sets marks, it is not 'a record'");
+  assert(
+    runNews(fresh, run({ perfects: 5, bestCombo: 20, ms: 9000 })).length === 0,
+    "D1: a first plate sets marks, it is not 'a record'",
+  );
   const base = recordRun(fresh, run({ perfects: 2, bestCombo: 6, ms: 20000 }));
-  assert(runNews(base, run({ perfects: 2, bestCombo: 6, ms: 20000 })).length === 0, "D2: an equal plate is not news");
-  assert(runNews(base, run({ perfects: 1, bestCombo: 4, ms: 25000 })).length === 0, "D3: a worse plate is not news");
+  assert(
+    runNews(base, run({ perfects: 2, bestCombo: 6, ms: 20000 })).length === 0,
+    "D2: an equal plate is not news",
+  );
+  assert(
+    runNews(base, run({ perfects: 1, bestCombo: 4, ms: 25000 })).length === 0,
+    "D3: a worse plate is not news",
+  );
   const news = runNews(base, run({ perfects: 4, bestCombo: 9, ms: 12000 }));
   assert(
     news.length === 3 &&
@@ -161,14 +190,33 @@ console.log("D. News is true");
     "D5: a speed 'record' that rounds to the same second is not announced",
   );
   const rec = recordService(fresh, { orders: 2, accuracy: 70, perfects: 1 });
-  assert(serviceNews(fresh, { orders: 2, accuracy: 99, perfects: 3 }).length === 0, "D6: the first service has nothing to beat");
-  assert(serviceNews(rec, { orders: 2, accuracy: 70, perfects: 1 }).length === 0, "D7: an equal service is not news");
+  assert(
+    serviceNews(fresh, { orders: 2, accuracy: 99, perfects: 3 }).length === 0,
+    "D6: the first service has nothing to beat",
+  );
+  assert(
+    serviceNews(rec, { orders: 2, accuracy: 70, perfects: 1 }).length === 0,
+    "D7: an equal service is not news",
+  );
   const up = serviceNews(rec, { orders: 2, accuracy: 78, perfects: 1 });
-  assert(up.length === 1 && /70% to 78%|most accurate/.test(up[0]!.text), "D8: a better service names the real figures");
-  const best = serviceNews(recordService(rec, { orders: 1, accuracy: 60, perfects: 0 }), { orders: 2, accuracy: 85, perfects: 1 });
-  assert(best.length === 1 && /most accurate service yet: 85%/.test(best[0]!.text), "D9: beating the best too says 'most accurate yet'");
+  assert(
+    up.length === 1 && /70% to 78%|most accurate/.test(up[0]!.text),
+    "D8: a better service names the real figures",
+  );
+  const best = serviceNews(recordService(rec, { orders: 1, accuracy: 60, perfects: 0 }), {
+    orders: 2,
+    accuracy: 85,
+    perfects: 1,
+  });
+  assert(
+    best.length === 1 && /most accurate service yet: 85%/.test(best[0]!.text),
+    "D9: beating the best too says 'most accurate yet'",
+  );
   let m = markSeen(DEFAULT_CHEF_RECORD, "title:precision-1");
-  assert(hasSeen(m, "title:precision-1") && markSeen(m, "title:precision-1") === m, "D10: a marker is kept once");
+  assert(
+    hasSeen(m, "title:precision-1") && markSeen(m, "title:precision-1") === m,
+    "D10: a marker is kept once",
+  );
   for (let i = 0; i < SEEN_KEPT + 10; i++) m = markSeen(m, `x:${i}`);
   assert(m.seen.length === SEEN_KEPT, "D11: the markers are capped");
 }
@@ -180,7 +228,10 @@ console.log("E. Near-miss (words only)");
   assert(/Clean/.test(nearMiss(83) ?? ""), "E2: 83 is a hair from Clean");
   assert(nearMiss(88) === null, "E3: 88 is not a near miss (7 points under Masterful)");
   assert(nearMiss(96) === null && nearMiss(100) === null, "E4: nothing above the top grade");
-  assert(nearMiss(48) === null && nearMiss(66) === null, "E5: the lowest grades never get a near-miss line");
+  assert(
+    nearMiss(48) === null && nearMiss(66) === null,
+    "E5: the lowest grades never get a near-miss line",
+  );
   assert(
     [60, 70, 83, 93, 99].every((s) => !/\d/.test(nearMiss(s) ?? "")),
     "E6: the near-miss line carries no digits (Law 4: the plate is the score)",
@@ -191,23 +242,39 @@ console.log("F. The rule file is pure and honest");
 {
   const src = code("src/game/restaurant/chefRecord.ts");
   assert(
-    !/credits|appendLedgerEntry|economyLedger|Math\.random|Date\.now|new Date|performance\.now|window\.bridge|localStorage|fetch\(/.test(src),
+    !/credits|appendLedgerEntry|economyLedger|Math\.random|Date\.now|new Date|performance\.now|window\.bridge|localStorage|fetch\(/.test(
+      src,
+    ),
     "F1: no wallet, ledger, clock, random, bridge or storage in the rule file",
   );
   const all = read("src/game/restaurant/chefRecord.ts");
-  const lines = [...all.matchAll(/text: `([^`]*)`|"([^"]*(?:Masterful|Clean|try)[^"]*)"/g)].map((m) => m[1] ?? m[2] ?? "");
+  const lines = [...all.matchAll(/text: `([^`]*)`|"([^"]*(?:Masterful|Clean|try)[^"]*)"/g)].map(
+    (m) => m[1] ?? m[2] ?? "",
+  );
   const sample = [
-    ...runNews(recordRun(DEFAULT_CHEF_RECORD, run()), run({ perfects: 9, bestCombo: 30, ms: 8000 })).map((n) => n.text),
-    ...serviceNews(recordService(DEFAULT_CHEF_RECORD, { orders: 1, accuracy: 50, perfects: 0 }), { orders: 1, accuracy: 70, perfects: 0 }).map((n) => n.text),
+    ...runNews(
+      recordRun(DEFAULT_CHEF_RECORD, run()),
+      run({ perfects: 9, bestCombo: 30, ms: 8000 }),
+    ).map((n) => n.text),
+    ...serviceNews(recordService(DEFAULT_CHEF_RECORD, { orders: 1, accuracy: 50, perfects: 0 }), {
+      orders: 1,
+      accuracy: 70,
+      perfects: 0,
+    }).map((n) => n.text),
     nearMiss(93) ?? "",
     ...lines,
   ];
   assert(
-    sample.every((t) => !/\bonly\s+\d+\s*%|% of (chefs|players)|top\s+\d+\s*%|better than \d+/i.test(t)),
+    sample.every(
+      (t) => !/\bonly\s+\d+\s*%|% of (chefs|players)|top\s+\d+\s*%|better than \d+/i.test(t),
+    ),
     "F2: no population claim (the game has no population data)",
   );
   assert(
-    sample.every((t) => !/\b(stupid|idiot|loser|pathetic|useless|terrible|worthless|trash|garbage|noob)\b/i.test(t)),
+    sample.every(
+      (t) =>
+        !/\b(stupid|idiot|loser|pathetic|useless|terrible|worthless|trash|garbage|noob)\b/i.test(t),
+    ),
     "F3: no insult",
   );
 }
@@ -216,7 +283,10 @@ console.log("G. Wiring");
 {
   const prep = code("src/components/kc/game/Preparation.tsx");
   assert(
-    /runNews\(/.test(prep) && /nearMiss\(/.test(prep) && /onRunStats\?\.\(\{/.test(prep) && /\.\.\.prideLines/.test(prep),
+    /runNews\(/.test(prep) &&
+      /nearMiss\(/.test(prep) &&
+      /onRunStats\?\.\(\{/.test(prep) &&
+      /\.\.\.prideLines/.test(prep),
     "G1: Preparation gathers the plate, adds the news and the near-miss line to the Knife Report, and hands the plate over",
   );
   assert(
@@ -225,11 +295,12 @@ console.log("G. Wiring");
   );
   const app = code("src/App.tsx");
   assert(
-    /pendingRunRef\.current/.test(app) && /applyRun\(incoming, run\)/.test(app),
+    /pendingRunRef\.current/.test(app) && /applyRun\(next, run\)/.test(app),
     "G3: the finished plate rides along in the very next save (persist), never a second stale save",
   );
   assert(
-    /applyService\(nextSave, service\)/.test(app) && /\.\.\.\(shift \? \{ shift \} : \{\}\)/.test(app),
+    /applyService\(nextSave, service\)/.test(app) &&
+      /\.\.\.\(shift \? \{ shift \} : \{\}\)/.test(app),
     "G4: a service goes into the record in completeCampaignLevel and onto the Level Complete card",
   );
   assert(

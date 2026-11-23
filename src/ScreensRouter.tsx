@@ -204,6 +204,7 @@ export function ScreensRouter({
   onStartDaily,
   onOpenDailyGift,
   onCollectTableCash,
+  onDare,
   onHireCleaner,
   onStartEndless,
   buyKnife,
@@ -266,6 +267,8 @@ export function ScreensRouter({
   onOpenDailyGift?: () => void;
   /** Collects the cash left on the table (Kitchen). */
   onCollectTableCash?: () => void;
+  /** Chef Pride (Phase 3b): the player takes today's dare, or says "Not today" (Kitchen). */
+  onDare?: (action: "take" | "decline") => void;
   /** Phase 10: a Cleaner by the hour for one area, for the rest of today (App.hireHourlyCleanerPaid). */
   onHireCleaner?: (area: CleanArea) => "hired" | "funds" | "no";
   onStartEndless: () => void;
@@ -640,6 +643,7 @@ export function ScreensRouter({
                   onSelectLevel={onSelectLevel}
                   {...(onOpenDailyGift ? { onOpenDailyGift } : {})}
                   {...(onCollectTableCash ? { onCollectTableCash } : {})}
+                  {...(onDare ? { onDare } : {})}
                 />
               ) : null}
               {screen === "board" ? (

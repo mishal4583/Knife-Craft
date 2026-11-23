@@ -146,6 +146,7 @@ import {
   pickDailyLevel,
   hasClaimedToday,
   claimDaily,
+  dailyKeyFor,
   DAILY_ORDER_BONUS_COINS,
 } from "@/game/daily/DailyOrderManager";
 import { pickEndlessLevel, applyEndlessEarn } from "@/game/daily/EndlessServiceManager";
@@ -158,6 +159,17 @@ import {
 } from "@/game/restaurant/restaurantEvents";
 import { rankChange } from "@/game/restaurant/cityRanking";
 import { chefSays, rivalChefOf } from "@/game/restaurant/rivalChefs";
+import { announceTitles, identityById, type EarnedTitle } from "@/game/progression/chefTitles";
+import {
+  advanceDareOnDay,
+  advanceDareOnPlate,
+  advanceDareOnService,
+  dareReportLine,
+  dareToday,
+  declineDare,
+  takeDare,
+  type Dare,
+} from "@/game/restaurant/skillChallenges";
 import {
   applyRun,
   applyService,
@@ -714,6 +726,8 @@ export function App() {
   // Chef Pride (developer 2026-11-23): the plate just finished (kept until the next save, which carries it into the chef's record) and this service's
   // perfect cuts. Session only, like the scores above.
   const pendingRunRef = useRef<RunStats | null>(null);
+  // Chef Pride (Phase 3b): the daily dares won since the last service card (shown there, once).
+  const dareWinsRef = useRef<string[]>([]);
   const serviceRunsRef = useRef<{ levelId: string; perfects: number }>({
     levelId: "",
     perfects: 0,
@@ -1182,13 +1196,27 @@ export function App() {
    * (never negative, whole cents — economy/wallet.ts). */
   function persist(next: SaveData) {
     // Chef Pride: the plate that just finished rides along with the save its result is written in (never a second, stale save).
-    let incoming = next;
     if (pendingRunRef.current) {
       const run = pendingRunRef.current;
       pendingRunRef.current = null;
-      incoming = applyRun(incoming, run);
+      next = applyRun(next, run);
+      // …and the plate moves today's dare, if one is taken (restaurant/skillChallenges.ts).
+      const before = chefRecordOf(next);
+      const dared = advanceDareOnPlate(
+        before,
+        dailyKeyFor(new Date()),
+        restaurantLevelOf(next.levelProgress),
+        run,
+      );
+      if (dared.rec !== before)
+        next = { ...next, business: { ...next.business, chefRecord: dared.rec } };
+      if (dared.won) {
+        // (the same as noteDareWin, inline so `persist` stays free of component functions)
+        dareWinsRef.current = [...dareWinsRef.current, dared.won.title];
+        sendAnalyticsEvent("dare_completed", { id: dared.won.id });
+      }
     }
-    const synced = syncKitchenUpgradeOwnership(incoming);
+    const synced = syncKitchenUpgradeOwnership(next);
     // Economy V2.5 — a milestone reached by this change is paid right here,
     // once (milestoneRewards.ts: the ledger entry is the record).
     const { save: rewarded, granted } = grantEarnedMilestoneRewards(synced, legacyOnly);
@@ -2834,7 +2862,8 @@ export function App() {
   function quietDayEnd(s: SaveData): SaveData {
     const restaurantLevel = restaurantLevelOf(s.levelProgress);
     return restaurantDayOf(s).closingDue && !dayCeremonyAt(restaurantLevel)
-      ? choresAfterClose(closeDay(cleanerClosing(s).save, restaurantLevel), restaurantLevel).save
+      ? choresAfterClose(closeDayDared(cleanerClosing(s).save, restaurantLevel), restaurantLevel)
+          .save
       : s;
   }
 
@@ -3100,6 +3129,40 @@ export function App() {
     persist({ ...save, recipeProgress });
     setCampaignServiceSession((s) => (s ? recordAllComponents(s, score) : s));
     return 0;
+  }
+
+  /** Chef Pride (Phase 3b): a daily dare was won (the card at the end of the service says so; measured). */
+  function noteDareWin(dare: Dare) {
+    dareWinsRef.current = [...dareWinsRef.current, dare.title];
+    sendAnalyticsEvent("dare_completed", { id: dare.id });
+  }
+
+  /** Chef Pride (Phase 3b): the player takes today's dare, or says "Not today" (the Kitchen's dare row). */
+  function handleDare(action: "take" | "decline") {
+    const cur = saveRef.current ?? save;
+    if (!cur) return;
+    const day = dailyKeyFor(new Date());
+    const level = restaurantLevelOf(cur.levelProgress);
+    const rec = chefRecordOf(cur);
+    const next = action === "take" ? takeDare(rec, day, level) : declineDare(rec, day, level);
+    if (next === rec) return;
+    if (action === "take")
+      sendAnalyticsEvent("dare_taken", { id: dareToday(next, day, level)?.dare.id ?? "" });
+    persist({ ...cur, business: { ...cur.business, chefRecord: next } });
+  }
+
+  /** Closes a business day, and lets a taken Zero Waste dare read whether any stock spoiled in it. */
+  function closeDayDared(s: SaveData, level: number): SaveData {
+    const after = closeDay(s, level);
+    if (restaurantDayOf(after).day === restaurantDayOf(s).day) return after;
+    const noWaste =
+      after.business.spoilage.totalSpoiledQuantity <= s.business.spoilage.totalSpoiledQuantity;
+    const dared = advanceDareOnDay(chefRecordOf(after), dailyKeyFor(new Date()), level, {
+      noWaste,
+    });
+    if (!dared.won) return after;
+    noteDareWin(dared.won);
+    return { ...after, business: { ...after.business, chefRecord: dared.rec } };
   }
 
   /** Chef Pride: a plate was finished (called by Preparation just before its result is saved). */
@@ -3664,6 +3727,8 @@ export function App() {
     }
     // Chef Pride: this service's plates and perfect cuts go into the chef's record; the card says what beat a real earlier mark.
     let shift: { orders: number; accuracy: number; perfects: number; news: string[] } | null = null;
+    // Chef Pride (Phase 3a): a chef title earned since the last service is announced once (every earned tier is marked seen).
+    let titleHeadline: EarnedTitle | null = null;
     if (RESTAURANT_MODE && isFirstCompletion) {
       const tally = serviceScoresRef.current;
       const scores = tally.levelId === level.id ? tally.scores : [];
@@ -3678,6 +3743,32 @@ export function App() {
         nextSave = applyService(nextSave, service);
         shift = { ...service, news };
         if (news.length) sendAnalyticsEvent("record_broken", { kind: "accuracy" });
+      }
+      // Chef Pride (Phase 3b): a spotless service moves a taken Clean Freak dare; every dare won since the last card is told once.
+      const dareService = advanceDareOnService(
+        chefRecordOf(nextSave),
+        dailyKeyFor(new Date()),
+        restaurantLevelOf(nextSave.levelProgress),
+        { spotless: spotlessStreak > 0 },
+      );
+      if (dareService.won) {
+        nextSave = { ...nextSave, business: { ...nextSave.business, chefRecord: dareService.rec } };
+        noteDareWin(dareService.won);
+      }
+      const dareWins = dareWinsRef.current;
+      dareWinsRef.current = [];
+      if (shift && dareWins.length)
+        shift = { ...shift, news: [...shift.news, ...dareWins.map((t) => `Dare won: ${t}`)] };
+      const announced = announceTitles(nextSave);
+      nextSave = announced.save;
+      titleHeadline = announced.headline;
+      if (titleHeadline) {
+        sendAnalyticsEvent("title_earned", {
+          identity: titleHeadline.identity,
+          tier: titleHeadline.tier,
+        });
+        if (shift)
+          shift = { ...shift, news: [...shift.news, `Title earned: ${titleHeadline.title}`] };
       }
     }
     const brokenNow = restaurantSuppliesOf(nextSave).brokenTotal - brokenBefore;
@@ -3782,6 +3873,12 @@ export function App() {
           after: finalSave.business.popularity.score,
         },
         spotlessStreak,
+        title: titleHeadline
+          ? {
+              title: titleHeadline.title,
+              identity: identityById(titleHeadline.identity)?.name ?? titleHeadline.identity,
+            }
+          : null,
       });
       if (chest) setCelebration(chestCelebration(chest, c ? c.lines : []));
       else if (c) setCelebration(c);
@@ -4425,6 +4522,14 @@ export function App() {
   const previousBest = save.recipeProgress[activeLevel.recipeId]?.best ?? 0;
   // A completed recipe returns to Kitchen. The player chooses when to begin
   // another level instead of being pushed into another cutting loop.
+  // Chef Pride (Phase 3b): what a taken daily dare adds to the Knife Report for the plate just cooked.
+  const dareLineFor = (plate: { score: number; cuts: number; ms: number }) =>
+    dareReportLine(
+      chefRecordOf(save),
+      dailyKeyFor(new Date()),
+      restaurantLevelOf(save.levelProgress),
+      plate,
+    );
   const sessionOnComplete =
     sessionMode === "daily"
       ? recordDailyResult
@@ -5020,6 +5125,7 @@ export function App() {
             }
             onRunStats={noteRunStats}
             chefRecord={chefRecordOf(save)}
+            dareLine={dareLineFor}
             credits={save.credits}
             previousBest={
               // Business orders don't read or write Campaign recipe progress (V3-16 isolation fix).
@@ -5072,6 +5178,7 @@ export function App() {
             onComplete={sessionOnComplete}
             onRunStats={noteRunStats}
             chefRecord={chefRecordOf(save)}
+            dareLine={dareLineFor}
             credits={save.credits}
             previousBest={previousBest}
             knife={equippedKnife}
@@ -5100,6 +5207,7 @@ export function App() {
                     openDailyGift();
                   }}
                   onCollectTableCash={collectTableCash}
+                  onDare={handleDare}
                   onHireCleaner={hireHourlyCleanerPaid}
                   onStartEndless={startEndless}
                   buyKnife={buyKnife}
@@ -5192,7 +5300,7 @@ export function App() {
               // A Cleaner on duty washes the sink's dishes by hand first (closingChores.ts).
               const night = afterNight(
                 choresAfterClose(
-                  closeDay(cleanerClosing(save).save, restaurantLevelOf(save.levelProgress)),
+                  closeDayDared(cleanerClosing(save).save, restaurantLevelOf(save.levelProgress)),
                   restaurantLevelOf(save.levelProgress),
                 ).save,
                 restaurantLevelOf(save.levelProgress),

@@ -369,10 +369,11 @@ const tasksOf = (s: SaveData, n: number) =>
   );
   assert(
     /doClosingChore\(save, id\)/.test(app) &&
-      /closeDay\(cleanerClosing\(save\)\.save, restaurantLevelOf\(save\.levelProgress\)\)/.test(
+      /closeDay(?:Dared)?\(cleanerClosing\(save\)\.save, restaurantLevelOf\(save\.levelProgress\)\)/.test(
         app,
       ) &&
       /closeDay\(cleanerClosing\(s\)\.save, lvl\)/.test(sim),
+    // RULE CHANGE (developer 2026-11-23, Chef Pride Phase 3b): App closes the day through `closeDayDared` (the same `closeDay` plus a look at spoilage for the Zero Waste dare).
     "U3: App counts the till with doClosingChore and lets the Cleaner wash before closeDay; the sim mirrors it",
   );
 }

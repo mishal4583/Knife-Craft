@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import type { SaveData } from "@/game/SaveManager";
 import {
   dailyGiftAmount,
@@ -7,29 +6,9 @@ import {
   AD_BONUSES_FROM_LEVEL,
 } from "@/game/ads/adBonuses";
 import { GIFT_STREAK, giftStreakState } from "@/game/daily/giftStreak";
-import { dailyKeyFor } from "@/game/daily/DailyOrderManager";
+import { useToday } from "./useToday";
 import { formatUsd } from "@/game/money";
 import { cn } from "@/lib/utils";
-
-/**
- * The device-local day, kept current while the screen is open: re-read every
- * 30 s and when the window regains focus, so the card turns over at midnight
- * without a reload. Nothing is stored. No Page Visibility API (CLAUDE.md §9,
- * preflight): the timer catches a resume within 30 s.
- */
-function useToday(): string {
-  const [day, setDay] = useState(() => dailyKeyFor(new Date()));
-  useEffect(() => {
-    const check = () => setDay(dailyKeyFor(new Date()));
-    const t = window.setInterval(check, 30_000);
-    window.addEventListener("focus", check);
-    return () => {
-      window.clearInterval(t);
-      window.removeEventListener("focus", check);
-    };
-  }, []);
-  return day;
-}
 
 /**
  * DAILY_GIFT_CARD — Phase 5 (B3/B4/B11, developer 2026-10-21): the daily

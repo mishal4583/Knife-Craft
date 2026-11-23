@@ -10,6 +10,12 @@ import { LAST_CAMPAIGN_LEVEL } from "@/game/restaurant/restaurantProgression";
 import { RANKING_NEWS_FROM_LEVEL } from "@/game/config/earlyLevels";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
 import { chefSays, rivalChefOf } from "@/game/restaurant/rivalChefs";
+import {
+  CHEF_TITLES_FROM_LEVEL,
+  chefTitleStatus,
+  leadingTitle,
+  nextTitleGoal,
+} from "@/game/progression/chefTitles";
 
 /** "1,880 pts" */
 const pts = (n: number) => `${n.toLocaleString("en-US")} pts`;
@@ -151,5 +157,64 @@ export function CityLeaderboard({ save }: { save: SaveData }) {
         </KButton>
       </Panel>
     </div>
+  );
+}
+
+/**
+ * THE CHEF TITLE (Chef Pride plan, Phase 3a, developer 2026-11-23): the title the player wears (the highest tier earned in any identity), the bar to the next
+ * tier of the identity they are furthest along in, and one chip per identity with its stars. Read-only, derived from play (progression/chefTitles.ts); it opens
+ * with `CHEF_TITLES_FROM_LEVEL`. Before the first title it says which one is closest.
+ */
+export function ChefTitleCard({ save }: { save: SaveData }) {
+  if (restaurantLevelOf(save.levelProgress) < CHEF_TITLES_FROM_LEVEL) return null;
+  const lead = leadingTitle(save);
+  // The bar follows the identity the title came from; with no title yet, the closest one to its first tier.
+  const goal = lead && lead.next ? lead : nextTitleGoal(save);
+  const all = chefTitleStatus(save);
+  return (
+    <Panel className="p-4" data-testid="chef-title-card">
+      <Eyebrow>Your chef title</Eyebrow>
+      <p
+        className="mt-1 font-display text-[22px] font-black leading-tight text-walnut-dark"
+        data-testid="chef-title-name"
+      >
+        {lead ? `${lead.identity.icon} ${lead.title}` : "No title yet"}
+      </p>
+      {goal && goal.next ? (
+        <div className="mt-2" data-testid="chef-title-goal">
+          <Bar fraction={goal.fraction} />
+          <p className="mt-1 font-ui text-[12.5px] font-bold text-walnut/75">
+            {goal.value} of {goal.next.target} {goal.identity.unit} to{" "}
+            <span className="text-copper">{goal.next.title}</span>
+          </p>
+        </div>
+      ) : (
+        <p className="mt-1 font-ui text-[12.5px] font-bold text-olive">
+          Every title earned. Legendary!
+        </p>
+      )}
+      <div className="mt-2.5 flex flex-wrap gap-1.5" data-testid="chef-title-chips">
+        {all.map((s) => (
+          <span
+            key={s.identity.id}
+            data-identity={s.identity.id}
+            data-tier={s.tier}
+            title={s.title ?? `${s.identity.name}: not yet`}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-ui text-[11px] font-extrabold",
+              s.tier > 0
+                ? "border-gold/70 bg-gold/25 text-walnut-dark"
+                : "border-walnut/15 bg-ivory/60 text-walnut/55",
+            )}
+          >
+            <span aria-hidden="true">{s.identity.icon}</span>
+            {s.identity.name}
+            <span aria-label={`${s.tier} of 4`} className="text-copper">
+              {s.tier > 0 ? "★".repeat(s.tier) : "–"}
+            </span>
+          </span>
+        ))}
+      </div>
+    </Panel>
   );
 }

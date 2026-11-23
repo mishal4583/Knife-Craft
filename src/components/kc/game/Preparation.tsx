@@ -168,6 +168,7 @@ export function Preparation({
   onComplete,
   onRunStats,
   chefRecord,
+  dareLine,
   credits,
   previousBest,
   knife = knifeOrDefault(DEFAULT_KNIFE_ID),
@@ -301,6 +302,8 @@ export function Preparation({
   onRunStats?: (stats: RunStats) => void;
   /** The chef's record BEFORE this plate: the Knife Report says when the plate beat a real earlier mark. */
   chefRecord?: ChefRecord;
+  /** Chef Pride (Phase 3b): the line an accepted daily dare adds to the Knife Report for this plate (a win, the run so far, a broken run), or null. */
+  dareLine?: (plate: { score: number; cuts: number; ms: number }) => string | null;
   credits: number;
   previousBest: number;
   knife?: KnifeDefinition;
@@ -868,6 +871,9 @@ export function Preparation({
               ms: runMs.current,
             }))
               lines.push({ id: `pride-${n.kind}`, text: `★ ${n.text}`, good: true });
+          const dare = dareLine?.({ score: overall, cuts: runCuts.current, ms: runMs.current });
+          if (dare)
+            lines.push({ id: "pride-dare", text: `⚔ ${dare}`, good: /^Dare won/.test(dare) });
           const near = nearMiss(overall);
           if (near) lines.push({ id: "pride-near", text: near, good: false });
           setPrideLines(lines);

@@ -94,7 +94,7 @@ const oven = () =>
     const b = [...o.querySelectorAll("button")]
       .find((x) => /Take it out/.test(x.textContent))
       ?.getBoundingClientRect();
-    const panel = o.querySelector('[data-testid="oven-controls"]')?.getBoundingClientRect();
+    const panel = o.querySelector('[data-testid="oven-panel"]')?.getBoundingClientRect();
     return {
       state: o.dataset.state,
       zone: o.dataset.zone,

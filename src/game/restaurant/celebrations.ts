@@ -12,8 +12,8 @@ export const POPULARITY_CARD_DELTA = 3;
 export const SPOTLESS_RUN_FOR_THANKS = 2;
 
 export type Celebration = {
-  /** Stable id of the kind: "rank", "popularity", "spotless" or "chest" (the card's data attribute). */
-  kind: "rank" | "popularity" | "spotless" | "chest";
+  /** Stable id of the kind: "rank", "title", "popularity", "spotless" or "chest" (the card's data attribute). */
+  kind: "rank" | "popularity" | "spotless" | "chest" | "title";
   emoji: string;
   title: string;
   /** The facts, one short line each. */
@@ -30,6 +30,8 @@ export type CelebrationInput = {
   popularity: { before: number; after: number } | null;
   /** The spotless streak after this service (serviceReport), 0 when it was not spotless or not measured. */
   spotlessStreak: number;
+  /** A chef title earned this service (progression/chefTitles.ts `announceTitles`), or null. */
+  title?: { title: string; identity: string } | null;
 };
 
 export function celebrationFor(input: CelebrationInput): Celebration | null {
@@ -38,7 +40,8 @@ export function celebrationFor(input: CelebrationInput): Celebration | null {
       ? input.popularity
       : null;
   const thanks = input.spotlessStreak >= SPOTLESS_RUN_FOR_THANKS;
-  if (!input.rank && !popUp && !thanks) return null;
+  const titled = input.title ?? null;
+  if (!input.rank && !popUp && !thanks && !titled) return null;
 
   const lines: string[] = [];
   if (input.rank) {
@@ -47,25 +50,38 @@ export function celebrationFor(input: CelebrationInput): Celebration | null {
     // Chef Pride (Phase 2): the passed rival's chef answers, in their own voice.
     if (input.rank.rival) lines.push(input.rank.rival);
   }
+  // Chef Pride (Phase 3a): a new chef title, with the identity it belongs to.
+  if (titled) lines.push(`🏅 New title: ${titled.title} (${titled.identity})`);
   if (popUp) lines.push(`⭐ Popularity ${popUp.before} → ${popUp.after}`);
   if (thanks) lines.push(`✨ ${input.spotlessStreak} spotless services in a row`);
 
+  // Her thanks for a spotless run came first before titles existed and still does (bug-batch-qa 3e).
   const paige = thanks
     ? "You keep this place spotless. Guests notice, and so do I!"
     : input.rank
       ? "Look at you climb! Your hard work is paying off."
-      : "Word is getting around. Guests are talking about you!";
-  const kind: Celebration["kind"] = input.rank ? "rank" : popUp ? "popularity" : "spotless";
+      : titled
+        ? "A new title! Everything you practised is paying off."
+        : "Word is getting around. Guests are talking about you!";
+  const kind: Celebration["kind"] = input.rank
+    ? "rank"
+    : titled
+      ? "title"
+      : popUp
+        ? "popularity"
+        : "spotless";
   return {
     kind,
-    emoji: input.rank ? "🏆" : popUp ? "⭐" : "✨",
+    emoji: input.rank ? "🏆" : titled ? "🏅" : popUp ? "⭐" : "✨",
     title: input.rank
       ? `You climbed to #${input.rank.to}!`
-      : popUp
-        ? "Your restaurant is getting popular!"
-        : "Spotless work!",
+      : titled
+        ? `New title: ${titled.title}!`
+        : popUp
+          ? "Your restaurant is getting popular!"
+          : "Spotless work!",
     lines,
     paige,
-    pose: input.rank || thanks ? "cheer" : "clap",
+    pose: input.rank || thanks || titled ? "cheer" : "clap",
   };
 }
