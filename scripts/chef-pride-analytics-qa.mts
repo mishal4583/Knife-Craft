@@ -42,6 +42,7 @@ const PRIDE = [
   "record_broken",
   "rival_passed",
   "title_earned",
+  "prestige_reached",
   "dare_offered",
   "dare_taken",
   "dare_declined",

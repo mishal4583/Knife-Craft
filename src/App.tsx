@@ -160,6 +160,7 @@ import {
 import { rankChange } from "@/game/restaurant/cityRanking";
 import { chefSays, rivalChefOf } from "@/game/restaurant/rivalChefs";
 import { announceTitles, identityById, type EarnedTitle } from "@/game/progression/chefTitles";
+import { announcePrestige, type PrestigeTier } from "@/game/restaurant/restaurantPrestige";
 import {
   advanceDareOnDay,
   advanceDareOnPlate,
@@ -3730,6 +3731,8 @@ export function App() {
     let shift: { orders: number; accuracy: number; perfects: number; news: string[] } | null = null;
     // Chef Pride (Phase 3a): a chef title earned since the last service is announced once (every earned tier is marked seen).
     let titleHeadline: EarnedTitle | null = null;
+    // Chef Pride (Phase 4): a restaurant prestige tier reached since the last service is announced once.
+    let prestigeHeadline: PrestigeTier | null = null;
     if (RESTAURANT_MODE && isFirstCompletion) {
       const tally = serviceScoresRef.current;
       const scores = tally.levelId === level.id ? tally.scores : [];
@@ -3760,6 +3763,14 @@ export function App() {
       dareWinsRef.current = [];
       if (shift && dareWins.length)
         shift = { ...shift, news: [...shift.news, ...dareWins.map((t) => `Dare won: ${t}`)] };
+      const prestigeNow = announcePrestige(nextSave);
+      nextSave = prestigeNow.save;
+      prestigeHeadline = prestigeNow.headline;
+      if (prestigeHeadline) {
+        sendAnalyticsEvent("prestige_reached", { tier: prestigeHeadline.index });
+        if (shift)
+          shift = { ...shift, news: [...shift.news, `Prestige: ${prestigeHeadline.name}`] };
+      }
       const announced = announceTitles(nextSave);
       nextSave = announced.save;
       titleHeadline = announced.headline;
@@ -3874,6 +3885,7 @@ export function App() {
           after: finalSave.business.popularity.score,
         },
         spotlessStreak,
+        prestige: prestigeHeadline ? { tier: prestigeHeadline.name } : null,
         title: titleHeadline
           ? {
               title: titleHeadline.title,

@@ -13,7 +13,7 @@ export const SPOTLESS_RUN_FOR_THANKS = 2;
 
 export type Celebration = {
   /** Stable id of the kind: "rank", "title", "popularity", "spotless" or "chest" (the card's data attribute). */
-  kind: "rank" | "popularity" | "spotless" | "chest" | "title";
+  kind: "rank" | "popularity" | "spotless" | "chest" | "title" | "prestige";
   emoji: string;
   title: string;
   /** The facts, one short line each. */
@@ -32,6 +32,8 @@ export type CelebrationInput = {
   spotlessStreak: number;
   /** A chef title earned this service (progression/chefTitles.ts `announceTitles`), or null. */
   title?: { title: string; identity: string } | null;
+  /** A restaurant prestige tier reached this service (restaurant/restaurantPrestige.ts `announcePrestige`), or null. */
+  prestige?: { tier: string } | null;
 };
 
 export function celebrationFor(input: CelebrationInput): Celebration | null {
@@ -41,7 +43,8 @@ export function celebrationFor(input: CelebrationInput): Celebration | null {
       : null;
   const thanks = input.spotlessStreak >= SPOTLESS_RUN_FOR_THANKS;
   const titled = input.title ?? null;
-  if (!input.rank && !popUp && !thanks && !titled) return null;
+  const prestiged = input.prestige ?? null;
+  if (!input.rank && !popUp && !thanks && !titled && !prestiged) return null;
 
   const lines: string[] = [];
   if (input.rank) {
@@ -50,6 +53,8 @@ export function celebrationFor(input: CelebrationInput): Celebration | null {
     // Chef Pride (Phase 2): the passed rival's chef answers, in their own voice.
     if (input.rank.rival) lines.push(input.rank.rival);
   }
+  // Chef Pride (Phase 4): the restaurant reached a new prestige tier.
+  if (prestiged) lines.push(`🏛️ Prestige: ${prestiged.tier}`);
   // Chef Pride (Phase 3a): a new chef title, with the identity it belongs to.
   if (titled) lines.push(`🏅 New title: ${titled.title} (${titled.identity})`);
   if (popUp) lines.push(`⭐ Popularity ${popUp.before} → ${popUp.after}`);
@@ -60,28 +65,34 @@ export function celebrationFor(input: CelebrationInput): Celebration | null {
     ? "You keep this place spotless. Guests notice, and so do I!"
     : input.rank
       ? "Look at you climb! Your hard work is paying off."
-      : titled
-        ? "A new title! Everything you practised is paying off."
-        : "Word is getting around. Guests are talking about you!";
+      : prestiged
+        ? "Your restaurant is a name in the city now. Look what you built!"
+        : titled
+          ? "A new title! Everything you practised is paying off."
+          : "Word is getting around. Guests are talking about you!";
   const kind: Celebration["kind"] = input.rank
     ? "rank"
-    : titled
-      ? "title"
-      : popUp
-        ? "popularity"
-        : "spotless";
+    : prestiged
+      ? "prestige"
+      : titled
+        ? "title"
+        : popUp
+          ? "popularity"
+          : "spotless";
   return {
     kind,
-    emoji: input.rank ? "🏆" : titled ? "🏅" : popUp ? "⭐" : "✨",
+    emoji: input.rank ? "🏆" : prestiged ? "🏛️" : titled ? "🏅" : popUp ? "⭐" : "✨",
     title: input.rank
       ? `You climbed to #${input.rank.to}!`
-      : titled
-        ? `New title: ${titled.title}!`
-        : popUp
-          ? "Your restaurant is getting popular!"
-          : "Spotless work!",
+      : prestiged
+        ? `Your restaurant is a ${prestiged.tier}!`
+        : titled
+          ? `New title: ${titled.title}!`
+          : popUp
+            ? "Your restaurant is getting popular!"
+            : "Spotless work!",
     lines,
     paige,
-    pose: input.rank || thanks || titled ? "cheer" : "clap",
+    pose: input.rank || thanks || titled || prestiged ? "cheer" : "clap",
   };
 }

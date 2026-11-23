@@ -12,6 +12,7 @@ Every event goes through `sendAnalyticsEvent` (`src/game/PlayablesSDK.ts`, the o
 | `rival_passed` | `rank_to`, `passed` | A first completion passed a rival restaurant | How fast do players climb the ranking? |
 | `assistant_beat_shown` | `beat` = `rival` (Paige's rival message), `level` | Paige showed a message (existing event) | How often does a rival message appear? |
 | `title_earned` | `identity`, `tier` | A chef title was announced at the end of a service | Which identities do players lead? |
+| `prestige_reached` | `tier` (1 to 4) | The restaurant reached a new prestige tier (announced at the end of a service) | How far do restaurants climb the prestige tiers? |
 | `dare_offered` | `id` | The Kitchen showed an offered dare (once per day and app run) | How many players could take a dare? |
 | `dare_taken` | `id` | "Take the dare" | Acceptance = `dare_taken` / `dare_offered` |
 | `dare_declined` | `id` | "Not today" | Which dares are turned down? |
