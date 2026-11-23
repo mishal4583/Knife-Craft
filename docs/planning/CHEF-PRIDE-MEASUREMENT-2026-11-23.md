@@ -14,12 +14,12 @@ Every event goes through `sendAnalyticsEvent` (`src/game/PlayablesSDK.ts`, the o
 | `title_earned` | `identity`, `tier` | A chef title was announced at the end of a service | Which identities do players lead? |
 | `prestige_reached` | `tier` (1 to 4) | The restaurant reached a new prestige tier (announced at the end of a service) | How far do restaurants climb the prestige tiers? |
 | `league_week_end` | `tier`, `rank`, `promoted` | A city league week ended and its result was shown | How many players have a league week, where do they finish, how many are promoted? |
+| `moment_shared` | `kind` (`title`, `prestige`, `league`, `rival`, and the dish moments), `method` (`share` or `save`) | The player shared a card with the phone's share sheet, or saved its image | Do players share their achievements, and which? |
 | `dare_offered` | `id` | The Kitchen showed an offered dare (once per day and app run) | How many players could take a dare? |
 | `dare_taken` | `id` | "Take the dare" | Acceptance = `dare_taken` / `dare_offered` |
 | `dare_declined` | `id` | "Not today" | Which dares are turned down? |
 | `dare_completed` | `id` | A dare was won | Completion = `dare_completed` / `dare_taken` |
 
-Planned for a later phase (not sent yet): `moment_shared {kind, method}` (Phase 6).
 
 ## 2. Baseline (Playgama telemetry, 2026-10-24 to 2026-11-23)
 

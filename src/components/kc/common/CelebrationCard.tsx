@@ -1,4 +1,7 @@
+import { useState } from "react";
 import type { Celebration } from "@/game/restaurant/celebrations";
+import { sharingAllowed } from "@/game/PlayablesSDK";
+import { MomentPreview } from "../moments/MomentPreview";
 import { KButton } from "./primitives";
 import { PaigeCutout, PaigeNameplate, PaigePiece } from "../assistant/PaigeArt";
 import "../assistant/assistant.css";
@@ -16,6 +19,9 @@ export function CelebrationCard({
   celebration: Celebration;
   onClose: () => void;
 }) {
+  // Chef Pride, Phase 6: the achievement can be turned into a picture to share. Only when the player taps; hidden where sharing is not allowed (YouTube).
+  const [preview, setPreview] = useState(false);
+  const shares = sharingAllowed() ? (celebration.shares ?? []) : [];
   return (
     <div
       data-testid="celebration"
@@ -64,6 +70,16 @@ export function CelebrationCard({
               </li>
             ))}
           </ul>
+          {shares.length ? (
+            <button
+              type="button"
+              data-testid="celebration-share"
+              onClick={() => setPreview(true)}
+              className="press mt-2.5 min-h-12 rounded-full border-2 border-olive/50 bg-ivory/70 px-5 font-ui text-[14px] font-extrabold text-walnut-dark"
+            >
+              📸 Share this
+            </button>
+          ) : null}
         </div>
       </div>
       <div
@@ -91,6 +107,11 @@ export function CelebrationCard({
           </div>
         </div>
       </div>
+      {preview && shares.length ? (
+        <div onClick={(e) => e.stopPropagation()}>
+          <MomentPreview moments={shares} onClose={() => setPreview(false)} />
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { sharingAllowed } from "@/game/PlayablesSDK";
-import { MOMENT_KIND_LABEL, type KitchenMoment } from "@/game/kitchenMoments";
+import { sendAnalyticsEvent, sharingAllowed } from "@/game/PlayablesSDK";
+import { CHEF_MOMENT_KINDS, MOMENT_KIND_LABEL, type KitchenMoment } from "@/game/kitchenMoments";
 import { cardBlob, cardFileName, drawMomentCard } from "./momentCard";
 import { KButton } from "../common/primitives";
 
@@ -83,6 +83,8 @@ export function MomentPreview({
           : { text: m.shareText, title: "KnifeCraft" },
       );
       setStatus({ tone: "ok", text: "Shared!" });
+      // Measured (Chef Pride, Phase 7): which cards are shared and how, never who or what was said.
+      sendAnalyticsEvent("moment_shared", { kind: m.kind, method: "share" });
     } catch (e) {
       if ((e as DOMException)?.name === "AbortError")
         setStatus(null); // the player changed their mind
@@ -103,6 +105,7 @@ export function MomentPreview({
       a.click();
       a.remove();
       setStatus({ tone: "ok", text: "Saved to your downloads." });
+      sendAnalyticsEvent("moment_shared", { kind: m.kind, method: "save" });
     } catch {
       setStatus({ tone: "error", text: "Couldn't save the image here." });
     }
@@ -114,11 +117,12 @@ export function MomentPreview({
       data-testid="moment-preview"
       data-kind={m.kind}
       role="dialog"
-      aria-label={`Kitchen Moment: ${MOMENT_KIND_LABEL[m.kind].title}`}
+      aria-label={`${CHEF_MOMENT_KINDS.includes(m.kind) ? "Chef achievement" : "Kitchen Moment"}: ${MOMENT_KIND_LABEL[m.kind].title}`}
     >
       <div className="anim-pop flex max-h-[calc(100%-16px)] w-full max-w-[380px] flex-col overflow-y-auto rounded-[24px] border border-gold/40 bg-[linear-gradient(170deg,var(--color-ivory),var(--color-cream))] p-3 text-center shadow-lift">
         <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.2em] text-copper">
-          📸 Kitchen Moment{moments.length > 1 ? ` · ${index + 1} of ${moments.length}` : ""}
+          {CHEF_MOMENT_KINDS.includes(m.kind) ? "🏅 Chef achievement" : "📸 Kitchen Moment"}
+          {moments.length > 1 ? ` · ${index + 1} of ${moments.length}` : ""}
         </p>
         <div className="relative mx-auto mt-2 aspect-[4/5] w-full max-h-[52vh] overflow-hidden rounded-[16px] bg-walnut-dark">
           {url ? (

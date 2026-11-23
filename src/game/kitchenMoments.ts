@@ -29,7 +29,16 @@ import type { QualityLabel } from "@/types/game";
  * order: a Prepare Again is a new run, re-renders and re-opened screens are
  * not), one per kind per run. Nothing is saved; a reload forgets them.
  */
-export type MomentKind = "perfect" | "special" | "best" | "customer";
+export type MomentKind =
+  | "perfect"
+  | "special"
+  | "best"
+  | "customer"
+  // Chef Pride, Phase 6 (developer 2026-11-23): the chef's achievements (game/chefCards.ts), offered on the celebration card, never earned by a dish.
+  | "title"
+  | "prestige"
+  | "league"
+  | "rival";
 
 export type KitchenMoment = {
   kind: MomentKind;
@@ -51,7 +60,14 @@ export const MOMENT_KIND_LABEL: Record<MomentKind, { icon: string; title: string
   special: { icon: "✨", title: "Special Dish" },
   best: { icon: "🏆", title: "New Personal Best" },
   customer: { icon: "💬", title: "Customer Moment" },
+  title: { icon: "🏅", title: "Chef Title" },
+  prestige: { icon: "🏛️", title: "Restaurant Prestige" },
+  league: { icon: "🏅", title: "League Promotion" },
+  rival: { icon: "👨‍🍳", title: "Rival Passed" },
 };
+
+/** The kinds that are the CHEF's achievements (a card of their own), not a moment of one dish. */
+export const CHEF_MOMENT_KINDS: readonly MomentKind[] = ["title", "prestige", "league", "rival"];
 
 export type RunFacts = {
   runKey: string;

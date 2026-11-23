@@ -1,4 +1,4 @@
-import { MOMENT_KIND_LABEL, type KitchenMoment } from "@/game/kitchenMoments";
+import { CHEF_MOMENT_KINDS, MOMENT_KIND_LABEL, type KitchenMoment } from "@/game/kitchenMoments";
 import kitchenBg from "@/assets/kitchen-bg.jpg";
 
 /**
@@ -137,7 +137,11 @@ export async function drawMomentCard(m: KitchenMoment): Promise<HTMLCanvasElemen
   spaced(ctx, 6);
   ctx.font = '800 26px "Nunito", system-ui, sans-serif';
   ctx.fillStyle = "rgba(255,250,240,0.75)";
-  ctx.fillText("A KITCHEN MOMENT", W / 2, 172);
+  ctx.fillText(
+    CHEF_MOMENT_KINDS.includes(m.kind) ? "A CHEF ACHIEVEMENT" : "A KITCHEN MOMENT",
+    W / 2,
+    172,
+  );
   spaced(ctx, 0);
 
   // the paper card with its gold frame

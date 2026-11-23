@@ -5,6 +5,8 @@
  * money. The card that shows it is `components/kc/common/CelebrationCard.tsx`.
  */
 import type { PaigePose } from "./assistant";
+import type { KitchenMoment } from "../kitchenMoments";
+import { leagueCard, prestigeCard, rivalCard, titleCard } from "../chefCards";
 
 /** Popularity must rise by at least this much (0-100) for a night to be worth a card. */
 export const POPULARITY_CARD_DELTA = 3;
@@ -21,6 +23,8 @@ export type Celebration = {
   /** Paige's words (appreciation), always one short line. */
   paige: string;
   pose: PaigePose;
+  /** Chef Pride, Phase 6: the shareable cards this achievement can be turned into (game/chefCards.ts); the card offers a "Share" button for them. Never shared by itself. */
+  shares?: KitchenMoment[];
 };
 
 export type CelebrationInput = {
@@ -70,6 +74,20 @@ export function celebrationFor(input: CelebrationInput): Celebration | null {
         : titled
           ? "A new title! Everything you practised is paying off."
           : "Word is getting around. Guests are talking about you!";
+  // Chef Pride, Phase 6: the cards this celebration can be shared as (a rival passed, a prestige tier, a title).
+  const shares: KitchenMoment[] = [
+    ...(input.rank
+      ? [
+          rivalCard({
+            passed: input.rank.passed,
+            rankTo: input.rank.to,
+            ...(input.rank.rival ? { chefLine: input.rank.rival } : {}),
+          }),
+        ]
+      : []),
+    ...(prestiged ? [prestigeCard({ tier: prestiged.tier })] : []),
+    ...(titled ? [titleCard({ title: titled.title, identity: titled.identity })] : []),
+  ];
   const kind: Celebration["kind"] = input.rank
     ? "rank"
     : prestiged
@@ -94,6 +112,7 @@ export function celebrationFor(input: CelebrationInput): Celebration | null {
     lines,
     paige,
     pose: input.rank || thanks || titled || prestiged ? "cheer" : "clap",
+    ...(shares.length ? { shares } : {}),
   };
 }
 
@@ -131,5 +150,18 @@ export function leagueCelebration(w: LeagueWeekEnd): Celebration {
       ? "A promotion! Look who is playing with the big kitchens now."
       : "A good week, Chef! The table starts fresh on Monday.",
     pose: w.promoted ? "cheer" : "clap",
+    ...(w.promoted
+      ? {
+          shares: [
+            leagueCard({
+              nowLeague: w.nowLeague,
+              nowIdentity: w.nowIdentity,
+              rank: w.rank,
+              size: w.size,
+              points: w.points,
+            }),
+          ],
+        }
+      : {}),
   };
 }
