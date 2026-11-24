@@ -59,7 +59,7 @@ export type ChefRecord = {
   bestRunMasterful: number;
   /** The fastest finished plate, in ms (0 = none yet). Only a plate that ran unpaused counts. */
   fastestMs: number;
-  /** Plates at Clean (85+) or better finished in under QUICK_MS, ever (the Speed title, progression/chefTitles.ts). */
+  /** Plates at Clean (85+) or better finished in under QUICK_MS, ever. Still counted and saved (a known field is never dropped), but since the Batch 4 audit the Speed title reads `fastestMs`, not this. */
   quickClean: number;
   /** Services recorded here, the best average plate accuracy of a service (0-100), the last one, and the most perfect cuts in one service. */
   services: number;
@@ -85,6 +85,8 @@ export type RunStats = {
   /** Cuts made, and the time the plate took in ms (0 = unknown, e.g. the game was paused). */
   cuts: number;
   ms: number;
+  /** True when the hired Prep Cook cut this plate (Auto): the run has no hand-cut perfect cuts to speak of. Used by the shift card only; never saved. */
+  byCook?: boolean;
 };
 
 /** What one finished service tells the record. */
@@ -240,6 +242,21 @@ export function recordService(rec: ChefRecord, service: ServiceStats): ChefRecor
     lastServiceAccuracy: accuracy,
     bestServicePerfects: Math.max(rec.bestServicePerfects, whole(service.perfects)),
   };
+}
+
+/**
+ * The best plate the chef ever cooked (0-100): the plan's `bestPlate` (audit Batch 4, developer 2026-11-23). It is DERIVED, not saved: the recipe book already keeps the best
+ * score of every dish (`recipeProgress[id].best`, written on every finished campaign plate), so a second copy in `chefRecord` would only be able to disagree with it, and
+ * the save gets no new field. Business-service plates keep no recipe record (CLAUDE.md §10), so they are not in it. A damaged or missing book reads 0.
+ */
+export function bestPlateOf(save: SaveData): number {
+  let best = 0;
+  for (const entry of Object.values(save.recipeProgress ?? {})) {
+    const v = entry?.best;
+    if (typeof v === "number" && Number.isFinite(v))
+      best = Math.max(best, Math.min(100, Math.floor(v)));
+  }
+  return best;
 }
 
 /** The save with one plate recorded. */

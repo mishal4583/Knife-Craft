@@ -89,12 +89,15 @@ await toKitchen();
 const k1 = await strip();
 check(
   // Rule changed (developer 2026-10-26): every kitchen tier is for sale from Level 5 (was 16).
-  "K1 early on: the Growing Kitchen with its existing price, locked until Level 5",
+  // Rule changed (developer 2026-11-02, CLAUDE.md section 7: the restaurant's Growing Kitchen costs $6,000, was $16,000): the price is read from restaurantInvestments.ts.
+  // Rule changed (restaurant build wording, found failing in the Chef Pride audit Batch 5, 2026-11-24): the lock badge counts the SERVICES left ("2 services" = Level 5 less this
+  // save's Level 3), not "Lv 5"; the strip's aria-label still names the level it opens at.
+  "K1 early on: the Growing Kitchen with its existing price, locked until its level (2 services away from Level 3)",
   !!k1 &&
     k1.state === "locked" &&
     /Growing Kitchen/.test(k1.text) &&
-    /Lv 5\b/.test(k1.text) &&
-    /\$16,000\.00/.test(k1.text),
+    /\b2 services\b/.test(k1.text) &&
+    /\$6,000\.00/.test(k1.text),
   k1,
 );
 const sizes = {};

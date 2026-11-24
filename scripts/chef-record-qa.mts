@@ -22,6 +22,7 @@ import {
   SEEN_KEPT,
   applyRun,
   applyService,
+  bestPlateOf,
   chefRecordOf,
   clampChefRecord,
   hasSeen,
@@ -290,8 +291,13 @@ console.log("G. Wiring");
     "G1: Preparation gathers the plate, adds the news and the near-miss line to the Knife Report, and hands the plate over",
   );
   assert(
-    /runMs\.current \+= 250/.test(prep) && /if \(paused \|\| floorMode\) return;/.test(prep),
-    "G2: the plate's clock counts unpaused cutting time only",
+    // RULE CHANGE (developer 2026-11-23, audit F6): the plate's clock is restaurant/runClock.ts: it starts at the first touch of the board (not when the screen opens), pauses with the
+    // game and restarts on a retry. Tested in run-clock-qa; here only that Preparation uses it and no longer counts ticks from mount.
+    /clockStart\(runClock\.current/.test(prep) &&
+      /clockPause\(runClock\.current/.test(prep) &&
+      /runClock\.current = newClock\(\)/.test(prep) &&
+      !/runMs\.current \+= 250/.test(prep),
+    "G2: the plate's clock starts at the first touch of the board and counts working time only",
   );
   const app = code("src/App.tsx");
   assert(
@@ -313,6 +319,165 @@ console.log("G. Wiring");
   assert(
     /chefRecord\?: ChefRecord;/.test(code("src/game/business/businessTypes.ts")),
     "G7: the field is optional under business",
+  );
+  // Audit F1 (developer 2026-11-23): every plate that reports its run stats is written, once, in a save of its own, whatever the session mode.
+  const biz =
+    /function recordBusinessServiceResult\([^)]*\): number \{[\s\S]*?\n  \}/.exec(app)?.[0] ?? "";
+  assert(
+    /flushPendingRun\(\);/.test(biz) &&
+      biz.indexOf("flushPendingRun()") < biz.indexOf("recordBusinessServiceComponents"),
+    "G8: a Business-service plate is written into the record the moment it is credited (recordBusinessServiceResult flushes it first)",
+  );
+  const note = /function noteRunStats\([^)]*\) \{[\s\S]*?\n  \}/.exec(app)?.[0] ?? "";
+  assert(
+    note.indexOf("flushPendingRun()") >= 0 &&
+      note.indexOf("flushPendingRun()") < note.indexOf("pendingRunRef.current = stats"),
+    "G9: a plate still waiting is written before the next one is noted, never silently replaced",
+  );
+  assert(
+    /sessionMode === "business-service"\) return;/.test(note) &&
+      note.indexOf('"business-service"') < note.indexOf("shiftTallyRef.current ="),
+    "G10: a Business plate does not lend its perfect cuts to a campaign service's tally",
+  );
+  assert(
+    /function flushPendingRun\(\) \{[\s\S]*?if \(pendingRunRef\.current && cur\) persist\(cur\);/.test(
+      app,
+    ) && (app.match(/pendingRunRef\.current = null;/g) ?? []).length === 1,
+    "G11: the pending plate is consumed in exactly one place (persist), so it can never be counted twice",
+  );
+}
+
+console.log(
+  "H. A record is announced only when it is really saved (audit F2, developer 2026-11-23)",
+);
+{
+  const plate = (o: Partial<RunStats> = {}): RunStats => ({
+    score: 90,
+    perfects: 4,
+    bestCombo: 8,
+    cuts: 8,
+    ms: 20000,
+    ...o,
+  });
+  const base = recordRun(DEFAULT_CHEF_RECORD, plate({ perfects: 2, bestCombo: 4, ms: 40000 }));
+  // H1: every announced kind is a real improvement of the saved record, on a spread of records and plates
+  let consistent = true;
+  let announcedAny = false;
+  for (const perfects of [0, 1, 2, 3, 5, 9])
+    for (const combo of [0, 3, 4, 6, 12])
+      for (const ms of [0, 3000, 4000, 12000, 39000, 40000, 41000]) {
+        const r = plate({ perfects, bestCombo: combo, ms });
+        const news = runNews(base, r);
+        const after = recordRun(base, r);
+        for (const n of news) {
+          announcedAny = true;
+          const real =
+            (n.kind === "perfects" && after.bestPerfects > base.bestPerfects) ||
+            (n.kind === "combo" && after.bestCombo > base.bestCombo) ||
+            (n.kind === "speed" && base.fastestMs > 0 && after.fastestMs < base.fastestMs);
+          if (!real) consistent = false;
+        }
+      }
+  assert(
+    announcedAny && consistent,
+    "H1: every record the Knife Report announces is a real improvement of the saved record once the plate is saved",
+  );
+  // H2: a plate that is retried or abandoned never reaches the record, so a second try is judged against the same mark
+  const attempt = plate({ perfects: 6, bestCombo: 9, ms: 10000 });
+  const newsOnce = runNews(base, attempt);
+  const newsAgain = runNews(base, attempt);
+  assert(
+    newsOnce.length > 0 && JSON.stringify(newsOnce) === JSON.stringify(newsAgain),
+    "H2: an unsaved attempt leaves the record untouched, so the same plate would be judged the same again (nothing was consumed)",
+  );
+  // H3: once saved, the same achievement is not announced again
+  const saved = recordRun(base, attempt);
+  assert(
+    runNews(saved, attempt).length === 0,
+    "H3: after the save the same plate beats nothing: each record is announced once per actual achievement",
+  );
+  assert(
+    new Set(newsOnce.map((n) => n.kind)).size === newsOnce.length,
+    "H4: one entry per kind in a plate's news (so one event per kind)",
+  );
+  // H5-H8: wiring
+  const prep2 = read("src/components/kc/game/Preparation.tsx");
+  assert(
+    !/sendAnalyticsEvent\("record_broken"/.test(prep2),
+    "H5: Preparation (the Knife Report preview) sends no record event",
+  );
+  const app2 = read("src/App.tsx");
+  const persistBody =
+    /function persist\(next: SaveData\) \{[\s\S]*?\n {2}\}\n/.exec(app2)?.[0] ?? "";
+  const iSave = persistBody.indexOf("void SaveManager.save(rewarded)");
+  const iEvent = persistBody.indexOf('sendAnalyticsEvent("record_broken"');
+  const iRefuse = persistBody.indexOf("return;");
+  assert(
+    iSave > 0 && iEvent > iSave && iRefuse > 0 && iRefuse < iSave,
+    "H6: persist() sends a plate's record events only AFTER its save is written (a refused save returns before them)",
+  );
+  assert(
+    persistBody.indexOf("runNews(chefRecordOf(next), run)") >= 0 &&
+      persistBody.indexOf("runNews(chefRecordOf(next), run)") <
+        persistBody.indexOf("applyRun(next, run)"),
+    "H7: the plate is compared with the record BEFORE it is applied (the same comparison the Knife Report showed)",
+  );
+  const complete2 =
+    /function completeCampaignLevel\([^)]*\)[^{]*\{[\s\S]*?\n {2}\}\n/.exec(app2)?.[0] ?? "";
+  const iPersist = complete2.indexOf("if (saveWrittenRef.current)");
+  assert(
+    iPersist > 0 &&
+      complete2.indexOf("persist(finalSave);") > 0 &&
+      complete2.indexOf("persist(finalSave);") < iPersist &&
+      /saveWrittenRef\.current = true;[\s\S]*?void SaveManager\.save\(rewarded\)/.test(app2) &&
+      complete2.indexOf('sendAnalyticsEvent("record_broken"') > iPersist &&
+      complete2.indexOf('sendAnalyticsEvent("title_earned"') > iPersist &&
+      complete2.indexOf('sendAnalyticsEvent("prestige_reached"') > iPersist,
+    "H8: a service's record, title and prestige events are sent only after the service's save is written",
+  );
+}
+
+console.log("I. bestPlate is derived, not saved (audit Batch 4, developer 2026-11-23)");
+{
+  const book = (best: Record<string, unknown>): SaveData =>
+    ({ ...DEFAULT_SAVE, recipeProgress: best }) as unknown as SaveData;
+  assert(bestPlateOf(DEFAULT_SAVE) === 0, "I1: a fresh save has no best plate (0)");
+  assert(
+    bestPlateOf(
+      book({
+        a: { best: 88, done: true },
+        b: { best: 97, done: true },
+        c: { best: 91, done: true },
+      }),
+    ) === 97,
+    "I2: the best plate is the highest dish best in the recipe book",
+  );
+  assert(
+    bestPlateOf(book({ a: { best: 96.9, done: true } })) === 96 &&
+      bestPlateOf(book({ a: { best: 250 } })) === 100,
+    "I3: whole points, never above 100",
+  );
+  assert(
+    bestPlateOf(
+      book({ a: { best: Number.NaN }, b: { best: -4 }, c: { best: "x" }, d: null, e: {} }),
+    ) === 0,
+    "I4: damaged entries (NaN, negative, text, null, missing) read as nothing",
+  );
+  assert(
+    bestPlateOf({ ...DEFAULT_SAVE, recipeProgress: undefined } as unknown as SaveData) === 0,
+    "I5: an old save with no recipe book reads 0 and never throws",
+  );
+  assert(
+    !("bestPlate" in DEFAULT_CHEF_RECORD) && !("bestPlate" in clampChefRecord({ bestPlate: 99 })),
+    "I6: the chef record has NO bestPlate field (the save gets no new field)",
+  );
+  const before = JSON.stringify(Object.keys(DEFAULT_CHEF_RECORD));
+  const after = JSON.stringify(Object.keys(recordRun(DEFAULT_CHEF_RECORD, run({ score: 99 }))));
+  assert(before === after, "I7: recording a plate adds no field to the record");
+  const cr = code("src/components/kc/CityRanking.tsx");
+  assert(
+    /bestPlateOf\(save\)/.test(cr) && /data-testid="chef-title-records"/.test(cr),
+    "I8: Restaurant Progress shows the best plate and the fastest plate on the chef title card",
   );
 }
 

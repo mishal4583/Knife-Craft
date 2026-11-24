@@ -28,6 +28,7 @@ export const OUTSIDE_TAP_GRACE_MS = 350;
 export function MilestoneBanner({
   kicker,
   line,
+  tier,
   rows,
   stats,
   notes,
@@ -39,6 +40,8 @@ export function MilestoneBanner({
 }: {
   kicker: string;
   line: string;
+  /** Optional performance tier of the service (Chef Pride: "Excellent Work, Chef!"), shown under `line`; read from real plate scores only. */
+  tier?: { title: string; emoji: string; id: string };
   /** Optional label / value lines under `line` (the Level Complete earnings breakdown). */
   rows?: ReadonlyArray<{ label: string; value: string; strong?: boolean }>;
   /** Optional big-number tiles above the rows (Chef Pride: this service's orders, accuracy, perfect cuts). */
@@ -87,7 +90,8 @@ export function MilestoneBanner({
       className={cn(
         "anim-pop absolute inset-x-0 z-50 flex justify-center px-6",
         // Below the screen headers (W4), never over their back button or title.
-        grand ? "top-[14%]" : "pointer-events-none top-[13%]",
+        // A short window (a phone on its side) starts the card near the top so the whole shift card fits.
+        grand ? "top-[14%]" : "pointer-events-none top-[13%] [@media(max-height:480px)]:top-2",
         paused && "kc-story-paused",
       )}
       data-story-paused={paused ? "true" : undefined}
@@ -99,7 +103,9 @@ export function MilestoneBanner({
           tone="cream"
           className={cn(
             "relative px-5 py-3 text-center shadow-soft",
-            grand ? "max-w-[380px] py-5 ring-2 ring-gold/60 shadow-lift" : "max-w-[360px]",
+            grand
+              ? "max-w-[380px] py-5 ring-2 ring-gold/60 shadow-lift"
+              : "max-w-[360px] [@media(max-height:480px)]:max-w-[560px]",
           )}
         >
           {/* Close (developer 2026-10-09): dismiss any banner at once — the wrapper
@@ -142,9 +148,22 @@ export function MilestoneBanner({
           >
             {line}
           </p>
+          {tier ? (
+            <p
+              className="mt-0.5 font-hand text-[19px] font-bold leading-tight text-copper"
+              data-testid="banner-tier"
+              data-tier={tier.id}
+            >
+              <span aria-hidden>{tier.emoji}</span> {tier.title}
+            </p>
+          ) : null}
           {stats?.length ? (
             <div
-              className="mt-2 grid grid-cols-3 gap-2 border-t border-walnut/15 pt-2"
+              className={cn(
+                "mt-2 grid gap-2 border-t border-walnut/15 pt-2",
+                // Four tiles (the "Wasted" tile when the fridge tracks spoilage) sit two by two on a narrow phone so no label is cut.
+                stats.length >= 4 ? "grid-cols-2 min-[400px]:grid-cols-4" : "grid-cols-3",
+              )}
               data-testid="banner-stats"
             >
               {stats.map((s) => (
@@ -179,7 +198,8 @@ export function MilestoneBanner({
           ) : null}
           {notes?.length ? (
             <ul
-              className="mt-2 space-y-0.5 border-t border-walnut/15 pt-2 font-ui text-[13.5px] font-extrabold text-walnut-dark"
+              // On a short window the lines sit in two columns (an odd one out spans both), so a long card still fits the screen.
+              className="mt-2 space-y-0.5 border-t border-walnut/15 pt-2 font-ui text-[13.5px] font-extrabold text-walnut-dark [@media(max-height:480px)]:grid [@media(max-height:480px)]:grid-cols-2 [@media(max-height:480px)]:gap-x-3 [@media(max-height:480px)]:space-y-0"
               data-testid="banner-notes"
             >
               {notes.map((n) => (

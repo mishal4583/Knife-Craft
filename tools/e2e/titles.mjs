@@ -1,7 +1,7 @@
 // Chef Pride, Phase 3a (developer 2026-11-23: chef titles), restaurant build:
 //   1. Restaurant Progress shows "Your chef title" from Level 3: the title worn (the highest tier earned), the bar to the next tier and six identity chips with their stars;
 //   2. below Level 3 there is no card;
-//   3. the Kitchen's rank card shows the title on a tall window (390x844) and not on a short one (360x640);
+//   3. the Kitchen's rank card shows the title on a window 600 px tall or more (390x844, 360x640) and not on a shorter one (320x568);
 //   4. the Achievements list shows the earned titles as badges (no money to collect for them);
 //   5. the card fits 320x568, 390x844 and 1280x720: no sideways scroll, nothing cut off; no console errors.
 // Prints PASS/FAIL per check and exits 1 on any failure.
@@ -12,7 +12,16 @@ const check = (id, ok, detail) => {
   results.push({ id, ok });
   console.log(`${ok ? "PASS" : "FAIL"} ${id}`, detail === undefined ? "" : JSON.stringify(detail));
 };
-const RECORD = { perfectCuts: 120, quickClean: 12, plates: 40, bestCombo: 9, services: 5 };
+// RULE CHANGE (developer 2026-11-23, audit Batch 4): a title needs the plan's own inputs: Precision also needs plates of 95%+ (`masterful`), and Speed is the fastest plate
+// (`fastestMs`, "under 60 s" for the first tier), no longer a count of quick plates. The same record, in the new inputs: 120 perfect cuts with 12 Masterful plates, a 50 s plate.
+const RECORD = {
+  perfectCuts: 120,
+  masterful: 12,
+  fastestMs: 50000,
+  plates: 40,
+  bestCombo: 9,
+  services: 5,
+};
 const saveAt = (completed) =>
   seedSave({
     business: {
@@ -92,10 +101,12 @@ await openProgress();
 const c1 = await card();
 await shot(page, "titles-progress");
 check(
-  "1 Progress shows the title worn (Precision Chef: 120 perfect cuts), the bar to the next tier and six chips",
+  "1 Progress shows the title worn (Precision Chef: 120 perfect cuts, 12 plates of 95%+), the bar to the next tier (both numbers) and six chips",
   !!c1 &&
     c1.name === "🔪 Precision Chef" &&
-    /^120 of 300 perfect cuts to Master of the Edge$/.test(c1.goal ?? "") &&
+    /^120 of 300 perfect cuts · plates of 95%\+ 12 of 30 to Master of the Edge$/.test(
+      c1.goal ?? "",
+    ) &&
     c1.chips.length === 6 &&
     c1.chips.find((x) => x.id === "precision")?.tier === 2 &&
     c1.chips.find((x) => x.id === "speed")?.tier === 1 &&
@@ -133,13 +144,31 @@ check(
   tall.shown && tall.text === "Precision Chef",
   tall,
 );
+// RULE CHANGE (developer 2026-11-23, audit Batch 4): the plan says "600 px tall or more": it is shown at 360x640 now, and hidden only below 600 px (320x568).
 await page.setViewport({ width: 360, height: 640, deviceScaleFactor: 1 });
+await sleep(700);
+const mid = await page.evaluate(() => {
+  const el = document.querySelector('[data-testid="kitchen-chef-title"]');
+  const r = el?.getBoundingClientRect();
+  const rank = document.querySelector('[data-testid="kitchen-rank"]')?.getBoundingClientRect();
+  return {
+    shown: !!r && r.width > 0,
+    text: el?.textContent ?? null,
+    rankH: rank ? Math.round(rank.height) : null,
+  };
+});
+check(
+  "3b it is shown on a 360x640 window (600 px or taller) and the rank card did not grow",
+  mid.shown && mid.text === "Precision Chef" && mid.rankH !== null && mid.rankH <= 110,
+  mid,
+);
+await page.setViewport({ width: 320, height: 568, deviceScaleFactor: 1 });
 await sleep(700);
 const short = await page.evaluate(() => {
   const r = document.querySelector('[data-testid="kitchen-chef-title"]')?.getBoundingClientRect();
   return { shown: !!r && r.width > 0 };
 });
-check("3b it is hidden on a short 360x640 window", !short.shown, short);
+check("3c it is hidden on a window under 600 px tall (320x568)", !short.shown, short);
 
 // ---- 4. Achievements ----
 await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });

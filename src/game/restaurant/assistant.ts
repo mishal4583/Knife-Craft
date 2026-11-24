@@ -102,6 +102,11 @@ export type AssistantBeat = {
   tone?: "normal" | "success" | "warning";
   /** Higher first when several apply at once. */
   priority: number;
+  /**
+   * The bubble offers "Later" (audit Batch 4, developer 2026-11-23): it goes away for now WITHOUT counting as given, and comes back on the next level while its own rule still
+   * applies. Such a beat is counted as seen only when the player answers it ("Got it", "Go there" or a tap on the dark), never by the timer.
+   */
+  later?: true;
   when: (save: SaveData, level: number) => boolean;
 };
 
@@ -212,6 +217,31 @@ const milestoneBeats = (): AssistantBeat[] =>
  * Paige message, just before the level that passes them: who is next and what their chef says. Once each (`seen`); only from the ranking news (Level 8) and only while that
  * rival really is the next to pass; she says it in two short lines and sends the player to Progress. "Tips: Off" and the Kitchen-only rule are the host's, as for every beat.
  */
+/**
+ * "Later" on a beat (audit Batch 4): the player put it off at a level. Kept in the EXISTING `business.guideSeen` list as `later:<beat id>@<level>`, the same short
+ * "id@level" entries the Restaurant Guide's own Later uses (no new save field). A beat that was put off at this level is not offered again at this level.
+ */
+export const LATER_PREFIX = "later:";
+const LATER_KEPT = 60;
+const laterEntry = (beatId: string): string => `${LATER_PREFIX}${beatId}@`;
+
+/** True when `beatId` was put off at exactly this `level`. */
+export function putOffAt(save: SaveData, beatId: string, level: number): boolean {
+  const prefix = laterEntry(beatId);
+  return (save.business.guideSeen ?? []).some((e) => e === `${prefix}${level}`);
+}
+
+/** The save with `beatId` put off at the player's level (one entry per beat: a newer Later replaces the older one). */
+export function withBeatPutOff(save: SaveData, beatId: string): SaveData {
+  const level = restaurantLevelOf(save.levelProgress);
+  const prefix = laterEntry(beatId);
+  const rest = (save.business.guideSeen ?? []).filter((e) => !e.startsWith(prefix));
+  return {
+    ...save,
+    business: { ...save.business, guideSeen: [...rest, `${prefix}${level}`].slice(-LATER_KEPT) },
+  };
+}
+
 const rivalBeats = (): AssistantBeat[] =>
   FEATURED_RIVALS.flatMap((chef) => {
     const rival = RIVALS.find((r) => r.id === chef.id);
@@ -228,7 +258,9 @@ const rivalBeats = (): AssistantBeat[] =>
         ],
         go: "rack",
         priority: 36,
+        later: true,
         when: (save: SaveData, level: number) =>
+          !putOffAt(save, `rival:${chef.id}`, level) &&
           level >= RANKING_NEWS_FROM_LEVEL &&
           level >= rival.passedAtLevel - 1 &&
           level <= rival.passedAtLevel &&

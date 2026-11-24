@@ -24,6 +24,7 @@ export function AssistantHost({
   replay,
   onHire,
   onSeen,
+  onLater,
   onGo,
   onOpen,
 }: {
@@ -37,6 +38,8 @@ export function AssistantHost({
   replay: AssistantReplay | null;
   onHire: () => void;
   onSeen: (id: string) => void;
+  /** "Later" on a beat that offers it: put off for now, not counted as given. */
+  onLater?: (id: string) => void;
   onGo: (go: string) => void;
   /** True while a tip is on screen, so the app can hold its own offers until she is done. */
   onOpen?: (open: boolean) => void;
@@ -92,14 +95,16 @@ export function AssistantHost({
   // A given tip counts as seen once it has been on screen for a moment (the introduction is seen when she is hired).
   const beatId = active?.beat.id ?? null;
   const counts = !!active && !active.replay && !active.beat.hire;
+  // A beat that offers "Later" is counted when the player answers it (below), not by this timer.
+  const timed = counts && !active?.beat.later;
   useEffect(() => {
-    if (!beatId || !counts || !calm) return;
+    if (!beatId || !timed || !calm) return;
     const t = window.setTimeout(() => {
       countedRef.current = beatId;
       seenRef.current(beatId);
     }, 900);
     return () => window.clearTimeout(t);
-  }, [beatId, counts, calm]);
+  }, [beatId, timed, calm]);
 
   // The ring follows the real button (resize, scroll, the screen's own scale).
   const target = active?.beat.target;
@@ -200,6 +205,19 @@ export function AssistantHost({
           >
             Got it
           </KButton>
+          {beat.later && counts && onLater ? (
+            <KButton
+              variant="ghost"
+              className="paige-btn"
+              data-testid="assistant-later"
+              onClick={() => {
+                onLater(beat.id);
+                setActive(null);
+              }}
+            >
+              Later
+            </KButton>
+          ) : null}
         </>
       )}
     </>

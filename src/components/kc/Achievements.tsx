@@ -301,9 +301,9 @@ function AchievementCard({
           </div>
           {!a.reached && a.target > 1 ? (
             <div className="mt-2">
-              <Bar fraction={a.value / a.target} />
+              <Bar fraction={a.progress ?? a.value / a.target} />
               <p className="mt-1 font-ui text-[11px] text-walnut/55">
-                {Math.min(a.value, a.target)} / {a.target} {a.unit}
+                {a.note ?? `${Math.min(a.value, a.target)} / ${a.target} ${a.unit}`}
               </p>
             </div>
           ) : null}

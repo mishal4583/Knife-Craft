@@ -6,7 +6,7 @@ import { CLEANING_FROM_LEVEL } from "@/game/config/cleaningStart";
 import { cleanlinessOf } from "@/game/restaurant/cleanliness";
 import { PaintedPic } from "./ChoreTiles";
 import { ENDLESS_RESTAURANT_NAME } from "@/game/restaurant/endlessRestaurant";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   SECTION_POINTER,
@@ -283,6 +283,44 @@ export function Kitchen({
   }, []);
   const short = useShortScreen();
   const stacked = landscape || short;
+  // Audit F3 (developer 2026-11-23): the open Next Customer details grow upward from the bottom, and with a dare on offer they covered the rank and Daily Gift
+  // cards and pushed the day strip and the header off a short screen. The details scroll inside the room that is really there: the space between the lowest of the
+  // rank and Daily Gift cards and the card's own bottom edge. Wide windows have plenty of room, so the limit never applies there.
+  const orderWrapRef = useRef<HTMLDivElement>(null);
+  const detailsRef = useRef<HTMLDivElement>(null);
+  const [detailsMax, setDetailsMax] = useState<number | null>(null);
+  const detailsKey = `${dare?.status ?? "-"}:${dare?.dare.id ?? "-"}`;
+  useLayoutEffect(() => {
+    if (!orderCardExpanded) {
+      setDetailsMax(null);
+      return;
+    }
+    const measure = () => {
+      const wrap = orderWrapRef.current;
+      const det = detailsRef.current;
+      // (the Kitchen's own root, found from the card: its HUD cards sit in the same box)
+      const root = wrap?.closest("[data-kc-wide]");
+      if (!root || !wrap || !det) return;
+      const hud = ['[data-testid="kitchen-rank"]', '[data-testid="kitchen-gift"]'].map(
+        (s) => root.querySelector(s)?.getBoundingClientRect().bottom ?? 0,
+      );
+      const hudBottom = Math.max(0, ...hud);
+      const wrapBottom = wrap.getBoundingClientRect().bottom;
+      const chrome = wrap.getBoundingClientRect().height - det.offsetHeight;
+      const room = Math.floor(wrapBottom - hudBottom - 4 - chrome);
+      // Never smaller than a usable strip (the dare's two buttons), never needed when the details already fit.
+      // …but never squeezed below the dare row itself (its ask and its two buttons), or a usable strip when there is none.
+      const dareH = det
+        .querySelector('[data-testid="kitchen-dare"]')
+        ?.getBoundingClientRect().height;
+      const least = dareH ? Math.ceil(dareH) + 2 : DETAILS_MIN;
+      const next = room >= det.scrollHeight ? null : Math.max(least, room);
+      setDetailsMax((cur) => (cur === next ? cur : next));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [orderCardExpanded, detailsKey, landscape, stacked]);
   const rankButton = (
     <button
       type="button"
@@ -692,7 +730,10 @@ export function Kitchen({
 
       {/* Today's Order — collapsed by default so it keeps the kitchen visible;
           details and the order board expand on demand. */}
-      <div className="absolute inset-x-0 bottom-[104px] z-20 px-6 land:bottom-3 land:left-[92px] land:right-[92px] land:!mx-auto land:!max-w-[760px] land:px-0 landx:left-[132px] landx:!max-w-[1040px]">
+      <div
+        ref={orderWrapRef}
+        className="absolute inset-x-0 bottom-[104px] z-20 px-6 land:bottom-3 land:left-[92px] land:right-[92px] land:!mx-auto land:!max-w-[760px] land:px-0 landx:left-[132px] landx:!max-w-[1040px]"
+      >
         {clock ? (
           <p
             data-testid="day-strip"
@@ -776,7 +817,13 @@ export function Kitchen({
               <p className="line-clamp-2 font-display text-[18px] font-black leading-[1.06] text-[#392013] sm:text-[20px] landx:text-[30px] landx:[@media(max-height:620px)]:text-[22px]">
                 {todayLevel.title}
               </p>
-              <p className="mt-0.5 font-hand text-[13px] italic leading-snug text-[#795a3a] sm:text-[14px] landx:text-[18px]">
+              <p
+                className={cn(
+                  "mt-0.5 font-hand text-[13px] italic leading-snug text-[#795a3a] sm:text-[14px] landx:text-[18px]",
+                  // Audit F3: with the details open on a short window the pay line gives its row back (it is on the closed card).
+                  orderCardExpanded && "[@media(max-height:700px)]:hidden",
+                )}
+              >
                 {campaignComplete
                   ? RESTAURANT_MODE
                     ? "📖 every recipe is yours · 🍽️ the restaurant runs on"
@@ -844,8 +891,15 @@ export function Kitchen({
           </div>
           <div
             id="kitchen-order-details"
+            ref={detailsRef}
             hidden={!orderCardExpanded}
-            className={orderCardExpanded ? "anim-up" : undefined}
+            data-scrolls={detailsMax !== null ? "true" : undefined}
+            className={cn(
+              // (a flex column only while open: the `hidden` attribute must still hide it when it is closed)
+              orderCardExpanded && "anim-up flex flex-col",
+              detailsMax !== null && "overflow-y-auto overscroll-contain no-scrollbar",
+            )}
+            style={detailsMax !== null ? { maxHeight: detailsMax } : undefined}
           >
             {/* First levels (Levels 1–15): Grandma says what's new; her action
                   stays beside the order-board link when the details are open. */}
@@ -1598,6 +1652,9 @@ function NextKitchenStrip({ save, go }: { save: SaveData; go: (s: ScreenId) => v
 /** The offered dares already counted in this run of the app ("<day>:<dare id>"). */
 const OFFERED_DARES_SENT = new Set<string>();
 
+/** The least height the open Next Customer details are squeezed to when no dare is shown (with a dare, its own height is the least; audit F3). */
+const DETAILS_MIN = 64;
+
 /**
  * TODAY'S DARE (Chef Pride plan, Phase 3b, developer 2026-11-23): one optional challenge a day (restaurant/skillChallenges.ts). Offered with a playful line (the next
  * rival's chef "dares" the player from the ranking news), taken with one tap, never forced: "Not today" hides it, a won dare says so. Nothing is lost by ignoring it.
@@ -1619,60 +1676,84 @@ function DareRow({
   const progress = dareProgressText(view);
   return (
     <div
-      className="mt-2 rounded-xl border border-copper/35 bg-[#fff3d6]/80 px-2.5 py-2"
+      // Short windows (audit F3): the dare comes first in the details, drops its flavour line and its rival prefix, and keeps the ask and two 48 px buttons; a short and
+      // WIDE window (a phone on its side) lays the ask and the buttons in one row.
+      className="mt-2 rounded-xl border border-copper/35 bg-[#fff3d6]/80 px-2.5 py-2 [@media(max-height:700px)]:order-first [@media(max-height:700px)]:mt-0 [@media(max-height:700px)]:py-1.5 [@media(max-height:620px)]:py-1 [@media(max-height:700px)_and_(min-width:480px)]:flex [@media(max-height:700px)_and_(min-width:480px)]:items-center [@media(max-height:700px)_and_(min-width:480px)]:gap-3"
       data-testid="kitchen-dare"
       data-dare={dare.id}
       data-status={status}
     >
-      <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.12em] text-copper">
-        {dare.icon} {chef ? `${chefCallName(chef)} dares you` : "Today's dare"} · {dare.title}
-      </p>
-      {status === "won" ? (
-        <p className="font-hand text-[15px] leading-snug text-olive" data-testid="kitchen-dare-won">
-          ★ Dare won! A new one tomorrow.
+      <div className="min-w-0 flex-1">
+        <p className="font-ui text-[11px] font-extrabold uppercase tracking-[0.12em] text-copper">
+          {dare.icon}{" "}
+          <span className="[@media(max-height:700px)]:hidden">
+            {chef ? `${chefCallName(chef)} dares you` : "Today's dare"} ·{" "}
+          </span>
+          {dare.title}
         </p>
-      ) : (
-        <>
-          <p className="font-hand text-[15px] leading-snug text-walnut-dark">
-            {status === "offered" ? `“${dare.say}”` : dare.ask}
+        {status === "won" ? (
+          <p
+            className="font-hand text-[15px] leading-snug text-olive"
+            data-testid="kitchen-dare-won"
+          >
+            ★ Dare won! A new one tomorrow.
           </p>
-          {status === "accepted" && dare.goal > 1 ? (
-            <div className="mt-1" data-testid="kitchen-dare-progress">
-              <span className="block h-[5px] overflow-hidden rounded-full bg-walnut/15">
-                <span
-                  className="block h-full rounded-full bg-copper"
-                  style={{ width: `${Math.round((view.progress / dare.goal) * 100)}%` }}
-                />
-              </span>
-              <p className="mt-0.5 font-ui text-[11.5px] font-bold text-walnut/70">{progress}</p>
-            </div>
-          ) : null}
-          {status === "offered" ? (
-            <div className="mt-1.5 flex gap-2">
-              <KButton
-                variant="copper"
-                size="sm"
-                full
-                className="h-12"
-                data-testid="kitchen-dare-take"
-                onClick={() => onDare("take")}
+        ) : (
+          <>
+            <p
+              className={cn(
+                "font-hand text-[15px] leading-snug text-walnut-dark",
+                status === "offered" && "[@media(max-height:700px)]:hidden",
+              )}
+            >
+              {status === "offered" ? `“${dare.say}”` : dare.ask}
+            </p>
+            {status === "offered" ? (
+              <p
+                className="line-clamp-2 hidden font-ui text-[11.5px] font-bold leading-[1.15] text-walnut/80 [@media(max-height:700px)]:block"
+                data-testid="kitchen-dare-ask"
               >
-                Take the dare
-              </KButton>
-              <KButton
-                variant="cream"
-                size="sm"
-                full
-                className="h-12"
-                data-testid="kitchen-dare-decline"
-                onClick={() => onDare("decline")}
-              >
-                Not today
-              </KButton>
-            </div>
-          ) : null}
-        </>
-      )}
+                {dare.ask}
+              </p>
+            ) : null}
+            {status === "accepted" && dare.goal > 1 ? (
+              <div className="mt-1" data-testid="kitchen-dare-progress">
+                <span className="block h-[5px] overflow-hidden rounded-full bg-walnut/15">
+                  <span
+                    className="block h-full rounded-full bg-copper"
+                    style={{ width: `${Math.round((view.progress / dare.goal) * 100)}%` }}
+                  />
+                </span>
+                <p className="mt-0.5 font-ui text-[11.5px] font-bold text-walnut/70">{progress}</p>
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
+      {status === "offered" ? (
+        <div className="mt-1.5 flex gap-2 [@media(max-height:620px)]:mt-1 [@media(max-height:700px)_and_(min-width:480px)]:mt-0 [@media(max-height:700px)_and_(min-width:480px)]:w-[330px] [@media(max-height:700px)_and_(min-width:480px)]:shrink-0">
+          <KButton
+            variant="copper"
+            size="sm"
+            full
+            className="h-12"
+            data-testid="kitchen-dare-take"
+            onClick={() => onDare("take")}
+          >
+            Take the dare
+          </KButton>
+          <KButton
+            variant="cream"
+            size="sm"
+            full
+            className="h-12"
+            data-testid="kitchen-dare-decline"
+            onClick={() => onDare("decline")}
+          >
+            Not today
+          </KButton>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1698,7 +1779,7 @@ function CityRankBadge({ save }: { save: SaveData }) {
         {lead ? (
           <span
             data-testid="kitchen-chef-title"
-            className="ml-2 hidden font-hand text-[14px] font-normal text-gold [@media(min-height:700px)]:inline"
+            className="ml-2 hidden font-hand text-[14px] font-normal text-gold [@media(min-height:600px)]:inline"
           >
             {lead.title}
           </span>

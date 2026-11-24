@@ -7,10 +7,65 @@
 // gives a brand-new player, and seeding/reading goes through window.bridge.
 import puppeteer from "puppeteer-core";
 import fs from "node:fs";
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const OUT = path.dirname(fileURLToPath(import.meta.url)) + path.sep;
+
+// ── Throwaway Chrome profiles (Batch 5, developer 2026-11-24) ────────────────────────────────────────────────────────────────────────
+// Every `launch()` gets its OWN profile folder, `tools/e2e/profile-<time>-<pid>-<n>`: the process id and a counter make it unique even for runs started in the same millisecond
+// or in parallel. It is removed when THAT browser closes, and again when the process exits (also after a failure or an uncaught error). Only folders this process created
+// (tracked below, and matching the name pattern) are ever removed, so a parallel test's profile and your own Chrome profile are never touched. A run killed outright (kill -9)
+// leaves its folder behind: `node tools/e2e/clean-profiles.mjs` removes folders whose process is gone.
+const PROFILE_NAME = /^profile-\d+-\d+-\d+$/;
+const profiles = new Set();
+/** The browsers this process started and has not closed: on exit they are stopped first, so Chrome lets go of the profile folder. */
+const browsers = new Map();
+let launchCount = 0;
+let exitHooked = false;
+
+const sleepSync = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+/**
+ * Removes one profile folder this process created. Never throws. Chrome (and its helper processes) may still be letting go of its files for a moment after it stops, so it
+ * tries again for up to `patientMs` (the exit hook waits longer than a normal close, which has already awaited the browser).
+ */
+export function removeProfile(dir, patientMs = 1500) {
+  if (!profiles.has(dir) || !PROFILE_NAME.test(path.basename(dir))) return false;
+  const until = Date.now() + patientMs;
+  for (;;) {
+    try {
+      fs.rmSync(dir, { recursive: true, force: true });
+      profiles.delete(dir);
+      return true;
+    } catch {
+      if (Date.now() >= until) return false;
+      sleepSync(150);
+    }
+  }
+}
+
+function hookExit() {
+  if (exitHooked) return;
+  exitHooked = true;
+  // 'exit' also runs after an uncaught exception; a Ctrl-C / terminate is turned into a normal exit so it runs too.
+  process.once("exit", () => {
+    for (const b of browsers.keys()) {
+      try {
+        const pid = b.process()?.pid;
+        // The whole Chrome tree (its renderer and GPU helpers hold the profile files too), stopped synchronously, before the folder is removed.
+        if (pid && process.platform === "win32")
+          spawnSync("taskkill", ["/pid", String(pid), "/T", "/F"], { stdio: "ignore" });
+        else b.process()?.kill("SIGKILL");
+      } catch {
+        // already gone
+      }
+    }
+    for (const dir of [...profiles]) removeProfile(dir, 8000);
+  });
+  for (const sig of ["SIGINT", "SIGTERM"]) process.once(sig, () => process.exit(130));
+}
 export const GAME_URL = process.env.KC_URL || "http://localhost:4173/";
 export const SAVE_KEY = "knifecraft_save";
 
@@ -20,19 +75,39 @@ export const SAVE_KEY = "knifecraft_save";
  * "Keep" as soon as it shows, so tests about other things carry on past it.
  */
 export async function launch({ nameCard = false } = {}) {
-  const browser = await puppeteer.launch({
-    executablePath:
-      process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe",
-    headless: "new",
-    userDataDir: OUT + "profile-" + Date.now(),
-    args: [
-      "--disable-background-timer-throttling",
-      "--disable-renderer-backgrounding",
-      "--disable-backgrounding-occluded-windows",
-      "--no-first-run",
-    ],
-    defaultViewport: { width: 430, height: 900, deviceScaleFactor: 1 },
-  });
+  const profileDir = `${OUT}profile-${Date.now()}-${process.pid}-${++launchCount}`;
+  profiles.add(profileDir);
+  hookExit();
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      executablePath:
+        process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe",
+      headless: "new",
+      userDataDir: profileDir,
+      args: [
+        "--disable-background-timer-throttling",
+        "--disable-renderer-backgrounding",
+        "--disable-backgrounding-occluded-windows",
+        "--no-first-run",
+      ],
+      defaultViewport: { width: 430, height: 900, deviceScaleFactor: 1 },
+    });
+  } catch (e) {
+    removeProfile(profileDir); // Chrome never started: nothing else holds this folder
+    throw e;
+  }
+  // Closing the browser removes ITS profile (and only that one).
+  browsers.set(browser, profileDir);
+  const closeBrowser = browser.close.bind(browser);
+  browser.close = async () => {
+    try {
+      await closeBrowser();
+    } finally {
+      browsers.delete(browser);
+      removeProfile(profileDir);
+    }
+  };
   const page = await browser.newPage();
   if (!nameCard)
     await page.evaluateOnNewDocument(() => {

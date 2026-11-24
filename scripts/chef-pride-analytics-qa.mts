@@ -114,9 +114,10 @@ console.log("D. Where they are sent");
   const where = (n: string) =>
     [...new Set(calls.filter((c) => c.name === n).map((c) => c.file))].sort();
   assert(
-    where("record_broken").join() ===
-      ["src/App.tsx", "src/components/kc/game/Preparation.tsx"].sort().join(),
-    "D1: records are sent for a plate (Preparation) and for a service (App)",
+    // RULE CHANGE (developer 2026-11-23, audit F2): a record is told only when the save that holds it is written, so BOTH the plate's and the service's `record_broken` are sent from
+    // App (persist() and completeCampaignLevel, after the save); Preparation only previews them on the Knife Report and sends nothing.
+    where("record_broken").join() === ["src/App.tsx"].join(),
+    "D1: records are sent by App only, after their save is written (the Knife Report preview sends none)",
     where("record_broken"),
   );
   assert(
@@ -152,6 +153,80 @@ console.log("E. The document's rules");
   assert(
     /None of Chef Pride is live/.test(DOC),
     "E3: it says plainly that nothing is measurable until a Chef Pride build is live",
+  );
+}
+
+console.log(
+  "F. Every Chef Pride event is sent only after the save that holds it (audit Batch 5, developer 2026-11-24)",
+);
+{
+  const app = read("src/App.tsx");
+  const body = (re: RegExp) => re.exec(app)?.[0] ?? "";
+  const persistBody = body(/function persist\(next: SaveData\) \{[\s\S]*?\n {2}\}\n/);
+  const iWritten = persistBody.indexOf("saveWrittenRef.current = true;");
+  const sendsInPersist = ["record_broken", "dare_completed"].map((n) =>
+    persistBody.indexOf(`sendAnalyticsEvent("${n}"`),
+  );
+  assert(
+    iWritten > 0 && sendsInPersist.every((i) => i > iWritten),
+    "F1: the plate's record_broken and dare_completed are sent by persist(), after its save is written",
+  );
+  assert(
+    /for \(const id of queuedDares\) sendAnalyticsEvent\("dare_completed", \{ id \}\)/.test(
+      persistBody,
+    ) &&
+      persistBody.indexOf("queuedDares") < iWritten + 1 &&
+      !/sendAnalyticsEvent\("dare_completed"/.test(
+        body(/function noteDareWin\([^)]*\) \{[\s\S]*?\n {2}\}\n/),
+      ),
+    "F2: a dare won by a service or a day is queued by noteDareWin and sent by persist() after its save (a refused save drops it)",
+  );
+  const handle = body(/function handleDare\([^)]*\) \{[\s\S]*?\n {2}\}\n/);
+  assert(
+    handle.indexOf("persist(") > 0 &&
+      handle.indexOf("saveWrittenRef.current") > handle.indexOf("persist(") &&
+      handle.indexOf('sendAnalyticsEvent("dare_taken"') >
+        handle.indexOf("saveWrittenRef.current") &&
+      handle.indexOf('sendAnalyticsEvent("dare_declined"') >
+        handle.indexOf("saveWrittenRef.current"),
+    "F3: taking or declining a dare is measured only after the choice is saved",
+  );
+  const iLeagueSave = app.indexOf("markLeagueShown(rec) } });");
+  const iLeagueEvent = app.indexOf('sendAnalyticsEvent("league_week_end"');
+  assert(
+    iLeagueSave > 0 &&
+      iLeagueEvent > iLeagueSave &&
+      /if \(saveWrittenRef\.current\)\s*sendAnalyticsEvent\("league_week_end"/.test(app),
+    "F4: the league week's end is measured once, only after its 'shown' mark is saved (an unsaved mark would send it twice)",
+  );
+  assert(
+    /rise && rivalChef && saveWrittenRef\.current\)\s*sendAnalyticsEvent\("rival_passed"/.test(app),
+    "F5: a rival passed is measured only after the level's save is written",
+  );
+  const complete = body(/function completeCampaignLevel\([^)]*\)[^{]*\{[\s\S]*?\n {2}\}\n/);
+  const iSave = complete.indexOf("persist(finalSave);");
+  const iGate = complete.indexOf("if (saveWrittenRef.current)");
+  assert(
+    iSave > 0 &&
+      iGate > iSave &&
+      ["record_broken", "prestige_reached", "title_earned"].every(
+        (n) => complete.indexOf(`sendAnalyticsEvent("${n}"`) > iGate,
+      ),
+    "F6: a service's record, prestige and title events follow its saved completion",
+  );
+  assert(
+    !/sendAnalyticsEvent\("(record_broken|title_earned|prestige_reached|dare_completed)"/.test(
+      read("src/components/kc/game/Preparation.tsx"),
+    ),
+    "F7: Preparation (the Knife Report preview) sends none of them",
+  );
+  const seen = /const paigeSeen = [\s\S]*?\n {2}\};\n/.exec(app)?.[0] ?? "";
+  assert(
+    seen.indexOf("persist(next);") > 0 &&
+      seen.indexOf("if (!saveWrittenRef.current) return;") > seen.indexOf("persist(next);") &&
+      seen.indexOf('sendAnalyticsEvent("assistant_beat_shown"') >
+        seen.indexOf("if (!saveWrittenRef.current) return;"),
+    "F8: Paige's rival message is counted once, only after its 'seen' mark is saved",
   );
 }
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useUnlockText } from "./navLevel";
 import { KButton, Panel } from "./common/primitives";
 import { Bar, Eyebrow } from "./common/Meters";
+import { InfoTip } from "./common/InfoTip";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
 import { restaurantNameOf } from "@/game/restaurant/restaurantName";
@@ -9,7 +10,7 @@ import { cityRanking, type CityRanking } from "@/game/restaurant/cityRanking";
 import { LAST_CAMPAIGN_LEVEL } from "@/game/restaurant/restaurantProgression";
 import { RANKING_NEWS_FROM_LEVEL } from "@/game/config/earlyLevels";
 import { PRESTIGE_FROM_LEVEL, restaurantPrestige } from "@/game/restaurant/restaurantPrestige";
-import { chefRecordOf } from "@/game/restaurant/chefRecord";
+import { bestPlateOf, chefRecordOf } from "@/game/restaurant/chefRecord";
 import {
   LEAGUE_FROM_LEVEL,
   PROMOTION_RANK,
@@ -19,10 +20,16 @@ import {
 } from "@/game/restaurant/cityLeague";
 import { useToday } from "./useToday";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
-import { chefSays, rivalChefOf } from "@/game/restaurant/rivalChefs";
+import {
+  RESPECT_FROM_RANK,
+  chefRespects,
+  chefSays,
+  rivalChefOf,
+} from "@/game/restaurant/rivalChefs";
 import {
   CHEF_TITLES_FROM_LEVEL,
   chefTitleStatus,
+  identityProgressText,
   leadingTitle,
   nextTitleGoal,
 } from "@/game/progression/chefTitles";
@@ -42,6 +49,13 @@ export function CityRankHero({ save }: { save: SaveData }) {
   const chef =
     c.next && restaurantLevelOf(save.levelProgress) >= RANKING_NEWS_FROM_LEVEL
       ? rivalChefOf(c.next.id)
+      : undefined;
+  // Late in the game (the top ten) the rival just behind the player says something respectful (rivalChefs.ts `respect`, hand-written or a template).
+  const behind =
+    c.passed &&
+    c.rank <= RESPECT_FROM_RANK &&
+    restaurantLevelOf(save.levelProgress) >= RANKING_NEWS_FROM_LEVEL
+      ? rivalChefOf(c.passed.id)
       : undefined;
   return (
     <div
@@ -77,6 +91,14 @@ export function CityRankHero({ save }: { save: SaveData }) {
             The best restaurant in the city — every rival passed.
           </p>
         )}
+        {behind && c.passed ? (
+          <p
+            className="mt-1.5 font-hand text-[16px] leading-snug text-gold/90"
+            data-testid="rival-chef-respect"
+          >
+            👨‍🍳 {chefRespects(behind, c.passed)}
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -183,7 +205,16 @@ export function ChefTitleCard({ save }: { save: SaveData }) {
   const all = chefTitleStatus(save);
   return (
     <Panel className="p-4" data-testid="chef-title-card">
-      <Eyebrow>Your chef title</Eyebrow>
+      <div className="flex items-center justify-between gap-2">
+        <Eyebrow>Your chef title</Eyebrow>
+        <InfoTip label="How chef titles are earned">
+          Six kinds of chef, four titles each. Precision: perfect cuts, and plates of 95% or better.
+          Speed: your fastest plate. Organizer: Fridge Sort crates with three stars. Cleanliness:
+          spotless services, and spotless services in a row. Customer Favourite: popularity, and the
+          tips customers leave. Restaurateur: places climbed in the city, and Endless stars for the
+          top title. A title needs both numbers of its tier. Nothing here costs or pays money.
+        </InfoTip>
+      </div>
       <p
         className="mt-1 font-display text-[22px] font-black leading-tight text-walnut-dark"
         data-testid="chef-title-name"
@@ -194,7 +225,7 @@ export function ChefTitleCard({ save }: { save: SaveData }) {
         <div className="mt-2" data-testid="chef-title-goal">
           <Bar fraction={goal.fraction} />
           <p className="mt-1 font-ui text-[12.5px] font-bold text-walnut/75">
-            {goal.value} of {goal.next.target} {goal.identity.unit} to{" "}
+            {identityProgressText(save, goal)} to{" "}
             <span className="text-copper">{goal.next.title}</span>
           </p>
         </div>
@@ -203,6 +234,21 @@ export function ChefTitleCard({ save }: { save: SaveData }) {
           Every title earned. Legendary!
         </p>
       )}
+      {bestPlateOf(save) > 0 || chefRecordOf(save).fastestMs > 0 ? (
+        <p
+          className="mt-2 font-ui text-[12.5px] font-bold text-walnut/70"
+          data-testid="chef-title-records"
+        >
+          {[
+            bestPlateOf(save) > 0 ? `Best plate ${bestPlateOf(save)}%` : null,
+            chefRecordOf(save).fastestMs > 0
+              ? `Fastest ${Math.round(chefRecordOf(save).fastestMs / 1000)} s`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+      ) : null}
       <div className="mt-2.5 flex flex-wrap gap-1.5" data-testid="chef-title-chips">
         {all.map((s) => (
           <span
@@ -238,7 +284,14 @@ export function PrestigeCard({ save }: { save: SaveData }) {
   const p = restaurantPrestige(save);
   return (
     <Panel className="p-4" data-testid="prestige-card" data-tier={p.tier.index}>
-      <Eyebrow>Restaurant prestige</Eyebrow>
+      <div className="flex items-center justify-between gap-2">
+        <Eyebrow>Restaurant prestige</Eyebrow>
+        <InfoTip label="How prestige works">
+          Prestige is how well-known your restaurant is. It grows with your kitchen stage, your
+          place in the city ranking, your popularity, your spotless services and your Endless stars.
+          It pays nothing: it is yours to be proud of.
+        </InfoTip>
+      </div>
       <p
         className="mt-1 font-display text-[22px] font-black leading-tight text-walnut-dark"
         data-testid="prestige-tier"
@@ -292,7 +345,15 @@ export function LeagueCard({ save }: { save: SaveData }) {
   const daysLeft = 7 - dayOfWeek(today);
   return (
     <Panel className="p-4" data-testid="league-card" data-league={v.league.tier}>
-      <Eyebrow>City league · this week</Eyebrow>
+      <div className="flex items-center justify-between gap-2">
+        <Eyebrow>City league · this week</Eyebrow>
+        <InfoTip label="How the city league works">
+          Each week you earn points: 1 for every perfect cut, 2 for every Clean plate, 10 for every
+          finished service and 15 more when it is spotless. The other nine are the city's own
+          restaurants, not other players. When the week ends the top three move up a league. Nobody
+          ever moves down.
+        </InfoTip>
+      </div>
       <p
         className="mt-1 font-display text-[22px] font-black leading-tight text-walnut-dark"
         data-testid="league-name"

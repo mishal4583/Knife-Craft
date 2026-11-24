@@ -12,7 +12,16 @@ node tools/e2e/<script>.mjs          # in another terminal (KC_URL overrides the
 ```
 
 Output (screenshots, JSON) goes to `tools/e2e/out/`; throwaway Chrome
-profiles to `tools/e2e/profile-*` (both gitignored).
+profiles to `tools/e2e/profile-<time>-<pid>-<n>` (both gitignored).
+
+**Chrome profiles are cleaned up (Batch 5, 2026-11-24).** Each `launch()` makes its own profile folder (named with the time, the process id and a counter, so
+parallel and repeated runs never share one). The harness removes THAT folder when its browser closes and again when the process exits, also after a failed
+or crashed test or a Ctrl-C; it only ever removes folders it created. A run killed outright (`kill -9`) can leave one behind: `node tools/e2e/clean-profiles.mjs`
+removes the folders of dead processes (`--list` only shows them) and never looks at anything else. `node tools/e2e/harness-cleanup.mjs` is the self-test of all
+this (no game needed). Before this, folders piled up (618 of them once) and slowed the dev server enough to time a test out.
+
+**Judge a test by its exit code** (`node <test>.mjs; echo $?`): 0 passes, 1 fails. Do not grep the text for FAIL and conclude "all passed".
+
 
 Tests without a build in their row are **classic-build** tests
 (`VITE_RESTAURANT_MODE=0 npx vite build --outDir <dir>`, serve it, point

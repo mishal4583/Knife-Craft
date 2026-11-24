@@ -112,7 +112,9 @@ async function toReport(size) {
   }
   await click(page, /Start cooking/);
   await sleep(2500);
-  const geom = size.width >= 900 ? await geometryFromCanvas(page) : undefined;
+  // The aim points come from the real canvas at EVERY size (audit Batch 5, 2026-11-24): the solver's built-in ones are the 430x900 layout, and at 390x844 they sit 26 px right and 28 px
+  // low of the ingredient, so the last slice sometimes missed ("STUCK at ...|11|12|slice", on the committed build as well). At 430x900 the two are identical.
+  const geom = await geometryFromCanvas(page);
   return playToReport(page, {
     maxMs: 120000,
     until: () => /KNIFE REPORT/i.test(document.body.innerText),

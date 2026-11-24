@@ -28,7 +28,7 @@ import { endlessStarsOf } from "../restaurant/restaurantStanding";
 import { fridgeSortOf } from "../business/fridgeSort";
 import { restaurantRecordOf } from "../restaurant/serviceReport";
 import { restaurantSuppliesOf } from "../restaurant/serviceSupplies";
-import { CHEF_IDENTITIES, type ChefIdentity } from "./chefTitles";
+import { CHEF_IDENTITIES, tierEarned, type ChefIdentity, type ChefTier } from "./chefTitles";
 import { chefRecordOf } from "../restaurant/chefRecord";
 
 export type AchievementGroup = "Restaurant" | "Kitchen" | "Service" | "Business";
@@ -48,9 +48,19 @@ export type Achievement = {
   claimed: boolean;
   /** Paid automatically (the Family Legacy) — never through Collect. */
   automatic: boolean;
+  /** A short line under the bar instead of "value / target unit" (a chef title's second requirement, a plate time). */
+  note?: string;
+  /** The bar, 0-1, when it is not value / target (a chef title that needs two things at once). */
+  progress?: number;
 };
 
-type Tier = { target: number; reward: number; title?: string };
+type Tier = {
+  target: number;
+  reward: number;
+  title?: string;
+  /** A chef title tier: it is reached only when this also holds (its second requirement), and says where the player stands. */
+  chef?: ChefTier;
+};
 type Ladder = {
   key: string;
   group: AchievementGroup;
@@ -293,9 +303,31 @@ const chefLadder = (i: ChefIdentity): Ladder => ({
   unit: i.unit,
   title: (t) => i.tiers.find((x) => x.target === t)?.title ?? i.name,
   description: i.describe,
-  tiers: () => i.tiers.map((t) => ({ target: t.target, reward: 0, title: t.title })),
+  tiers: () => i.tiers.map((t) => ({ target: t.target, reward: 0, title: t.title, chef: t })),
   value: i.value,
 });
+/** The note and the bar of a chef title tier: both of its requirements, the way chefTitles.ts reads them. */
+function chefAchievementExtras(
+  save: SaveData,
+  key: string,
+  value: number,
+  tier: ChefTier,
+): { note?: string; progress?: number } {
+  const identity = CHEF_IDENTITIES.find((i) => `chef-${i.id}` === key);
+  if (!identity) return {};
+  const main = Math.min(1, value / tier.target);
+  const second = tier.also ? Math.min(1, tier.also.have(save) / tier.also.need) : 1;
+  const show = tier.also?.show ?? String;
+  const parts: string[] = [];
+  if (identity.progress) parts.push(identity.progress(save, value, tier));
+  else parts.push(`${Math.min(value, tier.target)} / ${tier.target} ${identity.unit}`);
+  if (tier.also)
+    parts.push(
+      `${tier.also.label} ${show(Math.min(tier.also.have(save), tier.also.need))} / ${show(tier.also.need)}`,
+    );
+  return { note: parts.join(" · "), progress: Math.min(main, second) };
+}
+
 const DARE_TITLES: Record<number, string> = {
   3: "Dare Taker",
   10: "Daredevil",
@@ -391,9 +423,13 @@ export function achievementsFor(save: SaveData): Achievement[] {
         target: tier.target,
         unit: ladder.unit,
         reward: tier.reward,
-        reached: value >= tier.target,
+        // A chef title tier needs its second requirement too (best streak, tips, Endless stars), and a plate-time tier shows the plate time.
+        reached: tier.chef ? tierEarned(save, value, tier.chef) : value >= tier.target,
         claimed: claimed.has(id),
         automatic: false,
+        ...(tier.chef && ladder.key.startsWith("chef-")
+          ? chefAchievementExtras(save, ladder.key, value, tier.chef)
+          : {}),
       });
     }
   }

@@ -22,8 +22,8 @@
 // the check also runs against builds from before the hook (that is how the overflow was
 // reproduced: 10 failures on the unfixed build).
 // Prints PASS/FAIL per check and exits 1 on any failure.
-import { launch, freshPlayer, sleep, shot, save } from "./harness.mjs";
-import { playToReport } from "./solver.mjs";
+import { MOVED_IN_BUSINESS, launch, boot, seedSave, sleep, shot, save } from "./harness.mjs";
+import { playToReport, geometryFromCanvas } from "./solver.mjs";
 
 const results = [];
 const check = (id, ok, detail) => {
@@ -124,17 +124,72 @@ async function checkViewports(page, tag) {
 
 const { browser, page, logs } = await launch();
 
-// ---------- 1. a real report: a brand-new player plays Level 1 ----------
-await freshPlayer(page);
-await page.waitForFunction(() => !!document.querySelector('[aria-label="Skip intro"]'), {
-  timeout: 30000,
+// ---------- 1. a real report: the solver plays a real plate ----------
+// Rule changed (developer 2026-10-30, "nothing is given free"; found stale in the Chef Pride audit Batch 5, 2026-11-24): a brand-new player no longer lands on the cutting board
+// after the intro. They start in the Kitchen with the Market open and must buy the first order's food first, so this test used to wait 30 s for a board that never came. The setup
+// is now a seeded player with the food already in the fridge (the same real flow as chefrecords.mjs: Open for service, Start cooking, the solver cuts a real plate). Every
+// assertion about the report itself (checks 2 to 4) is unchanged.
+const N = 4;
+const RECIPE = "camp-latin-grapes-strawberry";
+const stock = Object.fromEntries(
+  ["grapes", "strawberry"].map((id) => [
+    id,
+    { ingredientId: id, quantity: 14, unitCost: 100, purchaseDay: 7 },
+  ]),
+);
+const seed = seedSave({
+  business: {
+    ...MOVED_IN_BUSINESS,
+    staff: { hiredRoles: ["server", "cashier"] },
+    calendar: { businessDay: 7 },
+    inventory: stock,
+    restaurantStaff: { specialists: ["mexican-chef"] },
+    sectionsSeen: ["inventory", "shop", "rack", "business"],
+  },
+  credits: 5_000_000,
+  levelProgress: {
+    currentLevelId: `level-${N}`,
+    highestUnlockedLevelId: `level-${N}`,
+    completedLevelIds: Array.from({ length: N - 1 }, (_, i) => `level-${i + 1}`),
+    campaignVersion: 4,
+    tickets: { [`level-${N}`]: [RECIPE] },
+  },
+  story: { introDone: true, milestoneMask: 0, finaleSeen: false },
 });
-await sleep(1200);
-await page.evaluate(() => document.querySelector('[aria-label="Skip intro"]').click());
-await page.waitForFunction(() => /·\s*\d+\/\d+\s+[a-z-]+/i.test(document.body.innerText), {
-  timeout: 30000,
+seed.version = 3;
+const mouseClick = async (re) => {
+  const r = await page.evaluate((src) => {
+    const b = [...document.querySelectorAll("button")].find(
+      (x) =>
+        new RegExp(src, "i").test(x.textContent.trim()) &&
+        !x.disabled &&
+        x.getBoundingClientRect().width > 0,
+    );
+    if (!b) return null;
+    const q = b.getBoundingClientRect();
+    return { x: q.x + q.width / 2, y: q.y + q.height / 2 };
+  }, re.source);
+  if (r) await page.mouse.click(r.x, r.y);
+  return !!r;
+};
+await page.setViewport({ width: 430, height: 900, deviceScaleFactor: 1 });
+await boot(page, seed);
+await sleep(2500);
+await mouseClick(/^Open for service$/);
+await sleep(1500);
+for (let i = 0; i < 6; i++) {
+  const had = await mouseClick(/(Hire Server &|Open restaurant|Start cooking)/);
+  await sleep(1800);
+  if (!had) break;
+}
+await mouseClick(/Start cooking/);
+await sleep(2500);
+const geom = await geometryFromCanvas(page);
+const played = await playToReport(page, {
+  maxMs: 120000,
+  until: () => /KNIFE REPORT/i.test(document.body.innerText),
+  ...(geom ? { geom } : {}),
 });
-const played = await playToReport(page, { maxMs: 120000 });
 check("1a Level 1 plays through to the Knife Report", played.ok, played.log.slice(-3));
 await page.waitForFunction(findGrid, { timeout: 15000 });
 await sleep(2000); // let the report's entrance animation and any pending HUD timers finish

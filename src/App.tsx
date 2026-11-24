@@ -187,9 +187,25 @@ import {
   applyRun,
   applyService,
   chefRecordOf,
+  runNews,
   serviceNews,
   type RunStats,
 } from "@/game/restaurant/chefRecord";
+import {
+  EMPTY_SHIFT_TALLY,
+  dayIsWasteFree,
+  perfectsNews,
+  shiftDare,
+  shiftService,
+  shiftTier,
+  shiftNotes,
+  shiftStats,
+  shiftWaste,
+  tallyPlate,
+  tallyRun,
+  type ShiftCard,
+  type ShiftTally,
+} from "@/game/restaurant/shiftRecognition";
 import {
   celebrationFor,
   leagueCelebration,
@@ -314,6 +330,7 @@ import {
   assistantOf,
   hireAssistant,
   markAssistantSeen,
+  withBeatPutOff,
   setAssistantTips,
   type AssistantBeat,
 } from "@/game/restaurant/assistant";
@@ -743,12 +760,15 @@ export function App() {
   // Chef Pride (developer 2026-11-23): the plate just finished (kept until the next save, which carries it into the chef's record) and this service's
   // perfect cuts. Session only, like the scores above.
   const pendingRunRef = useRef<RunStats | null>(null);
+  // True when the last persist() really wrote its save (false when it refused one that broke the wallet invariant): what analytics may tell about that save (audit F2).
+  const saveWrittenRef = useRef(false);
+  // The ids of dares a SERVICE or a DAY won (noteDareWin) whose `dare_completed` waits for the save that holds the win (persist sends them).
+  const dareEventsRef = useRef<string[]>([]);
   // Chef Pride (Phase 3b): the daily dares won since the last service card (shown there, once).
   const dareWinsRef = useRef<string[]>([]);
-  const serviceRunsRef = useRef<{ levelId: string; perfects: number }>({
-    levelId: "",
-    perfects: 0,
-  });
+  // Shift recognition (audit Batch 2 follow-up): what the Level Complete shift card counts (shiftRecognition.ts). Its OWN tally: the service star rating reads
+  // `serviceScoresRef` only and never this. Session only: a reload mid-service starts it again from the plates served after it.
+  const shiftTallyRef = useRef<ShiftTally>(EMPTY_SHIFT_TALLY);
   const keepNoticeRef = useRef(false);
   const [campaignServiceSession, setCampaignServiceSession] = useState<ServiceSession | null>(null);
   // Customers who ordered the same dish are cut one plate after another, cooked once and served
@@ -849,7 +869,7 @@ export function App() {
     /** Supplier credit repaid from this level's earnings, and what's still owed. */
     credit?: { repaid: number; owed: number };
     /** Chef Pride: this service's plates, average accuracy and perfect cuts, and what beat a real earlier mark (restaurant/chefRecord.ts). */
-    shift?: { orders: number; accuracy: number; perfects: number; news: string[] };
+    shift?: ShiftCard;
   } | null>(null);
 
   // Platform ads (Playgama Bridge). `saveRef` always holds the latest committed save, so code
@@ -1212,10 +1232,18 @@ export function App() {
    * (Economy V2.5), and refuses a save whose wallet breaks the invariant
    * (never negative, whole cents — economy/wallet.ts). */
   function persist(next: SaveData) {
+    saveWrittenRef.current = false;
+    const queuedDares = dareEventsRef.current;
+    dareEventsRef.current = [];
+    // Chef Pride (audit F2): what the plate earned is announced to analytics only once the save that holds it has really been written (below), never for a plate that was retried or abandoned.
+    const beatenKinds: string[] = [];
+    let dareWon: { id: string; title: string } | null = null;
     // Chef Pride: the plate that just finished rides along with the save its result is written in (never a second, stale save).
     if (pendingRunRef.current) {
       const run = pendingRunRef.current;
       pendingRunRef.current = null;
+      // …the records it beat are read against the record BEFORE it (the same comparison the Knife Report showed), one event per kind.
+      for (const n of runNews(chefRecordOf(next), run)) beatenKinds.push(n.kind);
       next = applyRun(next, run);
       // …and the plate moves today's dare, if one is taken (restaurant/skillChallenges.ts).
       const before = chefRecordOf(next);
@@ -1235,9 +1263,8 @@ export function App() {
       );
       if (rec !== before) next = { ...next, business: { ...next.business, chefRecord: rec } };
       if (dared.won) {
-        // (the same as noteDareWin, inline so `persist` stays free of component functions)
-        dareWinsRef.current = [...dareWinsRef.current, dared.won.title];
-        sendAnalyticsEvent("dare_completed", { id: dared.won.id });
+        // (the same as noteDareWin, said once the save is written)
+        dareWon = { id: dared.won.id, title: dared.won.title };
       }
     }
     const synced = syncKitchenUpgradeOwnership(next);
@@ -1250,9 +1277,15 @@ export function App() {
       console.error(`[economy] save refused: ${violation}`);
       return;
     }
+    saveWrittenRef.current = true;
     saveRef.current = rewarded;
     setSave(rewarded);
     void SaveManager.save(rewarded);
+    // The save is written: now (and only now) what its plate earned is told.
+    if (dareWon) dareWinsRef.current = [...dareWinsRef.current, dareWon.title];
+    for (const k of beatenKinds) sendAnalyticsEvent("record_broken", { kind: k });
+    if (dareWon) sendAnalyticsEvent("dare_completed", { id: dareWon.id });
+    for (const id of queuedDares) sendAnalyticsEvent("dare_completed", { id });
     if (granted.length > 0) setMilestoneNoticeQueue((q) => [...q, milestoneNoticeFor(granted)]);
     // A newly earned achievement reward: tell the player where to collect it (once per reward).
     const fresh = collectable(rewarded).filter((x) => !announcedRef.current.has(x.id));
@@ -3009,6 +3042,9 @@ export function App() {
    * mastery of its own, so nothing is lost for Business.
    */
   function recordBusinessServiceResult(score: number): number {
+    // Audit F1 (developer 2026-11-23): a Business plate is a real plate too. Its run stats (noteRunStats, just before this) go into the chef's record in a save of
+    // their own, now, through the one save funnel — they used to wait in `pendingRunRef` for whatever unrelated save came next (a later purchase, even another day).
+    flushPendingRun();
     if (!save || !businessServiceSession?.current) return 0;
     setBusinessServiceSession((s) => (s ? recordBusinessServiceComponents(s, score) : s));
     levelCompleted();
@@ -3158,7 +3194,8 @@ export function App() {
   /** Chef Pride (Phase 3b): a daily dare was won (the card at the end of the service says so; measured). */
   function noteDareWin(dare: Dare) {
     dareWinsRef.current = [...dareWinsRef.current, dare.title];
-    sendAnalyticsEvent("dare_completed", { id: dare.id });
+    // (audit Batch 5) the event is queued and sent by persist() once the save that holds the win is written; a refused save drops it
+    dareEventsRef.current = [...dareEventsRef.current, dare.id];
   }
 
   /** Chef Pride (Phase 3b): the player takes today's dare, or says "Not today" (the Kitchen's dare row). */
@@ -3171,17 +3208,19 @@ export function App() {
     const next = action === "take" ? takeDare(rec, day, level) : declineDare(rec, day, level);
     if (next === rec) return;
     const dareId = dareToday(next, day, level)?.dare.id ?? "";
+    persist({ ...cur, business: { ...cur.business, chefRecord: next } });
+    // (audit Batch 5) told only once that save is really written
+    if (!saveWrittenRef.current) return;
     if (action === "take") sendAnalyticsEvent("dare_taken", { id: dareId });
     else sendAnalyticsEvent("dare_declined", { id: dareId });
-    persist({ ...cur, business: { ...cur.business, chefRecord: next } });
   }
 
   /** Closes a business day, and lets a taken Zero Waste dare read whether any stock spoiled in it. */
   function closeDayDared(s: SaveData, level: number): SaveData {
     const after = closeDay(s, level);
     if (restaurantDayOf(after).day === restaurantDayOf(s).day) return after;
-    const noWaste =
-      after.business.spoilage.totalSpoiledQuantity <= s.business.spoilage.totalSpoiledQuantity;
+    // Audit F4: the day's whole waste (what spoils at closing PLUS what was thrown out earlier today), read from the save before closing resets it (shiftRecognition.dayIsWasteFree).
+    const noWaste = dayIsWasteFree(s, level);
     const dared = advanceDareOnDay(chefRecordOf(after), dailyKeyFor(new Date()), level, {
       noWaste,
     });
@@ -3192,13 +3231,30 @@ export function App() {
 
   /** Chef Pride: a plate was finished (called by Preparation just before its result is saved). */
   function noteRunStats(stats: RunStats) {
+    // A plate whose result handler never saved (a guard returned early) is written now, never silently replaced by this one (audit F1).
+    flushPendingRun();
     pendingRunRef.current = stats;
+    // The campaign service's perfect-cut tally is the campaign level's own: a Business plate (its own session) must not lend its perfects to it.
+    if (sessionMode === "business-service") return;
     const levelId = campaignServiceSession?.levelId ?? activeLevelId;
-    const t = serviceRunsRef.current;
-    serviceRunsRef.current = {
-      levelId,
-      perfects: (t.levelId === levelId ? t.perfects : 0) + stats.perfects,
-    };
+    shiftTallyRef.current = tallyRun(shiftTallyRef.current, levelId, stats);
+  }
+
+  /** Shift card: one served and paid plate (a replay never counts). Beside, never inside, the star rating's own `noteServedScore`. */
+  function noteShiftPlate(
+    levelId: string,
+    orderId: string,
+    score: number | null | undefined,
+    isReplay: boolean,
+  ) {
+    if (isReplay || typeof score !== "number") return;
+    shiftTallyRef.current = tallyPlate(shiftTallyRef.current, levelId, { id: orderId, score });
+  }
+
+  /** Writes the plate waiting in `pendingRunRef` (if any) into the chef's record, in the current save, through `persist` (which consumes it exactly once). */
+  function flushPendingRun() {
+    const cur = saveRef.current;
+    if (pendingRunRef.current && cur) persist(cur);
   }
 
   /** Keeps a served plate's score for the Service Report (a replay pays nothing and is not reported). */
@@ -3313,6 +3369,7 @@ export function App() {
     if (!result) return null;
     setCampaignServiceSession(result.session);
     noteServedScore(campaignServiceSession.levelId, order.preparationScore, isReplay);
+    noteShiftPlate(campaignServiceSession.levelId, order.id, order.preparationScore, isReplay);
     // Economy V2 Phase 6 — sharpness decay only ever happens on a
     // genuine (non-replay) serve, mirroring the payout amount's own
     // isReplay gate exactly (brief §11 — replay must never create a
@@ -3404,6 +3461,12 @@ export function App() {
     if (!result) return null;
     setCampaignServiceSession(result.session);
     noteServedScore(level.id, session.current?.order.preparationScore, false);
+    noteShiftPlate(
+      level.id,
+      session.current?.order.id ?? "",
+      session.current?.order.preparationScore,
+      false,
+    );
     const paid = recordRevenueAndCogs(
       {
         // Phase 2 (dishHeat.ts): the order makes the dish a little more popular.
@@ -3751,25 +3814,39 @@ export function App() {
       }
     }
     // Chef Pride: this service's plates and perfect cuts go into the chef's record; the card says what beat a real earlier mark.
-    let shift: { orders: number; accuracy: number; perfects: number; news: string[] } | null = null;
+    let shift: ShiftCard | null = null;
+    // What this service earned, told to analytics only once its save is written (audit F2).
+    const serviceKinds: string[] = [];
+    let prestigeEvent: number | null = null;
+    let titleEvent: { identity: string; tier: number } | null = null;
     // Chef Pride (Phase 3a): a chef title earned since the last service is announced once (every earned tier is marked seen).
     let titleHeadline: EarnedTitle | null = null;
     // Chef Pride (Phase 4): a restaurant prestige tier reached since the last service is announced once.
     let prestigeHeadline: PrestigeTier | null = null;
     if (RESTAURANT_MODE && isFirstCompletion) {
-      const tally = serviceScoresRef.current;
-      const scores = tally.levelId === level.id ? tally.scores : [];
-      if (scores.length > 0) {
-        const runs = serviceRunsRef.current;
-        const service = {
-          orders: scores.length,
-          accuracy: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
-          perfects: runs.levelId === level.id ? runs.perfects : 0,
-        };
-        const news = serviceNews(chefRecordOf(nextSave), service).map((n) => n.text);
+      // The shift tally is the card's own (never the star rating's); it is emptied below, so a card can never be made twice from the same plates.
+      const counted = shiftService(shiftTallyRef.current, level.id);
+      if (counted) {
+        // The record takes the plates and the perfect cuts the player really cut (no hand-cut run: none, never an invented number).
+        const service = { ...counted, perfects: counted.perfects ?? 0 };
+        // Shift recognition (audit Batch 2): every figure is read from real play; improvements need a real earlier mark; waste comes from the fridge (shiftRecognition.ts).
+        const earlier = chefRecordOf(nextSave);
+        const beaten = [...serviceNews(earlier, service), ...perfectsNews(earlier, service)];
         nextSave = applyService(nextSave, service);
-        shift = { ...service, news };
-        if (news.length) sendAnalyticsEvent("record_broken", { kind: "accuracy" });
+        shift = {
+          orders: counted.orders,
+          accuracy: counted.accuracy,
+          perfects: counted.perfects,
+          cook: counted.cook,
+          news: beaten.map((n) => n.text),
+          tier: shiftTier(service),
+          // (the level the Closing Time screen previews spoilage at, so the card and that screen always agree)
+          waste: shiftWaste(nextSave, restaurantLevelOf(nextSave.levelProgress)),
+          dare: null,
+        };
+        // One event per kind of record, once for this service: told after the save below is really written (audit F2).
+        for (const kind of new Set(beaten.map((n) => n.kind)))
+          serviceKinds.push(kind === "perfects" ? "service_perfects" : kind);
       }
       // Chef Pride (Phase 3b): a spotless service moves a taken Clean Freak dare; every dare won since the last card is told once.
       const dareService = advanceDareOnService(
@@ -3797,13 +3874,25 @@ export function App() {
       };
       const dareWins = dareWinsRef.current;
       dareWinsRef.current = [];
+      // A dare under way shows its progress on the card (a dare won is told in the news instead).
+      if (shift)
+        shift = {
+          ...shift,
+          dare: shiftDare(
+            dareToday(
+              chefRecordOf(nextSave),
+              dailyKeyFor(new Date()),
+              restaurantLevelOf(nextSave.levelProgress),
+            ),
+          ),
+        };
       if (shift && dareWins.length)
         shift = { ...shift, news: [...shift.news, ...dareWins.map((t) => `Dare won: ${t}`)] };
       const prestigeNow = announcePrestige(nextSave);
       nextSave = prestigeNow.save;
       prestigeHeadline = prestigeNow.headline;
       if (prestigeHeadline) {
-        sendAnalyticsEvent("prestige_reached", { tier: prestigeHeadline.index });
+        prestigeEvent = prestigeHeadline.index;
         if (shift)
           shift = { ...shift, news: [...shift.news, `Prestige: ${prestigeHeadline.name}`] };
       }
@@ -3811,14 +3900,13 @@ export function App() {
       nextSave = announced.save;
       titleHeadline = announced.headline;
       if (titleHeadline) {
-        sendAnalyticsEvent("title_earned", {
-          identity: titleHeadline.identity,
-          tier: titleHeadline.tier,
-        });
+        titleEvent = { identity: titleHeadline.identity, tier: titleHeadline.tier };
         if (shift)
           shift = { ...shift, news: [...shift.news, `Title earned: ${titleHeadline.title}`] };
       }
     }
+    // The plates are told once: the tally is emptied whether or not a card was made, so the same plates can never make a second card.
+    if (shiftTallyRef.current.levelId === level.id) shiftTallyRef.current = EMPTY_SHIFT_TALLY;
     const brokenNow = restaurantSuppliesOf(nextSave).brokenTotal - brokenBefore;
     // First levels: before Level 21 the day closes quietly, and Level Complete says so.
     const dayBefore = restaurantDayOf(nextSave).day;
@@ -3844,6 +3932,16 @@ export function App() {
     const finalSave = applyStoryFlush(nextSave, flush);
     persist(finalSave);
     if (flush) setStoryEvent(flush);
+    // (audit F2) only if that save was really written: persist() refuses a save that breaks the wallet invariant and says so through this flag
+    if (saveWrittenRef.current) {
+      for (const k of serviceKinds) sendAnalyticsEvent("record_broken", { kind: k });
+      if (prestigeEvent !== null) sendAnalyticsEvent("prestige_reached", { tier: prestigeEvent });
+      if (titleEvent)
+        sendAnalyticsEvent("title_earned", {
+          identity: titleEvent.identity,
+          tier: titleEvent.tier,
+        });
+    }
     // Level 1–10 UX pass: a story banner (Level 10's milestone) no longer
     // swallows the reward — the Level Complete notice waits for it to be
     // dismissed (it renders only while no story event is showing). Level 2's
@@ -3905,7 +4003,7 @@ export function App() {
       // Chef Pride (Phase 2): the last rival passed answers in their chef's voice.
       const lastPassed = rise?.passed[rise.passed.length - 1];
       const rivalChef = lastPassed ? rivalChefOf(lastPassed.id) : undefined;
-      if (rise && rivalChef)
+      if (rise && rivalChef && saveWrittenRef.current)
         sendAnalyticsEvent("rival_passed", { rank_to: rise.to, passed: rise.passed.length });
       const c = celebrationFor({
         rank: rise
@@ -4125,6 +4223,8 @@ export function App() {
         },
       );
       persist(applySharpnessDecay(servedSave, base.equippedKnifeId, viewed.recipe));
+      // Shift card (audit follow-up): a batch order served and paid is a plate of this service (its own tally; the star rating's is untouched).
+      noteShiftPlate(levelId, viewed.order.id, viewed.order.preparationScore, false);
     }
     return {
       coinsAwarded: result.coinsAwarded,
@@ -4454,12 +4554,14 @@ export function App() {
         ...(top && chef ? { rival: { name: top.name, line: chefSays(chef, "dare") } } : {}),
       }),
     );
-    sendAnalyticsEvent("league_week_end", {
-      tier: pending.tier,
-      rank: pending.rank,
-      promoted: pending.promoted,
-    });
     persist({ ...save, business: { ...save.business, chefRecord: markLeagueShown(rec) } });
+    // (audit Batch 5) once, and only if the 'shown' mark was really saved (an unsaved mark would bring this effect back and send it twice)
+    if (saveWrittenRef.current)
+      sendAnalyticsEvent("league_week_end", {
+        tier: pending.tier,
+        rank: pending.rank,
+        promoted: pending.promoted,
+      });
   }, [save, screen, celebration, levelRewardNotice, storyEvent]);
   // Cash left on the table is optional to collect (developer 2026-10-30): it waits, saved with
   // the order, until the player collects it (Kitchen button, or the Collect cash button); the next
@@ -4975,10 +5077,18 @@ export function App() {
     const next = markAssistantSeen(cur, id);
     if (next === cur) return;
     persist(next);
+    // (audit Batch 5) a beat whose "seen" mark was not written would come back and be counted twice
+    if (!saveWrittenRef.current) return;
     sendAnalyticsEvent("assistant_beat_shown", {
       beat: id.split(":")[0] ?? id,
       level: restaurantLevelOf(cur.levelProgress),
     });
+  };
+  // "Later" on a rival message (audit Batch 4): put off at this level in the existing guideSeen list; it is not given, not in the notebook, and comes back next level.
+  const paigeLater = (id: string) => {
+    const cur = saveRef.current;
+    if (!cur) return;
+    persist(withBeatPutOff(cur, id));
   };
   const paigeGo = (to: string) => {
     if (to === "shop") openMarketIngredients(go);
@@ -5587,20 +5697,18 @@ export function App() {
             : {})}
           {...(levelRewardNotice.shift
             ? {
-                stats: [
-                  { value: String(levelRewardNotice.shift.orders), label: "Orders" },
-                  { value: `${levelRewardNotice.shift.accuracy}%`, label: "Accuracy" },
-                  { value: String(levelRewardNotice.shift.perfects), label: "Perfects" },
-                ],
-                ms: 3400,
+                // The shift card (shiftRecognition.ts): tiles, tier and lines come from real data only.
+                stats: shiftStats(levelRewardNotice.shift),
+                ms: 4200,
+                ...(levelRewardNotice.shift.tier ? { tier: levelRewardNotice.shift.tier } : {}),
               }
             : {})}
           {...(levelRewardNotice.opened ||
           levelRewardNotice.newDay ||
-          levelRewardNotice.shift?.news.length
+          (levelRewardNotice.shift && shiftNotes(levelRewardNotice.shift).length)
             ? {
                 notes: [
-                  ...(levelRewardNotice.shift?.news.map((n) => `★ ${n}`) ?? []),
+                  ...(levelRewardNotice.shift ? shiftNotes(levelRewardNotice.shift) : []),
                   ...(levelRewardNotice.opened ?? []),
                   ...(levelRewardNotice.newDay
                     ? [`☀️ Day ${levelRewardNotice.newDay} begins`]
@@ -5726,6 +5834,7 @@ export function App() {
           replay={paigeReplay}
           onHire={hirePaige}
           onSeen={paigeSeen}
+          onLater={paigeLater}
           onGo={paigeGo}
           onOpen={setPaigeOpen}
         />

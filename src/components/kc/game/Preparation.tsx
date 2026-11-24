@@ -24,6 +24,15 @@ import { VARIANTS } from "@/game/specialVariants";
 import { specialsReportLines } from "@/game/specialsReport";
 import { nearMiss, runNews, type ChefRecord, type RunStats } from "@/game/restaurant/chefRecord";
 import {
+  clockMs,
+  clockPause,
+  clockResume,
+  clockStart,
+  clockStop,
+  newClock,
+  type RunClock,
+} from "@/game/restaurant/runClock";
+import {
   PERSONALITIES,
   personalityForOrder,
   presentedCustomer,
@@ -572,7 +581,9 @@ export function Preparation({
   // Chef Pride: this plate's perfect cuts, cuts and unpaused time (the chef's record), and the lines the Knife Report adds.
   const runPerfects = useRef(0);
   const runCuts = useRef(0);
-  const runMs = useRef(0);
+  // This plate's working clock (restaurant/runClock.ts): starts at the first touch of the board, not when the screen opens; pauses with the game; a retry starts it again.
+  const runClock = useRef<RunClock>(newClock());
+  const runMs = () => clockMs(runClock.current, performance.now());
   const chefRecordRef = useRef(chefRecord);
   chefRecordRef.current = chefRecord;
   const [prideLines, setPrideLines] = useState<{ id: string; text: string; good: boolean }[]>([]);
@@ -671,15 +682,6 @@ export function Preparation({
     }, 250);
     return () => window.clearInterval(tick);
   }, [personality, phase, paused, regularPar, floorMode]);
-  // Chef Pride: this plate's own clock, unpaused cutting time only (the customer's arrival and a platform pause are not the chef's time).
-  useEffect(() => {
-    if (phase !== "prep") return;
-    const tick = window.setInterval(() => {
-      if (paused || floorMode) return;
-      runMs.current += 250;
-    }, 250);
-    return () => window.clearInterval(tick);
-  }, [phase, paused, floorMode]);
   // The cutting board is the game's active play: its frame rate is sampled (telemetry).
   useEffect(() => startPerformanceSampling(), []);
 
@@ -765,6 +767,8 @@ export function Preparation({
         setPeelFraction(event.payload.fraction);
       } else if (event.type === "CUT_STARTED") {
         setShowHint(false);
+        // The first touch of the board is where the plate's clock begins (a later touch never restarts it).
+        runClock.current = clockStart(runClock.current, performance.now());
       } else if (event.type === "STEP_STARTED") {
         const { stepIndex, ingredientId, techniqueId, requiredCuts } = event.payload;
         setActiveStep({ index: stepIndex, ingredientId, techniqueId, requiredCuts });
@@ -822,6 +826,8 @@ export function Preparation({
         if (event.payload.isPerfect) perfectSteps.current.add(stepIndexNow.current);
         runCuts.current += 1;
         if (event.payload.isPerfect) runPerfects.current += 1;
+        // (a cut is always an interaction: if the touch event was somehow missed, the clock starts here rather than not at all)
+        runClock.current = clockStart(runClock.current, performance.now());
         // Phase 3 (C): Grandma's Challenge reads the same combo.
         if (orderChaos.current === "grandma" && nextCombo > grandmaBest.current) {
           grandmaBest.current = nextCombo;
@@ -845,10 +851,13 @@ export function Preparation({
         // doesn't arrive until the hands have taken the plate away,
         // matching the reference's finishRecipe -> plating -> handoff ->
         // showResult order.
+        // The last cut is made: the plate's working time is final (plating and the chef's hands are not cutting time).
+        runClock.current = clockStop(runClock.current, performance.now());
         setPhase("plating");
         setCooking("ready");
       } else if (event.type === "RECIPE_COMPLETED") {
         const { overall, evenness, consistency, rhythmBonus, qualityLabel } = event.payload;
+        runClock.current = clockStop(runClock.current, performance.now()); // (already stopped at the plating; a no-op then)
         setResult({
           score: overall,
           evenness,
@@ -868,13 +877,13 @@ export function Preparation({
               perfects: runPerfects.current,
               bestCombo: bestCombo.current,
               cuts: runCuts.current,
-              ms: runMs.current,
+              ms: runMs(),
             })) {
               lines.push({ id: `pride-${n.kind}`, text: `★ ${n.text}`, good: true });
-              // Measured (Chef Pride, Phase 7): which records players actually break, never the numbers themselves.
-              sendAnalyticsEvent("record_broken", { kind: n.kind });
+              // (Measured, Chef Pride Phase 7: `record_broken` is NOT sent from here any more. This is a preview on the Knife Report, which the player may retry or leave;
+              // App's persist() sends the event once the plate's save is really written: audit F2.)
             }
-          const dare = dareLine?.({ score: overall, cuts: runCuts.current, ms: runMs.current });
+          const dare = dareLine?.({ score: overall, cuts: runCuts.current, ms: runMs() });
           if (dare)
             lines.push({ id: "pride-dare", text: `⚔ ${dare}`, good: /^Dare won/.test(dare) });
           const near = nearMiss(overall);
@@ -912,7 +921,13 @@ export function Preparation({
       }
     });
 
-    const unsubscribePause = PauseManager.subscribe(setPaused);
+    // A pause banks the time worked so far and stops the clock; the resume counts again from that moment (restaurant/runClock.ts).
+    const unsubscribePause = PauseManager.subscribe((p) => {
+      setPaused(p);
+      runClock.current = p
+        ? clockPause(runClock.current, performance.now())
+        : clockResume(runClock.current, performance.now());
+    });
 
     return () => {
       window.clearTimeout(readyFallback);
@@ -938,7 +953,9 @@ export function Preparation({
       perfects: runPerfects.current,
       bestCombo: bestCombo.current,
       cuts: runCuts.current,
-      ms: runMs.current,
+      ms: runMs(),
+      // The hired Prep Cook's plate has no hand-cut perfect cuts (it is not the player's cutting); the shift card says so instead of showing a zero.
+      ...(preparedBy === "prep-cook" ? { byCook: true } : {}),
     });
     setRewardCoins(onComplete(result.score, portions));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onComplete/result are stable for this run
@@ -970,7 +987,9 @@ export function Preparation({
     bestCombo.current = 0;
     runPerfects.current = 0;
     runCuts.current = 0;
-    runMs.current = 0;
+    runClock.current = newClock();
+    // A replayed plate is the player's own cutting, even after the Prep Cook did the first one.
+    setPreparedBy("player");
     setPrideLines([]);
     prepMs.current = 0;
     regularChecked.current = false;

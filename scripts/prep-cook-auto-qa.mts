@@ -220,7 +220,10 @@ check(
   // Rule changed (developer 2026-10-31, "let it pile up until the user collects it"): Auto no longer
   // presses Collect cash; the cash stays on the tables for the player.
   "A4 Auto presses only the player's own taps (Serve, the Menu guest button, Next Customer) and never Collect cash",
-  /handleServe, AUTO_SERVE_MS|window\.setTimeout\(handleServe, AUTO_SERVE_MS\)/.test(card) &&
+  // RULE CHANGE (developer 2026-11-24, "Prep Cook Auto Persistence and Payment Fix"): the serve timer used to be `setTimeout(handleServe, AUTO_SERVE_MS)`, which ran the handler of the
+  // render that SET the timer, before the finished plate was recorded: that was the defect (A7 below). It now calls the latest handler through a ref; it is still ONE timer of
+  // AUTO_SERVE_MS that does what a tap on Serve does, so the rest of this check is unchanged.
+  /window\.setTimeout\(\(\) => serveNowRef\.current\(\), AUTO_SERVE_MS\)/.test(card) &&
     /window\.setTimeout\(\s*guest \?\? nextOnce,/.test(card) &&
     !/onCollectCash!/.test(card) &&
     /const guest = extraAction && !extraAction\.disabled \? extraAction\.onClick : null;/.test(
@@ -235,6 +238,16 @@ check(
   "A6 a held party plate (card hidden) is not auto-advanced twice",
   /if \(!auto \|\| hidden \|\| served\) return;/.test(card) &&
     /if \(!auto \|\| hidden \|\| !served\) return;/.test(card),
+);
+check(
+  "A9 the Auto serve timer runs the LATEST serve handler (a ref kept current by an effect), never the one of the render that set it: a stale one served the plate at score 0 and wrote a save without the plate's record",
+  /const serveNowRef = useRef\(handleServe\);\s*useEffect\(\(\) => \{\s*serveNowRef\.current = handleServe;\s*\}\);/.test(
+    card,
+  ) && !/setTimeout\(\s*handleServe/.test(card),
+);
+check(
+  "A10 manual serving is untouched: the Serve button still calls handleServe directly, once per screen (the latch)",
+  /onClick=\{handleServe\}/.test(card) && /if \(serveLatch\.current\) return;/.test(card),
 );
 const auto = src("src/game/restaurant/prepCookAuto.ts");
 check(

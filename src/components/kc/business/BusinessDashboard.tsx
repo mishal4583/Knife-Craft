@@ -1187,11 +1187,21 @@ function DaySummary({
         </div>
         <div className="flex justify-between">
           <span>Spoiled</span>
-          <span className="font-extrabold text-walnut-dark">
-            {result.spoiledQuantity > 0
-              ? `${formatQuantity(result.spoiledQuantity)} units · ${formatUsd(result.spoiledValue)}`
-              : "nothing"}
-          </span>
+          {/* Zero waste (audit Batch 2 follow-up): only when the day's spoiled quantity (the sweep PLUS stock thrown out earlier today) is exactly zero. Nothing is paid or saved for it. */}
+          {result.spoiledQuantity === 0 ? (
+            <span
+              className="font-extrabold uppercase tracking-[0.08em] text-olive"
+              data-testid="day-zero-waste"
+            >
+              ♻ Zero waste
+            </span>
+          ) : (
+            <span className="font-extrabold text-walnut-dark" data-testid="day-spoiled">
+              {result.spoiledQuantity > 0
+                ? `${formatQuantity(result.spoiledQuantity)} units · ${formatUsd(result.spoiledValue)}`
+                : "nothing"}
+            </span>
+          )}
         </div>
         <div className="flex justify-between">
           <span>Closing cash</span>

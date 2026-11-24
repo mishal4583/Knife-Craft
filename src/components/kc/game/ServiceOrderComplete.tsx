@@ -307,11 +307,19 @@ export function ServiceOrderComplete({
   // Auto: the player's own taps (Serve, Next Customer; each latched once), with a beat between them.
   // It never collects the cash on the tables (developer 2026-10-31): that piles up until the
   // player takes it (the tables, the map, the Kitchen), and closing needs it in the till.
+  // Prep Cook Auto (developer 2026-11-24, "Prep Cook Auto Persistence and Payment Fix"): the serve timer below is set in THIS component's mount effect, which runs BEFORE
+  // Preparation's own effect that records the finished plate (recipe progress, chef record, the order's score) and re-renders App. A timer that called the `handleServe` of the
+  // render that set it would therefore run serveCampaignOrder from that older render: the plate's score unknown (read as 0: the pay and the tip of a score of 0), and its save
+  // written over the one that held the plate. Keeping the LATEST handleServe in a ref makes the timer do exactly what a tap on Serve does one moment later: it reads the state
+  // of the render it fires in. (Manual serving is untouched: a tap always calls the current handleServe.)
+  const serveNowRef = useRef(handleServe);
+  useEffect(() => {
+    serveNowRef.current = handleServe;
+  });
   useEffect(() => {
     if (!auto || hidden || served) return;
-    const t = window.setTimeout(handleServe, AUTO_SERVE_MS);
+    const t = window.setTimeout(() => serveNowRef.current(), AUTO_SERVE_MS);
     return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleServe is latched and reads only props
   }, [auto, hidden, served]);
   useEffect(() => {
     if (!auto || hidden || !served) return;

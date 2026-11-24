@@ -1431,6 +1431,30 @@ taken, repaid}`; taking on credit moves no money (no entry);
   their looks and where they are painted; E no save-schema change, no new
   ingredient id, no new ledger write, nothing persisted. Browser:
   `tools/e2e/phase3.mjs`.
+- **Chef Pride suites** (developer 2026-11-23 and the audit remediation, Batches 1-5, 2026-11-24; §10 "Chef Pride"). Each exits 0 or 1;
+  judge by the process exit code, not by grepping the text:
+  - `chef-record-qa` A the record's defaults, clamps and the single `business.chefRecord` place (no new top-level save field); B a plate (perfect cuts, longest
+    combo, runs, the fastest fair plate); C a service; D news only on a STRICT earlier mark; E near-miss in words; F purity (no wallet, ledger, clock, random,
+    bridge, no population claim); G wiring (the Knife Report, the service tiles, one save write); I `bestPlateOf` is derived from `recipeProgress` (no
+    `bestPlate` field).
+  - `chef-titles-qa` A-C the six identities and the tier maths; D announcing once; E the badge-only achievements (reward 0); F the Speed counter that is kept but
+    no longer read; G purity; H wiring (the Kitchen chip shows from 600 px tall); I the five conditions at their exact boundaries (second requirements: Precision
+    plates of 95+, Cleanliness best streak, Customer Favourite lifetime tips, Restaurateur's top tier needs 30 Endless stars; Speed reads `fastestMs`, tiers
+    60 / 40 / 25 / 15 s, strict to the millisecond); J where each input comes from and the InfoTips.
+  - `rival-chefs-qa` A-E the 49 rivals and their chefs, playful copy, Paige's rival beats, the celebration card; F wiring (the Kitchen's rival line shows from 700 px tall); H respect lines (the last 12 rivals hand-written, every other rival a deterministic cuisine / district template) and I Paige's Later (stored in the
+    existing `business.guideSeen`, back at the next level, "Got it" is for good).
+  - `skill-challenges-qa` the five optional dares, the daily pick, opt-in, nothing paid. `city-league-qa` the local weekly league (no demotion, seeded rivals).
+    `restaurant-prestige-qa` the five prestige tiers. `chef-cards-qa` the four shareable cards (tap only, hidden on YouTube).
+  - `shift-recognition-qa` (Batch 2) the Level Complete shift card tells only what happened: tiers on the grade ladder, waste READ from the fridge (never a
+    claimed zero where freshness is not tracked), batch and Business services. `run-clock-qa` (Batch 3) a plate's time starts at the first touch, excludes
+    pauses, never negative, a retry starts fresh.
+  - `chef-pride-analytics-qa` every Chef Pride event is in the code AND in `docs/planning/CHEF-PRIDE-MEASUREMENT-2026-11-23.md`; section F (Batch 5): each is
+    sent only after the save that holds it.
+  - Browser (restaurant build, `npm run build && npx vite preview`, then `node tools/e2e/<name>.mjs`): `chefrecords`, `dares`, `rivals`, `titles`,
+    `prestige`, `league`, `chefcards`, `shiftcard`, `shiftreal` (Batch 2; scenario F needs a committed-HEAD build on port 4174, see its header), `batch3real`,
+    `batch4real` (the five identities, respect lines, Paige's Later, the breakpoints, with real plates and services), `kitchenfit`, `businessplate`, `oldsave` (an old save and missed days),
+    `harness-cleanup` (the harness's profile cleanup, no game needed).
+  - **Known failures and their status** (2026-11-24): see "Known test failures" at the end of §10 "Chef Pride".
 - `campaign-integrity-qa`, `restaurant-progress-qa`, `business-ux-qa`,
   `progression-preview-qa`, `usd-currency-qa`, `phase7-2-smoke-test`,
   plus the other `scripts/*-qa.mts` / `business-*-qa.mts` suites.
@@ -2987,6 +3011,112 @@ clicked let the information display; make the UI proper according to a game."
   `restaurantendless.mjs` 1a/1c and `rushrestock.mjs`.
 
 ---
+
+### Chef Pride: recognition, rivals, titles, dares, prestige, league and cards (developer 2026-11-23, audit remediation Batches 1-5, 2026-11-24)
+
+Plan: `docs/planning/CHEF-PRIDE-PLAN-2026-11-23.md`. Measurement: `docs/planning/CHEF-PRIDE-MEASUREMENT-2026-11-23.md`. Audit: `docs/planning/CHEF-PRIDE-AUDIT-2026-11-23.html`.
+Everything here is presentation and badges: **no money, no ad, no payout** (`reward: 0` achievements, nothing in the wallet or the ledger). Status: built and tested,
+UNCOMMITTED at the time of writing; no Chef Pride build has reached players, so nothing about its effect on players is known.
+
+**Features (what, where, tap, hidden):**
+
+| Feature | Rule file (pure) | Surface |
+|---|---|---|
+| Personal records, near-miss words | `restaurant/chefRecord.ts` (`chefRecordOf`, `recordRun`, `recordService`, `recordNews`, `nearMiss`, `bestPlateOf`) | Knife Report lines ("★ Longest combo yet: 12", "A hair from Masterful"): only on a STRICT earlier mark, never digits for the near-miss |
+| A plate's real time | `restaurant/runClock.ts` | starts at the first touch of the board, excludes pauses, a retry starts a new clock, the Prep Cook's plates count none |
+| Shift recognition | `restaurant/shiftRecognition.ts` | Level Complete shift card (`MilestoneBanner`): tier on the grade ladder, orders, accuracy, perfects, waste READ from the fridge (not tracked = nothing claimed); campaign, batch and Business services |
+| Six chef identities | `progression/chefTitles.ts` | Progress → City: title card with ⓘ; Kitchen chip (from 600 px tall); badge-only achievements `ach-chef-<identity>-<target>` |
+| 49 rival chefs | `restaurant/rivalChefs.ts` | Progress → City (rival line, respect line at rank ≤ 10 from Level 8); Kitchen rival line (from 700 px tall); celebration card; Paige's rival message |
+| Optional daily dares | `restaurant/skillChallenges.ts` | Kitchen's Next Customer details: "Take the dare" / "Not today"; from Level 6; a badge step, never money |
+| Restaurant Prestige | `restaurant/restaurantPrestige.ts` | five tiers, Progress → City card with ⓘ |
+| Weekly City League | `restaurant/cityLeague.ts` | local, against nine seeded city rivals; no demotion; Progress → City card with ⓘ; a result card on the first visit after the week ends |
+| Shareable chef cards | `components/kc/moments/*`, `kitchenMoments.ts` | title, prestige, league promotion, rival passed; only by tapping Share / Save image; hidden on YouTube |
+
+**The five identity conditions** (`chefTitles.ts`; tiers are earned in order, each tier needs its main number AND, where listed, its second requirement; the
+numbers are drafts to tune once players exist):
+
+| Identity | Main number | Second requirement per tier |
+|---|---|---|
+| Precision | perfect cuts 25 / 100 / 300 / 800 | Masterful (95+) plates 3 / 10 / 30 / 100 |
+| Speed | the fastest fair plate under 60 / 40 / 25 / 15 s (strict, to the millisecond) | none; a quick-clean counter alone gives nothing |
+| Cleanliness | spotless services 5 / 20 / 60 / 150 | best streak of spotless services 2 / 5 / 10 / 20 |
+| Customer Favourite | popularity 65 / 80 / 92 / 100 | lifetime customer tips $25 / $100 / $400 / $1,200 |
+| Restaurateur | places climbed in the city ranking 25 / 40 / 47 / 49 (49 = #1) | the top tier also needs 30 lifetime Endless stars |
+
+Organizer is the sixth identity: Fridge Sort crates finished with three stars, 5 / 20 / 60 / 150 (unchanged by the audit). The Speed time is measured by `runClock.ts`; Speed no longer reads the older `quickClean` counter (it is still saved).
+
+**Rival respect:** the last 12 rivals have hand-written respect lines; every other rival gets a deterministic cuisine / district template (`templateLine`), so
+no rival is ever blank. Today the rival just behind a top-ten player is always one of the 12, so the template path is a safety net, not something a player
+sees yet. **Paige's Later:** a rival message offers "Go there", "Got it" and "Later". Later hides it for this level and does not count it as given; it is
+written as `later:<id>@<level>` in the EXISTING `business.guideSeen` list (cap 60) and the message returns next level. Got it gives it for good (the
+notebook keeps it).
+
+**Layout thresholds:** the Kitchen title chip shows from 600 px of window height (it sits inline, so it costs no height); the Kitchen rival line stays at 700 px
+(at 600 it made the rank card 14 px taller and brought back the Batch 1 overlap of the Daily Gift and the open Next Customer details at 360x640).
+
+**Save data:** ONE optional field, `business.chefRecord` (read by `chefRecordOf`, every number clamped; absent in an old save = defaults). It holds plates,
+perfect cuts, best perfects, best combo, masterful, the Clean / Masterful runs, `fastestMs`, `quickClean`, the service accuracy marks, today's dare, dares
+won, the league state and `seen` (short markers so each announcement shows once). `bestPlate` is NOT a field: `bestPlateOf(save)` reads the best of
+`recipeProgress`. Nothing else was added to the save (Paige's Later reuses `guideSeen`). Old saves keep working (`chef-record-qa` A, `save-safety-qa`).
+
+**Analytics:** only through `sendAnalyticsEvent`; the list and the delivery rules (each event only after the save that holds it, once, never from a preview)
+are in the measurement document and guarded by `chef-pride-analytics-qa`. The instrumentation exists; nothing has been measured on players.
+
+**Money:** none of this moves money. A record, a title, a dare, a prestige tier, a league result or a card pays nothing, so the frozen economy baselines are
+unchanged (`economy-v2-campaign-simulation`, `restaurant-final-economy-qa`, `achievement-rewards-qa`). The single earning path is still the existing wallet and
+ledger. League and prestige give no competitive advantage a player can buy.
+
+**Known limitations:**
+- Titles earned under the pre-Batch 4 rules are not carried over (the rules got stricter); no Chef Pride build had shipped.
+- Speed times, streaks, tips and the 30 stars are drafts. A Prep Cook plate gives no perfects and no fastest time (honest, not a bug).
+- League points are earned from Level 10; a week is Monday to Sunday of the device's calendar (a clock change moves the week).
+- The league and the rivals are local and seeded: they are "the city's restaurants", never other players, and the UI says so.
+- "Later" has no analytics event of its own.
+- The separate Prep Cook Auto persistence bug (Auto served each order from an older copy of the game state: paid as a score-0 plate and lost the plate's record) was FIXED on 2026-11-24, see `docs/planning/PREP-COOK-AUTO-FIX-2026-11-24.md` and the Prep Cook Auto entry below. It was never part of Chef Pride.
+
+**How to run it:** `npx tsx scripts/<suite>.mts` (list in §5 "Chef Pride suites"), then `npm run build && npx vite preview` and `node tools/e2e/<test>.mjs`.
+`node tools/e2e/clean-profiles.mjs` removes Chrome profile folders left by a test that was killed (the harness removes its own on close and on exit; see its README).
+
+### Prep Cook Auto: serve from the latest state (developer 2026-11-24)
+
+Auto (the hired Prep Cook, Level 30 and up) used to serve each order from an older render's copy of the game state, so it priced the order as a score-0 plate (about 8% less pay and no tip) and wrote a save without the plate's record (recipe progress, chef record, shift tally). Fixed in ONE place, `ServiceOrderComplete.tsx`: the Auto serve timer calls the latest `handleServe` through a ref (`serveNowRef`), as a tap on Serve would one moment later. No formula, wallet, ledger, save-field, ad or Playgama change; manual serving is untouched. Evidence, root cause, before/after numbers and the limits: `docs/planning/PREP-COOK-AUTO-FIX-2026-11-24.md`; the before-fix results are kept in `docs/planning/PREP-COOK-AUTO-BEFORE-FIX-2026-11-24.txt`. Tests: `prep-cook-auto-qa` A4 (rule change), A9 and A10; browser `tools/e2e/autoservice.mjs` (S1 to S8: manual against Auto, two orders, Stop Auto, reloads, an interrupted service, repeated Serve taps, a dare) and `shiftreal` E2.
+
+**Known test failures and their status (audit Batch 5, 2026-11-24).** Each was run on the current build AND on a checkout of committed HEAD (`fe6ebbe`, built and served
+on port 4174). None was a gameplay defect; every one is a test or harness problem, and none was "fixed" by deleting or weakening an assertion.
+
+| Test | Reproduced | On committed HEAD | Cause | Status |
+|---|---|---|---|---|
+| `oven-step-qa` E2 | yes, exit 1 | yes, exit 1 | The test lists the restaurant files an approved phase may add; six files committed since were not listed: `ambientDiners.ts`, `staffLifeWide.ts`, `cleaningDirt.ts` (wide dining-room scenery), `quickRestock.ts` (clears expired lots first, `d4dbda8`), `cityLeague.ts`, `restaurantPrestige.ts` (Chef Pride). Each was read for money, save, random and ranking code first. A test issue | FIXED: those six, plus `runClock.ts` and `shiftRecognition.ts`, are listed with a RULE CHANGE note. Exit 0 |
+| `tools/e2e/knifereport.mjs` | yes, `TimeoutError` after 30 s | yes | Written for a brand-new player who lands on the cutting board after the intro. Since the developer's 2026-10-30 rule ("nothing is given free") that player lands in the Kitchen and must buy the first food, so the board never came. A test issue | FIXED: the setup is now a seeded player with the food, as in `chefrecords.mjs`. All 26 layout checks (six screen sizes, the longest content) are unchanged and PASS on the current and the HEAD build |
+| `tools/e2e/kitchenstrip.mjs` K1 | yes | yes | Expected "$16,000.00" and "Lv 5"; the restaurant's Growing Kitchen costs $6,000 since 2026-11-02 and the lock badge counts services ("2 services"). A stale test | FIXED: expectation updated to the current rules with a RULE CHANGE note (same intent: the strip names the Growing Kitchen with its real price, locked until its level) |
+| `tools/e2e/chefrecords.mjs` (intermittent) | yes: 5 of 9 runs, 1 of 8, and 4 of 6 on HEAD | yes | The solver aims at fixed 430x900 points. At 390x844 they sit 26 px right and 28 px low of the ingredient (measured from the canvas), so the last slice sometimes missed: `STUCK at Strawberry\|11\|12\|slice`. The cutting game is fine (with the real canvas position the same plate completes every time). A solver geometry defect | FIXED: the test aims from the real canvas at every size (`geometryFromCanvas`; identical at 430x900). Assertions unchanged. 25 of 25 runs pass on the current build |
+| Harness: Chrome profile folders piled up (618 once) and slowed the dev server until `shiftcard.mjs` timed out | yes | yes | `launch()` never removed its profile folder | FIXED: per-launch folder removed on close and on exit; `clean-profiles.mjs`; `harness-cleanup.mjs` self-test |
+
+**Still open (not caused by Chef Pride, not changed here):**
+- (The Prep Cook Auto persistence bug listed here earlier is fixed: `docs/planning/PREP-COOK-AUTO-FIX-2026-11-24.md`; `prepcook.mjs` and `tablecash.mjs` still fail on their stale setup and need migrating, see the table above.)
+- Release verification (2026-11-24): the twelve tests below were diagnosed one by one. NONE is a gameplay defect found so far; each is a stale expectation or setup. `guide` G1: since
+  2026-11-08 the guide points upstairs only with the first machine's price plus $300 in the till, and the knife step comes first, so the old $20 seed cannot reach it. `restaurantday` 1: a
+  Pre-Service Check card now opens at Level 5. `restaurantshift`, `sharedprep`, `tablecash`, `prepcook`, `adsflow`: they click "Prepare" (replaced by "Open for service" on 2026-10-30) and
+  their seeds lack what the Pre-Service Check now needs (a hired Server and Cashier, supplies, stock) and the delivery routine's "Before you open" gate (2026-11-11); pre-completing the
+  gate alone did not make them pass. `freshwatch` 3: the Daily Check now also draws tiles for ingredients today needs but the fridge lacks, which have no meter. `inventory`: 1a counts
+  Paige's buttons in the bottom bar, 2a the Commercial fridge holds 100 units (not 80), 2b the menu has 8 dishes (not 48), 6c the Overview's headings changed. `restaurantsecondfloor` 1:
+  the lock label reads "2nd Floor in N services". `restaurantmenu` 2: the seed used `campaignVersion: 2`; with `4` the test PASSES (5 checks). `earlylevels` E1: Paige's copy no longer
+  names Fridge Sort. Proposed disposition: migrate their seeds and navigation to `serviceSave` / `driveService`; do not weaken an assertion.
+- The same twelve fail with EXACTLY the same checks on committed HEAD and on this tree (run 2026-11-24, same failing set each): `guide` (1), `restaurantday` (1),
+  `restaurantshift` (3), `sharedprep` (1), `freshwatch` (1), `inventory` (4), `restaurantsecondfloor` (1), `restaurantmenu` (1), `prepcook` (8), `tablecash` (3), `adsflow`
+  (2), `earlylevels` (1). They were written for earlier numbering, prices or the $0 start (see CLAUDE.md section 5, "Stale browser tests") and were NOT investigated or
+  changed here; deferred. The same sweep passed `paige`, `restaurantlegacy`, `achievements`, `storyaudit`, `knifereport`, `kitchenstrip`, `kitchenfit`, `businessplate`,
+  `oldsave`, and every Chef Pride test.
+- `car-park-qa` A65t is a wall-clock check (a lot builds in under 800 ms); it failed twice while three test sweeps loaded the machine and passes (exit 0) on a quiet one,
+  on this tree and on HEAD. Car Park code is untouched. Run it alone.
+- Run in the release verification (restaurant build, plus dev servers on :8080 and a classic one on :8081), one at a time: `phase2` exit 1 and `phase3` section A exit 1 (stale: a
+  brand-new player no longer lands on the cutting board, the same cause as `knifereport`); `phase3` with `ONLY=BCDZ` 26 pass, 1 fail (C10, Grandma's Challenge chip, not investigated);
+  `phase4` and `phase6` exit 1 (time out in `startOrder`, stale entry flow; `phase4` passed 7 checks first); `phase5` 20 pass, 1 fail (R10, the cutting art, which needs the same entry
+  flow); `coach` exit 1 (stale new-player wait, line 212); `economyv25` exit 1 (8 fails: the 150-level numbers and the old $20,000 kitchen price, mostly the failures already listed
+  above); `adbonuses` timed out after 420 s with 2 pass, 1 fail (3a); `pgbridge` exits 0 but prints 2 FAILs (the new-player landing and the text "Today's Order"; see the Bridge result below
+  and note its exit code does not follow its FAIL lines); `pganalytics` exit 1 (3 of 5 checks need the stale new-player landing).
+- `harness-cleanup` now has 10 scenarios (normal close, failed test, throw, exit with the browser open, launch failure, three sequential runs, two parallel Node processes, decoys, the sweeper).
+- Do not run the browser sweep and the QA sweep at the same time: the load makes timing-based checks fail falsely.
 
 ## 11. REPOSITORY LAYOUT (additions for Playgama)
 

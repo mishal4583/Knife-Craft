@@ -2,7 +2,9 @@
  * THE RIVAL CHEFS (the "Chef Pride" plan, Phase 2, developer 2026-11-23: "the next restaurant to pass should be a person the player wants to beat").
  *
  * The city's 49 rival restaurants (restaurant/cityRanking.ts) each get a CHEF with a voice: one playful line while that restaurant is the next to pass
- * (`dare`), and one when the player passes it (`beaten`). Copy only: no save data, no money, no clock, no random (the lines are fixed text).
+ * (`dare`), one when the player passes it (`beaten`) and, late in the game, one of RESPECT from the rival just behind the player (`respect`). Hand-written for every chef
+ * (`dare`, `beaten`) and for the twelve the player meets last (`respect`); every other respect line, and any line a future rival is missing, comes from the cuisine and
+ * district TEMPLATES below (picked by a fixed hash of the rival's id, so it never changes). Copy only: no save data, no money, no clock, no random.
  *
  * Tone rules (guardrails of the plan, enforced by `rival-chefs-qa`): the rival teases the SITUATION and brags about their own kitchen, never insults the player;
  * at most 70 characters per line; no population claim ("only 8% of chefs..."); no digits that pose as statistics.
@@ -23,6 +25,8 @@ export type RivalChef = {
   dare: string;
   /** Said when the player passes it. */
   beaten: string;
+  /** Said late in the game (the player in the city's top ten) by the rival just behind them: respect, never a jab. Hand-written for the last twelve rivals; the rest use a template. */
+  respect?: string;
   /** Paige also announces this rival just before the level that passes them (a few, spaced out). */
   featured?: true;
 };
@@ -265,18 +269,21 @@ export const RIVAL_CHEFS: readonly RivalChef[] = [
     chef: "Sofia Rinaldi",
     dare: "The Sole never rushes dinner. Never.",
     beaten: "You made time, and it showed.",
+    respect: "You cook with heart, Chef. The Sole gives you its table.",
   },
   {
     id: "kimchi-house",
     chef: "Ji-ho Han",
     dare: "Kimchi House stays bold. Are you?",
     beaten: "Bold plates. You've earned your spot.",
+    respect: "Fire, patience, balance. You have all three. Respect.",
   },
   {
     id: "the-velvet-spoon",
     chef: "Victor Alaric",
     dare: "The Velvet Spoon serves the city's finest. Prove it.",
     beaten: "The Spoon yields. Politely.",
+    respect: "A velvet touch on every plate. Take a bow, Chef.",
     featured: true,
   },
   {
@@ -284,24 +291,28 @@ export const RIVAL_CHEFS: readonly RivalChef[] = [
     chef: "Mali Chai",
     dare: "Lotus & Lime is bright and fast. Stay bright.",
     beaten: "Bright and fast. I'll try harder.",
+    respect: "Bright, clean, kind. Lotus and Lime tips its hat.",
   },
   {
     id: "the-iron-chef",
     chef: "Brock Anders",
     dare: "The Iron Skillet has no soft edges. Neither do I.",
     beaten: "Hard edges, clean cuts. We're even.",
+    respect: "I do not hand out praise. Consider this a salute.",
   },
   {
     id: "cedar-and-salt",
     chef: "Marin Cole",
     dare: "Coastal cooking is honest. Is your knife?",
     beaten: "Honest work. Salt of the earth.",
+    respect: "Honest food, honest hands. You have earned your place.",
   },
   {
     id: "chez-margaux",
     chef: "Margaux Lenoir",
     dare: "Chez Margaux has standards. Are you ready for them?",
     beaten: "Standards met. I'm almost jealous.",
+    respect: "Chez Margaux bows to you. And that is not easy.",
     featured: true,
   },
   {
@@ -309,18 +320,21 @@ export const RIVAL_CHEFS: readonly RivalChef[] = [
     chef: "Takeshi Mori",
     dare: "Kaiseki is patience on a plate. Show yours.",
     beaten: "Patience and precision. I bow.",
+    respect: "Patience and precision, still. I bow once more.",
   },
   {
     id: "the-grand-larder",
     chef: "Augustin Pell",
     dare: "The Grand Larder feeds a thousand. Can you?",
     beaten: "A thousand plates, no crumbs. Grand.",
+    respect: "A thousand plates, and you never lost your calm. Grand.",
   },
   {
     id: "aurora",
     chef: "Freya Nystrom",
     dare: "Aurora's tasting menu has never missed a beat. Don't.",
     beaten: "Not one beat missed. Remarkable.",
+    respect: "Not one beat missed, even up here. Remarkable.",
     featured: true,
   },
   {
@@ -328,12 +342,14 @@ export const RIVAL_CHEFS: readonly RivalChef[] = [
     chef: "Reginald Ashby",
     dare: "The Crown Kitchen wears its title lightly. Take it if you can.",
     beaten: "The crown slips. Wear it well.",
+    respect: "The crown fits you. Wear it with kindness.",
   },
   {
     id: "maison-lumiere",
     chef: "Amelie Laurent",
     dare: "One star left in this city. Reach for it.",
     beaten: "Maison Lumière salutes you, Chef.",
+    respect: "Maison Lumière shines brighter for knowing you.",
   },
 ];
 
@@ -351,3 +367,99 @@ export const chefSays = (c: RivalChef, kind: "dare" | "beaten"): string =>
 
 /** The rival chefs Paige also announces (a few, spaced out). */
 export const FEATURED_RIVALS: readonly RivalChef[] = RIVAL_CHEFS.filter((c) => c.featured);
+
+// ── Respect, and the template path ───────────────────────────────────────────
+
+/** The respect line shows from this city rank up (the player in the top ten): late in the game, from the rival just behind them. */
+export const RESPECT_FROM_RANK = 10;
+
+/** What a template needs to know about a rival restaurant (cityRanking.ts `Rival`). */
+export type RivalFacts = { id: string; name: string; cuisine: string; district: string };
+
+export type RivalKind = "dare" | "beaten" | "respect";
+
+/** The cuisine families the templates are written for, matched on the rival's cuisine text (first match wins). */
+const FAMILIES: readonly (readonly [string, RegExp])[] = [
+  ["french", /french|bistro|brasserie|haute/i],
+  ["italian", /ital|pizza|pasta/i],
+  ["asian", /chin|korea|japan|thai|noodle|sushi|ramen|viet|asian/i],
+  ["indian", /indian|curry/i],
+  ["mexican", /mexic|latin|taco/i],
+  ["mediterranean", /greek|mediterr|middle|lebanese|turk/i],
+  ["fine", /fine|chef's table|modern classic|tasting|coastal|seafood/i],
+  ["cafe", /caf|bakery|coffee|breakfast/i],
+  ["comfort", /diner|home|country|farm|street|grill|bbq|comfort/i],
+];
+
+/** The cuisine family of a rival, or "default". */
+export const familyOf = (cuisine: string): string =>
+  FAMILIES.find(([, re]) => re.test(cuisine))?.[0] ?? "default";
+
+/** Two respect lines per cuisine family; `{name}` is the restaurant, `{district}` its district. */
+export const RESPECT_TEMPLATES: Record<string, readonly [string, string]> = {
+  french: ["{name} salutes you, Chef. Magnifique.", "Even {district} knows your name now. Bravo."],
+  italian: [
+    "Bravo, Chef. {name} would seat you anywhere.",
+    "Pure {district} pride on that plate. Bravissimo.",
+  ],
+  asian: [
+    "Sharp knife, steady heart. {name} bows to you.",
+    "You earned this view, Chef. Well cut.",
+  ],
+  indian: [
+    "Every spice in its place. {name} honours you.",
+    "{district} will remember your cooking, Chef.",
+  ],
+  mexican: [
+    "What flavour! {name} raises a glass to you.",
+    "You cook with fire and heart. Respect, Chef.",
+  ],
+  mediterranean: [
+    "Sun, salt and skill. {name} salutes you.",
+    "{district} tips its hat to you, Chef.",
+  ],
+  fine: ["{name} is honoured to look up to you.", "Refined, calm, precise. Respect, Chef."],
+  cafe: [
+    "Warm plates, warm hearts. {name} toasts you.",
+    "Well earned, Chef. The coffee is on {name}.",
+  ],
+  comfort: ["You made good food feel like home. Respect.", "{name} is proud to be passed by you."],
+  default: ["{name} respects your cooking, Chef.", "Well earned, Chef. {district} is proud."],
+};
+export const DARE_TEMPLATES: readonly [string, string] = [
+  "{name} holds {district}. Come and take it, Chef.",
+  "{district} is watching. Do not wobble, Chef.",
+];
+export const BEATEN_TEMPLATES: readonly [string, string] = [
+  "You passed {name}. Fair and square.",
+  "{district} has a new favourite. Well done.",
+];
+
+/** A small fixed hash of a text (FNV-1a): the same rival always gets the same template. */
+const hash = (text: string): number => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193);
+  return h >>> 0;
+};
+
+const fill = (t: string, r: RivalFacts): string =>
+  t.replace("{name}", r.name).replace("{district}", r.district);
+
+/** The TEMPLATE line of a rival: by its cuisine family and district, one of two, chosen by a fixed hash of its id. Deterministic; never blank. */
+export function templateLine(kind: RivalKind, r: RivalFacts): string {
+  const pair =
+    kind === "respect"
+      ? (RESPECT_TEMPLATES[familyOf(r.cuisine)] ?? RESPECT_TEMPLATES["default"]!)
+      : kind === "dare"
+        ? DARE_TEMPLATES
+        : BEATEN_TEMPLATES;
+  return fill(pair[hash(`${kind}:${r.id}`) % 2]!, r);
+}
+
+/** The line a chef says: their own hand-written one, else the template (so no rival is ever blank). */
+export const rivalLine = (kind: RivalKind, chef: RivalChef | undefined, r: RivalFacts): string =>
+  (chef?.[kind] || undefined) ?? templateLine(kind, r);
+
+/** `Chef Claire: “…”`: the respect line of a rival chef, hand-written or templated. */
+export const chefRespects = (c: RivalChef, r: RivalFacts): string =>
+  `${chefCallName(c)}: “${rivalLine("respect", c, r)}”`;
