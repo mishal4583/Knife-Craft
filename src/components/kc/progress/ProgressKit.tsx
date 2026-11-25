@@ -3,6 +3,8 @@ import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { markProgressArtFailed, progressArtUrl } from "@/game/progressArt";
 import { BUSINESS_ART_PREFIX, businessArtUrl, markBusinessArtFailed } from "@/game/businessArt";
+import { rivalPortraitPath } from "@/game/chefArt";
+import { PaintedPortrait } from "../common/PaintedPortrait";
 
 /** The URL of a picture of either set: "<sheet>/<slug>" is a Restaurant Progress picture, "biz:<sheet>/<slug>" a Business page picture. */
 function artUrlOf(name: string): string | null {
@@ -405,9 +407,24 @@ export function StatusMark({ done }: { done: boolean }) {
   );
 }
 
-/** A small chef face picked by a seed (a rival's id, "you"): one of the five painted busts, else the chef emoji. */
+/**
+ * A small chef face picked by a seed. A rival's id shows THAT rival's chef (the Codex busts of 2026-11-25, `game/chefArt.ts`); anything else ("you") is one of the five generic painted
+ * busts, else the chef emoji. A rival's picture that cannot load falls back to the generic bust.
+ */
 export function ChefFace({ seed, size = 24 }: { seed: string; size?: number }) {
   let h = 0;
   for (const c of seed) h = (h * 31 + c.charCodeAt(0)) % 5;
-  return <PIcon name={`icons-b/chef-${h}`} fallback="👨‍🍳" size={size} />;
+  const generic = <PIcon name={`icons-b/chef-${h}`} fallback="👨‍🍳" size={size} />;
+  const portrait = rivalPortraitPath(seed);
+  if (!portrait) return generic;
+  return (
+    <PaintedPortrait
+      path={portrait}
+      width={size}
+      round
+      data-portrait={seed}
+      className="border border-walnut-dark/30 bg-ivory/60 shadow-sm"
+      fallback={generic}
+    />
+  );
 }

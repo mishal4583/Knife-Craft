@@ -239,6 +239,21 @@ function pickNearest(
   return best;
 }
 
+/**
+ * The lane the "Tap me" hint points at (audit 2026-11-25: it always pointed at lane 0): the first lane whose front waiter has a cube to fetch right now, else the first lane
+ * that has a waiter at all, else -1 (no hint). Pure and deterministic; the hint only ever shows before the first tap.
+ */
+export function hintLane(state: RunState): number {
+  let firstAny = -1;
+  for (let l = 0; l < state.lanes.length; l++) {
+    const w = state.lanes[l]?.[0];
+    if (!w) continue;
+    if (firstAny < 0) firstAny = l;
+    if (pickNearest(state.grid, state.ext, w.k, state.reserved) >= 0) return l;
+  }
+  return firstAny;
+}
+
 /** The cubes of colour k a waiter could take right now; the screen lights them while a waiter is held. */
 export function reachableCells(state: RunState, k: number): number[] {
   const out: number[] = [];

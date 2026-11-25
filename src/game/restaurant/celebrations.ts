@@ -13,6 +13,22 @@ export const POPULARITY_CARD_DELTA = 3;
 /** A spotless run this long earns Paige's thanks. */
 export const SPOTLESS_RUN_FOR_THANKS = 2;
 
+/**
+ * The "Top N" lines of the city ranking (developer 2026-11-25, first-20-levels plan row 19: "Top 40! Next: top 25"). Crossing one in a climb retitles the rank card and says what
+ * the next line is. Pure presentation: no money, no state. The number of the level that crosses it is not fixed (rank is a function of completed levels), so the card is
+ * tied to the rank, not to a level.
+ */
+export const TOP_LINES = [40, 25, 10, 5, 1] as const;
+
+/** The best (smallest) Top line a climb from `from` to `to` crossed, and the next one after it; null when it crossed none. */
+export function topMilestone(from: number, to: number): { top: number; next: number | null } | null {
+  const crossed = TOP_LINES.filter((line) => from > line && to <= line);
+  if (!crossed.length) return null;
+  const top = Math.min(...crossed);
+  const after = TOP_LINES.filter((line) => line < top);
+  return { top, next: after.length ? Math.max(...after) : null };
+}
+
 export type Celebration = {
   /** Stable id of the kind: "rank", "title", "popularity", "spotless" or "chest" (the card's data attribute). */
   kind: "rank" | "popularity" | "spotless" | "chest" | "title" | "prestige" | "league";
@@ -20,6 +36,8 @@ export type Celebration = {
   title: string;
   /** The facts, one short line each. */
   lines: string[];
+  /** A painted picture for the card instead of the emoji (game/chefArt.ts): the passed rival's chef, or the prestige tier's emblem. The emoji stays as the fallback. */
+  portrait?: { kind: "rival"; id: string } | { kind: "prestige"; tier: number };
   /** Paige's words (appreciation), always one short line. */
   paige: string;
   pose: PaigePose;
@@ -29,7 +47,7 @@ export type Celebration = {
 
 export type CelebrationInput = {
   /** The city ranking climbed (rankChange), or null. `rival`: the last rival passed and what their chef says (rivalChefs.ts), when known. */
-  rank: { from: number; to: number; passed: string; rival?: string } | null;
+  rank: { from: number; to: number; passed: string; rival?: string; rivalId?: string } | null;
   /** Popularity (0-100) before and after, or null when it was not measured this time. */
   popularity: { before: number; after: number } | null;
   /** The spotless streak after this service (serviceReport), 0 when it was not spotless or not measured. */
@@ -37,7 +55,7 @@ export type CelebrationInput = {
   /** A chef title earned this service (progression/chefTitles.ts `announceTitles`), or null. */
   title?: { title: string; identity: string } | null;
   /** A restaurant prestige tier reached this service (restaurant/restaurantPrestige.ts `announcePrestige`), or null. */
-  prestige?: { tier: string } | null;
+  prestige?: { tier: string; index?: number } | null;
 };
 
 export function celebrationFor(input: CelebrationInput): Celebration | null {
@@ -50,9 +68,12 @@ export function celebrationFor(input: CelebrationInput): Celebration | null {
   const prestiged = input.prestige ?? null;
   if (!input.rank && !popUp && !thanks && !titled && !prestiged) return null;
 
+  const milestone = input.rank ? topMilestone(input.rank.from, input.rank.to) : null;
   const lines: string[] = [];
   if (input.rank) {
     lines.push(`#${input.rank.from} → #${input.rank.to} in the city`);
+    // A Top line crossed (Top 40, 25, 10, 5, #1): what comes next.
+    if (milestone?.next) lines.push(`🎯 Next: Top ${milestone.next}`);
     if (input.rank.passed) lines.push(`You passed ${input.rank.passed}`);
     // Chef Pride (Phase 2): the passed rival's chef answers, in their own voice.
     if (input.rank.rival) lines.push(input.rank.rival);
@@ -101,7 +122,11 @@ export function celebrationFor(input: CelebrationInput): Celebration | null {
     kind,
     emoji: input.rank ? "🏆" : prestiged ? "🏛️" : titled ? "🏅" : popUp ? "⭐" : "✨",
     title: input.rank
-      ? `You climbed to #${input.rank.to}!`
+      ? milestone
+        ? milestone.top === 1
+          ? "You're #1 in the city!"
+          : `You're in the Top ${milestone.top}!`
+        : `You climbed to #${input.rank.to}!`
       : prestiged
         ? `Your restaurant is a ${prestiged.tier}!`
         : titled
@@ -110,6 +135,11 @@ export function celebrationFor(input: CelebrationInput): Celebration | null {
             ? "Your restaurant is getting popular!"
             : "Spotless work!",
     lines,
+    ...(input.rank?.rivalId
+      ? { portrait: { kind: "rival" as const, id: input.rank.rivalId } }
+      : !input.rank && prestiged && prestiged.index !== undefined
+        ? { portrait: { kind: "prestige" as const, tier: prestiged.index } }
+        : {}),
     paige,
     pose: input.rank || thanks || titled || prestiged ? "cheer" : "clap",
     ...(shares.length ? { shares } : {}),

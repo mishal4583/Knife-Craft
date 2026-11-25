@@ -1,4 +1,6 @@
 import { KButton } from "../common/primitives";
+import { PaintedPortrait } from "../common/PaintedPortrait";
+import { inspectorPath, inspectorPoseFor, type InspectorPose } from "@/game/chefArt";
 import { InfoTip } from "@/components/kc/common/InfoTip";
 import { formatUsd } from "@/game/money";
 import { cn } from "@/lib/utils";
@@ -25,6 +27,23 @@ const FIX: Record<InspectorCheckId, string> = {
   "cleaning-liquid": "Buy",
 };
 const MARK = { PASS: "✓", WARNING: "⚠", FAIL: "✕" } as const;
+
+/** The painted inspector (Codex, 2026-11-25): the door arrival before the visit, his reaction to the grade after. The old 🕵️ stands in if the picture cannot load. */
+function InspectorFace({ pose, width }: { pose: InspectorPose; width: number }) {
+  return (
+    <PaintedPortrait
+      path={inspectorPath(pose)}
+      width={width}
+      ratio={1.5}
+      data-portrait={`inspector-${pose}`}
+      fallback={
+        <span className="text-[22px]" aria-hidden>
+          🕵️
+        </span>
+      }
+    />
+  );
+}
 const GRADE_TONE: Record<InspectorGrade, string> = {
   A: "bg-sage text-ivory",
   B: "bg-gold text-walnut-dark",
@@ -110,9 +129,10 @@ export function HealthInspectorCard({
           >
             {v.grade}
           </span>
+          <InspectorFace pose={inspectorPoseFor(v.grade)} width={44} />
           <div className="min-w-0 flex-1">
             <p className="flex items-center gap-1.5 font-ui text-[13.5px] font-extrabold text-walnut-dark">
-              🕵️ Health inspection · Grade {v.grade}
+              Health inspection · Grade {v.grade}
               <InfoTip label="About the health inspector">
                 He grades the restaurant as it is: cleaning, expired food, fridge room, soap and
                 cleaning liquid. Grade A earns Hype and he stays away longest; a failed check costs
@@ -148,22 +168,27 @@ export function HealthInspectorCard({
       data-status="due"
       data-grade={view.grade}
     >
-      <p className="flex items-center gap-1.5 font-ui text-[13.5px] font-extrabold text-walnut-dark">
-        🕵️ Health inspector at the door
-        <InfoTip label="About the health inspector">
-          He grades the restaurant as it is right now. Fix what you can first, then let him in.
-          Grade A: Hype, and he stays away {VISIT_GAP.A} services. Grade B: a warning. Grade C: a
-          fine, and he is back in {VISIT_GAP.C}.
-        </InfoTip>
-      </p>
-      <p className="font-ui text-[12.5px] text-walnut/70" data-testid="psc-inspector-preview">
-        Now: Grade {view.grade}
-        {view.grade === "A"
-          ? ` · ✨ +${view.hype} Hype`
-          : view.grade === "C" && view.fine > 0
-            ? ` · 💸 fine ${formatUsd(view.fine)}`
-            : ""}
-      </p>
+      <div className="flex items-center gap-2.5">
+        <InspectorFace pose="arrival" width={52} />
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-1.5 font-ui text-[13.5px] font-extrabold text-walnut-dark">
+            Health inspector at the door
+            <InfoTip label="About the health inspector">
+              He grades the restaurant as it is right now. Fix what you can first, then let him in.
+              Grade A: Hype, and he stays away {VISIT_GAP.A} services. Grade B: a warning. Grade C:
+              a fine, and he is back in {VISIT_GAP.C}.
+            </InfoTip>
+          </p>
+          <p className="font-ui text-[12.5px] text-walnut/70" data-testid="psc-inspector-preview">
+            Now: Grade {view.grade}
+            {view.grade === "A"
+              ? ` · ✨ +${view.hype} Hype`
+              : view.grade === "C" && view.fine > 0
+                ? ` · 💸 fine ${formatUsd(view.fine)}`
+                : ""}
+          </p>
+        </div>
+      </div>
       <Rows rows={view.rows} onFix={onFix} />
       <KButton
         full

@@ -10,7 +10,11 @@ import thumb03 from "@/assets/kitchen/thumbs/skin-03.webp";
 import thumb04 from "@/assets/kitchen/thumbs/skin-04.webp";
 import thumb05 from "@/assets/kitchen/thumbs/skin-05.webp";
 import thumb06 from "@/assets/kitchen/thumbs/skin-06.webp";
+import { useRef, type CSSProperties } from "react";
 import type { KitchenSkinId } from "@/game/kitchen/kitchenUpgradeTypes";
+import { ambientPictureSize, coverRect, kitchenAmbientFor } from "@/game/kitchen/kitchenAmbient";
+import { useBoxSize } from "@/components/kc/restaurantMap/restaurantMapWide";
+import { KitchenAmbient } from "@/components/kc/KitchenAmbient";
 import { landscapeKitchenArt } from "@/game/landscapeArt";
 import { useLandscape } from "@/components/kc/game/layoutMode";
 
@@ -49,15 +53,22 @@ const KITCHEN_SKIN_THUMB_SRC: Record<KitchenSkinId, string> = {
 export function KitchenBackground({
   skin,
   thumb = false,
+  ambient = false,
 }: {
   skin: KitchenSkinId;
   /** A small preview: loads the 240px copy, lazily. The full-screen backdrop loads eagerly at high priority (it's the first thing a returning player sees). */
   thumb?: boolean;
+  /** The Kitchen's life (developer 2026-11-26): steam, lamps, a beam of sun, a glint, a slow push-in, laid over the painting. Only the Kitchen home turns it on. */
+  ambient?: boolean;
 }) {
   // A wide window shows the kitchen's own landscape painting (developer 2026-11-20): the portrait skin cover-cropped there was zoomed and soft.
   const landscape = useLandscape();
   const wide = landscape && !thumb;
-  return (
+  const live = ambient && !thumb;
+  const boxRef = useRef<HTMLDivElement>(null);
+  const vp = useBoxSize(boxRef, live);
+  const layout = wide ? "wide" : "tall";
+  const picture = (
     <img
       key={wide ? `${skin}-land` : skin}
       src={
@@ -75,5 +86,28 @@ export function KitchenBackground({
       fetchPriority={thumb ? "low" : "high"}
       className="absolute inset-0 h-full w-full object-cover"
     />
+  );
+  if (!live) return picture;
+  // The picture and its life share ONE stage the size of the painting's own `object-cover` box, so a point in percent of the picture stays on the same pixel of the painting in any window.
+  const rect = vp.w > 0 && vp.h > 0 ? coverRect(vp, ambientPictureSize(layout)) : null;
+  const origin = kitchenAmbientFor(skin, layout).origin;
+  return (
+    <div ref={boxRef} className="absolute inset-0 overflow-hidden" data-testid="kitchen-bg-box">
+      <div
+        className="ka-stage absolute"
+        style={
+          {
+            ...(rect
+              ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height }
+              : { inset: 0 }),
+            "--ox": `${origin.x}%`,
+            "--oy": `${origin.y}%`,
+          } as unknown as CSSProperties
+        }
+      >
+        {picture}
+        {rect ? <KitchenAmbient skin={skin} layout={layout} /> : null}
+      </div>
+    </div>
   );
 }

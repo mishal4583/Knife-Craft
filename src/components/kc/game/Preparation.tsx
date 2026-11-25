@@ -1648,7 +1648,12 @@ export function Preparation({
           mapUrl={floor.mapUrl}
           seat={partySeat}
           customer={shownCustomer}
-          line={levelGuide?.customerLine ?? shownCustomer.greeting}
+          // The regular guest (restaurant/regularGuest.ts) greets in her own words on every visit; the dish and its goal are on the card and the HUD.
+          line={
+            shownCustomer.regularVisit !== undefined
+              ? shownCustomer.greeting
+              : (levelGuide?.customerLine ?? shownCustomer.greeting)
+          }
           dish={{ emoji: view.emoji, name: view.title, id: view.recipeId }}
           {...(servedQuality ? { quality: servedQuality } : {})}
           reducedMotion={floor.reducedMotion}

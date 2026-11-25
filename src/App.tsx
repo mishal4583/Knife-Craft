@@ -214,6 +214,7 @@ import {
 import { afterServeChips, nextCustomerHidden } from "@/game/restaurant/afterServe";
 import { newSauceRoundsRewardId } from "@/game/ads/sauceRoundsAd";
 import { levelTeaser } from "@/game/restaurant/levelTeasers";
+import { regularIntroNote, withRegularGuest } from "@/game/restaurant/regularGuest";
 import { sectionPictures, warmPictures, whenIdle } from "@/game/preloadArt";
 import { SECOND_FLOOR_FROM_LEVEL } from "@/game/config/earlyLevels";
 import {
@@ -599,7 +600,7 @@ function buildCampaignServiceSession(
   // ones the Pre-Service Check listed), after any orders already paid.
   if (RESTAURANT_MODE && !isReplay) {
     const { tickets } = ticketsFor(levelProgress, level);
-    return createTicketedServiceSession(
+    const ticketed = createTicketedServiceSession(
       level.id,
       tickets,
       paidOrdersFor(levelProgress, level.id).length,
@@ -607,6 +608,8 @@ function buildCampaignServiceSession(
       payChapterOf(level),
       false,
     );
+    // The regular guest (Level 13 on): Sofia is the first guest of a first play; the dish and the pay are the ticket's.
+    return ticketed ? withRegularGuest(ticketed, levelNumber(level.id)) : ticketed;
   }
   const session = createServiceSession(level.id, pool, Math.random, payChapterOf(level), isReplay);
   // A retry carries on: orders already served and paid stay counted.
@@ -3961,6 +3964,8 @@ export function App() {
         RESTAURANT_MODE && isFirstCompletion
           ? [
               ...serviceLines,
+              // Level 13: the regular guest says she will be back.
+              regularIntroNote(n),
               ...(brokenNow > 0
                 ? [
                     `💥 ${brokenNow === 1 ? "1 piece" : `${brokenNow} pieces`} of tableware broke · 🛒 Market`,
@@ -4012,6 +4017,8 @@ export function App() {
               to: rise.to,
               passed: rise.passed.map((r) => `${r.emoji} ${r.name}`).join(", "),
               ...(rivalChef ? { rival: chefSays(rivalChef, "beaten") } : {}),
+              // the last rival passed: the card shows their chef's painted face
+              ...(lastPassed ? { rivalId: lastPassed.id } : {}),
             }
           : null,
         popularity: {
@@ -4019,7 +4026,9 @@ export function App() {
           after: finalSave.business.popularity.score,
         },
         spotlessStreak,
-        prestige: prestigeHeadline ? { tier: prestigeHeadline.name } : null,
+        prestige: prestigeHeadline
+          ? { tier: prestigeHeadline.name, index: prestigeHeadline.index }
+          : null,
         title: titleHeadline
           ? {
               title: titleHeadline.title,

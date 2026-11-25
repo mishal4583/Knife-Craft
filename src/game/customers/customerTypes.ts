@@ -17,6 +17,8 @@ export type CustomerDefinition = {
   avatarEmoji: string;
   /** Shown when this customer's order first appears on the board (§40). */
   greeting: string;
+  /** Set only on THE REGULAR GUEST (restaurant/regularGuest.ts): which visit this is (1 = the first). The order card marks her. */
+  regularVisit?: number;
 };
 
 /**

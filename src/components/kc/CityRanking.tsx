@@ -13,6 +13,8 @@ import {
   CardBackdrop,
 } from "./progress/ProgressKit";
 import { InfoTip } from "./common/InfoTip";
+import { PaintedPortrait } from "./common/PaintedPortrait";
+import { prestigeEmblemPath } from "@/game/chefArt";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
 import { restaurantNameOf } from "@/game/restaurant/restaurantName";
@@ -104,7 +106,7 @@ export function CityRankHero({ save }: { save: SaveData }) {
                 className="mt-1 flex items-start gap-1.5 font-hand text-[16px] leading-snug text-gold/90"
                 data-testid="rival-chef-line"
               >
-                <ChefFace seed={c.next.id} size={22} />
+                <ChefFace seed={c.next.id} size={34} />
                 <span className="min-w-0">{chefSays(chef, "dare")}</span>
               </p>
             ) : null}
@@ -119,7 +121,7 @@ export function CityRankHero({ save }: { save: SaveData }) {
             className="mt-1.5 flex items-start gap-1.5 font-hand text-[16px] leading-snug text-gold/90"
             data-testid="rival-chef-respect"
           >
-            <ChefFace seed={c.passed.id} size={22} />
+            <ChefFace seed={c.passed.id} size={34} />
             <span className="min-w-0">{chefRespects(behind, c.passed)}</span>
           </p>
         ) : null}
@@ -190,8 +192,12 @@ export function CityLeaderboard({ save }: { save: SaveData }) {
                       }
                     />
                   ) : (
-                    <span className="grid w-9 shrink-0 place-items-center text-[20px]" aria-hidden>
-                      {row.rival ? row.rival.emoji : "🧑‍🍳"}
+                    <span className="grid w-9 shrink-0 place-items-center text-[20px]">
+                      {row.rival ? (
+                        <ChefFace seed={row.rival.id} size={34} />
+                      ) : (
+                        <span aria-hidden>🧑‍🍳</span>
+                      )}
                     </span>
                   )}
                   <span className="min-w-0 flex-1">
@@ -347,6 +353,14 @@ const PART_ART: Record<string, [string, string]> = {
   endless: ["icons-a/star", "⭐"],
 };
 
+/** The painted emblem of a prestige tier (Codex, 2026-11-25); the small painted icon of the Progress sheets stands in if it cannot load. */
+function PrestigeEmblem({ tier, size }: { tier: number; size: number }) {
+  const icon = <PIcon name={`icons-b/prestige-${tier}`} fallback="🏛️" size={Math.min(size, 40)} />;
+  const path = prestigeEmblemPath(tier);
+  if (!path) return icon;
+  return <PaintedPortrait path={path} width={size} data-portrait={`prestige-${tier}`} fallback={icon} />;
+}
+
 /**
  * THE RESTAURANT'S PRESTIGE (Chef Pride plan, Phase 4, developer 2026-11-23: "look what I built"): the tier the restaurant has reached, the bar to the next tier and where
  * the points come from. Read-only, derived from play (restaurant/restaurantPrestige.ts); it opens with `PRESTIGE_FROM_LEVEL`. The parts are a strip of five tiles (developer
@@ -366,7 +380,7 @@ export function PrestigeCard({ save }: { save: SaveData }) {
         </InfoTip>
       </div>
       <div className="mt-1 flex items-center gap-2.5">
-        <PIcon name={`icons-b/prestige-${p.tier.index}`} fallback="🏛️" size={40} />
+        <PrestigeEmblem tier={p.tier.index} size={64} />
         <div className="min-w-0">
           <p
             className="font-display text-[24px] font-black leading-tight text-walnut-dark"
@@ -491,8 +505,8 @@ export function LeagueCard({ save }: { save: SaveData }) {
             {r.player ? (
               <ChefFace seed="you" size={26} />
             ) : (
-              <span className="grid w-7 shrink-0 place-items-center text-[18px]" aria-hidden>
-                {r.emoji}
+              <span className="grid w-7 shrink-0 place-items-center text-[18px]">
+                <ChefFace seed={r.id} size={28} />
               </span>
             )}
             <span className="min-w-0 flex-1 truncate">{r.name}</span>

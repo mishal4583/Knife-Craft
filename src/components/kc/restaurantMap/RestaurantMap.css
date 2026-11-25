@@ -2939,3 +2939,28 @@
   color: #4a2e1b;
   text-shadow: 0 1px 0 rgba(255, 244, 214, 0.7);
 }
+
+/* The fridge's tier on the wide plan: a small pill at the foot of the Refrigerator room, in the tier's own metal (basic enamel, commercial steel, professional gold). */
+.wide-fridge-chip {
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  transform: translateX(-50%);
+  z-index: 4;
+  padding: 0.15em 0.7em;
+  border-radius: 999px;
+  border: 1px solid rgba(60, 40, 20, 0.45);
+  background: linear-gradient(180deg, #fffef5, #d8d4c6);
+  color: #3a2616;
+  font: 800 max(9px, 0.95cqw) / 1.2 "Nunito", system-ui, sans-serif;
+  white-space: nowrap;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+.wide-fridge-chip[data-tier="commercial"] {
+  background: linear-gradient(180deg, #eef3f2, #a8b4b7);
+}
+.wide-fridge-chip[data-tier="professional"] {
+  background: linear-gradient(180deg, #ffe7a3, #e2a93b);
+  border-color: #8a5a12;
+}

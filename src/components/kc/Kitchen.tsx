@@ -390,7 +390,7 @@ export function Kitchen({
 
   return (
     <div data-kc-wide className="relative h-full w-full overflow-hidden bg-cream">
-      <KitchenBackground skin={equippedUpgrade.asset} />
+      <KitchenBackground skin={equippedUpgrade.asset} ambient />
       {/* The day clock (restaurant build): the light of the next service's time of day,
           night at closing — an opacity-only tint over the same art (dayClock.ts). */}
       {clock ? (

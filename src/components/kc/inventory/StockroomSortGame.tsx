@@ -765,6 +765,7 @@ export function StockroomSortGame({
             onClick={undo}
             disabled={historyRef.current.length === 0 || undosLeft <= 0 || phase === "done"}
             aria-label={limitedUndo ? `Undo (${undosLeft} left)` : "Undo"}
+            title={limitedUndo ? `Undo (${undosLeft} left)` : "Undo"}
             className="press relative grid h-12 w-12 place-items-center disabled:opacity-40"
           >
             <SrArt name="boost-undo" className="h-full w-full object-contain" />
@@ -785,6 +786,7 @@ export function StockroomSortGame({
               disabled={phase === "done"}
               aria-disabled={!hintOn || undefined}
               aria-label="Hint"
+              title="Hint"
               className={cn(
                 "press grid h-12 w-12 place-items-center disabled:opacity-40",
                 !hintOn && "opacity-40",

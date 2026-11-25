@@ -1,0 +1,141 @@
+{
+  "_comment": "Cut by scripts/make-chef-assets.py (developer 2026-11-25). Rival chef busts: 5 sheets of 5 x 2 cells (512 x 640) in the city-ranking order; prestige emblems: 5 x 1 cells (640 x 640); the inspector: 4 x 1 cells (512 x 768).",
+  "rivals": {
+    "folder": "Rival Chef Assets",
+    "cols": 5,
+    "rows": 2,
+    "cell": [
+      512,
+      640
+    ],
+    "out": "public/portraits/rivals",
+    "size": [
+      256,
+      320
+    ],
+    "sheets": [
+      "RV-1.png",
+      "RV-2.png",
+      "RV-3.png",
+      "RV-4.png",
+      "RV-5.png"
+    ],
+    "ids": [
+      "corner-toast",
+      "noodle-nook",
+      "sunny-side",
+      "pita-pocket",
+      "bean-there",
+      "salad-days",
+      "the-soup-pot",
+      "taco-hut",
+      "mamas-kitchen",
+      "curry-corner",
+      "little-bistro",
+      "wok-n-roll",
+      "green-fork",
+      "pasta-fresca",
+      "harbor-grill",
+      "olive-and-fig",
+      "seoul-food",
+      "bangkok-bowl",
+      "the-copper-pan",
+      "casa-verde",
+      "maple-and-sage",
+      "spice-route",
+      "luigis",
+      "blue-anchor",
+      "zen-garden",
+      "the-rustic-table",
+      "saffron-house",
+      "petit-jardin",
+      "golden-ladle",
+      "hanami",
+      "aegean-blue",
+      "jade-dragon",
+      "hearth-and-ember",
+      "la-cantina",
+      "the-orchard",
+      "marigold",
+      "silver-birch",
+      "trattoria-sole",
+      "kimchi-house",
+      "the-velvet-spoon",
+      "lotus-and-lime",
+      "the-iron-chef",
+      "cedar-and-salt",
+      "chez-margaux",
+      "kaiseki-mori",
+      "the-grand-larder",
+      "aurora",
+      "the-crown-kitchen",
+      "maison-lumiere"
+    ]
+  },
+  "prestige": {
+    "folder": "Prestige Assets",
+    "cols": 5,
+    "rows": 1,
+    "cell": [
+      640,
+      640
+    ],
+    "out": "public/progress/prestige",
+    "size": [
+      192,
+      192
+    ],
+    "sheet": "PR-1.png",
+    "names": [
+      "tier-0",
+      "tier-1",
+      "tier-2",
+      "tier-3",
+      "tier-4"
+    ]
+  },
+  "inspector": {
+    "folder": "Inspector Assets",
+    "cols": 4,
+    "rows": 1,
+    "cell": [
+      512,
+      768
+    ],
+    "out": "public/portraits/inspector",
+    "size": [
+      256,
+      384
+    ],
+    "sheet": "HI-1.png",
+    "names": [
+      "arrival",
+      "pleased",
+      "neutral",
+      "disappointed"
+    ]
+  },
+  "branches": {
+    "folder": "Branch Assets",
+    "cols": 5,
+    "rows": 1,
+    "cell": [
+      640,
+      640
+    ],
+    "out": "public/progress/branches",
+    "size": [
+      192,
+      192
+    ],
+    "sheet": "BR-1.png",
+    "names": [
+      "branch-1",
+      "branch-2",
+      "branch-3",
+      "branch-4",
+      "branch-5"
+    ],
+    "optional": true
+  }
+}

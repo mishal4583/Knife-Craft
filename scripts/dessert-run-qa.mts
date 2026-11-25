@@ -186,6 +186,35 @@ try {
       "PASS D2 taps: sent to a free spot; a full row or an empty lane refuses and changes nothing",
     );
   }
+  // D2b the "Tap me" hint (audit 2026-11-25: it always pointed at lane 0, even when lane 0 had nothing to fetch)
+  {
+    let checked = 0;
+    for (const tier of RUN_TIERS)
+      for (const id of Object.keys(DESSERTS) as Id[])
+        for (let seed = 1; seed <= 6; seed++) {
+          const s = run.makeRun(id, seed, tier);
+          const at = run.hintLane(s);
+          assert.ok(at >= 0 && s.lanes[at]?.[0], "the hint points at a lane that has a waiter");
+          assert.equal(run.tapLane(s, at), "sent", "tapping the hinted lane sends that waiter");
+          checked++;
+        }
+    // lane 0 empty: the hint moves to the first lane that has a waiter instead of vanishing
+    const t = run.makeRun("cookie", 1, RUN_TIERS[0]);
+    t.lanes[0] = [];
+    assert.ok(run.hintLane(t) > 0, "an empty lane 0 is skipped");
+    t.lanes = t.lanes.map(() => []);
+    assert.equal(run.hintLane(t), -1, "no waiters, no hint");
+    // a front waiter with nothing to fetch is skipped for one that has something
+    const u = run.makeRun("cookie", 1, RUN_TIERS[0]);
+    const first = u.lanes[0][0];
+    u.grid.forEach((c: number, i: number) => {
+      if (c === first.k) u.grid[i] = -1;
+    });
+    u.ext.set(run.computeExt(u.grid));
+    const other = run.hintLane(u);
+    assert.ok(other !== 0 || u.lanes.every((l: Array<{ k: number }>) => l[0]?.k === first.k), "a lane whose waiter has nothing to fetch is not the hint when another can fetch");
+    console.log(`PASS D2b hint: points at a lane that can fetch (${checked} rounds), skips an empty or fruitless lane 0, none when empty`);
+  }
   // D3 a waiter with nothing reachable waits, and goes on by itself. A hand-built board: one cube of colour 1
   // sealed inside a ring of colour 0.
   const sealed = (tier: (typeof RUN_TIERS)[number]) => {

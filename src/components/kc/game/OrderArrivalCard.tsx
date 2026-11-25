@@ -27,6 +27,8 @@ export type OrderCardProps = {
   size: string;
   /** A named regular's portrait (`CustomerBust`), shown on the banner's left edge once they are seated; without one nothing is drawn. */
   bust?: ReactNode;
+  /** The regular guest (restaurant/regularGuest.ts): a lone guest's banner says so. */
+  regular?: boolean;
 };
 
 export function Hat() {
@@ -183,6 +185,7 @@ export function OrderArrivalCard({
   compact = false,
   size,
   bust,
+  regular = false,
 }: OrderCardProps) {
   const heading =
     state === "walking"
@@ -193,7 +196,7 @@ export function OrderArrivalCard({
           : "A customer"
       : takeaway
         ? `${customerName}'s order · to go`
-        : `${customerName}'s order${partySize > 1 ? ` · table of ${partySize}` : ""}`;
+        : `${customerName}'s order${partySize > 1 ? ` · table of ${partySize}` : regular ? " · ⭐ regular" : ""}`;
   return (
     <div
       className={`oc${compact ? " oc--compact" : ""}`}

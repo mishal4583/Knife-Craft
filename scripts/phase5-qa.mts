@@ -173,8 +173,9 @@ console.log("A. Restaurant restoration");
     ) && !/appendLedgerEntry|persist\(|purchaseKitchenUpgrade/.test(reveal),
     "A11: the restoration layer and the reveal never touch money or the purchase",
   );
+  // RULE CHANGE (developer 2026-11-26, the Kitchen's life): the Kitchen home passes `ambient` (steam, lamps, a beam of sun: restaurant/kitchenAmbient); it still paints the saved tier's own art.
   assert(
-    /<KitchenBackground skin=\{equippedUpgrade\.asset\} \/>/.test(
+    /<KitchenBackground skin=\{equippedUpgrade\.asset\}( ambient)? \/>/.test(
       code("src/components/kc/Kitchen.tsx"),
     ),
     "A12: the Kitchen still paints the saved tier's own art (so a reload shows the right kitchen)",

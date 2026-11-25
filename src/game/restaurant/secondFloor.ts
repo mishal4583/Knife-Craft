@@ -29,6 +29,7 @@ import { appendLedgerEntry } from "../economy/EconomyLedger";
 import { debitWallet } from "../economy/wallet";
 import { dollars } from "../money";
 import { SECOND_FLOOR_FROM_LEVEL } from "../config/earlyLevels";
+import { dailyKeyFor, previousDayKey } from "../daily/DailyOrderManager";
 
 /** Players can visit the floor from this level (developer 2026-11-02: Level 3; was 5). */
 export const SECOND_FLOOR_OPENS_AT = SECOND_FLOOR_FROM_LEVEL;
@@ -256,6 +257,8 @@ export type SecondFloorState = {
   goldenSlot?: number;
   /** Hype 0..100 (filled by a well-cooked service); full Hype starts a free Rush. */
   hype?: number;
+  /** THE FLOOR STREAK (developer 2026-11-25): days in a row the Pickup Counter was collected (device-local day keys), and the last such day. Absent = none yet. */
+  streak?: { days: number; last: string };
   /** Rush Hour: between these two moments (epoch ms) every station works RUSH_SPEED times as fast. */
   rushFrom?: number;
   rushUntil?: number;
@@ -329,6 +332,16 @@ export function secondFloorOf(save: SaveData): SecondFloorState {
     ...(typeof saved?.floodTag === "string" ? { floodTag: saved.floodTag } : {}),
     ...(Number.isFinite(saved?.goldenSlot) ? { goldenSlot: Math.floor(saved!.goldenSlot!) } : {}),
     hype: Math.min(HYPE_MAX, Math.max(0, Math.floor(Number(saved?.hype) || 0))),
+    ...(saved?.streak &&
+    typeof saved.streak.last === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(saved.streak.last)
+      ? {
+          streak: {
+            days: Math.min(FLOOR_STREAK.MAX_DAYS, Math.max(1, Math.floor(Number(saved.streak.days) || 1))),
+            last: saved.streak.last,
+          },
+        }
+      : {}),
     ...(Number.isFinite(saved?.rushFrom) &&
     Number.isFinite(saved?.rushUntil) &&
     saved!.rushUntil! > saved!.rushFrom!
@@ -780,9 +793,14 @@ export function buyPolish(save: SaveData, id: StationId, now: number): FloorResu
  * its whole cycles. Nothing waiting → no change and no entry (a second tap pays nothing).
  */
 export function collectFloor(save: SaveData, now: number): FloorResult {
-  const amount = floorEarnings(save, now);
-  if (amount <= 0) return { ok: false, reason: "nothing" };
-  return { ok: true, amount, save: bankFloor(save, now) };
+  const waiting = floorEarnings(save, now);
+  if (waiting <= 0) return { ok: false, reason: "nothing" };
+  // THE FLOOR STREAK: this collect counts for today, and a streak of two days or more adds a small bonus to what is paid, in the SAME one ledger entry (it rides on `bonus`, like a Flood).
+  const floor = secondFloorOf(save);
+  const streak = floorStreakAfter(floor.streak, dailyKeyFor(new Date(now)));
+  const extra = floorStreakBonus(waiting, streak.days);
+  const marked = withFloor(save, { ...floor, streak, bonus: (floor.bonus ?? 0) + extra });
+  return { ok: true, amount: waiting + extra, save: bankFloor(marked, now) };
 }
 
 /**
@@ -886,6 +904,63 @@ export function startHypeRush(save: SaveData, now: number): FloorResult {
   return startRush(save, now, HYPE_RUSH_MS, HYPE_MAX);
 }
 
+/* ── The floor streak (developer 2026-11-25: "a floor streak": the daily gift streak, extended to the floor, with small stacking bonuses) ── */
+
+export const FLOOR_STREAK = {
+  /** A streak week; the bonus stops growing at its last day. */
+  CYCLE: 7,
+  /** Each day after the first adds this many percent to every collect that day. */
+  STEP_PCT: 2,
+  /** The most days kept in the save (a clamp, not a rule). */
+  MAX_DAYS: 999,
+} as const;
+
+/** The bonus in percent for a streak of `days`: 0 on day 1, +2 % a day after it, to +12 % on day 7 and after. */
+export function floorStreakPct(days: number): number {
+  const d = Math.max(0, Math.floor(Number(days) || 0));
+  return Math.min(Math.max(d - 1, 0), FLOOR_STREAK.CYCLE - 1) * FLOOR_STREAK.STEP_PCT;
+}
+
+/** What a collect of `cents` earns on top at a streak of `days` (whole cents, never negative). */
+export function floorStreakBonus(cents: number, days: number): number {
+  const c = Math.max(0, Number(cents) || 0);
+  return Math.max(0, Math.floor((c * floorStreakPct(days)) / 100));
+}
+
+/**
+ * The streak after a collect on `today` (a device-local day key): the same day changes nothing, the next day adds one, a gap starts again at 1 (nothing already paid is taken back), and a
+ * device clock set BACK (a saved day later than today) changes nothing, so a clock trick can never raise the streak.
+ */
+export function floorStreakAfter(
+  prev: SecondFloorState["streak"],
+  today: string,
+): { days: number; last: string } {
+  if (!prev) return { days: 1, last: today };
+  if (prev.last >= today) return prev;
+  return {
+    days: prev.last === previousDayKey(today) ? Math.min(FLOOR_STREAK.MAX_DAYS, prev.days + 1) : 1,
+    last: today,
+  };
+}
+
+/** What the Second Floor shows: the streak as it stands today, and the bonus today's collects earn (or would earn once today counts). */
+export function floorStreakView(save: SaveData, now: number) {
+  const floor = secondFloorOf(save);
+  const today = dailyKeyFor(new Date(now));
+  const counted = floor.streak?.last === today;
+  const after = floorStreakAfter(floor.streak, today);
+  return {
+    /** Days in a row, today included once it counts (or the day it would be). */
+    days: after.days,
+    counted,
+    /** The bonus percent a collect earns today. */
+    pct: floorStreakPct(after.days),
+    /** Tomorrow's bonus percent if the floor is collected tomorrow too. */
+    nextPct: floorStreakPct(after.days + 1),
+    cycle: FLOOR_STREAK.CYCLE,
+  };
+}
+
 /* ── Franchise: open a new branch ── */
 
 /** True when all six stations are owned at Tier 3 with enough tables, and the last branch is not reached. */
@@ -916,6 +991,7 @@ export function openBranch(save: SaveData, now: number): FloorResult {
     ...(floor.floodTag ? { floodTag: floor.floodTag } : {}),
     ...(floor.goldenSlot !== undefined ? { goldenSlot: floor.goldenSlot } : {}),
     hype: floor.hype ?? 0,
+    ...(floor.streak ? { streak: floor.streak } : {}),
   });
   return { ok: true, amount: 0, save: next };
 }

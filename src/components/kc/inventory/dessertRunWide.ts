@@ -10,6 +10,7 @@ import {
   TABLES,
   WELL_R,
   cellHex,
+  hintLane,
   isWaiting,
   spotCenter,
   type RunState,
@@ -451,8 +452,9 @@ export function drawRunWide(ctx: CanvasRenderingContext2D, state: RunState, view
       ctx.fillText(`+${lane.length - QUEUE.rows}`, q.x + q.w / 2, q.y + q.h + 17);
     }
   }
-  if (view.hintOn && state.lanes[0]?.[0] && state.phase === "play") {
-    const q = tileRectWide(0, 0, lanes);
+  const hintAt = view.hintOn && state.phase === "play" ? hintLane(state) : -1;
+  if (hintAt >= 0) {
+    const q = tileRectWide(hintAt, 0, lanes);
     const b = Math.sin(now / 220) * 3;
     ctx.fillStyle = "#fff";
     ctx.strokeStyle = "rgba(0,0,0,.55)";

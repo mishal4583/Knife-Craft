@@ -130,7 +130,7 @@ export function ServiceFloor({
   mapUrl: string;
   /** This order's place in its party (serviceFloor.ts `seatInParty`). */
   seat: PartySeat;
-  customer: { id: string; name: string; avatarEmoji: string };
+  customer: { id: string; name: string; avatarEmoji: string; regularVisit?: number | undefined };
   /** The customer's own line for this order. */
   line: string;
   dish: { emoji: string; name: string; id?: string | undefined };
@@ -519,6 +519,7 @@ export function ServiceFloor({
               customerName={customer.name}
               partySize={party.size}
               takeaway={takeaway}
+              regular={customer.regularVisit !== undefined}
               dish={dish}
               line={line}
               onStart={finish}

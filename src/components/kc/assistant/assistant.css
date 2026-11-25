@@ -172,6 +172,34 @@
   border-radius: 0 0 0 7px;
   transform: rotate(45deg);
 }
+/* THE THOUGHT CLOUD (developer 2026-11-25, Paige's reserved thought bubble): while she thinks the bubble is rounder and the pointed tail becomes two small circles trailing to her. */
+.paige-speech[data-thought] {
+  border-radius: 44px;
+}
+.paige-speech[data-thought]::before {
+  left: -22px;
+  top: 50px;
+  width: 16px;
+  height: 16px;
+  border: 3px solid #a8742f;
+  border-radius: 50%;
+  transform: none;
+}
+.paige-speech[data-thought]::after {
+  content: "";
+  position: absolute;
+  left: -38px;
+  top: 76px;
+  width: 9px;
+  height: 9px;
+  background: #fdf3da;
+  border: 3px solid #a8742f;
+  border-radius: 50%;
+}
+.paige-speech[data-thought][data-tone="success"]::before,
+.paige-speech[data-thought][data-tone="success"]::after { border-color: #5f8030; }
+.paige-speech[data-thought][data-tone="warning"]::before,
+.paige-speech[data-thought][data-tone="warning"]::after { border-color: #b4552f; }
 .paige-speech[data-tone="success"]::before { border-color: #5f8030; }
 .paige-speech[data-tone="warning"]::before { border-color: #b4552f; }
 .paige-scroll {

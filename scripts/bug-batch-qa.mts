@@ -113,7 +113,11 @@ console.log("3. Congratulations");
   })!;
   assert(
     rank.kind === "rank" &&
-      /#40/.test(rank.title) &&
+      // RULE CHANGE (developer 2026-11-25, first-20-levels plan row 19, "Top 40! Next: top 25"): a climb that crosses a Top line (41 -> 40 crosses Top 40) is titled by the line, not by
+      // the place, and names the next one; an ordinary climb keeps "You climbed to #N!" (regular-guest-qa T6).
+      /Top 40/.test(rank.title) &&
+      rank.lines.some((l) => /#41 → #40/.test(l)) &&
+      rank.lines.some((l) => /Next: Top 25/.test(l)) &&
       rank.lines.some((l) => /Curry Corner/.test(l)) &&
       rank.paige.length > 0,
     "3b: a climb in the city ranking: the new place, who was passed, and Paige's words",

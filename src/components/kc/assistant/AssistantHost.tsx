@@ -309,6 +309,8 @@ export function AssistantHost({
           <div
             className="paige-speech pointer-events-auto absolute"
             data-tone={tone}
+            // When she is thinking (the "think" pose: a rival's dare, "check the fridge") her bubble is a thought cloud: round, with two small circles trailing to her.
+            data-thought={current.pose === "think" ? "" : undefined}
             data-testid="assistant-bubble"
           >
             <PaigeNameplate tone={tone} />

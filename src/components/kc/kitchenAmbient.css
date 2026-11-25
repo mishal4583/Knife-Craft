@@ -1,0 +1,193 @@
+/*
+ * THE KITCHEN'S LIFE (developer 2026-11-26): only `transform` and `opacity` are animated (no filter, blur or box-shadow), on a handful of small gradient elements, so it costs almost
+ * nothing. The layer sits inside `.ka-stage` (the painting's own box), so a point in percent of the picture stays on the painting.
+ */
+.ka-stage {
+  transform-origin: var(--ox, 50%) var(--oy, 50%);
+  animation: ka-push 30s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes ka-push {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.045);
+  }
+}
+
+.kitchen-ambient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* the sun through the arched window */
+.ka-beam {
+  position: absolute;
+  background: linear-gradient(
+    105deg,
+    rgba(255, 238, 176, 0.36) 0%,
+    rgba(255, 238, 176, 0.15) 45%,
+    rgba(255, 238, 176, 0) 82%
+  );
+  clip-path: polygon(0 0, 38% 0, 100% 100%, 56% 100%);
+  transform-origin: 0 0;
+  opacity: 0.5;
+  animation: ka-beam 11s ease-in-out infinite alternate;
+}
+@keyframes ka-beam {
+  from {
+    opacity: 0.4;
+    transform: skewX(0deg);
+  }
+  to {
+    opacity: 0.85;
+    transform: skewX(-3deg);
+  }
+}
+
+/* dust in the beam */
+.ka-mote {
+  position: absolute;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(255, 244, 205, 0.95);
+  opacity: 0;
+  animation: ka-mote var(--md, 15s) linear infinite;
+  animation-delay: var(--d, 0s);
+}
+@keyframes ka-mote {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  15% {
+    opacity: 0.85;
+  }
+  80% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--mx, 700%), var(--my, 500%));
+  }
+}
+
+/* lamps that breathe */
+.ka-lamp {
+  position: absolute;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 207, 112, 0.72),
+    rgba(255, 172, 62, 0.28) 45%,
+    rgba(255, 160, 50, 0) 72%
+  );
+  opacity: 0.6;
+  transform: translate(-50%, -50%);
+  animation: ka-lamp var(--ld, 3.6s) ease-in-out infinite alternate;
+  animation-delay: var(--d, 0s);
+}
+@keyframes ka-lamp {
+  from {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(0.94);
+  }
+  to {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+
+/* steam off the pots: a bright core with a faint cool shadow at the rim, so the puffs keep their shape against the painting's light walls too */
+.ka-steam {
+  position: absolute;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 255, 250, 0.95),
+    rgba(255, 252, 244, 0.62) 38%,
+    rgba(214, 205, 192, 0.3) 62%,
+    rgba(214, 205, 192, 0) 80%
+  );
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.45);
+  animation: ka-steam 6.2s ease-out infinite;
+  animation-delay: var(--d, 0s);
+}
+@keyframes ka-steam {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -30%) scale(0.45);
+  }
+  12% {
+    opacity: 0.95;
+  }
+  55% {
+    opacity: 0.6;
+    transform: translate(calc(-50% + var(--dx, 0%)), -170%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dx2, 0%)), -330%) scale(1.6);
+  }
+}
+
+/* a glint on the copper */
+.ka-glint {
+  position: absolute;
+  aspect-ratio: 1;
+  background: radial-gradient(
+    closest-side,
+    #fffbe8,
+    rgba(255, 240, 190, 0.85) 40%,
+    rgba(255, 240, 190, 0) 75%
+  );
+  clip-path: polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0) rotate(0deg);
+  animation: ka-glint 6.4s ease-in-out infinite;
+  animation-delay: var(--d, 0s);
+}
+@keyframes ka-glint {
+  0%,
+  68%,
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0) rotate(0deg);
+  }
+  77% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) rotate(25deg);
+  }
+  88% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(0.6) rotate(50deg);
+  }
+  94% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0) rotate(70deg);
+  }
+}
+
+/* Settings -> Reduced motion (the app puts this class on the page) and the system's own setting: the painting stands still */
+.kc-reduced-motion .kitchen-ambient {
+  display: none;
+}
+.kc-reduced-motion .ka-stage {
+  animation: none;
+  will-change: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kitchen-ambient {
+    display: none;
+  }
+  .ka-stage {
+    animation: none;
+    will-change: auto;
+  }
+}

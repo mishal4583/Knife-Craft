@@ -395,6 +395,12 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
                       </div>
                     )}
                   </div>
+                  {/* The wide plan has no drawn fridge (the painting shows the stage's own): the tier is a chip on the Refrigerator room (the tall plan draws it, FridgeMapOverlay). */}
+                  {wide && unlocked && zone.id === 'refrigerator' ? (
+                    <span className="wide-fridge-chip" data-tier={fridgeTier} data-testid="wide-fridge-tier">
+                      ❄ {FRIDGE_TIER_LABEL[fridgeTier]}
+                    </span>
+                  ) : null}
                   <span className="hotspot-tap-ripple" aria-hidden="true" />
                 </div>
               );
@@ -457,6 +463,9 @@ function AnimatedGuestTraffic({ stage }: { stage: WalkStage }) {
   const cast = useMemo(() => firstFloorGuests(stage), [stage]);
   return <MapCast cast={cast} testId="guest-life" />;
 }
+
+/** The fridge tier's name on the wide plan's chip. */
+const FRIDGE_TIER_LABEL = { basic: 'Basic fridge', commercial: 'Commercial fridge', professional: 'Pro fridge' } as const;
 
 const FRIDGE_SHAPES = {
   basic: { width: 92, doors: 1, compartments: 1, finish: 'enamel' as const },

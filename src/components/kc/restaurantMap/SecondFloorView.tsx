@@ -54,6 +54,8 @@ import {
   MAX_STATION_LEVEL,
   STATIONS,
   floorEarnings,
+  floorStreakBonus,
+  floorStreakView,
   isStationUnlocked,
   STATIONS_OPEN_AT,
   SECOND_FLOOR_TEST_UNLOCK,
@@ -87,6 +89,8 @@ import {
 import { MapEdgeFill } from "./MapEdgeFill";
 import { FloorStaffFace } from "@/components/kc/common/FloorStaffFace";
 import { landscapeSecondFloorArt } from "@/game/landscapeArt";
+import { branchEmblemPath, branchLook } from "@/game/restaurant/branchLook";
+import { PaintedPortrait } from "../common/PaintedPortrait";
 
 export type SecondFloorAction =
   | { kind: "buy"; id: StationId }
@@ -237,6 +241,9 @@ export function SecondFloorView({
 
   const floor = secondFloorOf(save);
   const waiting = floorEarnings(save, now);
+  const streak = floorStreakView(save, now);
+  // The Franchise's look: each finished branch tints the floor its own colour (restaurant/branchLook.ts).
+  const look = branchLook(floor.branch ?? 0);
   const perHour = floorPerHour(save);
   const wholeFill = floorFill(save, now);
   // The full preview cast only while the animation-testing flag is on (off: the save's floor).
@@ -444,8 +451,33 @@ export function SecondFloorView({
               disabled={waiting <= 0}
               onClick={() => act({ kind: "collect" })}
             >
-              {waiting > 0 ? `Collect ${formatUsd(waiting)}` : "Nothing to collect yet"}
+              {waiting > 0
+                ? `Collect ${formatUsd(waiting + floorStreakBonus(waiting, streak.days))}`
+                : "Nothing to collect yet"}
             </KButton>
+            {ownedCount > 0 ? (
+              <p
+                className="mt-1.5 flex items-center gap-1 font-ui text-[12px] font-bold text-walnut/70"
+                data-testid="floor-streak"
+                data-days={streak.days}
+                data-counted={streak.counted}
+                data-pct={streak.pct}
+              >
+                🔥{" "}
+                {streak.counted
+                  ? streak.pct > 0
+                    ? `Floor streak · day ${streak.days} · +${streak.pct}% today`
+                    : `Floor streak · day ${streak.days} · +${streak.nextPct}% tomorrow`
+                  : streak.days <= 1
+                    ? "Collect today to start a floor streak"
+                    : `Day ${streak.days} streak · +${streak.pct}% if you collect today`}
+                <InfoTip label="How the floor streak works">
+                  Collect the Pickup Counter on days in a row. From the second day every collect adds
+                  2% more, up to +12% on day 7. Miss a day and it starts again; nothing you earned
+                  is lost.
+                </InfoTip>
+              </p>
+            ) : null}
             {ownedCount > 0 ? (
               <div className="mt-3" data-testid="floor-hype">
                 <div className="flex items-center justify-between font-ui text-[12.5px] font-extrabold text-walnut-dark">
@@ -586,10 +618,13 @@ export function SecondFloorView({
               </div>
             </div>
           ) : (floor.branch ?? 0) > 0 ? (
-            <p className="mt-2 font-ui text-[12px] text-walnut/65" data-testid="branch-line">
-              🏬 Branch {(floor.branch ?? 0) + 1} · +{(floor.branch ?? 0) * 50}% income
-              {(floor.branch ?? 0) >= MAX_BRANCH ? " · 🏆 final branch" : ""}
-            </p>
+            <div className="mt-2 flex items-center gap-2" data-testid="branch-line" data-branch={floor.branch ?? 0}>
+              <BranchBadge branch={floor.branch ?? 0} />
+              <p className="min-w-0 font-ui text-[12px] leading-snug text-walnut/65">
+                Branch {(floor.branch ?? 0) + 1} · {look.name} look · +{(floor.branch ?? 0) * 50}% income
+                {(floor.branch ?? 0) >= MAX_BRANCH ? " · 🏆 final branch" : ""}
+              </p>
+            </div>
           ) : null}
         </>
       );
@@ -820,6 +855,7 @@ export function SecondFloorView({
             margin="second-floor"
             box={wideBox}
             vp={vp}
+            filter={look.filter}
           />
         ) : null}
         <div
@@ -842,6 +878,8 @@ export function SecondFloorView({
               }
               alt="Overhead plan of the second floor: automated pizza, coffee, drinks, burger, ice cream and fried-food stations, a pickup counter and a seating area"
               draggable={false}
+              data-branch={floor.branch ?? 0}
+              {...(look.filter !== "none" ? { style: { filter: look.filter } } : {})}
             />
           </picture>
           <FloorLife
@@ -1197,3 +1235,27 @@ function PurchaseLabel({ icon, title, sub }: { icon: string; title: string; sub:
 }
 
 export default SecondFloorView;
+
+/**
+ * A finished branch's badge (the Franchise's reward art). The painted emblem (`progress/branches/branch-<n>.webp`, Codex) when it exists; until then a round plaque in the branch's own
+ * colour with its number, so the reward is never missing. The same badge shows in the Franchise offer.
+ */
+function BranchBadge({ branch, size = 40 }: { branch: number; size?: number }) {
+  const look = branchLook(branch);
+  const plaque = (
+    <span
+      className="grid shrink-0 place-items-center rounded-full border-2 border-white/70 font-display font-black text-white shadow-md"
+      style={{ width: size, height: size, background: look.accent, fontSize: size * 0.45 }}
+      aria-hidden="true"
+    >
+      {branch + 1}
+    </span>
+  );
+  const path = branchEmblemPath(branch);
+  return path ? (
+    <PaintedPortrait path={path} width={size} data-portrait={`branch-${branch}`} fallback={plaque} />
+  ) : (
+    plaque
+  );
+}
+

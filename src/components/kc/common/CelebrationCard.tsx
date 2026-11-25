@@ -3,6 +3,8 @@ import type { Celebration } from "@/game/restaurant/celebrations";
 import { sharingAllowed } from "@/game/PlayablesSDK";
 import { MomentPreview } from "../moments/MomentPreview";
 import { KButton } from "./primitives";
+import { PaintedPortrait } from "./PaintedPortrait";
+import { prestigeEmblemPath, rivalPortraitPath } from "@/game/chefArt";
 import { PaigeCutout, PaigeNameplate, PaigePiece } from "../assistant/PaigeArt";
 import "../assistant/assistant.css";
 
@@ -22,6 +24,12 @@ export function CelebrationCard({
   // Chef Pride, Phase 6: the achievement can be turned into a picture to share. Only when the player taps; hidden where sharing is not allowed (YouTube).
   const [preview, setPreview] = useState(false);
   const shares = sharingAllowed() ? (celebration.shares ?? []) : [];
+  // The painted picture (the passed rival's chef, the prestige tier's emblem) when the card has one; the emoji otherwise or if it cannot load.
+  const portraitPath = celebration.portrait
+    ? celebration.portrait.kind === "rival"
+      ? rivalPortraitPath(celebration.portrait.id)
+      : prestigeEmblemPath(celebration.portrait.tier)
+    : null;
   return (
     <div
       data-testid="celebration"
@@ -42,12 +50,35 @@ export function CelebrationCard({
             name="ui-sparkle"
             className="paige-sparkle absolute right-3 top-6 h-6 w-6 opacity-80"
           />
-          <p
-            className="text-[46px] leading-none drop-shadow-[0_4px_8px_rgba(168,116,47,0.45)]"
-            aria-hidden
-          >
-            {celebration.emoji}
-          </p>
+          {portraitPath ? (
+            <div className="flex justify-center" data-testid="celebration-portrait">
+              <PaintedPortrait
+                path={portraitPath}
+                width={celebration.portrait?.kind === "rival" ? 88 : 96}
+                round={celebration.portrait?.kind === "rival"}
+                className={
+                  celebration.portrait?.kind === "rival"
+                    ? "border-2 border-gold bg-ivory/60 shadow-lift"
+                    : "drop-shadow-[0_4px_8px_rgba(168,116,47,0.45)]"
+                }
+                fallback={
+                  <p
+                    className="text-[46px] leading-none drop-shadow-[0_4px_8px_rgba(168,116,47,0.45)]"
+                    aria-hidden
+                  >
+                    {celebration.emoji}
+                  </p>
+                }
+              />
+            </div>
+          ) : (
+            <p
+              className="text-[46px] leading-none drop-shadow-[0_4px_8px_rgba(168,116,47,0.45)]"
+              aria-hidden
+            >
+              {celebration.emoji}
+            </p>
+          )}
           <p className="mt-1 font-ui text-[11px] font-extrabold uppercase tracking-[0.16em] text-olive">
             Congratulations
           </p>

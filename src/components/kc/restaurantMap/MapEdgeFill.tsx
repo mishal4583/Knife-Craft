@@ -20,6 +20,7 @@ export function MapEdgeFill({
   margin,
   box,
   vp,
+  filter,
 }: {
   /** The map's own picture (also what the fallback strips are cut from). */
   src: string;
@@ -27,6 +28,8 @@ export function MapEdgeFill({
   margin?: MapMarginName;
   box: { left: number; top: number; sw: number; sh: number };
   vp: { w: number; h: number };
+  /** A CSS colour filter on the margins, so they match a tinted picture (the Second Floor's branch look). */
+  filter?: string | undefined;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [fill, setFill] = useState<"pending" | "garden" | "mirrored">("pending");
@@ -267,6 +270,7 @@ export function MapEdgeFill({
       data-testid="map-edge-fill"
       data-fill={fill}
       className="pointer-events-none absolute inset-0 h-full w-full"
+      {...(filter && filter !== "none" ? { style: { filter } } : {})}
     />
   );
 }

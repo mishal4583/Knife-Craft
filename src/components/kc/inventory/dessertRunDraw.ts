@@ -13,6 +13,7 @@ import {
   STAGE,
   TABLES,
   cellHex,
+  hintLane,
   isWaiting,
   spotCenter,
   type RunState,
@@ -705,8 +706,9 @@ export function drawRun(ctx: CanvasRenderingContext2D, state: RunState, view: Dr
       ctx.fillText(`+${lane.length - QUEUE.rows}`, q.x + 6, q.y + q.h + 15);
     }
   }
-  if (view.hintOn && state.lanes[0]?.[0] && state.phase === "play") {
-    const q = tileRect(0, 0, lanes);
+  const hintAt = view.hintOn && state.phase === "play" ? hintLane(state) : -1;
+  if (hintAt >= 0) {
+    const q = tileRect(hintAt, 0, lanes);
     const b = Math.sin(now / 220) * 5;
     ctx.fillStyle = "#fff";
     ctx.strokeStyle = "rgba(0,0,0,.55)";
