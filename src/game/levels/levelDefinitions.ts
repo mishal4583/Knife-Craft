@@ -9782,7 +9782,7 @@ export const CAMPAIGN_148_LEVEL_FIXES: Record<number, Partial<LevelDefinition>> 
   71: { title: "Three Tables, Japanese Night" },
   73: { description: "A real branch — one chicken sliced for the salad, a fresh one diced with pepper for the bowl." },
   85: { description: "One steak sliced for the plate with spring onion, a fresh one diced for the bowl." },
-  89: { description: "Sliced salmon, with the coconut halved and chopped alongside it." },
+  89: { description: "Sliced salmon, with the coconut peeled, halved and chopped alongside it." },
   99: { title: "Thai Branch & Batch" },
   109: { description: "Slice the chicken, then halve and slice the artichoke, with lemon and minced garlic." },
   115: { title: "Shared Carrot, Bistro Tables" },

@@ -176,6 +176,38 @@ for (const [w, h] of SIZES) {
       small.length === 0,
       small.slice(0, 4),
     );
+    // 7b: no button is pushed out of the window (a clipped ⓘ is not a page overflow, so check 7 cannot see it): at 320 px the selected kitchen's "Neighborhood Café"
+    // pushed its ⓘ to x = 317..365. Buttons inside a sideways scroller (the tab strip, a pager) are meant to run past the edge and are left out.
+    const outside = await page.evaluate(() => {
+      const s = [...document.querySelectorAll("div")].find(
+        (d) => d.classList.contains("overflow-y-auto") && d.scrollHeight > d.clientHeight + 20,
+      );
+      if (!s) return ["no scroller"];
+      const vw = window.innerWidth;
+      return [...s.querySelectorAll("button")]
+        .filter((b) => b.getBoundingClientRect().width > 0 && !b.closest("nav"))
+        .filter((b) => {
+          for (let e = b.parentElement; e && e !== s; e = e.parentElement) {
+            const o = getComputedStyle(e).overflowX;
+            if ((o === "auto" || o === "scroll") && e.scrollWidth > e.clientWidth + 1) return false;
+          }
+          return true;
+        })
+        .map((b) => {
+          const r = b.getBoundingClientRect();
+          return {
+            t: (b.getAttribute("aria-label") ?? b.textContent).trim().slice(0, 28),
+            l: Math.round(r.left),
+            r: Math.round(r.right),
+          };
+        })
+        .filter((b) => b.r > vw + 0.5 || b.l < -0.5);
+    });
+    check(
+      `7b ${tag} ${tab}: no button sits outside the window`,
+      outside.length === 0,
+      outside.slice(0, 4),
+    );
     if (w === 1815 || w === 390)
       await page.screenshot({ path: `out/businessredesign-${tag}-${tab}.png` });
     await page.evaluate(() => {

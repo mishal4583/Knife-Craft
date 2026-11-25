@@ -119,7 +119,8 @@ export function KitchenUpgrades({
               ) : null}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="flex items-center gap-1.5 font-display text-[24px] font-black leading-tight text-walnut-dark">
+              {/* Narrow phones (320 px): "Neighborhood" at 24 px was wider than the column, which pushed the ⓘ out of the card (clipped, unreachable): a smaller title there, and the ⓘ may wrap under it. */}
+              <p className="flex flex-wrap items-center gap-x-1.5 font-display text-[20px] font-black leading-tight text-walnut-dark min-[380px]:text-[24px]">
                 {selected.name}
                 <InfoTip label={`About the ${selected.name}`}>
                   {selected.description}

@@ -261,7 +261,8 @@ function playedSave(): SaveData {
     BUSINESS_DISH_CATALOG.length === 48 &&
       // 81893 → 82293 (developer 2026-10-15, no single-ingredient dish): menu dishes
       // built on the recipes that gained a second ingredient price it in (30% food cost).
-      prices.reduce((a, b) => a + b, 0) === 82293 &&
+      // RULE CHANGE (developer 2026-11-25, the coconut and mango audit): the six coconut and mango dishes now carry a Peel step, and the menu price basis counts every component (as it always has for onion, pineapple, pumpkin ...), so their suggested prices rise: 82293 -> 82960.
+      prices.reduce((a, b) => a + b, 0) === 82960 &&
       prices[0] === 900 &&
       Math.max(...prices) === 4520,
     `M: 48 dishes (13 added so every ingredient is on a menu), default menu prices locked (follow the per-ingredient prices at 30% food cost) (sum ${prices.reduce((a, b) => a + b, 0)})`,

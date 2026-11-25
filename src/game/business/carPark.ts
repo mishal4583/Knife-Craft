@@ -180,10 +180,40 @@ function pathCells(v: CarParkVehicle, lot: Pick<CarParkLot, "cols" | "rows">): n
   return out;
 }
 export function blockersFor(lot: CarParkLot, vehicle: CarParkVehicle): string[] {
-  const route = new Set(pathCells(vehicle, lot));
-  return lot.vehicles
-    .filter((v) => v.id !== vehicle.id && cells(v).some((cell) => route.has(cell)))
-    .map((v) => v.id);
+  // Speed (developer 2026-11-25, see `solve`): the route is a flat 0/1 array  and the other vehicles' cells are read
+  // without building arrays. The answer is the old one: the other vehicles, in lot order, that sit on the route.
+  const route = new Uint8Array(512); // 32 cells of margin below 0, like `solve`, so a vehicle outside the lot collides as it did in the old Set
+  if (vehicle.axis === "h") {
+    for (
+      let x = vehicle.dir < 0 ? vehicle.x - 1 : vehicle.x + vehicle.length;
+      x >= 0 && x < lot.cols;
+      x += vehicle.dir
+    ) {
+      const key = cellKey(x, vehicle.y) + 32;
+      if (key >= 0 && key < 512) route[key] = 1;
+    }
+  } else {
+    for (
+      let y = vehicle.dir < 0 ? vehicle.y - 1 : vehicle.y + vehicle.length;
+      y >= 0 && y < lot.rows;
+      y += vehicle.dir
+    ) {
+      const key = cellKey(vehicle.x, y) + 32;
+      if (key >= 0 && key < 512) route[key] = 1;
+    }
+  }
+  const out: string[] = [];
+  for (const v of lot.vehicles) {
+    if (v.id === vehicle.id) continue;
+    for (let i = 0; i < v.length; i++) {
+      const key = (v.axis === "h" ? cellKey(v.x + i, v.y) : cellKey(v.x, v.y + i)) + 32;
+      if (key >= 0 && key < 512 && route[key]) {
+        out.push(v.id);
+        break;
+      }
+    }
+  }
+  return out;
 }
 const freeCount = (lot: CarParkLot) =>
   lot.vehicles.filter((v) => blockersFor(lot, v).length === 0).length;
@@ -220,17 +250,44 @@ export function towVehicle(lot: CarParkLot, id: string): CarParkLot {
 export const isLotCleared = (lot: CarParkLot) => lot.vehicles.length === 0;
 /** The order in which every vehicle can drive out (each one finds its way clear when its turn comes), or null when the lot is jammed for good. */
 export function solve(lot: CarParkLot): string[] | null {
-  const occupied = new Set<number>();
-  for (const v of lot.vehicles) for (const cell of cells(v)) occupied.add(cell);
-  const routes = new Map(lot.vehicles.map((v) => [v.id, pathCells(v, lot)] as const));
-  const remaining = [...lot.vehicles];
+  // Speed (developer 2026-11-25, car-park-qa A32t / A65t: one Level 65 lot took 864 ms to build): the generator calls this thousands of times, so it runs on a flat
+  // occupancy array with no per-call arrays or sets. The answer is exactly the old one (the first vehicle in lot order whose way is clear leaves first); a cell key is
+  // at most 255 because a lot is at most 16 x 16 (`cellKey`).
+  const vs = lot.vehicles;
+  const n = vs.length;
+  // A vehicle standing outside the lot has a key below 0 (or past 255): the array has 32 cells of margin so those collide exactly as they did in the old Set.
+  const MARGIN = 32;
+  const occupied = new Uint8Array(512);
+  const mark = (v: CarParkVehicle, value: 0 | 1) => {
+    for (let i = 0; i < v.length; i++) {
+      const key = (v.axis === "h" ? cellKey(v.x + i, v.y) : cellKey(v.x, v.y + i)) + MARGIN;
+      if (key >= 0 && key < 512) occupied[key] = value;
+    }
+  };
+  const wayClear = (v: CarParkVehicle): boolean => {
+    if (v.axis === "h") {
+      for (let x = v.dir < 0 ? v.x - 1 : v.x + v.length; x >= 0 && x < lot.cols; x += v.dir)
+        if (occupied[cellKey(x, v.y) + MARGIN]) return false;
+    } else {
+      for (let y = v.dir < 0 ? v.y - 1 : v.y + v.length; y >= 0 && y < lot.rows; y += v.dir)
+        if (occupied[cellKey(v.x, y) + MARGIN]) return false;
+    }
+    return true;
+  };
+  for (const v of vs) mark(v, 1);
+  const gone = new Uint8Array(n);
   const order: string[] = [];
-  while (remaining.length) {
-    const at = remaining.findIndex((v) => routes.get(v.id)!.every((cell) => !occupied.has(cell)));
+  while (order.length < n) {
+    let at = -1;
+    for (let i = 0; i < n; i++)
+      if (!gone[i] && wayClear(vs[i]!)) {
+        at = i;
+        break;
+      }
     if (at < 0) return null;
-    const [v] = remaining.splice(at, 1);
-    for (const cell of cells(v!)) occupied.delete(cell);
-    order.push(v!.id);
+    gone[at] = 1;
+    mark(vs[at]!, 0);
+    order.push(vs[at]!.id);
   }
   return order;
 }

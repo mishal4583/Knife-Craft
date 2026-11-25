@@ -27,7 +27,9 @@ const save40 = () =>
       currentLevelId: "level-40",
       highestUnlockedLevelId: "level-40",
       completedLevelIds: Array.from({ length: 39 }, (_, i) => `level-${i + 1}`),
-      campaignVersion: 2,
+      // RULE CHANGE (developer 2026-11-07, the 91-level campaign): the seed was written for campaignVersion 2 (148 levels), which the game now migrates, so "Level 40" became
+      // Level 6, before the dining room (Level 12) and its tonight's-close tissues. campaignVersion 4 is the current numbering, so this is a real Level 40 again.
+      campaignVersion: 4,
     },
     story: { introDone: true, milestoneMask: 0xffff, finaleSeen: true },
   });
@@ -100,6 +102,13 @@ check(
 
 // 3. Daily Check → Restock › on the tissues
 await page.evaluate(() => document.querySelector('[data-nav="kitchen"]')?.click());
+// The seed has $7,700 of achievement money waiting, so Paige's "Achievement rewards are waiting" card covers the Kitchen and the tap never reaches the shortcut:
+// the test dismisses it with "Later" first (a test-driver fix; the assertions are unchanged).
+await sleep(600);
+await page.evaluate(() =>
+  [...document.querySelectorAll("button")].find((b) => b.textContent?.trim() === "Later")?.click(),
+);
+await sleep(600);
 await page
   .waitForSelector('[data-testid="daily-check-shortcut"]', { timeout: 15000 })
   .catch(async () => {
@@ -124,13 +133,9 @@ for (let i = 0; i < 3; i++) {
 await page.waitForFunction(() => /Tonight’s close/i.test(document.body.innerText), {
   timeout: 15000,
 });
+// The row is a supply tile now (SupplyCheckTiles: a "Low" chip first, then the name), so it is found by its test id; the click is the same Restock ›.
 await page.evaluate(() => {
-  const li = [...document.querySelectorAll("li, div")].find(
-    (e) =>
-      /^⚠️? ?Tissues for the dining room/.test((e.textContent ?? "").trim()) &&
-      e.querySelector("button"),
-  );
-  li?.querySelector("button")?.click();
+  document.querySelector('[data-testid="supply-tile"][data-supply="tissues"] button')?.click();
 });
 await page.waitForSelector('[data-supply="tissues"]', { timeout: 15000 });
 await sleep(600);

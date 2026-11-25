@@ -2752,17 +2752,11 @@ export const INGREDIENTS: Record<IngredientId, IngredientDefinition> = {
     name: "Coconut",
     category: "Fruit",
     // One of the source's exactly-three real peelable foods — see
-    // pineapple's own doc above for the full rationale. KnifeCraft_
-    // Level_System_v2.docx §2.6 corrects the campaign recipe itself to
-    // "Halve then Chop" (a coconut isn't peeled) — `chop` added here so
-    // that's representable; `peel` is left in place (unused by any v2
-    // campaign recipe now, but harmless, and removing it risks the
-    // existing peelable-texture/reveal path this ingredient already has).
-    // `peelDecoupled` added alongside it: without this, `peel` staying
-    // mandatory-first would block the v2 recipe's own Halve-first chain
-    // (requiresPeelFirst()/recipePrerequisiteIssues both gate on it).
+    // pineapple's own doc above for the full rationale.
+    // RULE CHANGE (developer 2026-11-25: "how can coconut be chopped without peeling the shell"): the v2 level document had made the coconut Halve-then-Chop
+    // with `peelDecoupled`, which let the knife go straight through the husk. Peel is mandatory-first again, exactly like Onion/Pineapple/Watermelon: the
+    // three coconut recipes carry a Peel step, and `withRequiredPeelSteps` inserts one for any other source (Business dishes, Restaurant Service).
     techniques: ["peel", "halve", "chop"],
-    peelDecoupled: true,
     shape: "ellipse",
     difficulty: 2,
     bandTopClear: 0.07,

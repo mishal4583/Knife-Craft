@@ -130,7 +130,8 @@ await shot(page, "league-progress");
 check(
   "1 Level 12: a Bronze table of ten with the player in it, a goal line and the promise that nobody drops down",
   !!c1 &&
-    c1.name === "🏅 Bronze League" &&
+    // RULE CHANGE (developer 2026-11-25, Restaurant Progress redesign, commit 79a035c): the card's title is a painted icon plus the words, no 🏅 in the text.
+    c1.name === "Bronze League" &&
     c1.rows === 10 &&
     c1.player === 1 &&
     !!c1.goal &&
@@ -189,7 +190,8 @@ await openProgress();
 const c3 = await card();
 check(
   "3d Progress now shows Silver League and last week's result",
-  !!c3 && c3.name === "🏅 Silver League" && /#1 of 10, promoted/.test(c3.last ?? ""),
+  // RULE CHANGE (developer 2026-11-25): painted icon, no 🏅 in the title text (see check 1).
+  !!c3 && c3.name === "Silver League" && /#1 of 10, promoted/.test(c3.last ?? ""),
   c3,
 );
 

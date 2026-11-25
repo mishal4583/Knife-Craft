@@ -649,8 +649,9 @@ assert(
   // Re-recorded 2026-11-07 for the 91-level campaign (the pay curve re-tuned to about the same completion total; 148 levels ended at $211,944.37).
   // Re-recorded 2026-11-08 (the first-20-levels dishes: revenue $51,560 -> $51,275, COGS $11,337 -> $11,317): $190,329.07 -> $190,015.07.
   // RULE CHANGE (developer 2026-11-25, technique-realism audit: four dishes cut a FRESH second piece and the fresh onion of Onion Two Ways has its own Peel step): $190,015.07 -> $190,031.77 (more food cost, a little more recipe pay).
-  completionist.final === 19_003_177,
-  `K5: the classic completionist ends at ${fmt(completionist.final)} — the 91-level baseline $190,031.77 (re-recorded 2026-11-25, the technique-realism audit; $190,015.07 on 2026-11-08, the first-20-levels dishes; $190,329.07 before; $211,944.37 in the 148-level campaign)`,
+  // RULE CHANGE (developer 2026-11-25, the coconut and mango audit: three coconut and three mango dishes now peel first, so a little more recipe pay and quality bonus; COGS is unchanged): $190,031.77 -> $190,437.77.
+  completionist.final === 19_043_777,
+  `K5: the classic completionist ends at ${fmt(completionist.final)} — the 91-level baseline $190,437.77 (re-recorded 2026-11-25, the coconut and mango audit; $190,031.77 after the technique-realism audit; $190,015.07 on 2026-11-08, the first-20-levels dishes; $190,329.07 before; $211,944.37 in the 148-level campaign)`,
 );
 assert(
   completionist.everythingOwned &&

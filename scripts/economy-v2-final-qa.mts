@@ -14,7 +14,7 @@ import fs from "node:fs";
  */
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 // USD: every wallet/settlement amount is integer US cents (money.ts). The frozen Economy V2 figures are
-// the original numbers read as dollars — $51,345.00 / $243,953.00 / $11,373.00 / $1,040.00 / $284,965.00 (91-level campaign baseline, re-recorded 2026-11-08 (the first-20-levels dishes; before: 51,560 / 243,953 / 11,337 / 1,047 / 285,223 after the 2026-11-07 campaign plan)).
+// the original numbers read as dollars — $51,740.00 / $243,953.00 / $11,373.00 / $1,048.00 / $285,368.00 (91-level campaign baseline, re-recorded 2026-11-08 (the first-20-levels dishes; before: 51,560 / 243,953 / 11,337 / 1,047 / 285,223 after the 2026-11-07 campaign plan)).
 import { dollars } from "../src/game/money.ts";
 import { DEFAULT_LEVEL_PROGRESS, completeLevel, isChapterComplete } from "../src/game/levels/LevelManager.ts";
 import { LEVELS } from "../src/game/levels/levelDefinitions.ts";
@@ -304,12 +304,13 @@ let lockedBaseline = { revenue: 0, rewards: 0, cogs: 0, qualityBonus: 0, net: 0 
     { revenue: 0, rewards: 0, cogs: 0, qualityBonus: 0, net: 0 },
   );
   lockedBaseline = totals;
-  assert(totals.revenue === dollars(51345), `H: recipe revenue unchanged at $51,345.00 (got ${totals.revenue})`);
+  // RULE CHANGE (developer 2026-11-25, the coconut and mango audit: three coconut dishes and three mango dishes now PEEL first): recipe revenue $51,345.00 -> $51,740.00, quality bonuses $1,040.00 -> $1,048.00, net $284,965.00 -> $285,368.00; COGS ($11,373.00) and completion pay ($243,953.00) are unchanged (a Peel step is paid, it adds no ingredient).
+  assert(totals.revenue === dollars(51740), `H: recipe revenue unchanged at $51,740.00 (got ${totals.revenue})`);
   assert(totals.rewards === dollars(243953), `H2: completion rewards at the V2.5 locked $243,953.00 (got ${totals.rewards})`);
   // RULE CHANGE (developer 2026-11-25, technique-realism audit: Sliced & Diced Steak, Onion Two Ways, Potato Two Ways and Bruschetta Trio now cut a FRESH second piece): the baseline revenue is $51,345.00 (was $51,275.00) and the net $284,965.00 (was $284,951.00 before this audit): the fresh onion of Onion Two Ways has its own Peel step, one more step, one more step's pay; COGS $11,373.00 (was $11,317.00); completion pay and quality bonuses are unchanged.
   assert(totals.cogs === dollars(11373), `H3: baseline COGS unchanged at $11,373.00 (got ${totals.cogs})`);
-  assert(totals.qualityBonus === dollars(1040), `H4: quality bonus unchanged at $1,040.00 (got ${totals.qualityBonus})`);
-  assert(totals.net === dollars(284965), `H5: Honest net at the V2.5 locked $284,965.00 (got ${totals.net})`);
+  assert(totals.qualityBonus === dollars(1048), `H4: quality bonus unchanged at $1,048.00 (got ${totals.qualityBonus})`);
+  assert(totals.net === dollars(285368), `H5: Honest net at the V2.5 locked $285,368.00 (got ${totals.net})`);
 }
 
 /* ============================================================
@@ -470,15 +471,15 @@ let lockedBaseline = { revenue: 0, rewards: 0, cogs: 0, qualityBonus: 0, net: 0 
  * stored reward.coins is untouched; levels/levelRewards.ts pays a tapering
  * share of it (100% for Levels 1–20 and 250, down to 15% for 201–249), so
  * completion rewards are $243,953.00 (was $330,691.00) and the Honest net
- * $284,965.00 (was $461,526.00). Recipe revenue, COGS and quality bonuses
+ * $285,368.00 (was $461,526.00). Recipe revenue, COGS and quality bonuses
  * are unchanged and still gated exactly. Any OTHER drift is a regression.
  * ============================================================ */
 {
-  assert(lockedBaseline.revenue === dollars(51345), "R: FREEZE GATE — recipe revenue === $51,345.00");
+  assert(lockedBaseline.revenue === dollars(51740), "R: FREEZE GATE — recipe revenue === $51,740.00");
   assert(lockedBaseline.rewards === dollars(243953), "R2: FREEZE GATE — completion rewards === $243,953.00 (V2.5)");
   assert(lockedBaseline.cogs === dollars(11373), "R3: FREEZE GATE — baseline COGS === $11,373.00");
-  assert(lockedBaseline.qualityBonus === dollars(1040), "R4: FREEZE GATE — quality bonus === $1,040.00");
-  assert(lockedBaseline.net === dollars(284965), "R5: FREEZE GATE — Honest net === $284,965.00 (V2.5)");
+  assert(lockedBaseline.qualityBonus === dollars(1048), "R4: FREEZE GATE — quality bonus === $1,048.00");
+  assert(lockedBaseline.net === dollars(285368), "R5: FREEZE GATE — Honest net === $285,368.00 (V2.5)");
 }
 
 console.log(failures === 0 ? "\nALL PASS — ECONOMY V2 FROZEN — NO KNOWN ECONOMY REGRESSIONS." : `\n${failures} FAILURE(S) — DO NOT FREEZE`);

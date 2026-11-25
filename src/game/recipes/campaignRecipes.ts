@@ -1854,6 +1854,13 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
     cuisineId: "indian",
     authenticity: "A",
     components: [
+      // RULE CHANGE (developer 2026-11-25): a coconut is peeled (the husk comes off) before it is halved and chopped.
+      {
+        ingredientId: "coconut",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
       {
         ingredientId: "coconut",
         technique: "halve",
@@ -1869,7 +1876,7 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
     ],
     destinations: [BOWL],
     batchable: false,
-    chefInstruction: "Halve the coconut. Chop the coconut.",
+    chefInstruction: "Peel the coconut. Halve the coconut. Chop the coconut.",
     customerDialogue: "The coconut, prepared please.",
     basePayment: 115,
     unlockLevel: 56,
@@ -2107,6 +2114,13 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
         destinationIds: ["cup"],
         batchable: true,
       },
+      // RULE CHANGE (developer 2026-11-25, the coconut audit): the mango is peeled before it is diced, as in the other mango dishes.
+      {
+        ingredientId: "mango",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
+      },
       {
         ingredientId: "mango",
         technique: "dice",
@@ -2122,7 +2136,8 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
     ],
     destinations: [{ id: "cup", name: "Cup" }],
     batchable: true,
-    chefInstruction: "Peel the onion. Chop the onion. Dice the mango. Slice the chilli.",
+    chefInstruction:
+      "Peel the onion. Chop the onion. Peel the mango. Dice the mango. Slice the chilli.",
     customerDialogue: "The relish, on the side.",
     basePayment: 315,
     unlockLevel: 62, // first served by Level 62 (was 63: the level pool served it before it 'unlocked')
@@ -2233,6 +2248,13 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "diced",
         destinationIds: ["bowl"],
       },
+      // RULE CHANGE (developer 2026-11-25): the coconut is peeled first.
+      {
+        ingredientId: "coconut",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["bowl"],
+      },
       {
         ingredientId: "coconut",
         technique: "halve",
@@ -2261,7 +2283,7 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
     destinations: [BOWL],
     batchable: true,
     chefInstruction:
-      "Dice the pumpkin. Halve the coconut. Chop the coconut. Peel the ginger. Rock-mince the ginger.",
+      "Dice the pumpkin. Peel the coconut. Halve the coconut. Chop the coconut. Peel the ginger. Rock-mince the ginger.",
     customerDialogue: "The pumpkin coconut curry, please.",
     basePayment: 350,
     unlockLevel: 68,
@@ -2800,6 +2822,13 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "diced",
         destinationIds: ["cup"],
       },
+      // RULE CHANGE (developer 2026-11-25, the coconut audit): the mango is peeled before it is diced.
+      {
+        ingredientId: "mango",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
+      },
       {
         ingredientId: "mango",
         technique: "dice",
@@ -2815,7 +2844,8 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
     ],
     destinations: [{ id: "cup", name: "Cup" }],
     batchable: true,
-    chefInstruction: "Peel the pineapple. Dice the pineapple. Dice the mango. Cut the lime.",
+    chefInstruction:
+      "Peel the pineapple. Dice the pineapple. Peel the mango. Dice the mango. Cut the lime.",
     customerDialogue: "The fresh fruit cup, please.",
     basePayment: 330,
     unlockLevel: 84,
@@ -4345,6 +4375,13 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
         resultingState: "sliced",
         destinationIds: ["plate"],
       },
+      // RULE CHANGE (developer 2026-11-25): the coconut is peeled first.
+      {
+        ingredientId: "coconut",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["plate"],
+      },
       {
         ingredientId: "coconut",
         technique: "halve",
@@ -4360,7 +4397,7 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
     ],
     destinations: [PLATE],
     batchable: false,
-    chefInstruction: "Slice the salmon. Halve the coconut. Chop the coconut.",
+    chefInstruction: "Slice the salmon. Peel the coconut. Halve the coconut. Chop the coconut.",
     customerDialogue: "Salmon with coconut, please.",
     basePayment: 335,
     unlockLevel: 143,
@@ -4445,6 +4482,13 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
     cuisineId: "thai",
     authenticity: "A",
     components: [
+      // RULE CHANGE (developer 2026-11-25, the coconut audit): the mango is peeled before it is diced.
+      {
+        ingredientId: "mango",
+        technique: "peel",
+        resultingState: "peeled",
+        destinationIds: ["cup"],
+      },
       {
         ingredientId: "mango",
         technique: "dice",
@@ -4472,7 +4516,8 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
     ],
     destinations: [{ id: "cup", name: "Cup" }],
     batchable: false,
-    chefInstruction: "Dice the mango. Peel the pineapple. Dice the pineapple. Cut the lime.",
+    chefInstruction:
+      "Peel the mango. Dice the mango. Peel the pineapple. Dice the pineapple. Cut the lime.",
     customerDialogue: "Mango and pineapple, fresh.",
     basePayment: 455,
     unlockLevel: 146,

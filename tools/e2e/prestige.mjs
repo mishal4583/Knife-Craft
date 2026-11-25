@@ -101,7 +101,8 @@ const claimed = Number((c1?.goal ?? "").match(/^(\d+) of (\d+) points to (.+)$/)
 check(
   "1 Level 15 with a good record: Local Favourite, five parts that add up to the points in the bar, and the next tier named",
   !!c1 &&
-    c1.name === "🏛️ Local Favourite" &&
+    // RULE CHANGE (developer 2026-11-25, Restaurant Progress redesign, commit 79a035c): the tier is shown by a painted icon, so the text is only "Local Favourite".
+    c1.name === "Local Favourite" &&
     c1.parts.length === 5 &&
     c1.sum === claimed &&
     /to City Landmark$/.test(c1.goal ?? ""),

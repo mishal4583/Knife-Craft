@@ -76,7 +76,8 @@ const hero = await page.evaluate(() => ({
 await shot(page, "rivals-progress");
 check(
   "1a Progress shows the next rival's chef from Level 8 ('Chef Arjun: ...' for Curry Corner)",
-  hero.hero && /^👨‍🍳 Chef Arjun: “Spice takes patience\. Do you have any\?”$/.test(hero.line ?? ""),
+  // RULE CHANGE (developer 2026-11-25, Restaurant Progress redesign, commit 79a035c): the chef is a painted face (ChefFace), not a 👨‍🍳 in the text.
+  hero.hero && /^Chef Arjun: “Spice takes patience\. Do you have any\?”$/.test(hero.line ?? ""),
   hero,
 );
 await boot(page, saveAt(5, QUIET)); // Level 6: before the ranking news

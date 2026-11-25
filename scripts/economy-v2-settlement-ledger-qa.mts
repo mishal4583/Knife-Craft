@@ -19,7 +19,7 @@ import fs from "node:fs";
  */
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 // USD: every wallet/settlement amount is integer US cents (money.ts). The frozen Economy V2 figures are
-// the original numbers read as dollars — $51,345.00 / $243,953.00 / $11,373.00 / $1,040.00 / $284,965.00 (91-level campaign baseline, re-recorded 2026-11-08 (the first-20-levels dishes; before: 51,560 / 243,953 / 11,337 / 1,047 / 285,223 after the 2026-11-07 campaign plan)).
+// the original numbers read as dollars — $51,740.00 / $243,953.00 / $11,373.00 / $1,048.00 / $285,368.00 (91-level campaign baseline, re-recorded 2026-11-08 (the first-20-levels dishes; before: 51,560 / 243,953 / 11,337 / 1,047 / 285,223 after the 2026-11-07 campaign plan)).
 import { dollars } from "../src/game/money.ts";
 import { DEFAULT_LEVEL_PROGRESS, completeLevel, isChapterComplete } from "../src/game/levels/LevelManager.ts";
 import { LEVELS } from "../src/game/levels/levelDefinitions.ts";
@@ -346,12 +346,13 @@ const recipe = CAMPAIGN_RECIPES[30]!;
     }),
     { grossRecipeRevenue: 0, completionRewards: 0, cogs: 0, qualityBonus: 0, net: 0 },
   );
-  assert(totals.grossRecipeRevenue === dollars(51345), `X: recipe revenue unchanged at $51,345.00 (got ${totals.grossRecipeRevenue})`);
+  // RULE CHANGE (developer 2026-11-25, the coconut and mango audit: three coconut dishes and three mango dishes now PEEL first): recipe revenue $51,345.00 -> $51,740.00, quality bonuses $1,040.00 -> $1,048.00, net $284,965.00 -> $285,368.00; COGS ($11,373.00) and completion pay ($243,953.00) are unchanged (a Peel step is paid, it adds no ingredient).
+  assert(totals.grossRecipeRevenue === dollars(51740), `X: recipe revenue unchanged at $51,740.00 (got ${totals.grossRecipeRevenue})`);
   assert(totals.completionRewards === dollars(243953), `X2: completion rewards at the V2.5 locked $243,953.00 (got ${totals.completionRewards})`);
   // RULE CHANGE (developer 2026-11-25, technique-realism audit: Sliced & Diced Steak, Onion Two Ways, Potato Two Ways and Bruschetta Trio now cut a FRESH second piece): the baseline revenue is $51,345.00 (was $51,275.00) and the net $284,965.00 (was $284,951.00 before this audit): the fresh onion of Onion Two Ways has its own Peel step, one more step, one more step's pay; COGS $11,373.00 (was $11,317.00); completion pay and quality bonuses are unchanged.
   assert(totals.cogs === dollars(11373), `X3: baseline COGS unchanged at $11,373.00 (got ${totals.cogs})`);
-  assert(totals.qualityBonus === dollars(1040), `X4: quality bonus unchanged at $1,040.00 (got ${totals.qualityBonus})`);
-  assert(totals.net === dollars(284965), `X5: Honest net at the V2.5 locked $284,965.00 (got ${totals.net})`);
+  assert(totals.qualityBonus === dollars(1048), `X4: quality bonus unchanged at $1,048.00 (got ${totals.qualityBonus})`);
+  assert(totals.net === dollars(285368), `X5: Honest net at the V2.5 locked $285,368.00 (got ${totals.net})`);
 }
 
 console.log(`\nMAX_LEDGER_ENTRIES bound in effect: ${MAX_LEDGER_ENTRIES}`);

@@ -181,6 +181,73 @@ console.log("F. Every step is something the food can do");
 }
 
 console.log(
+  "G. A shell, husk or skin that is not eaten comes off first (developer 2026-11-25: 'how can coconut be chopped without peeling the shell')",
+);
+{
+  const ing = INGREDIENTS as Record<
+    string,
+    { techniques: readonly string[]; peelDecoupled?: boolean }
+  >;
+  assert(
+    ing.coconut!.techniques.includes("peel") && !ing.coconut!.peelDecoupled,
+    "G1: the coconut is peel-first (its husk is not cut through)",
+  );
+  // every chain of a peel-first food starts with a Peel step IN THE RECIPE (the scene would insert one anyway, but then the pay, the stock count and the instruction line would not show it)
+  const bad: string[] = [];
+  for (const r of CAMPAIGN_RECIPES) {
+    r.components.forEach((c, i) => {
+      const def = ing[c.ingredientId];
+      if (!def || !def.techniques.includes("peel") || def.peelDecoupled || c.technique === "peel")
+        return;
+      let peeled = false;
+      for (let j = i - 1; j >= 0; j--) {
+        const p = r.components[j]!;
+        if (p.ingredientId !== c.ingredientId) break;
+        if (p.technique === "peel") {
+          peeled = true;
+          break;
+        }
+        if (p.chainBreak) break;
+      }
+      if (c.chainBreak) peeled = false;
+      if (!peeled) bad.push(`${r.id}: ${c.ingredientId} ${c.technique}`);
+    });
+  }
+  assert(
+    bad.length === 0,
+    "G2: in every recipe, a peel-first food (onion, potato, garlic, apple, pumpkin, pineapple, watermelon, coconut, ginger, ...) has its Peel step before any cut",
+    bad.slice(0, 6),
+  );
+  // the foods whose peel the game leaves optional (`peelDecoupled`) but whose skin is not eaten: no dish cuts them unpeeled (mango was peeled in three dishes and diced with its skin on in three others)
+  const SKIN_OFF = ["mango", "kiwi", "beetroot", "sweetpotato"];
+  const skinOn: string[] = [];
+  for (const r of CAMPAIGN_RECIPES)
+    for (const id of SKIN_OFF) {
+      const cs = r.components.filter((c) => c.ingredientId === id);
+      if (cs.length && cs[0]!.technique !== "peel")
+        skinOn.push(`${r.id}: ${id} ${cs[0]!.technique}`);
+    }
+  assert(
+    skinOn.length === 0,
+    "G4: mango, kiwi, beetroot and sweet potato are always peeled before they are cut",
+    skinOn.slice(0, 6),
+  );
+  const coconutRecipes = CAMPAIGN_RECIPES.filter((r) =>
+    r.components.some((c) => c.ingredientId === "coconut"),
+  );
+  assert(
+    coconutRecipes.length === 3 &&
+      coconutRecipes.every(
+        (r) =>
+          r.components.filter((c) => c.ingredientId === "coconut")[0]!.technique === "peel" &&
+          /Peel the coconut\. Halve the coconut/.test(r.chefInstruction),
+      ),
+    "G3: all three coconut dishes peel the coconut first and say so",
+    coconutRecipes.map((r) => r.id),
+  );
+}
+
+console.log(
   failures ? `\nTECHNIQUE REALISM QA: ${failures} FAILED` : "\nTECHNIQUE REALISM QA: ALL PASS",
 );
 process.exit(failures ? 1 : 0);

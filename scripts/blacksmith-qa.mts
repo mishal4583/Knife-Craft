@@ -492,13 +492,14 @@ function cutsLanded(knife: typeof chef, intervalMs: number, durationMs: number):
     new RegExp(`${label}:\\s*${value}(?![\\d,])`).test(honest);
   assert(
     v2.status === 0 &&
-      has("Gross recipe revenue", "\\$51,345\\.00") &&
+      // RULE CHANGE (developer 2026-11-25, the coconut and mango audit: three coconut dishes and three mango dishes now PEEL first): recipe revenue $51,345.00 -> $51,740.00, quality bonuses $1,040.00 -> $1,048.00, net $284,965.00 -> $285,368.00; COGS ($11,373.00) and completion pay ($243,953.00) are unchanged (a Peel step is paid, it adds no ingredient).
+      has("Gross recipe revenue", "\\$51,740\\.00") &&
       has("Level-completion rewards", "\\$243,953\\.00") &&
       has("Total COGS", "\\$11,373\\.00") &&
-      has("Total quality bonuses", "\\$1,040\\.00") &&
-      has("Total net campaign result", "\\$284,965\\.00"),
+      has("Total quality bonuses", "\\$1,048\\.00") &&
+      has("Total net campaign result", "\\$285,368\\.00"),
     // RULE CHANGE (developer 2026-11-25, technique-realism audit: Sliced & Diced Steak, Onion Two Ways, Potato Two Ways and Bruschetta Trio now cut a FRESH second piece): the baseline revenue is $51,345.00 (was $51,275.00) and the net $284,965.00 (was $284,951.00 before this audit): the fresh onion of Onion Two Ways has its own Peel step, one more step, one more step's pay; COGS $11,373.00 (was $11,317.00); completion pay and quality bonuses are unchanged.
-    "M3: Economy V2 freeze exact — $51,345.00 / $243,953.00 / $11,373.00 / $1,040.00 / $284,965.00 (91-level campaign baseline, re-recorded 2026-11-08 (the first-20-levels dishes; before: 51,560 / 243,953 / 11,337 / 1,047 / 285,223 after the 2026-11-07 campaign plan))",
+    "M3: Economy V2 freeze exact — $51,740.00 / $243,953.00 / $11,373.00 / $1,048.00 / $285,368.00 (91-level campaign baseline, re-recorded 2026-11-08 (the first-20-levels dishes; before: 51,560 / 243,953 / 11,337 / 1,047 / 285,223 after the 2026-11-07 campaign plan))",
   );
 }
 

@@ -339,8 +339,10 @@ const read = (rel: string) => fs.readFileSync(path.resolve(ROOT, rel), "utf8");
       .forEach((line, i) => {
         const t = line.trim();
         if (/^(\/\/|\*|\/\*|\{\/\*)/.test(t)) return;
+        // RULE CHANGE (developer 2026-11-25, painted pages): a picture's file name ("icons-a/coins", public/progress and public/business/art) is not player-facing
+        // wording, so a "/" before the word is allowed like a "." is. RestaurantProgress.tsx:570 had failed this check since the Progress redesign for that reason.
         if (
-          /["'`>][^"'`<]*(?<![.\w])(Café Coins?|Kitchen Coins?|[Cc]oins|coin cap|cents)\b/.test(
+          /["'`>][^"'`<]*(?<![./\w])(Café Coins?|Kitchen Coins?|[Cc]oins|coin cap|cents)\b/.test(
             line,
           )
         )
