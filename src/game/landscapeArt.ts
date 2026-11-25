@@ -73,6 +73,18 @@ export const landscapeKitchenArt = (skin: string): string =>
 export const landscapeMapArt = (stage: KitchenMapArtStage): string =>
   `${base()}landscape-art/true/map-${stage}.webp`;
 
+/**
+ * The margins of a wide map (developer 2026-11-24: "the both sides of the restaurant map are not filled in properly"): when the window is not 16:9 the garden carries on around the picture.
+ * Four small pictures per map, made once by scripts/make-map-margins.py from the picture's own outdoor material: `left` / `right` are MAP_MARGIN.x wide and 1080 tall, `top` / `bottom` are
+ * (1920 + 2 x MAP_MARGIN.x) wide and MAP_MARGIN.y tall and carry the corners. `name` is a kitchen stage or "second-floor".
+ */
+export type MapMarginName = KitchenMapArtStage | "second-floor";
+export const MAP_MARGIN = { x: 360, y: 220 } as const;
+export const landscapeMapMarginArt = (
+  name: MapMarginName,
+  side: "left" | "right" | "top" | "bottom",
+): string => `${base()}landscape-art/true/margins/${name}-${side}.webp`;
+
 /** The Second Floor food hall, laid out wide (1920 x 1080). */
 export const landscapeSecondFloorArt = (): string =>
   `${base()}landscape-art/true/second-floor.webp`;

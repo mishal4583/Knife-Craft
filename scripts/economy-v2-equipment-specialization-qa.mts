@@ -8,7 +8,7 @@
  */
 import { KNIFE_CATALOG } from "../src/game/knives/knifeDefinitions.ts";
 // USD: every wallet/settlement amount is integer US cents (money.ts). The frozen Economy V2 figures are
-// the original numbers read as dollars — $51,275.00 / $243,953.00 / $11,317.00 / $1,040.00 / $284,951.00 (91-level campaign baseline, re-recorded 2026-11-08 (the first-20-levels dishes; before: 51,560 / 243,953 / 11,337 / 1,047 / 285,223 after the 2026-11-07 campaign plan)).
+// the original numbers read as dollars — $51,345.00 / $243,953.00 / $11,373.00 / $1,040.00 / $284,965.00 (91-level campaign baseline, re-recorded 2026-11-08 (the first-20-levels dishes; before: 51,560 / 243,953 / 11,337 / 1,047 / 285,223 after the 2026-11-07 campaign plan)).
 import { dollars } from "../src/game/money.ts";
 import { remapCampaignOrdered } from "../src/game/levels/campaignSelection.ts";
 import { earlyUnlock } from "../src/game/config/earlyUnlocks.ts";
@@ -192,9 +192,10 @@ function fakeRecipe(components: Partial<RecipeComponent>[]): RecipeDefinition {
     }),
     { grossRecipeRevenue: 0, completionRewards: 0, cogs: 0, qualityBonus: 0 },
   );
-  assert(totals.grossRecipeRevenue === dollars(51275), `G: recipe revenue unchanged at $51,275.00 (got ${totals.grossRecipeRevenue})`);
+  assert(totals.grossRecipeRevenue === dollars(51345), `G: recipe revenue unchanged at $51,345.00 (got ${totals.grossRecipeRevenue})`);
   assert(totals.completionRewards === dollars(243953), `G: completion rewards at the V2.5 locked $243,953.00 (got ${totals.completionRewards})`);
-  assert(totals.cogs === dollars(11317), `G: baseline COGS unchanged at $11,317.00 (got ${totals.cogs})`);
+  // RULE CHANGE (developer 2026-11-25, technique-realism audit: Sliced & Diced Steak, Onion Two Ways, Potato Two Ways and Bruschetta Trio now cut a FRESH second piece): the baseline revenue is $51,345.00 (was $51,275.00) and the net $284,965.00 (was $284,951.00 before this audit): the fresh onion of Onion Two Ways has its own Peel step, one more step, one more step's pay; COGS $11,373.00 (was $11,317.00); completion pay and quality bonuses are unchanged.
+  assert(totals.cogs === dollars(11373), `G: baseline COGS unchanged at $11,373.00 (got ${totals.cogs})`);
   assert(totals.qualityBonus === dollars(1040), `G: quality bonus unchanged at $1,040.00 (got ${totals.qualityBonus})`);
 }
 
@@ -211,7 +212,7 @@ console.log("\n--- H: Equipment sensitivity (250-level campaign, Honest quality)
   ];
   const neutral = simulateCampaign(SCORE.Honest, false, DEFAULT_LEVEL_PROGRESS, "chef", "walnut").results;
   const neutralTotals = neutral.reduce((s, r) => ({ cogs: s.cogs + r.ingredientCOGS, qb: s.qb + r.qualityBonus, net: s.net + r.netResult }), { cogs: 0, qb: 0, net: 0 });
-  assert(neutralTotals.cogs === dollars(11317), "H: chef+walnut (explicit) reproduces the exact locked $11,317.00 COGS baseline — zero drift from neutral equipment");
+  assert(neutralTotals.cogs === dollars(11373), "H: chef+walnut (explicit) reproduces the exact locked $11,373.00 COGS baseline — zero drift from neutral equipment");
 
   for (const l of loadouts) {
     const { results } = simulateCampaign(SCORE.Honest, false, DEFAULT_LEVEL_PROGRESS, l.knife, l.board);

@@ -815,7 +815,12 @@ export function SecondFloorView({
 
       <div className="restaurant-map-viewport" ref={viewportRef}>
         {wide && wideBox ? (
-          <MapEdgeFill src={landscapeSecondFloorArt()} box={wideBox} vp={vp} />
+          <MapEdgeFill
+            src={landscapeSecondFloorArt()}
+            margin="second-floor"
+            box={wideBox}
+            vp={vp}
+          />
         ) : null}
         <div
           className={`restaurant-map-stage is-second-floor${wide ? " is-wide" : ""}`}

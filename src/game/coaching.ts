@@ -134,7 +134,7 @@ export const COACH_TEXT: Record<TechniqueId, { title: string; how: string; why: 
   },
   rockMince: {
     title: "How to mince",
-    how: "Cut the glowing lines from right to left, again and again — rock the blade until it is fine.",
+    how: "Rock the blade along the glowing lines from right to left, then cut across them the other way — both ways until it is fine.",
     why: "A fine mince spreads its flavor through the whole dish.",
   },
   chiffonade: {

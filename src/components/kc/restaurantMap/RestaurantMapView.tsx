@@ -231,7 +231,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
-        {wide && wideBox ? <MapEdgeFill src={landscapeMapArt(stageId)} box={wideBox} vp={vp} /> : null}
+        {wide && wideBox ? <MapEdgeFill src={landscapeMapArt(stageId)} margin={stageId} box={wideBox} vp={vp} /> : null}
         <div
           className={`restaurant-map-stage${wide ? ' is-wide' : ''}`}
           data-testid={wide ? 'wide-map-stage' : undefined}

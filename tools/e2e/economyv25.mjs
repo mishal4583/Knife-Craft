@@ -115,7 +115,7 @@ check(
     "Business revenue",
     "Invested in your restaurant",
     "Total spent",
-    "Remaining wealth",
+    // RULE CHANGE (developer 2026-11-25, Restaurant Progress redesign): "Remaining wealth" (the same number as "Current cash") is no longer a row in the restaurant build. (This suite is still stale: it was written for the 150-level numbering.)
   ].every((l) => t.includes(l)),
 );
 check(

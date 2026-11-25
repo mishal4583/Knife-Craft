@@ -302,9 +302,15 @@ def water(stems: list[str], top_hz: float) -> list[np.ndarray]:
     return [fade(band(peak_to(trim(read(find(WATER, s)), lead_db=-50, tail_db=-50), -6), 120, top_hz), 40, 40) for s in stems]
 
 
-cloth = lowpass(read(find(RPG, "cloth-heavy")), 1100)  # the soft body of a cloth being drawn over wood
-rub = joined(friction([1, 3, 2, 5, 4]), 4.0)
-emit("wash-wipe", soft_bed([(rub, 0.0), (joined([cloth], 4.0, 0.08), -9.0)], 4.0, -21.0), 64, loop=True)  # the cutting board's cloth
+rub = joined(friction([1, 3, 2, 5, 4]), 4.0)  # the peel recordings' friction: the soapy sponge and the others still use it, the cutting board's cloth no longer does
+# The cutting board's cloth (developer 2026-11-25: "while wiping the cutting board there is a cutting type sound in the background along with the wiping sound, remove that cutting sound"):
+# it used to carry the peel recordings' friction (pumpkin peeling) under the cloth, which is what sounded like cutting. It is now the two cloth recordings ONLY, drawn over wood, softly.
+cloth_wipe = [lowpass(read(find(RPG, "cloth-heavy")), 2600), lowpass(read(find(RPG, "cloth")), 3200)]
+# (the recordings have gaps between their strokes, so three copies are laid over each other, shifted and in a different order, to make the bed steady, like one cloth that never lifts)
+wipe_a = joined(cloth_wipe, 4.0, 0.08)
+wipe_b = np.roll(joined(cloth_wipe[::-1], 4.0, 0.08), int(1.3 * SR))
+wipe_c = np.roll(joined(cloth_wipe, 4.0, 0.08), int(2.55 * SR))
+emit("wash-wipe", soft_bed([(wipe_a, 0.0), (wipe_b, -2.0), (wipe_c, -3.0)], 4.0, -21.0), 64, loop=True)  # the cutting board's cloth
 emit("wash-scrub", soft_bed([(rub, 0.0), (joined(water(["water_splash-03", "water_splash-06"], 3000), 4.0), -7.0)], 4.0, -21.0), 64, loop=True)  # the soapy sponge
 emit(
     "wash-rinse",

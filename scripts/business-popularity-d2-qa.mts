@@ -601,12 +601,13 @@ function closeDay(save: SaveData): SaveData {
     new RegExp(`${label}:\\s*${value}(?![\\d,])`).test(honest);
   assert(
     v2.status === 0 &&
-      has("Gross recipe revenue", "\\$51,275\\.00") &&
+      has("Gross recipe revenue", "\\$51,345\\.00") &&
       has("Level-completion rewards", "\\$243,953\\.00") &&
-      has("Total COGS", "\\$11,317\\.00") &&
+      has("Total COGS", "\\$11,373\\.00") &&
       has("Total quality bonuses", "\\$1,040\\.00") &&
-      has("Total net campaign result", "\\$284,951\\.00"),
-    "I2: Economy V2 freeze exact — $51,275.00 / $243,953.00 / $11,317.00 / $1,040.00 / $284,951.00 (91-level campaign baseline, re-recorded 2026-11-08 (the first-20-levels dishes))",
+      has("Total net campaign result", "\\$284,965\\.00"),
+    // RULE CHANGE (developer 2026-11-25, technique-realism audit: Sliced & Diced Steak, Onion Two Ways, Potato Two Ways and Bruschetta Trio now cut a FRESH second piece): the baseline revenue is $51,345.00 (was $51,275.00) and the net $284,965.00 (was $284,951.00 before this audit): the fresh onion of Onion Two Ways has its own Peel step, one more step, one more step's pay; COGS $11,373.00 (was $11,317.00); completion pay and quality bonuses are unchanged.
+    "I2: Economy V2 freeze exact — $51,345.00 / $243,953.00 / $11,373.00 / $1,040.00 / $284,965.00 (91-level campaign baseline, re-recorded 2026-11-08 (the first-20-levels dishes))",
   );
 }
 

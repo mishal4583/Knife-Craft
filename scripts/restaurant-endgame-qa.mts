@@ -440,7 +440,8 @@ console.log("W. Wiring");
   );
   const prog = code("src/components/kc/RestaurantProgress.tsx");
   assert(
-    /RESTAURANT_MODE \? <StandingCard/.test(prog) &&
+    // RULE CHANGE (developer 2026-11-25, Restaurant Progress redesign): the standing card is inside the restaurant branch of the page and takes the progress view (`p`) for its kitchen picture.
+    /RESTAURANT_MODE \? \(\s*<>[\s\S]*?<StandingCard save=\{save\} p=\{p\} \/>/.test(prog) &&
       prog.includes(
         "Complete all {LAST_CAMPAIGN_LEVEL} campaign levels to unlock Endless Restaurant.",
       ) &&

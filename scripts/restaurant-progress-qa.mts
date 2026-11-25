@@ -299,8 +299,11 @@ function saveAt(n: number, extra: Partial<SaveData> = {}): SaveData {
   );
   const screen = read("src/components/kc/RestaurantProgress.tsx");
   assert(
-    !/buy[A-Z]|equip[A-Z]|upgradeKnife|sharpenKnife|persist|onPurchase|KButton/.test(screen),
-    "E3: the screen has no purchase, equip, upgrade or sharpen action (display only)",
+    // RULE CHANGE (developer 2026-11-25, Restaurant Progress redesign): the Milestones card has ONE "Show all / Show less" button, a view toggle, so `KButton` may appear for that and nothing else.
+    !/buy[A-Z]|equip[A-Z]|upgradeKnife|sharpenKnife|persist|onPurchase/.test(screen) &&
+      (screen.match(/<KButton/g) ?? []).length === 1 &&
+      /Show all \$\{p\.milestones\.length\}/.test(screen),
+    "E3: the screen has no purchase, equip, upgrade or sharpen action (display only; one Show all toggle)",
   );
   assert(
     JSON.stringify(Object.keys(DEFAULT_SAVE)) ===

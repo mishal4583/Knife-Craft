@@ -1,0 +1,45 @@
+{
+  "_note": "The Restaurant Progress art sheets (docs/planning/RESTAURANT-PROGRESS-CODEX-PROMPTS-2026-11-25.md). Source: 'Restaurant Progress Assets/RP-<id>.png'. A picture is named '<id>/<slug>'; the slugs are in reading order (left to right, top to bottom). src/game/progressArt.ts and the page use these names; scripts/make-progress-assets.py cuts the sheets into public/progress/<id>/<slug>.webp.",
+  "sheets": {
+    "icons-a": {
+      "cols": 5, "rows": 5, "cell": [400, 400], "out": 128,
+      "slugs": ["skyline", "trophy", "storefront", "bars", "toque", "target", "flag", "money-bag", "chart-trend", "map", "knife", "hammer", "board", "stairs", "chevrons", "padlock-open", "padlock", "book-open", "recipe-book", "crown", "cash", "star", "gift", "trophy-laurel", "coins"]
+    },
+    "icons-b": {
+      "cols": 5, "rows": 5, "cell": [400, 400], "out": 128,
+      "slugs": ["wrench-hammer", "clipboard-check", "pan-egg", "guests", "takeaway-bag", "box", "soap", "sparkles", "streak-star", "inspector", "people", "bolt", "crate", "heart", "prestige-0", "prestige-1", "prestige-2", "prestige-3", "prestige-4", "chef-0", "chef-1", "chef-2", "chef-3", "chef-4"]
+    },
+    "icons-c": {
+      "cols": 5, "rows": 3, "cell": [400, 400], "out": 128,
+      "slugs": ["cloche", "anvil", "calendar", "staff", "mark-done", "mark-open", "coin", "tick", "stall", "hand", "crate-small", "leaf-left", "leaf-right"]
+    },
+    "medals": {
+      "cols": 5, "rows": 3, "cell": [512, 512], "out": 192,
+      "slugs": ["rank-1", "rank-2", "rank-3", "medal-0", "medal-1", "medal-2", "medal-3", "medal-4", "badge-0", "badge-1", "badge-2", "badge-3", "badge-4"]
+    },
+    "storefronts": {
+      "cols": 5, "rows": 2, "cell": [512, 512], "out": 320,
+      "slugs": ["podium-1", "podium-2", "podium-3", "stage-0", "stage-1", "stage-2", "stage-3", "stage-4", "stage-5"]
+    },
+    "goals": {
+      "cols": 2, "rows": 4, "cell": [768, 384], "out": 400, "mode": "cell",
+      "slugs": ["ch8", "ch9", "ch10", "ch11", "ch12", "ch13", "finale", "rank"]
+    },
+    "knives": {
+      "cols": 2, "rows": 4, "cell": [640, 320], "out": 360,
+      "slugs": ["chef", "santoku", "nakiri", "paring", "bread", "cleaver", "damascus", "obsidian"]
+    },
+    "boards": {
+      "cols": 4, "rows": 2, "cell": [512, 512], "out": 256,
+      "slugs": ["walnut", "maple", "herb", "marble", "darkoak", "copper", "butcherblock", "seafoodslate"]
+    },
+    "pieces": {
+      "cols": 3, "rows": 3, "cell": [640, 640], "out": 320,
+      "slugs": ["trophy", "emblem", "plaque", "anvil-medallion", "anvil", "you-are-here", "clipboard"]
+    },
+    "wide": {
+      "cols": 2, "rows": 3, "cell": [1024, 384], "out": 560,
+      "slugs": ["earnings-cluster", "knives-deco", "skyline", "milestones-banner", "ranking-tab"]
+    }
+  }
+}

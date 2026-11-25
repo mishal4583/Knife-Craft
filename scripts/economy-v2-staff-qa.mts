@@ -8,7 +8,7 @@
  */
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
 // USD: every wallet/settlement amount is integer US cents (money.ts). The frozen Economy V2 figures are
-// the original numbers read as dollars — $51,275.00 / $243,953.00 / $11,317.00 / $1,040.00 / $284,951.00 (91-level campaign baseline, re-recorded 2026-11-08 (the first-20-levels dishes; before: 51,560 / 243,953 / 11,337 / 1,047 / 285,223 after the 2026-11-07 campaign plan)).
+// the original numbers read as dollars — $51,345.00 / $243,953.00 / $11,373.00 / $1,040.00 / $284,965.00 (91-level campaign baseline, re-recorded 2026-11-08 (the first-20-levels dishes; before: 51,560 / 243,953 / 11,337 / 1,047 / 285,223 after the 2026-11-07 campaign plan)).
 import { dollars } from "../src/game/money.ts";
 import { DEFAULT_LEVEL_PROGRESS } from "../src/game/levels/LevelManager.ts";
 import { CAMPAIGN_RECIPES } from "../src/game/recipes/campaignRecipes.ts";
@@ -199,9 +199,10 @@ function saveAtLevel(levelNumber: number, credits: number, extra: Partial<SaveDa
     }),
     { grossRecipeRevenue: 0, completionRewards: 0, cogs: 0, qualityBonus: 0 },
   );
-  assert(totals.grossRecipeRevenue === dollars(51275), `P: recipe revenue unchanged at $51,275.00 (got ${totals.grossRecipeRevenue})`);
+  assert(totals.grossRecipeRevenue === dollars(51345), `P: recipe revenue unchanged at $51,345.00 (got ${totals.grossRecipeRevenue})`);
   assert(totals.completionRewards === dollars(243953), `P: completion rewards at the V2.5 locked $243,953.00 (got ${totals.completionRewards})`);
-  assert(totals.cogs === dollars(11317), `P: baseline COGS unchanged at $11,317.00 (got ${totals.cogs})`);
+  // RULE CHANGE (developer 2026-11-25, technique-realism audit: Sliced & Diced Steak, Onion Two Ways, Potato Two Ways and Bruschetta Trio now cut a FRESH second piece): the baseline revenue is $51,345.00 (was $51,275.00) and the net $284,965.00 (was $284,951.00 before this audit): the fresh onion of Onion Two Ways has its own Peel step, one more step, one more step's pay; COGS $11,373.00 (was $11,317.00); completion pay and quality bonuses are unchanged.
+  assert(totals.cogs === dollars(11373), `P: baseline COGS unchanged at $11,373.00 (got ${totals.cogs})`);
   assert(totals.qualityBonus === dollars(1040), `P: quality bonus unchanged at $1,040.00 (got ${totals.qualityBonus})`);
 }
 

@@ -257,5 +257,92 @@ console.log("\nD. Everything else");
   );
 }
 
+// ───────── E. The margins of the wide maps (developer 2026-11-24: "the both sides of the restaurant map are not filled in properly, why is the garden extended") ─────────
+console.log("E. The painted garden margins of the wide maps");
+{
+  const MARGIN_NAMES = [
+    "humble",
+    "growing",
+    "established",
+    "neighborhood-cafe",
+    "flourishing-cafe",
+    "grand",
+    "second-floor",
+  ] as const;
+  const dirM = path.join(ROOT, "public", "landscape-art", "true", "margins");
+  const sizeOf = (b: Buffer) => {
+    const kind = b.toString("ascii", 12, 16);
+    if (kind === "VP8 ") return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };
+    if (kind === "VP8X") return { w: 1 + b.readUIntLE(24, 3), h: 1 + b.readUIntLE(27, 3) };
+    return { w: 0, h: 0 };
+  };
+  const { MAP_MARGIN, landscapeMapMarginArt } = await import("../src/game/landscapeArt.ts");
+  const bad: unknown[] = [];
+  let total = 0;
+  for (const n of MARGIN_NAMES) {
+    for (const side of ["left", "right", "top", "bottom"] as const) {
+      const f = path.join(dirM, `${n}-${side}.webp`);
+      if (!fs.existsSync(f)) {
+        bad.push({ n, side, missing: true });
+        continue;
+      }
+      const b = fs.readFileSync(f);
+      total += b.length;
+      const { w, h } = sizeOf(b);
+      const wantW = side === "left" || side === "right" ? MAP_MARGIN.x : 1920 + 2 * MAP_MARGIN.x;
+      const wantH = side === "left" || side === "right" ? 1080 : MAP_MARGIN.y;
+      if (w !== wantW || h !== wantH || b.length > 140 * 1024)
+        bad.push({ n, side, w, h, kb: Math.round(b.length / 1024) });
+    }
+  }
+  assert(
+    bad.length === 0 && total < 3 * 1024 * 1024,
+    "E1: every one of the six Kitchen maps and the Second Floor has its four margin pictures (left and right 360 x 1080, top and bottom 2640 x 220 with the corners), each under 140 KB, the 28 together under 3 MB",
+    { bad: bad.slice(0, 4), totalKB: Math.round(total / 1024) },
+  );
+  assert(
+    landscapeMapMarginArt("grand", "left").endsWith("landscape-art/true/margins/grand-left.webp") &&
+      landscapeMapMarginArt("second-floor", "bottom").endsWith(
+        "landscape-art/true/margins/second-floor-bottom.webp",
+      ),
+    "E2: the margin picture URLs follow landscape-art/true/margins/<map>-<side>.webp",
+  );
+  const edge = fs.readFileSync(
+    path.join(ROOT, "src/components/kc/restaurantMap/MapEdgeFill.tsx"),
+    "utf8",
+  );
+  const mapView = fs.readFileSync(
+    path.join(ROOT, "src/components/kc/restaurantMap/RestaurantMapView.tsx"),
+    "utf8",
+  );
+  const floorView = fs.readFileSync(
+    path.join(ROOT, "src/components/kc/restaurantMap/SecondFloorView.tsx"),
+    "utf8",
+  );
+  assert(
+    /margin=\{stageId\}/.test(mapView) && /margin="second-floor"/.test(floorView),
+    "E3: the restaurant map passes its stage and the Second Floor its own name, so every map draws its own margins",
+  );
+  assert(
+    /landscapeMapMarginArt\(margin, "left"\)/.test(edge) &&
+      /drawGarden\(\{ left, right, top, bottom \}\)/.test(edge) &&
+      /drawMirrored\(\)/.test(edge) &&
+      /data-fill=\{fill\}/.test(edge),
+    "E4: MapEdgeFill draws the painted margins, and falls back to the old mirrored strips only if one of the four cannot load (never a bar); data-fill says which it used",
+  );
+  assert(
+    /the picture itself last/i.test(edge),
+    "E5: the picture itself is drawn last, untouched, over the margins",
+  );
+  const gen = fs.readFileSync(path.join(ROOT, "scripts/make-map-margins.py"), "utf8");
+  assert(
+    /default_rng\(/.test(gen) &&
+      /outdoor_mask/.test(gen) &&
+      /OUT = os\.path\.join\(SRC, "margins"\)/.test(gen) &&
+      !/Image\.fromarray\([^)]*\)\.save\(os\.path\.join\(SRC/.test(gen),
+    "E6: scripts/make-map-margins.py is deterministic (a fixed seed), takes only outdoor material (never wall or room) and writes only into the margins folder, never over a map picture",
+  );
+}
+
 console.log(failures ? `\nLANDSCAPE ART QA: ${failures} FAILED` : "\nLANDSCAPE ART QA: ALL PASS");
 process.exit(failures ? 1 : 0);

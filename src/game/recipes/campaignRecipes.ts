@@ -379,6 +379,7 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
       {
         ingredientId: "tomato",
         technique: "slice",
+        chainBreak: true, // developer 2026-11-25: the diced tomato and the sliced tomatoes are two tomatoes (dicing and then slicing the same one lost the dicing)
         resultingState: "sliced",
         destinationIds: ["plate"],
       },
@@ -404,7 +405,7 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
     destinations: [PLATE],
     batchable: true,
     chefInstruction:
-      "Slice the bread. Dice the tomato. Slice the tomato. Chop the basil. Peel the garlic. Smash the garlic.",
+      "Slice the bread. Dice one tomato, then slice a fresh one. Chop the basil. Peel the garlic. Smash the garlic.",
     customerDialogue: "The bruschetta trio, please.",
     basePayment: 280,
     unlockLevel: 12,
@@ -965,6 +966,13 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
         technique: "slice",
         resultingState: "sliced",
         destinationIds: ["bruschetta"],
+      },
+      {
+        ingredientId: "onion",
+        technique: "peel",
+        resultingState: "peeled",
+        chainBreak: true, // developer 2026-11-25: the sliced onion and the diced onion are two onions (slicing and then dicing the same one lost the slicing); the fresh one needs its own peel
+        destinationIds: ["soup"],
       },
       {
         ingredientId: "onion",
@@ -3274,13 +3282,14 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
       {
         ingredientId: "steak",
         technique: "dice",
+        chainBreak: true, // developer 2026-11-25: slice one steak, then dice a fresh one (the same steak sliced and then diced lost the slicing)
         resultingState: "diced",
         destinationIds: ["bowl"],
       },
     ],
     destinations: [BOWL],
     batchable: false,
-    chefInstruction: "Slice the steak, then dice a portion for the bowl.",
+    chefInstruction: "Slice one steak, then dice a fresh one for the bowl.",
     customerDialogue: "Steak, sliced and diced both.",
     basePayment: 225,
     unlockLevel: 107,
@@ -6065,6 +6074,13 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
       },
       {
         ingredientId: "potato",
+        technique: "peel",
+        resultingState: "peeled",
+        chainBreak: true, // developer 2026-11-25: a FRESH potato for the chop (dicing and then chopping the same one lost the dicing); it needs its own peel
+        destinationIds: ["plate"],
+      },
+      {
+        ingredientId: "potato",
         technique: "chop",
         resultingState: "chopped",
         destinationIds: ["plate"],
@@ -6075,7 +6091,7 @@ const SOURCE_CAMPAIGN_RECIPES: RecipeDefinition[] = [
       { id: "plate", name: "Plate" },
     ],
     batchable: false,
-    chefInstruction: "Peel the potato. Dice the potato. Chop the potato.",
+    chefInstruction: "Peel and dice one potato for the bowl. Peel a fresh one and chop it for the plate.",
     customerDialogue: "Potato two ways, please.",
     basePayment: 435,
     unlockLevel: 196,
@@ -8031,8 +8047,8 @@ const SECOND_INGREDIENT: Record<
   },
   "camp-onion-two-ways": {
     add: [{ ingredientId: "carrot", technique: "dice", resultingState: "diced", to: "soup" }],
-    chefInstruction: "Peel the onion. Halve the onion. Slice the onion. Dice the onion. Dice the carrot for the soup.",
-    customerDialogue: "One onion, split between the two — carrot in the soup.",
+    chefInstruction: "Peel the onion, halve it and slice it for the bruschetta. Peel a fresh onion and dice it for the soup, with the carrot.",
+    customerDialogue: "Onion two ways: sliced for bruschetta, diced for soup.",
   },
   "camp-potato-veloute-base": {
     add: [
@@ -8080,7 +8096,7 @@ const SECOND_INGREDIENT: Record<
       { ingredientId: "onion", technique: "peel", resultingState: "peeled" },
       { ingredientId: "onion", technique: "chop", resultingState: "chopped" },
     ],
-    chefInstruction: "Slice the steak, then dice a portion for the bowl. Peel and chop the onion.",
+    chefInstruction: "Slice one steak, then dice a fresh one for the bowl. Peel and chop the onion.",
     customerDialogue: "Steak, sliced and diced both — with onion.",
   },
   "camp-salmon-slice-intro": {

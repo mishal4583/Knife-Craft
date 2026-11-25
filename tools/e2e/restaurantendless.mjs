@@ -201,7 +201,7 @@ check(
   // The café stage is labelled "Kitchen title" since the city ranking (2026-10-09).
   /Kitchen title \S/.test(st ?? "") &&
     /Stage Restaurant Complete/.test(st ?? "") &&
-    /Restaurant Complete ✅ Yes/.test(st ?? "") &&
+    // RULE CHANGE (developer 2026-11-25, Restaurant Progress redesign): the "Restaurant Complete" row is gone (the same rule as "Endless Restaurant", and the Stage row already reads "Restaurant Complete").
     /Endless Restaurant 🔓 Open/.test(st ?? "") &&
     new RegExp(`★ ${life?.total}`).test(st ?? "") &&
     /4 days run · best day 3 \/ 3/.test(st ?? "") &&
@@ -210,15 +210,15 @@ check(
 );
 
 // ---------- 4. Locked, and an old save ----------
-await boot(page, saveAt(120));
+// RULE CHANGE (developer 2026-11-25, Restaurant Progress redesign + the 91-level campaign of 2026-11-07): the locked save is at Level 70 (Level 120 is past the end of a 91-level campaign) and the line says 91.
+await boot(page, saveAt(70));
 await nav("Progress");
 await sleep(900);
 const locked = await card("restaurant-standing");
 check(
   "4a Level 120: Endless locked with the line; no stars",
-  /Complete all 150 campaign levels to unlock Endless Restaurant\./.test(locked ?? "") &&
+  /Complete all 91 campaign levels to unlock Endless Restaurant\./.test(locked ?? "") &&
     /Endless Restaurant 🔒 Locked/.test(locked ?? "") &&
-    /Restaurant Complete Not yet/.test(locked ?? "") &&
     !/Endless stars/.test(locked ?? ""),
   locked,
 );

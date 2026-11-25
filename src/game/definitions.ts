@@ -273,23 +273,20 @@ export const TECHNIQUES: Record<TechniqueId, TechniqueDefinition> = {
   rockMince: {
     id: "rockMince",
     name: "Rock Mince",
-    description: "Rock the blade tip-down, back and forth — fine and fragrant.",
-    guideType: "horizontal-lines",
-    axis: "v",
-    requiredCuts: 10, // continuousTap recomputes via requiredCutsFor, same as Chop
-    counts: null,
-    perpSnap: false,
+    description:
+      "Rock the blade tip-down across it, then across again the other way: fine and fragrant.",
+    // Developer 2026-11-25 ("it shows Rock Mince and while cutting it only requires slicing"): a mince is cut in BOTH directions, so it is a fine GRID (rows, then the cross cuts), like Dice
+    // but finer (5 x 5 = 10 cuts, Dice is 3 x 3 = 6), no longer 12 parallel taps that played exactly like Slice. Same Cut/Piece engine as Dice (no CutGeometry/CutEvaluator change).
+    guideType: "grid",
+    axis: "h",
+    requiredCuts: 10, // 5 + 5
+    counts: { h: 5, v: 5 },
+    perpSnap: true,
     parallelSnap: false,
-    continuousTap: true,
+    continuousTap: false, // a grid has a real target count: a tap resolves to the nearest open slot
     interactionMode: "cut",
-    // Reuses Chop's own knife cadence (knifeProfile is checked generically
-    // by value, never by technique id) — a real new rocking-knife swing
-    // animation is out of this phase's scope (documented gap, see report);
-    // what IS genuinely new is the id/description/finer jitter below,
-    // which change the technique's feel and required-cut count, not just
-    // its label.
+    // Keeps Chop's quick, rocking knife cadence (knifeProfile is read by value, never by technique id): a real rocking-knife swing animation is still out of scope.
     knifeProfile: "chop",
-    placementJitterFrac: 0.55,
     unlockLevel: 56,
   },
   chiffonade: {

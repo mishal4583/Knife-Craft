@@ -177,10 +177,10 @@ Release zip: the CONTENTS of `dist/` →
 
 ## 7. ECONOMY RULES (figures: REFERENCE §7)
 
-- **Frozen campaign baseline (91 levels, re-recorded 2026-11-08):** Revenue
-  51,275 · Completion 243,953 · COGS 11,317 · Quality 1,040 · Net 284,951
+- **Frozen campaign baseline (91 levels, re-recorded 2026-11-25):** Revenue
+  51,345 · Completion 243,953 · COGS 11,373 · Quality 1,040 · Net 284,965
   (`economy-v2-campaign-simulation`). Changes from the earlier figures are all
-  explained by the developer: the first-20-levels plan of 2026-11-08 (new dishes at L2, L5,
+  explained by the developer: the technique-realism audit of 2026-11-25 (Sliced & Diced Steak, Onion Two Ways, Potato Two Ways and Bruschetta Trio now cut a FRESH second piece, so each costs one more ingredient, and the fresh onion of Onion Two Ways has its own Peel step, one more step's pay: revenue 51,275 → 51,345, COGS 11,317 → 11,373, net 284,951 → 284,965; completion pay and quality bonuses unchanged; the classic completionist $190,015.07 → $190,031.77); the first-20-levels plan of 2026-11-08 (new dishes at L2, L5,
   L9, L12, L13, L17, L19, L20: revenue 51,560 → 51,275, COGS 11,337 → 11,317, quality
   1,047 → 1,040, net 285,223 → 284,951; the classic completionist $190,329.07 → $190,015.07);
   the campaign plan of 2026-11-07 (148 → 91 levels: revenue

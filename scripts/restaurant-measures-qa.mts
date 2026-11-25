@@ -595,7 +595,14 @@ console.log("A. Audit fixes (2026-10-08)");
       dashboard,
     ) &&
       /label="Kitchen upgrade"/.test(progress) &&
-      /RESTAURANT_MODE && !p\.campaignComplete \? null : <PopularityCard/.test(progress),
+      // RULE CHANGE (developer 2026-11-25, Restaurant Progress redesign): the restaurant build no longer draws a Popularity card at all (it is a tile of the prestige strip); only the classic build does.
+      !/PopularityCard/.test(
+        progress.slice(
+          progress.indexOf("RESTAURANT_MODE ? ("),
+          progress.indexOf(") : (", progress.indexOf("RESTAURANT_MODE ? (")),
+        ),
+      ) &&
+      /<PopularityCard p=\{p\} \/>/.test(progress),
     "A5: before Level 250 the Restaurant Overview shows the campaign day (no Business Day tools) and Progress drops the Business popularity; Kitchen upgrade vs rank names",
   );
   assert(
