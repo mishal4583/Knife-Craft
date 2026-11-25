@@ -359,8 +359,10 @@ function playedSave(): SaveData {
     .join("\n");
   assert(
     (ui.match(/h-12 w-12/g) ?? []).length >= 4 &&
-      /h-12 w-\[64px\]/.test(ui) &&
-      /press h-12 min-w-12 shrink-0 rounded-full/.test(ui),
+      // RULE CHANGE (developer 2026-11-25, Business pages painted): the Menu's On/Off switch is 96 px wide (a green "On" pill with a knob) and its filter chips carry an icon;
+      // both are still 48 px tall (h-12), which is what this assertion protects.
+      /h-12 (w|min-w)-\[\d+px\]/.test(ui) &&
+      /press[^"]*h-12 min-w-12 shrink-0[^"]*rounded-full/.test(ui),
     "S5: steppers (Market → Ingredients), ON/OFF toggles and filter chips are 48 px touch targets",
   );
   const groups = read("src/game/business/inventoryAnalytics.ts");

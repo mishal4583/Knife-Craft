@@ -320,9 +320,12 @@ for (const [w, h] of [
   await openSection(page, "Inventory").catch(() => {});
   await sleep(700);
   banners.inventory = await whole();
+  // RULE CHANGE (developer 2026-11-25, Business pages painted): Suppliers, Menu and Operations no longer open with a photo banner (they start with their painted
+  // ribbon cards, as in the developer's Business UI design); every banner that IS drawn must still show its whole picture.
+  const NO_BANNER_TABS = new Set(["business-Suppliers", "business-Menu", "business-Operations"]);
   const badBanners = Object.entries(banners).filter(
-    ([, list]) =>
-      list.length === 0 ||
+    ([key, list]) =>
+      (list.length === 0 && !NO_BANNER_TABS.has(key)) ||
       list.some((b) => Math.abs(b.ratio / b.natural - 1) > 0.02 || !b.fills || b.h > 281),
   );
   check(

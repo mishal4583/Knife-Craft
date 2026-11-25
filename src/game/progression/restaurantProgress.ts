@@ -242,7 +242,16 @@ export function restaurantProgress(save: SaveData) {
     popularityStars: popularityStars(popularity),
     popularityMood: popularityMood(popularity),
     campaignComplete,
-    rank: { title: rank.title, levelRequired: rank.levelRequired, fraction: cafe.progressFraction },
+    rank: {
+      title: rank.title,
+      levelRequired: rank.levelRequired,
+      fraction: cafe.progressFraction,
+      // Which of the five painted medals the rank wears (Business Overview, developer 2026-11-25): how far up the ladder it is, 0 to 4.
+      tier: Math.min(
+        4,
+        Math.floor((Math.max(0, CAFE_MILESTONES.indexOf(rank)) * 5) / CAFE_MILESTONES.length),
+      ),
+    },
     nextRank: nextRank ? { title: nextRank.title, levelRequired: nextRank.levelRequired } : null,
     popularity,
     kitchen: { current: currentKitchen.name, stages: kitchenStages },

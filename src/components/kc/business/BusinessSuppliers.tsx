@@ -2,7 +2,7 @@ import { InfoTip } from "../common/InfoTip";
 import { StandingOrdersCard } from "../restaurant/Deliveries";
 import type { DeliveryKind } from "@/game/restaurant/deliveries";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { SaveData } from "@/game/SaveManager";
 import { KButton, Panel, Badge } from "../common/primitives";
 import { Bar, Eyebrow } from "../common/Meters";
@@ -25,12 +25,19 @@ import { formatQuantity } from "@/game/business/businessInventory";
 import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
 import { IngredientSupplier } from "../restaurant/IngredientSupplier";
 import { supplierCreditOf } from "@/game/restaurant/supplierCredit";
-import { BusinessSectionBanner } from "./BusinessSectionBanner";
+import { Art, GlossBar, PIcon, ProgressCard, ValuePill } from "../progress/ProgressKit";
 
 const SUPPLIER_ICON: Record<string, string> = {
   "local-market": "🏪",
   "premium-supplier": "🧺",
   "wholesale-supplier": "🚚",
+};
+
+/** The painted supplier pictures and the card decoration of each contract (RB-icons-a, RB-decor-a). */
+const SUPPLIER_ART: Record<string, { icon: string; deco: string }> = {
+  "local-market": { icon: "biz:icons-a/local-market", deco: "biz:decor-a/stall-tomatoes" },
+  "wholesale-supplier": { icon: "biz:icons-a/wholesale-truck", deco: "biz:decor-a/warehouse" },
+  "premium-supplier": { icon: "biz:icons-a/premium-basket", deco: "biz:decor-a/tomato-bag" },
 };
 
 function pct(fraction: number, signed = false): string {
@@ -104,7 +111,6 @@ export function BusinessSuppliers({
 
   return (
     <div className="space-y-3">
-      <BusinessSectionBanner image="suppliers-banner.webp" title="Suppliers" />
       {RESTAURANT_MODE && selectSupplier ? (
         <IngredientSupplier save={save} selectSupplier={selectSupplier} />
       ) : null}
@@ -119,22 +125,49 @@ export function BusinessSuppliers({
         <SupplierCreditCard save={save} />
       ) : null}
       {/* Today's supplier conditions */}
-      <Panel className="p-4">
-        <div className="flex items-baseline justify-between gap-2">
-          <Eyebrow>🌤️ Today's supplier conditions</Eyebrow>
-          <span className="font-ui text-[12px] font-bold text-walnut/60">Day {currentDay}</span>
-        </div>
+      <ProgressCard
+        title="Today's supplier conditions"
+        icon={<PIcon name="icons-c/calendar" fallback="🌤️" size={26} />}
+        right={
+          <span className="flex items-center gap-1.5">
+            <ValuePill className="min-h-8 text-[13px]">
+              <PIcon name="icons-c/calendar" fallback="📅" size={20} />
+              Day {currentDay}
+            </ValuePill>
+            <InfoTip label="Possible supplier events">
+              <span className="block font-ui text-[12px] font-bold">Possible supplier events</span>
+              {Object.values(SUPPLIER_EVENT_CATALOG).map((e) => (
+                <span
+                  key={e.id}
+                  className={cn(
+                    "mt-1 block font-ui text-[12px] font-bold",
+                    market.event?.id === e.id ? "text-copper" : "text-walnut/70",
+                  )}
+                >
+                  {e.name}
+                  {e.priceModifier !== 0 ? ` ${pct(e.priceModifier, true)}` : ""}
+                </span>
+              ))}
+            </InfoTip>
+          </span>
+        }
+        className="pt-10"
+      >
+        <Art
+          name="biz:decor-a/stall-ghost"
+          className="pointer-events-none absolute bottom-1 right-3 hidden h-24 w-auto @min-[620px]:block"
+        />
         {market.event ? (
-          <div className="mt-2 rounded-[14px] border border-gold/40 bg-gold/15 p-3">
+          <div className="relative rounded-[16px] border border-gold/40 bg-gold/15 p-3">
             <div className="flex items-center justify-between gap-2">
-              <p className="font-display text-[16.5px] font-black text-walnut-dark">
+              <p className="font-display text-[17px] font-black text-walnut-dark">
                 {market.event.name}
               </p>
-              <Badge tone={market.event.priceModifier > 0 ? "copper" : "sage"}>
+              <ValuePill tone={market.event.priceModifier > 0 ? "gold" : "green"}>
                 {market.event.priceModifier === 0
                   ? "prices normal"
                   : pct(market.event.priceModifier, true)}
-              </Badge>
+              </ValuePill>
             </div>
             <p className="mt-0.5 flex items-center gap-1.5 font-ui text-[12.5px] font-bold text-walnut/75">
               <span className="min-w-0 flex-1">{supplierEventGlance(market.event, active)}</span>
@@ -147,34 +180,21 @@ export function BusinessSuppliers({
             </p>
           </div>
         ) : (
-          <p className="mt-1.5 font-display text-[15.5px] font-black text-walnut-dark">
-            ☀️ A quiet day — normal prices
+          <p className="relative flex items-center gap-2 font-display text-[18px] font-black text-walnut-dark">
+            <PIcon name="biz:icons-a/sun" fallback="☀️" size={30} />A quiet day — normal prices
           </p>
         )}
         <p
-          className="mt-2 font-ui text-[12.5px] font-bold text-walnut/65"
+          className="relative mt-3 flex items-center gap-2 font-ui text-[13px] font-bold text-walnut/70"
           title="Before any contract discount"
         >
-          🏷️ {formatUsd(market.referenceBasePrice)} → <b>{formatUsd(market.referencePriceToday)}</b>{" "}
-          today
+          <ValuePill className="text-[13.5px]">
+            <PIcon name="biz:icons-a/price-tag" fallback="🏷️" size={22} />
+            {formatUsd(market.referenceBasePrice)} → <b>{formatUsd(market.referencePriceToday)}</b>{" "}
+            today
+          </ValuePill>
         </p>
-        <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Possible supplier events">
-          {Object.values(SUPPLIER_EVENT_CATALOG).map((e) => (
-            <span
-              key={e.id}
-              className={cn(
-                "rounded-full border px-2 py-[3px] font-ui text-[11px] font-extrabold",
-                market.event?.id === e.id
-                  ? "border-copper/50 bg-gold/25 text-walnut-dark"
-                  : "border-walnut/15 bg-cream/60 text-walnut/55",
-              )}
-            >
-              {e.name}
-              {e.priceModifier !== 0 ? ` ${pct(e.priceModifier, true)}` : ""}
-            </span>
-          ))}
-        </div>
-      </Panel>
+      </ProgressCard>
 
       {message ? <p className="text-center font-hand text-[16px] text-copper">{message}</p> : null}
 
@@ -226,78 +246,106 @@ export function BusinessSuppliers({
             market.offers.find((o) => o.supplierId === supplierId)?.effectivePrice ??
             market.referencePriceToday;
           return (
-            <article
+            <ProgressCard
               key={supplierId}
-              className={cn(
-                "product-card rounded-[20px] border p-4 card-warm",
-                isCurrent ? "border-olive/50" : "border-walnut/15",
-              )}
+              className={cn("pt-4 @min-[620px]:pt-4", isCurrent && "bz-hot")}
+              data-contract={supplierId}
             >
-              <div className="flex items-center gap-3">
-                <span className="text-[36px] leading-none" aria-hidden>
-                  {SUPPLIER_ICON[supplierId] ?? "🚚"}
-                </span>
+              <Art
+                name={SUPPLIER_ART[supplierId]?.deco ?? "biz:decor-a/stall-tomatoes"}
+                className="pointer-events-none absolute right-3 top-1 hidden h-20 w-auto @min-[620px]:block"
+              />
+              <div className="relative flex items-center gap-3">
+                <PIcon
+                  name={SUPPLIER_ART[supplierId]?.icon ?? "biz:icons-a/local-market"}
+                  fallback={SUPPLIER_ICON[supplierId] ?? "🚚"}
+                  size={56}
+                />
                 <div className="min-w-0 flex-1">
-                  <p className="font-display text-[17.5px] font-black leading-tight text-walnut-dark">
+                  <p className="flex items-center gap-1.5 font-display text-[20px] font-black leading-tight text-walnut-dark">
                     {supplier?.name ?? supplierId}
+                    <InfoTip label={`About the ${supplier?.name ?? supplierId} contract`}>
+                      {pct(terms.discount)} off purchases of {terms.minimumOrder}+ units for{" "}
+                      {terms.contractLength} days. Cancelling costs{" "}
+                      {terms.cancellationFee > 0 ? formatUsd(terms.cancellationFee) : "nothing"}.
+                    </InfoTip>
                   </p>
-                  <p className="font-hand text-[14px] leading-tight text-walnut/60">
+                  <p className="font-hand text-[15px] leading-tight text-walnut/65">
                     {formatUsd(market.referenceBasePrice)} item → {formatUsd(todayPrice)} today at{" "}
                     {terms.minimumOrder}+ units
                   </p>
                 </div>
-                {isCurrent ? <Badge tone="sage">Yours</Badge> : null}
+                {isCurrent ? (
+                  <ValuePill tone="green" className="min-h-10 px-3 uppercase">
+                    <PIcon name="icons-c/tick" fallback="✓" size={20} />
+                    Yours
+                  </ValuePill>
+                ) : null}
               </div>
 
-              <div className="mt-3">
-                <div className="flex justify-between font-ui text-[12.5px] font-bold text-walnut/75">
-                  <span>Discount</span>
-                  <span className="font-extrabold text-walnut-dark">{pct(terms.discount)}</span>
-                </div>
-                <div className="mt-1">
-                  <Bar fraction={maxDiscount > 0 ? terms.discount / maxDiscount : 0} tone="sage" />
-                </div>
+              <div className="relative mt-3 flex items-center gap-3">
+                <span className="font-display text-[15px] font-black text-walnut-dark">
+                  Discount
+                </span>
+                <GlossBar
+                  fraction={maxDiscount > 0 ? terms.discount / maxDiscount : 0}
+                  tone="green"
+                  height={14}
+                  label="Discount"
+                />
+                <ValuePill className="shrink-0">{pct(terms.discount)}</ValuePill>
               </div>
 
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-[12px] bg-cream/70 px-1 py-1.5">
-                  <p className="font-ui text-[11px] font-bold text-walnut/55">Min. order</p>
-                  <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
-                    {terms.minimumOrder}
-                  </p>
-                </div>
-                <div className="rounded-[12px] bg-cream/70 px-1 py-1.5">
-                  <p className="font-ui text-[11px] font-bold text-walnut/55">Contract</p>
-                  <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
-                    {terms.contractLength} days
-                  </p>
-                </div>
-                <div className="rounded-[12px] bg-cream/70 px-1 py-1.5">
-                  <p className="font-ui text-[11px] font-bold text-walnut/55">Cancel</p>
-                  <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
-                    {terms.cancellationFee > 0 ? formatUsd(terms.cancellationFee) : "Free"}
-                  </p>
-                </div>
+              <div className="relative mt-3 grid grid-cols-3 gap-2">
+                <ContractFact
+                  icon={<PIcon name="biz:icons-a/cart" fallback="🛒" size={32} />}
+                  label="Min. order"
+                  value={String(terms.minimumOrder)}
+                />
+                <ContractFact
+                  icon={<PIcon name="icons-c/calendar" fallback="📅" size={32} />}
+                  label="Contract"
+                  value={`${terms.contractLength} days`}
+                />
+                <ContractFact
+                  icon={<PIcon name="biz:icons-a/cancel-circle" fallback="❌" size={32} />}
+                  label="Cancel"
+                  value={terms.cancellationFee > 0 ? formatUsd(terms.cancellationFee) : "Free"}
+                />
               </div>
-              <p className="mt-2 font-ui text-[11px] font-bold text-walnut/50">
+              <p className="relative mt-2 flex items-center gap-1.5 font-ui text-[12px] font-bold text-walnut/60">
+                <PIcon name="icons-a/sparkles" fallback="✨" size={18} />
                 For reference: delivery{" "}
                 {terms.deliveryTime === 0 ? "same day" : `${terms.deliveryTime} day`} · quality{" "}
                 {pct(terms.qualityModifier, true)}
               </p>
               {terms.minimumOrder > freeStorage ? (
-                <p className="mt-1 font-hand text-[14px] leading-snug text-copper">
+                <p className="relative mt-1 font-hand text-[14px] leading-snug text-copper">
                   ❄️ Needs {terms.minimumOrder} free · you have {formatQuantity(freeStorage)}
                 </p>
               ) : null}
               {!active ? (
-                <KButton full className="mt-3" onClick={() => handleSign(supplierId)}>
+                <KButton full className="relative mt-3" onClick={() => handleSign(supplierId)}>
                   Sign contract
                 </KButton>
               ) : null}
-            </article>
+            </ProgressCard>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/** One of the three facts of a contract (minimum order, length, cancel fee): a cream tile with a painted icon. */
+function ContractFact({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex min-h-[56px] items-center justify-center gap-2 rounded-2xl border border-[#ebd2a0] bg-[linear-gradient(180deg,#fffaf0,#fcefd6)] px-2 py-1.5">
+      {icon}
+      <span className="min-w-0 text-left leading-tight">
+        <span className="block font-ui text-[12px] font-bold text-walnut/60">{label}</span>
+        <span className="block font-display text-[15px] font-black text-walnut-dark">{value}</span>
+      </span>
     </div>
   );
 }

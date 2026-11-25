@@ -1,0 +1,142 @@
+{
+  "_note": "The Business pages art sheets (docs/planning/BUSINESS-UI-CODEX-PROMPTS-2026-11-25.md). Source: 'Business UI Assets/RB-<id>.png'. A picture is named '<id>/<slug>'; the slugs are in reading order (left to right, top to bottom). 'square' sheets are centred on a square canvas (icons); the others keep their proportions, fitted to 'out' (the long side in pixels). The build script (scripts/make-progress-assets.py, run with this file) cuts the sheets by shape into public/business/art/<id>/<slug>.webp.",
+  "sheets": {
+    "icons-a": {
+      "cols": 5,
+      "rows": 5,
+      "cell": [400, 400],
+      "out": 128,
+      "square": true,
+      "slugs": [
+        "stopwatch",
+        "clipboard-calc",
+        "chair",
+        "second-floor",
+        "clock-gold",
+        "plate-cutlery",
+        "wallet-cash",
+        "fridge-icon",
+        "thumbs-up",
+        "wrench",
+        "burst",
+        "volume-wedge",
+        "cart",
+        "moon",
+        "sun",
+        "price-tag",
+        "alarm-clock",
+        "cancel-circle",
+        "local-market",
+        "wholesale-truck",
+        "premium-basket",
+        "fresh-delivery",
+        "weekly-box"
+      ]
+    },
+    "icons-b": {
+      "cols": 5,
+      "rows": 4,
+      "cell": [400, 400],
+      "out": 128,
+      "square": true,
+      "slugs": [
+        "bell-gold",
+        "warning-triangle",
+        "shield",
+        "trash-bin",
+        "snowflake",
+        "hourglass",
+        "ice-cube",
+        "broom",
+        "badge-ok",
+        "badge-warn",
+        "badge-bad",
+        "crossed-cutlery",
+        "date-page",
+        "grain-sack",
+        "cubes",
+        "smallwares",
+        "tableware",
+        "takeaway-box",
+        "veg-basket"
+      ]
+    },
+    "icons-c": {
+      "cols": 4,
+      "rows": 2,
+      "cell": [400, 400],
+      "out": 96,
+      "square": true,
+      "slugs": ["salad", "appetizer", "entree", "side", "curry", "dessert", "stir-fry"]
+    },
+    "fridges": {
+      "cols": 3,
+      "rows": 1,
+      "cell": [640, 640],
+      "out": 320,
+      "slugs": ["basic", "commercial", "professional"]
+    },
+    "pieces": {
+      "cols": 3,
+      "rows": 2,
+      "cell": [640, 640],
+      "out": 320,
+      "slugs": [
+        "laurel-left",
+        "laurel-right",
+        "name-ribbon",
+        "sunburst",
+        "price-laurel",
+        "plate-frame"
+      ]
+    },
+    "decor-a": {
+      "cols": 2,
+      "rows": 5,
+      "cell": [1024, 384],
+      "out": 520,
+      "slugs": [
+        "pace-cluster",
+        "kitchen-ghost",
+        "fridge-shelf",
+        "produce-cluster",
+        "orders-cluster",
+        "stall-ghost",
+        "stall-tomatoes",
+        "warehouse",
+        "tomato-bag"
+      ]
+    },
+    "decor-b": {
+      "cols": 2,
+      "rows": 5,
+      "cell": [1024, 384],
+      "out": 520,
+      "slugs": [
+        "inspection-cluster",
+        "spoils-cluster",
+        "chalkboard",
+        "chart-easel",
+        "cloche-laurel",
+        "purchasing-cluster",
+        "bag-cluster",
+        "used-cluster",
+        "clipboard-large"
+      ]
+    },
+    "banners": {
+      "cols": 1,
+      "rows": 2,
+      "cell": [1536, 576],
+      "out": 960,
+      "slugs": ["equipment-scene", "menu-plaque"]
+    },
+    "decor-c": {
+      "cols": 2,
+      "rows": 1,
+      "cell": [1024, 384],
+      "out": 520,
+      "slugs": ["knives-deco"]
+    }
+  }
+}

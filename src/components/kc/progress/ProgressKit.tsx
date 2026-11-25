@@ -2,6 +2,20 @@ import { useState } from "react";
 import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { markProgressArtFailed, progressArtUrl } from "@/game/progressArt";
+import { BUSINESS_ART_PREFIX, businessArtUrl, markBusinessArtFailed } from "@/game/businessArt";
+
+/** The URL of a picture of either set: "<sheet>/<slug>" is a Restaurant Progress picture, "biz:<sheet>/<slug>" a Business page picture. */
+function artUrlOf(name: string): string | null {
+  return name.startsWith(BUSINESS_ART_PREFIX)
+    ? businessArtUrl(name.slice(BUSINESS_ART_PREFIX.length))
+    : progressArtUrl(name);
+}
+
+function markArtFailed(name: string): void {
+  if (name.startsWith(BUSINESS_ART_PREFIX))
+    markBusinessArtFailed(name.slice(BUSINESS_ART_PREFIX.length));
+  else markProgressArtFailed(name);
+}
 
 /**
  * PROGRESS KIT (developer 2026-11-25, docs/planning/RESTAURANT-PROGRESS-REDESIGN-PLAN-2026-11-25.md): the painted-card pieces of the Restaurant Progress page.
@@ -10,6 +24,44 @@ import { markProgressArtFailed, progressArtUrl } from "@/game/progressArt";
  * Display only: nothing here buys or changes anything.
  */
 
+/**
+ * A blurred photo behind a wood card (developer 2026-11-25, like "Your restaurant today"): `public/business/bg/<name>-wide.webp` and `-tall.webp`
+ * under a dark walnut veil. The parent must be `relative isolate overflow-hidden` and a `@container` (the wide picture shows from 560 px of card).
+ * If a picture fails to load the card keeps its wood. Display only; the words sit on top and keep their place.
+ */
+export function CardBackdrop({ name }: { name: "ranking" | "briefing" }) {
+  const [bad, setBad] = useState(false);
+  if (bad) return null;
+  const base = `${import.meta.env.BASE_URL}business/bg/${name}`;
+  const cls = "absolute inset-0 h-full w-full select-none object-cover object-center";
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-0"
+      aria-hidden="true"
+      data-testid="card-backdrop"
+    >
+      <img
+        src={`${base}-tall.webp`}
+        alt=""
+        loading="lazy"
+        draggable={false}
+        className={`${cls} @min-[560px]:hidden`}
+        onError={() => setBad(true)}
+      />
+      <img
+        src={`${base}-wide.webp`}
+        alt=""
+        loading="lazy"
+        draggable={false}
+        className={`${cls} hidden @min-[560px]:block`}
+        onError={() => setBad(true)}
+      />
+      <div className="absolute inset-0 bg-walnut-dark/40" />
+      <div className="absolute inset-0 hidden bg-gradient-to-r from-walnut-dark/45 via-walnut-dark/15 to-transparent @min-[560px]:block" />
+    </div>
+  );
+}
+
 /** A painted picture, or `fallback` (today's emoji / icon) when the picture is not there or fails to load. */
 export function Art({
   name,
@@ -17,14 +69,14 @@ export function Art({
   className,
   style,
 }: {
-  /** "<sheet>/<slug>", see scripts/progress-sheets.json */
+  /** "<sheet>/<slug>" (scripts/progress-sheets.json) or "biz:<sheet>/<slug>" (scripts/business-sheets.json) */
   name: string;
   fallback?: ReactNode;
   className?: string;
   style?: CSSProperties;
 }) {
   const [, redraw] = useState(0);
-  const url = progressArtUrl(name);
+  const url = artUrlOf(name);
   if (!url) return <>{fallback ?? null}</>;
   return (
     <img
@@ -38,7 +90,7 @@ export function Art({
       className={cn("select-none object-contain", className)}
       style={style}
       onError={() => {
-        markProgressArtFailed(name);
+        markArtFailed(name);
         redraw((n) => n + 1);
       }}
     />
@@ -72,8 +124,31 @@ export function PIcon({
   );
 }
 
-/** The gold ribbon heading that sits across the top-left corner of a card. */
-export function RibbonHeading({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
+/**
+ * The ribbon heading that sits across the top-left corner of a card: the gold tab (Restaurant Progress, Business Overview / Equipment / Suppliers) or, with
+ * `dark`, the walnut ribbon with a leaf sprig at its end (Business Menu / Operations / Finance, developer 2026-11-25).
+ */
+export function RibbonHeading({
+  icon,
+  children,
+  dark = false,
+}: {
+  icon?: ReactNode;
+  children: ReactNode;
+  dark?: boolean;
+}) {
+  if (dark) {
+    return (
+      <h2 className="bz-ribbon-dark absolute -left-1.5 -top-3 z-10 flex min-h-10 max-w-[calc(100%-1.5rem)] items-center gap-1.5 py-1 pl-2.5 pr-9 font-display text-[16px] font-black leading-tight">
+        {icon ? <span className="-ml-1 shrink-0">{icon}</span> : null}
+        <span className="min-w-0">{children}</span>
+        <Art
+          name="icons-c/leaf-right"
+          className="pointer-events-none absolute -right-3 top-1/2 h-9 w-9 -translate-y-1/2"
+        />
+      </h2>
+    );
+  }
   return (
     <h2 className="pg-ribbon absolute -left-1.5 -top-3 z-10 flex min-h-9 items-center gap-1.5 py-1 pl-2.5 pr-7 font-display text-[14.5px] font-black uppercase leading-tight tracking-wide">
       {icon ? <span className="shrink-0">{icon}</span> : null}
@@ -90,6 +165,7 @@ export function ProgressCard({
   title,
   icon,
   right,
+  dark,
   className,
   children,
   ...rest
@@ -99,6 +175,8 @@ export function ProgressCard({
   icon?: ReactNode;
   /** Top-right slot: a pill, an ⓘ. */
   right?: ReactNode;
+  /** The walnut ribbon instead of the gold tab (Business Menu / Operations). */
+  dark?: boolean;
   className?: string;
   children: ReactNode;
 } & Omit<HTMLAttributes<HTMLElement>, "title" | "className" | "children">) {
@@ -111,7 +189,11 @@ export function ProgressCard({
       )}
       {...rest}
     >
-      {title ? <RibbonHeading icon={icon}>{title}</RibbonHeading> : null}
+      {title ? (
+        <RibbonHeading icon={icon} dark={dark === true}>
+          {title}
+        </RibbonHeading>
+      ) : null}
       {right ? <div className="absolute right-3 top-1.5 z-10">{right}</div> : null}
       {children}
     </section>
@@ -135,15 +217,17 @@ export function ValuePill({
   className,
 }: {
   children: ReactNode;
-  tone?: "cream" | "gold" | "green";
+  tone?: "cream" | "gold" | "green" | "red";
   className?: string;
 }) {
   const t =
-    tone === "gold"
-      ? "bg-[linear-gradient(180deg,#ffe9a6,#f9cd62)] border-[#e2b24a] text-[#5a2d08]"
-      : tone === "green"
-        ? "bg-[linear-gradient(180deg,#e9f3d4,#cfe3a3)] border-[#a4c26a] text-[#34531a]"
-        : "pg-pill text-walnut-dark";
+    tone === "red"
+      ? "bg-[linear-gradient(180deg,#ffe3df,#f9bcb5)] border-[#e08a80] text-[#8c1d14]"
+      : tone === "gold"
+        ? "bg-[linear-gradient(180deg,#ffe9a6,#f9cd62)] border-[#e2b24a] text-[#5a2d08]"
+        : tone === "green"
+          ? "bg-[linear-gradient(180deg,#e9f3d4,#cfe3a3)] border-[#a4c26a] text-[#34531a]"
+          : "pg-pill text-walnut-dark";
   return (
     <span
       className={cn(

@@ -27,6 +27,7 @@ import type { ScreenId } from "./data";
 import { BottomNav } from "./Kitchen";
 import { Eyebrow } from "./common/Meters";
 import { KButton, Panel, ScreenHeader } from "./common/primitives";
+import { CardBackdrop } from "./progress/ProgressKit";
 import { InfoTip } from "./common/InfoTip";
 import { FreshnessGrid, type WatchTile } from "./FreshnessWatch";
 import { SupplyCheckGrid } from "./SupplyCheckTiles";
@@ -210,7 +211,11 @@ export function DailyMaintenance({
         />
 
         <div className="space-y-3 px-4 pb-4">
-          <section className="relative overflow-hidden rounded-[26px] border border-walnut-dark/50 wood p-4 text-ivory shadow-lift">
+          <section
+            className="@container relative isolate overflow-hidden rounded-[26px] border border-walnut-dark/50 wood p-4 text-ivory shadow-lift"
+            data-testid="opening-briefing"
+          >
+            <CardBackdrop name="briefing" />
             <div className="relative">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -220,7 +225,7 @@ export function DailyMaintenance({
                   </h2>
                 </div>
                 <span
-                  className={`shrink-0 rounded-full px-2.5 py-1 font-ui text-[10px] font-extrabold ${totalAttention ? "bg-gold/25 text-gold" : "bg-sage/25 text-ivory"}`}
+                  className={`shrink-0 rounded-full px-2.5 py-1 font-ui text-[10px] font-extrabold ${totalAttention ? "border border-gold/40 bg-walnut-dark/70 text-gold" : "border border-ivory/20 bg-walnut-dark/70 text-ivory"}`}
                 >
                   {totalAttention ? `${totalAttention} to review` : "CHECKED"}
                 </span>
@@ -244,7 +249,7 @@ export function DailyMaintenance({
                 <KButton variant="copper" size="sm" onClick={() => go("kitchen")}>
                   {day.closingDue ? "Go to closing →" : "Go to today’s service →"}
                 </KButton>
-                <KButton variant="ghost" size="sm" onClick={() => go("inventory")}>
+                <KButton variant="cream" size="sm" onClick={() => go("inventory")}>
                   Open inventory
                 </KButton>
               </div>

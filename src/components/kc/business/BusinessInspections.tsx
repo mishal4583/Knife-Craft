@@ -3,6 +3,8 @@ import type { ScreenId } from "../data";
 import { Panel, Badge, KButton } from "../common/primitives";
 import { InfoTip } from "../common/InfoTip";
 import { Eyebrow } from "../common/Meters";
+import { Art, PIcon, ProgressCard, ValuePill } from "../progress/ProgressKit";
+import { GoldButton } from "./BizKit";
 import { cn } from "@/lib/utils";
 import {
   inspectBusiness,
@@ -62,31 +64,63 @@ const HERO_TONE: Record<InspectionResult, string> = {
   FAIL: "border-tomato/50 bg-tomato/15",
 };
 
+/** The painted picture of each of the seven checks (RB-icons-b / RB-icons-a / RB-icons-b people), with today's emoji until it exists. */
+const CATEGORY_ART: Record<InspectionCategory, string> = {
+  FOOD_STORAGE: "biz:icons-b/snowflake",
+  INGREDIENT_EXPIRY: "biz:icons-b/hourglass",
+  REFRIGERATOR_CONDITION: "biz:icons-b/ice-cube",
+  EQUIPMENT_CONDITION: "biz:icons-a/wrench",
+  KITCHEN_CLEANLINESS: "biz:icons-b/broom",
+  FOOD_SAFETY: "biz:icons-b/shield",
+  STAFF_COMPLIANCE: "icons-b/people",
+};
+
+const STATUS_ART: Record<InspectionResult, string> = {
+  PASS: "biz:icons-b/badge-ok",
+  WARNING: "biz:icons-b/badge-warn",
+  FAIL: "biz:icons-b/badge-bad",
+};
+
 function Icons({ report }: { report: ReturnType<typeof inspectBusiness> }) {
   return (
-    <div className="mt-1.5 flex flex-wrap gap-1" data-testid="inspection-icons">
+    <div className="mt-2 flex flex-wrap gap-2" data-testid="inspection-icons">
       {report.categories.map((c) => (
         <span
           key={c.category}
           title={`${CATEGORY_LABEL[c.category]}: ${RESULT_TEXT[c.result]}`}
           className={cn(
-            "relative grid h-9 w-9 place-items-center rounded-full border text-[17px]",
+            "relative grid h-12 w-12 place-items-center rounded-full border bg-[linear-gradient(180deg,#fffaf0,#fcefd6)] text-[20px] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]",
             c.result === "PASS"
-              ? "border-olive/30 bg-sage/15"
+              ? "border-[#cfe0b0]"
               : c.result === "WARNING"
-                ? "border-copper/50 bg-gold/20"
-                : "border-tomato/50 bg-tomato/15",
+                ? "border-copper/50"
+                : "border-tomato/50",
           )}
         >
-          {INSPECTION_CATEGORY_ICON[c.category]}
-          <span
-            className={cn(
-              "absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center rounded-full font-ui text-[10px] font-black text-ivory",
-              c.result === "PASS" ? "bg-olive" : c.result === "WARNING" ? "bg-copper" : "bg-tomato",
-            )}
-            aria-hidden
-          >
-            {c.result === "PASS" ? "✓" : "!"}
+          <PIcon
+            name={CATEGORY_ART[c.category]}
+            fallback={INSPECTION_CATEGORY_ICON[c.category]}
+            size={32}
+          />
+          <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center" aria-hidden>
+            <Art
+              name={STATUS_ART[c.result]}
+              className="h-5 w-5"
+              fallback={
+                <span
+                  className={cn(
+                    "grid h-5 w-5 place-items-center rounded-full font-ui text-[11px] font-black text-ivory",
+                    c.result === "PASS"
+                      ? "bg-olive"
+                      : c.result === "WARNING"
+                        ? "bg-copper"
+                        : "bg-tomato",
+                  )}
+                >
+                  {c.result === "PASS" ? "✓" : "!"}
+                </span>
+              }
+            />
           </span>
         </span>
       ))}
@@ -109,28 +143,46 @@ export function InspectionSummary({
   const report = inspectBusiness(save);
   const passed = report.categories.filter((c) => c.result === "PASS").length;
   return (
-    <Panel className="p-4" data-testid="inspection-summary">
-      <div className="flex items-center justify-between gap-2">
-        <Eyebrow>🧾 Inspection · right now</Eyebrow>
-        <Badge tone={RESULT_BADGE_TONE[report.overall]}>{report.overall}</Badge>
+    <ProgressCard
+      dark
+      title="Inspection · right now"
+      icon={<PIcon name="icons-b/clipboard-check" fallback="🧾" size={30} />}
+      right={
+        <ValuePill
+          tone={report.overall === "PASS" ? "green" : report.overall === "WARNING" ? "gold" : "red"}
+          className="min-h-9 px-3 uppercase"
+        >
+          {report.overall === "PASS" ? null : (
+            <PIcon name="biz:icons-a/burst" fallback="💥" size={22} />
+          )}
+          {report.overall}
+        </ValuePill>
+      }
+      className="pt-10"
+      data-testid="inspection-summary"
+    >
+      <div className="flex flex-col gap-3 @min-[620px]:flex-row @min-[620px]:items-center @min-[620px]:gap-5">
+        <Art
+          name="biz:decor-b/clipboard-large"
+          className="pointer-events-none hidden h-20 w-auto shrink-0 @min-[620px]:block"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-1.5 font-display text-[22px] font-black text-walnut-dark">
+            {passed} / {report.categories.length} checks
+            <InfoTip label="Why">{report.overallReason}</InfoTip>
+          </p>
+          <Icons report={report} />
+        </div>
+        <GoldButton
+          tone="wood"
+          className="@min-[620px]:w-[30%] @min-[620px]:shrink-0"
+          data-testid="inspection-open"
+          onClick={() => go("business-inspection")}
+        >
+          View Inspection →
+        </GoldButton>
       </div>
-      <div className="mt-1 flex items-center gap-2">
-        <p className="font-display text-[18px] font-black text-walnut-dark">
-          {passed} / {report.categories.length} checks
-        </p>
-        <InfoTip label="Why">{report.overallReason}</InfoTip>
-      </div>
-      <Icons report={report} />
-      <KButton
-        full
-        variant={report.overall === "PASS" ? "cream" : "copper"}
-        className="mt-3"
-        data-testid="inspection-open"
-        onClick={() => go("business-inspection")}
-      >
-        View Inspection →
-      </KButton>
-    </Panel>
+    </ProgressCard>
   );
 }
 

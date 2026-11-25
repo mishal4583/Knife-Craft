@@ -33,6 +33,8 @@ import type { PurchaseKitchenUpgradeResult } from "@/game/kitchen/KitchenUpgrade
 import { OperationsAnalytics, TodayAtAGlance } from "./BusinessAnalytics";
 import { BusinessStaff } from "./BusinessStaff";
 import { PaceCard } from "./PaceCard";
+import { BIZ_ART, GoldButton, IconTile, OneWalletFooter } from "./BizKit";
+import { Art, GlossBar, PIcon, ProgressCard, ValuePill } from "../progress/ProgressKit";
 import { BusinessSuppliers } from "./BusinessSuppliers";
 import { BusinessMenu } from "./BusinessMenu";
 import { BusinessSectionBanner } from "./BusinessSectionBanner";
@@ -407,11 +409,11 @@ export function BusinessDashboard({
           ) : null}
         </div>
 
-        {detailScreen ? null : (
+        {detailScreen ? null : RESTAURANT_MODE ? (
+          <OneWalletFooter />
+        ) : (
           <p className="px-8 pb-2 pt-5 text-center font-hand text-[15px] text-walnut/45">
-            {RESTAURANT_MODE
-              ? "🍽️ One restaurant · 💵 one wallet"
-              : "📅 Own calendar · 💵 one wallet with the kitchen"}
+            📅 Own calendar · 💵 one wallet with the kitchen
           </p>
         )}
       </div>
@@ -812,25 +814,48 @@ function PopularityCard({
 function RankCard({ save, go }: { save: SaveData; go: (s: ScreenId) => void }) {
   const u = useUnlockText();
   const p = restaurantProgress(save);
+  const now = p.campaignComplete ? p.level.total : p.level.current;
   return (
-    <Panel tone="cream" className="p-4">
-      <Eyebrow>🏆 Restaurant rank</Eyebrow>
-      <p className="mt-1 font-display text-[19px] font-black leading-tight text-walnut-dark">
-        {p.rank.title}
-      </p>
-      <div className="mt-2">
-        <Bar fraction={p.rank.fraction} />
+    <ProgressCard
+      title="Restaurant rank"
+      icon={<PIcon name="icons-a/trophy" fallback="🏆" size={26} />}
+      data-testid="rank-card"
+    >
+      <Art
+        name="wide/skyline"
+        className="pointer-events-none absolute right-3 top-2 hidden h-14 w-auto opacity-70 @min-[720px]:block"
+      />
+      <div className="relative flex flex-col gap-3 @min-[720px]:flex-row @min-[720px]:items-center @min-[720px]:gap-5">
+        <div className="flex items-center gap-3 @min-[720px]:w-[42%]">
+          <PIcon name={`medals/medal-${p.rank.tier}`} fallback="🏅" size={88} />
+          <div className="min-w-0">
+            <p className="font-display text-[24px] font-black leading-tight text-walnut-dark">
+              {p.rank.title}
+            </p>
+            <p className="mt-0.5 font-ui text-[13px] font-bold leading-snug text-walnut/70">
+              {u.noun} {now} / {p.level.total}
+              {p.nextRank
+                ? ` · Next: ${p.nextRank.title} ${u.lv(p.nextRank.levelRequired)}`
+                : " · every rank reached"}
+            </p>
+          </div>
+        </div>
+        <div className="min-w-0 flex-1 space-y-3">
+          <div className="flex items-center gap-2.5">
+            <GlossBar fraction={p.rank.fraction} height={16} label="Restaurant rank progress" />
+            <ValuePill className="shrink-0">
+              {now} / {p.level.total}
+            </ValuePill>
+          </div>
+          <GoldButton
+            icon={<PIcon name="icons-a/storefront" fallback="🏪" size={30} />}
+            onClick={() => go("rack")}
+          >
+            View Restaurant Progress →
+          </GoldButton>
+        </div>
       </div>
-      <p className="mt-1.5 font-ui text-[12.5px] font-bold text-walnut/70">
-        {u.noun} {p.campaignComplete ? p.level.total : p.level.current} / {p.level.total}
-        {p.nextRank
-          ? ` · Next: ${p.nextRank.title} ${u.lv(p.nextRank.levelRequired)}`
-          : " · every rank reached"}
-      </p>
-      <KButton full variant="cream" className="mt-3" onClick={() => go("rack")}>
-        View Restaurant Progress →
-      </KButton>
-    </Panel>
+    </ProgressCard>
   );
 }
 
@@ -942,29 +967,33 @@ function CampaignDayCard({ save, go }: { save: SaveData; go: (s: ScreenId) => vo
 function OneRestaurantNote() {
   const u = useUnlockText();
   return (
-    <Panel className="p-4">
-      <div data-testid="one-restaurant-note">
-        <div className="flex items-center justify-between gap-2">
-          <Eyebrow>🍽️ One restaurant</Eyebrow>
-          <InfoTip label="About your restaurant">
-            Your restaurant runs service after service, with menu orders, stock, supplies and staff.
-            Open for service from the Kitchen. The {ENDLESS_RESTAURANT_NAME} — open-ended days with
-            everything you built — opens after the final service.
-          </InfoTip>
-        </div>
-        <Points
-          className="mt-1"
-          items={[
-            ["🎮", "Service after service"],
-            ["🧾", "Orders · stock · supplies · staff"],
-            ["🏠", "Open for service from the Kitchen"],
-          ]}
-        />
-        <p className="mt-1.5 font-ui text-[12.5px] font-bold text-walnut/60">
-          🔒 {ENDLESS_RESTAURANT_NAME} · {u.final}
-        </p>
+    <ProgressCard
+      title="One restaurant"
+      icon={<PIcon name="biz:icons-a/plate-cutlery" fallback="🍽️" size={26} />}
+      right={
+        <InfoTip label="About your restaurant">
+          Your restaurant runs service after service, with menu orders, stock, supplies and staff.
+          Open for service from the Kitchen. The {ENDLESS_RESTAURANT_NAME} — open-ended days with
+          everything you built — opens after the final service.
+        </InfoTip>
+      }
+      data-testid="one-restaurant-note"
+    >
+      <div className="grid gap-2 @min-[620px]:grid-cols-2 @min-[960px]:grid-cols-4">
+        <IconTile icon={<PIcon name="icons-c/cloche" fallback="🎮" size={38} />}>
+          Service after service
+        </IconTile>
+        <IconTile icon={<PIcon name="icons-b/clipboard-check" fallback="🧾" size={38} />}>
+          Orders · stock · supplies · staff
+        </IconTile>
+        <IconTile icon={<PIcon name="icons-a/storefront" fallback="🏠" size={38} />}>
+          Open for service from the Kitchen
+        </IconTile>
+        <IconTile icon={<PIcon name="icons-a/padlock" fallback="🔒" size={38} />}>
+          {ENDLESS_RESTAURANT_NAME} · {u.final}
+        </IconTile>
       </div>
-    </Panel>
+    </ProgressCard>
   );
 }
 
@@ -1258,6 +1287,23 @@ function DaySummary({
 
 /* ════════════════════════ OPERATIONS ════════════════════════ */
 
+/** The painted picture beside an alert, and the decoration at the right of its card (picture 08). */
+function alertArt(key: string): { icon: string; fallback: string; deco: string | null } {
+  if (key.startsWith("inspection:"))
+    return {
+      icon: "biz:decor-b/clipboard-large",
+      fallback: "📋",
+      deco: "biz:decor-b/inspection-cluster",
+    };
+  if (key.startsWith("spoil-tonight:") || key.startsWith("near-expiry:"))
+    return { icon: "icons-b/crate", fallback: "🥬", deco: "biz:decor-b/spoils-cluster" };
+  if (key.startsWith("fridge:"))
+    return { icon: "biz:icons-a/fridge-icon", fallback: "❄️", deco: null };
+  if (key.startsWith("supplier-event:") || key.startsWith("contract-ends:"))
+    return { icon: "biz:icons-a/wholesale-truck", fallback: "🚚", deco: null };
+  return { icon: "icons-b/crate", fallback: "📦", deco: null };
+}
+
 function Operations({
   save,
   go,
@@ -1284,150 +1330,194 @@ function Operations({
   const allClear = alerts.filter((a) => a.severity === "ok");
   const pnl = preview.dailyPnL;
   return (
-    <div className="space-y-3">
-      <BusinessSectionBanner image="operations-banner.webp" title="Restaurant operations" />
+    <div className="space-y-5">
       {/* What needs attention */}
-      <Panel className="p-4">
-        <Eyebrow>📋 What needs attention</Eyebrow>
+      <ProgressCard
+        dark
+        title="What needs attention"
+        icon={<PIcon name="biz:icons-b/bell-gold" fallback="🔔" size={30} />}
+        className="pt-10"
+        data-testid="needs-attention"
+      >
         {repairMessage ? (
-          <p className="mt-2 font-hand text-[15px] text-olive">{repairMessage}</p>
+          <p className="mb-2 font-hand text-[15px] text-olive">{repairMessage}</p>
         ) : null}
         {actionable.length === 0 ? (
-          <p className="mt-1.5 font-hand text-[16px] text-olive">
+          <p className="font-hand text-[16px] text-olive">
             ✓ Nothing needs your attention right now.
           </p>
         ) : (
-          <div className="mt-2 space-y-2">
-            {actionable.map((alert) => (
-              <div
-                key={alert.key}
-                className={cn(
-                  "rounded-[14px] border p-3",
-                  alert.severity === "critical" || alert.severity === "warning"
-                    ? "border-copper/30 bg-gold/10"
-                    : "border-walnut/10 bg-cream/60",
-                )}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-ui text-[13.5px] font-extrabold text-walnut-dark">
-                    {SEVERITY_ICON[alert.severity]} {alert.title}
-                  </p>
-                  <InfoTip label={`About ${alert.title}`}>{alert.detail}</InfoTip>
-                </div>
-                <p
-                  className="mt-0.5 font-ui text-[12.5px] font-bold leading-snug text-walnut/80"
-                  data-testid="alert-glance"
-                >
-                  {alert.glanceParts ? (
-                    <>
-                      {alert.glanceParts.before}
-                      {alert.glanceParts.ingredients.slice(0, 5).map((id) => (
-                        <IngredientIcon key={id} id={id} fallback={INGREDIENT_EMOJI[id] ?? "🥬"} />
-                      ))}
-                      {alert.glanceParts.ingredients.length > 5
-                        ? ` +${alert.glanceParts.ingredients.length - 5}`
-                        : ""}
-                      {alert.glanceParts.after}
-                    </>
-                  ) : (
-                    alert.glance
+          <div className="space-y-2.5">
+            {actionable.map((alert) => {
+              const art = alertArt(alert.key);
+              const hot = alert.severity === "critical" || alert.severity === "warning";
+              return (
+                <div
+                  key={alert.key}
+                  className={cn(
+                    "relative overflow-hidden rounded-[18px] border p-3",
+                    hot
+                      ? "border-[#e6cb98] bg-[linear-gradient(180deg,#fffaf0,#fcefd6)]"
+                      : "border-walnut/10 bg-cream/60",
                   )}
-                </p>
-                {alert.action?.kind === "rush-restock" ? (
-                  blockedDish ? (
-                    <RushRestockActions
-                      save={save}
-                      dish={blockedDish}
-                      go={go}
-                      rushRestock={rushRestock}
-                      rushAdAvailable={rushAdAvailable}
+                >
+                  {art.deco ? (
+                    <Art
+                      name={art.deco}
+                      className="pointer-events-none absolute right-10 top-0 hidden h-16 w-auto @min-[620px]:block"
                     />
-                  ) : null
-                ) : alert.action ? (
-                  <KButton
-                    full
-                    variant={alert.action.kind === "repair-refrigerator" ? "copper" : "cream"}
-                    className="mt-2"
-                    onClick={() => onAlertAction(alert)}
-                  >
-                    {alert.action.label}
-                    {alert.action.kind === "navigate" ? " →" : ""}
-                  </KButton>
-                ) : null}
-              </div>
-            ))}
+                  ) : null}
+                  <div className="relative flex items-start gap-3">
+                    <PIcon name={art.icon} fallback={art.fallback} size={56} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="flex items-center gap-1.5 font-display text-[17px] font-black leading-tight text-walnut-dark">
+                          {hot ? (
+                            <PIcon name="biz:icons-b/warning-triangle" fallback="⚠️" size={24} />
+                          ) : (
+                            <span aria-hidden>{SEVERITY_ICON[alert.severity]}</span>
+                          )}
+                          {alert.title}
+                        </p>
+                        <InfoTip label={`About ${alert.title}`}>{alert.detail}</InfoTip>
+                      </div>
+                      <p
+                        className="mt-0.5 font-ui text-[13px] font-bold leading-snug text-walnut/80"
+                        data-testid="alert-glance"
+                      >
+                        {alert.glanceParts ? (
+                          <>
+                            {alert.glanceParts.before}
+                            {alert.glanceParts.ingredients.slice(0, 5).map((id) => (
+                              <IngredientIcon
+                                key={id}
+                                id={id}
+                                fallback={INGREDIENT_EMOJI[id] ?? "🥬"}
+                              />
+                            ))}
+                            {alert.glanceParts.ingredients.length > 5
+                              ? ` +${alert.glanceParts.ingredients.length - 5}`
+                              : ""}
+                            {alert.glanceParts.after}
+                          </>
+                        ) : (
+                          alert.glance
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  {alert.action?.kind === "rush-restock" ? (
+                    blockedDish ? (
+                      <RushRestockActions
+                        save={save}
+                        dish={blockedDish}
+                        go={go}
+                        rushRestock={rushRestock}
+                        rushAdAvailable={rushAdAvailable}
+                      />
+                    ) : null
+                  ) : alert.action ? (
+                    <KButton
+                      full
+                      variant={alert.action.kind === "repair-refrigerator" ? "copper" : "cream"}
+                      className="relative mt-2.5"
+                      onClick={() => onAlertAction(alert)}
+                    >
+                      {alert.action.label}
+                      {alert.action.kind === "navigate" ? " →" : ""}
+                    </KButton>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         )}
         {allClear.length > 0 ? (
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="mt-3 flex flex-wrap gap-1.5">
             {allClear.map((a) => (
-              <span
-                key={a.key}
-                className="rounded-full border border-olive/30 bg-sage/15 px-2 py-[3px] font-ui text-[12px] font-extrabold text-olive"
-              >
-                ✓ {a.title}
-              </span>
+              <ValuePill key={a.key} tone="green" className="min-h-8 text-[13px]">
+                <PIcon name="icons-c/tick" fallback="✓" size={18} />
+                {a.title}
+              </ValuePill>
             ))}
           </div>
         ) : null}
-      </Panel>
+      </ProgressCard>
 
       {/* Actions + what closing now does */}
-      <Panel className="p-4">
-        <Eyebrow>🍽️ Today's service</Eyebrow>
+      <ProgressCard
+        dark
+        title="Today's service"
+        icon={<PIcon name="icons-c/calendar" fallback="🍽️" size={30} />}
+        className="pt-10"
+      >
         <BusinessDayCardInline save={save} />
-        <div className="mt-3 space-y-2">
-          <KButton full onClick={() => go("business-service")}>
-            🍽️ {businessServiceSession?.current ? "Go to Service →" : "Open Service →"}
-          </KButton>
-        </div>
-        <Divider />
-        <p className="font-ui text-[12.5px] font-extrabold text-walnut-dark">
-          If you end the day now
-        </p>
-        <div className="mt-1 space-y-0.5 font-ui text-[12.5px] font-bold text-walnut/75">
-          <div className="flex justify-between">
-            <span>Staff pay</span>
-            <span className="font-extrabold text-walnut-dark">
-              {preview.staffLaidOff.length > 0
-                ? "can't be paid — team let go"
-                : preview.payrollPaid > 0
-                  ? `−${formatUsd(preview.payrollPaid)}`
-                  : "none"}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span>Spoilage</span>
-            <span className="font-extrabold text-walnut-dark">
-              {preview.spoiledQuantity > 0
-                ? `${formatQuantity(preview.spoiledQuantity)} units (${formatUsd(preview.spoiledValue)})`
-                : "nothing spoils"}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span>Inspection</span>
-            <span className="font-extrabold text-walnut-dark">
-              {preview.inspectionReport.overall}
-              {preview.inspectionFine.fineAmount > 0
-                ? ` · fine ${formatUsd(preview.inspectionFine.fineAmount)}`
-                : " · no fine"}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span>Popularity</span>
-            <span className="font-extrabold text-walnut-dark">
-              {signed(preview.popularityDelta)} → {preview.popularityScore}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span>Day's profit</span>
-            <span className="font-extrabold text-walnut-dark">
-              {formatUsd(pnl.operatingProfit)}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span>Closing cash</span>
-            <span className="font-extrabold text-walnut-dark">{formatUsd(pnl.closingCash)}</span>
+        <GoldButton
+          tone="wood"
+          className="mt-3 min-h-14 text-[19px]"
+          icon={<PIcon name="biz:icons-b/bell-gold" fallback="🍽️" size={34} />}
+          onClick={() => go("business-service")}
+        >
+          {businessServiceSession?.current ? "Go to Service →" : "Open Service →"}
+        </GoldButton>
+        <div className="mt-4 border-t border-dashed border-walnut/25 pt-3">
+          <div className="grid gap-x-8 @min-[720px]:grid-cols-[1fr_auto] @min-[720px]:items-end">
+            <div>
+              <p className="flex items-center gap-2 font-display text-[16px] font-black text-walnut-dark">
+                <PIcon name="icons-a/chart-trend" fallback="📈" size={26} />
+                If you end the day now
+              </p>
+              <div className="mt-1.5 space-y-0.5 font-ui text-[13.5px] font-bold text-walnut/80">
+                <EndDayRow
+                  icon={<PIcon name="icons-a/toque" fallback="👨‍🍳" size={24} />}
+                  label="Staff pay"
+                  value={
+                    preview.staffLaidOff.length > 0
+                      ? "can't be paid — team let go"
+                      : preview.payrollPaid > 0
+                        ? `−${formatUsd(preview.payrollPaid)}`
+                        : "none"
+                  }
+                />
+                <EndDayRow
+                  icon={<PIcon name="icons-b/crate" fallback="🗑️" size={24} />}
+                  label="Spoilage"
+                  value={
+                    preview.spoiledQuantity > 0
+                      ? `${formatQuantity(preview.spoiledQuantity)} units (${formatUsd(preview.spoiledValue)})`
+                      : "nothing spoils"
+                  }
+                />
+                <EndDayRow
+                  icon={<PIcon name="icons-b/clipboard-check" fallback="📋" size={24} />}
+                  label="Inspection"
+                  value={`${preview.inspectionReport.overall}${
+                    preview.inspectionFine.fineAmount > 0
+                      ? ` · fine ${formatUsd(preview.inspectionFine.fineAmount)}`
+                      : " · no fine"
+                  }`}
+                />
+                <EndDayRow
+                  icon={<PIcon name="icons-a/star" fallback="⭐" size={24} />}
+                  label="Popularity"
+                  value={`${signed(preview.popularityDelta)} → ${preview.popularityScore}`}
+                />
+                <EndDayRow
+                  icon={<PIcon name={BIZ_ART.profit} fallback="💰" size={24} />}
+                  label="Day's profit"
+                  value={formatUsd(pnl.operatingProfit)}
+                />
+                <EndDayRow
+                  icon={<PIcon name="icons-a/money-bag" fallback="💰" size={24} />}
+                  label="Closing cash"
+                  value={formatUsd(pnl.closingCash)}
+                />
+              </div>
+            </div>
+            <Art
+              name="biz:decor-b/chalkboard"
+              className="pointer-events-none hidden h-32 w-auto @min-[720px]:block"
+            />
           </div>
         </div>
         {preview.expiredSupplierId ? (
@@ -1441,11 +1531,17 @@ function Operations({
             End Business Day →
           </KButton>
         ) : (
-          <p className="mt-3 font-hand text-[15px] leading-snug text-walnut/70">
-            🌙 Day ends at closing · 🔒 {ENDLESS_RESTAURANT_NAME} {u.final}
+          <p className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-walnut/10 pt-2 font-hand text-[15px] leading-snug text-walnut/70">
+            <span className="inline-flex items-center gap-1.5">
+              <PIcon name="biz:icons-a/moon" fallback="🌙" size={24} /> Day ends at closing
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <PIcon name="icons-a/padlock" fallback="🔒" size={24} /> {ENDLESS_RESTAURANT_NAME}{" "}
+              {u.final}
+            </span>
           </p>
         )}
-      </Panel>
+      </ProgressCard>
 
       {dayResult ? (
         <DaySummary result={dayResult} day={save.business.calendar.businessDay - 1} go={go} />
@@ -1459,22 +1555,28 @@ function Operations({
   );
 }
 
+/** One line of "If you end the day now": a painted icon, the words and the figure at the right. */
+function EndDayRow({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex min-h-8 items-center gap-2.5">
+      <span className="grid w-7 shrink-0 place-items-center">{icon}</span>
+      <span className="flex-1">{label}</span>
+      <span className="text-right font-extrabold text-walnut-dark">{value}</span>
+    </div>
+  );
+}
+
 function BusinessDayCardInline({ save }: { save: SaveData }) {
   const customers = businessCustomersToday(save);
   return (
-    <>
-      <div className="mt-2 flex items-baseline justify-between font-ui text-[12.5px] font-bold text-walnut/75">
-        <span>Customers Today</span>
-        <span className="font-extrabold text-walnut-dark">
-          {customers.served} / {customers.target} served
-        </span>
-      </div>
-      <div className="mt-1">
-        <Bar
-          fraction={customers.target > 0 ? customers.served / customers.target : 0}
-          tone="sage"
-        />
-      </div>
-    </>
+    <div className="flex items-center justify-between gap-3 rounded-2xl bg-[#f7e6c4]/60 px-3 py-2 font-ui text-[13.5px] font-bold text-walnut-dark">
+      <span className="flex items-center gap-2 font-display text-[16px] font-black">
+        <PIcon name="icons-b/guests" fallback="👥" size={30} />
+        Customers Today
+      </span>
+      <ValuePill className="shrink-0">
+        {customers.served} / {customers.target} served
+      </ValuePill>
+    </div>
   );
 }

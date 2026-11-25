@@ -203,9 +203,13 @@ const tiles = await page.evaluate((list) => {
 await shot(page, "restaurant-upgrades");
 check(
   "4 Upgrades shows restaurant development: the saved tier is Current, the ones before it Upgraded ✓; Equipment keeps the fridge (no development card)",
-  tiles[currentExpected] === "current" &&
-    names.slice(0, builtExpected).every((n) => tiles[n] === "upgraded ✓") &&
-    names.slice(builtExpected + 1).every((n) => tiles[n] && !/current|upgraded/.test(tiles[n])) &&
+  // RULE CHANGE (developer 2026-11-25, Business pages painted): each kitchen card now prints its own description (and what it gives) under its name, so the
+  // tile's text is "<description> <benefit> <state>"; the state is the LAST words (CURRENT / UPGRADED ✓ / a price / a level).
+  tiles[currentExpected]?.endsWith("current") &&
+    names.slice(0, builtExpected).every((n) => tiles[n]?.endsWith("upgraded ✓")) &&
+    names
+      .slice(builtExpected + 1)
+      .every((n) => tiles[n] && !/(current|upgraded ✓)$/.test(tiles[n])) &&
     equipment.fridge &&
     !equipment.oldCard,
   { tiles, builtExpected, currentExpected, equipment },

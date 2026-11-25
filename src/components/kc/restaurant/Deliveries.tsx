@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useUnlockText } from "../navLevel";
 import { KButton, Panel } from "@/components/kc/common/primitives";
+import { Art, PIcon, ProgressCard, ValuePill } from "@/components/kc/progress/ProgressKit";
 import { AudioManager } from "@/game/AudioManager";
 import { Eyebrow } from "@/components/kc/common/Meters";
 import { cn } from "@/lib/utils";
@@ -22,18 +23,21 @@ import {
 } from "@/game/restaurant/deliveries";
 import { InfoTip } from "@/components/kc/common/InfoTip";
 
-const KIND_META: Record<DeliveryKind, { icon: string; title: string; line: string }> = {
-  fresh: {
-    icon: "🥬",
-    title: "Fresh delivery",
-    line: `🥩🐟🧀🍞🍎 · ${FRESH_DAYS} days · every 2 days`,
-  },
-  weekly: {
-    icon: "📦",
-    title: "Weekly delivery",
-    line: `🫙 slow goods + 🧽 cleaning · ${WEEK_DAYS} days · Mondays`,
-  },
-};
+const KIND_META: Record<DeliveryKind, { icon: string; art: string; title: string; line: string }> =
+  {
+    fresh: {
+      icon: "🥬",
+      art: "biz:icons-a/fresh-delivery",
+      title: "Fresh delivery",
+      line: `🥩🐟🧀🍞🍎 · ${FRESH_DAYS} days · every 2 days`,
+    },
+    weekly: {
+      icon: "📦",
+      art: "biz:icons-a/weekly-box",
+      title: "Weekly delivery",
+      line: `🫙 slow goods + 🧽 cleaning · ${WEEK_DAYS} days · Mondays`,
+    },
+  };
 
 const nameOf = (id: string) =>
   INGREDIENTS[id as IngredientId]?.name ?? getSupplyItem(id)?.name.split(" ·")[0] ?? id;
@@ -58,25 +62,42 @@ export function StandingOrdersCard({
   const today = restaurantDayOf(save).day;
   if (level < DELIVERIES_FROM)
     return (
-      <Panel className="p-4" data-testid="standing-orders">
-        <Eyebrow>🚚 Standing orders</Eyebrow>
-        <p className="mt-1 font-ui text-[13.5px] text-walnut/70">
+      <ProgressCard
+        title="Standing orders"
+        icon={<PIcon name="icons-b/box" fallback="🚚" size={26} />}
+        className="pt-10"
+        data-testid="standing-orders"
+      >
+        <p className="font-ui text-[13.5px] text-walnut/70">
           Deliveries start {u.when(DELIVERIES_FROM)}.
         </p>
-      </Panel>
+      </ProgressCard>
     );
   const last = st.history.at(-1) ?? null;
   return (
-    <Panel className="p-4" data-testid="standing-orders">
-      <div className="flex items-center justify-between gap-2">
-        <Eyebrow>🚚 Standing orders</Eyebrow>
+    <ProgressCard
+      title="Standing orders"
+      icon={<PIcon name="icons-b/box" fallback="🚚" size={26} />}
+      right={
         <InfoTip label="About standing orders">
           Ordered at closing, delivered with the morning at the Market's price — only what the next
           days need.
         </InfoTip>
-      </div>
-      <p className="mt-1 font-ui text-[13px] text-walnut/70">
-        🌙 Order at closing · ☀️ arrives by morning
+      }
+      className="pt-10"
+      data-testid="standing-orders"
+    >
+      <Art
+        name="biz:decor-a/orders-cluster"
+        className="pointer-events-none absolute right-12 top-0 hidden h-16 w-auto @min-[620px]:block"
+      />
+      <p className="flex flex-wrap items-center gap-x-4 gap-y-1 font-ui text-[13.5px] text-walnut/70">
+        <span className="inline-flex items-center gap-1.5">
+          <PIcon name="biz:icons-a/moon" fallback="🌙" size={22} /> Order at closing
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <PIcon name="biz:icons-a/sun" fallback="☀️" size={22} /> Arrives by morning
+        </span>
       </p>
       <div className="mt-2 space-y-2">
         {(["fresh", "weekly"] as const).map((k) => {
@@ -87,16 +108,18 @@ export function StandingOrdersCard({
               key={k}
               data-standing-order={k}
               data-on={st[k] ? "true" : "false"}
-              className="flex items-center gap-2 rounded-2xl border border-walnut/12 bg-ivory/70 p-2"
+              className="flex items-center gap-3 rounded-[18px] border border-[#ebd2a0] bg-[linear-gradient(180deg,#fffaf0,#fcefd6)] p-2.5"
             >
-              <span className="text-[24px]" aria-hidden>
-                {meta.icon}
-              </span>
+              <PIcon name={meta.art} fallback={meta.icon} size={52} />
               <div className="min-w-0 flex-1">
-                <p className="font-ui text-[14px] font-extrabold text-walnut-dark">{meta.title}</p>
-                <p className="font-ui text-[12px] leading-snug text-walnut/65">{meta.line}</p>
-                <p className="font-ui text-[12px] font-bold text-walnut/70">
-                  {st[k] ? `Next: Day ${next}` : "Off"}
+                <p className="font-display text-[16.5px] font-black text-walnut-dark">
+                  {meta.title}
+                </p>
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-ui text-[12px] leading-snug text-walnut/70">
+                  <ValuePill className="min-h-6 px-2 text-[12px]">
+                    {st[k] ? `Next: Day ${next}` : "Off"}
+                  </ValuePill>
+                  <span>{meta.line}</span>
                 </p>
               </div>
               <KButton
@@ -118,7 +141,7 @@ export function StandingOrdersCard({
           {last.skipped.length ? ` · ${last.skipped.length} skipped` : ""}
         </p>
       ) : null}
-    </Panel>
+    </ProgressCard>
   );
 }
 

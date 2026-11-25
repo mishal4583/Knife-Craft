@@ -10,6 +10,7 @@ import {
   RankMedal,
   ValuePill,
   Art,
+  CardBackdrop,
 } from "./progress/ProgressKit";
 import { InfoTip } from "./common/InfoTip";
 import { cn } from "@/lib/utils";
@@ -69,9 +70,10 @@ export function CityRankHero({ save }: { save: SaveData }) {
       : undefined;
   return (
     <div
-      className="@container relative overflow-hidden rounded-[26px] border border-walnut-dark/50 wood px-4 pb-4 pt-10 shadow-lift"
+      className="@container relative isolate overflow-hidden rounded-[26px] border border-walnut-dark/50 wood px-4 pb-4 pt-10 shadow-lift"
       data-testid="city-rank-hero"
     >
+      <CardBackdrop name="ranking" />
       <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(255,247,232,0.3),transparent_70%)]" />
       <span className="absolute left-1/2 top-0 z-10 -translate-x-1/2 whitespace-nowrap rounded-b-2xl border border-t-0 border-[#d29a2c] bg-[linear-gradient(180deg,#ffe7a3,#f1b84a)] px-7 py-1 font-display text-[14px] font-black uppercase tracking-[0.16em] text-[#5a2d08] shadow-md">
         City ranking

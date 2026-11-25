@@ -44,3 +44,4 @@ scripts/__pycache__/
 
 # Restaurant Progress source art (Codex sheets, local only; scripts/make-progress-assets.py builds the committed WebP in public/progress/)
 Restaurant Progress Assets/
+Business UI Assets/
