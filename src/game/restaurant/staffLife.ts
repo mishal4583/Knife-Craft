@@ -19,6 +19,7 @@ import type { BusinessStaffRole } from "../business/businessStaff";
 import type { KitchenMapArtStage } from "../kitchen/kitchenMapArt";
 import { TASK_RULES, type TaskKind } from "./cleanliness";
 import { FLOOR_LIFE_ALWAYS_PREVIEW, type FloorActor, type Stop } from "./floorLife";
+import { nearestOpen, walkPath, wideOf, type Pt } from "./guestWalk";
 import { STAFF_LOOK } from "./peopleLooks";
 import { RESTROOM_STOPS_WIDE, STAGE_SPOTS_WIDE } from "./staffLifeWide";
 
@@ -247,14 +248,23 @@ export function roleStops(
     case "head-chef":
       return s.chefAisle.ys.map((y) => ({ x: s.chefAisle.x, y, hold: 2.5, pose: "work" }));
     case "server": {
-      // Picks up at the counter front (right of the computer), walks to a table, and back.
-      const pickA = { x: s.counter.computerX + 14, y: s.counter.frontY };
-      const pickB = { x: s.counter.computerX + 22, y: s.counter.frontY };
+      // Picks up at the counter front (right of the computer), walks to a table, and back (the plan's tables are obstacles, so the way between them is a real route around the cloths and
+      // chairs, not the straight line across the room the Server used to take: developer 2026-11-26, "find and fix all other issues regarding NPCs").
+      const ws = wide ? wideOf(stage) : stage;
+      const pickA = nearestOpen(ws, { x: s.counter.computerX + 14, y: s.counter.frontY });
+      const pickB = nearestOpen(ws, { x: s.counter.computerX + 22, y: s.counter.frontY }, 9, pickA);
+      const tableA = nearestOpen(ws, s.tables[0], 14, pickA, 6);
+      const tableB = nearestOpen(ws, s.tables[1], 14, pickA, 6);
+      const leg = (from: Pt, to: Pt): Stop[] => (walkPath(ws, from, to) ?? [to]).slice(0, -1);
       return [
         { ...pickA, hold: 2, pose: "pick" },
-        { ...s.tables[0], hold: 2.5, pose: "drop" },
+        ...leg(pickA, tableA),
+        { ...tableA, hold: 2.5, pose: "drop" },
+        ...leg(tableA, pickB),
         { ...pickB, hold: 2, pose: "pick" },
-        { ...s.tables[1], hold: 2.5, pose: "drop" },
+        ...leg(pickB, tableB),
+        { ...tableB, hold: 2.5, pose: "drop" },
+        ...leg(tableB, pickA),
       ];
     }
     case "cleaner":

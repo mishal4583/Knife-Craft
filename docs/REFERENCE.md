@@ -1681,6 +1681,7 @@ preparation = PreparationScene; events = `events.ts`; platform =
     (the first floor's 7 guests: a food blogger, a businessman and an affluent diner, a family of four; routes per art stage from `restaurant/guestWalk.ts`: table centres per artwork,
     A* around every cloth and chair, own chair reached through its own table; nine more customer looks since 2026-11-08), `GuestPoses` `look` / `face` (the dining room), `CustomerBust`
     (the regulars' faces on the order cards). Tests: `npc-sprites-qa`, `guest-walk-qa`; e2e `npcpeople.mjs`.
+  - **The street door, the waiter's dish** (developer 2026-11-26; HANDOFF has the details): the door's open gap is measured per plan (`guestWalk.ts` `DOOR_GAP_TALL` / `DOOR_GAP_WIDE`, about 4 to 6 %); guests use `doorLanes` inside it, in and out, through a vertical gate; `floorLife.ts` `facingOf` decides sideways only for a clearly sideways walk; the first floor's Server walks an A* route around the tables; the Second Floor's Servers follow the corridors; `restaurant/mapDishes.ts` gives each "pick" stop a `dish` token (a `dish:<recipe id>` from the active menu, `mapDishIds`, or a station's emoji) and `FloorLife.tsx` draws that dish's painted plate on the tray in the carrying poses (CSS `.floor-dish`) and in the guest's bubble. Tests: `npc-door-dish-qa`; e2e `npcwalk.mjs`.
   - Tests: `restaurant-floor-life-qa`; e2e `restaurantsecondfloor.mjs` check 3c.
 - **First-floor staff life** (developer 2026-10-16): `restaurant/staffLife.ts` +
   `restaurantMap/StaffLife.tsx`, drawn by the shared `MapCast` (FloorLife.tsx).

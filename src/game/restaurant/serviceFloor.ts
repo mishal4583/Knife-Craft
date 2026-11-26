@@ -560,10 +560,12 @@ const TALL_GEO: FloorGeo = {
 const wseat = (tx: number, ty: number, door: FloorPoint, outside: FloorPoint): FloorSeat => {
   const sy = ty + 8;
   const via = { x: tx + (tx < door.x ? 3 : -3), y: sy + 4 };
+  // Straight in through the door first (developer 2026-11-26: people were drawn walking sideways in the doorway): a point right above the door, and only then across the floor to the table.
+  const gate = { x: door.x, y: door.y - 7 };
   return {
     seat: { x: tx, y: sy },
     table: { x: tx, y: ty },
-    path: [outside, door, via, { x: tx, y: sy }],
+    path: [outside, door, ...(gate.y > via.y ? [gate] : []), via, { x: tx, y: sy }],
   };
 };
 

@@ -34,6 +34,8 @@ export type Stop = Spot & {
   hold?: number;
   /** What the person does while there (drives the pose and the bubble). */
   pose?: "sit" | "pick" | "drop" | "clean" | "work" | "away";
+  /** On a "pick" stop: what is picked up and carried to the next "drop" / "sit" stop (mapDishes.ts: a `dish:<recipe id>` or a station's emoji); the view draws its painted plate in the hands. */
+  dish?: string;
 };
 export type FloorActor = {
   id: string;
@@ -317,10 +319,11 @@ export function floorCast(floor: SecondFloorState, wide = false): FloorActor[] {
     const stops: Stop[] = [];
     for (const id of mine) {
       const route = routes[id];
-      stops.push({ ...route[0]!, hold: 2.2, pose: "pick" });
+      // Down the corridor from the counter (the points of this route in reverse, so the Server never cuts across a room from one machine to the next), pick up, and back up it to the counter.
+      for (const p of route.slice(1, -1).reverse()) stops.push({ ...p });
+      stops.push({ ...route[0]!, hold: 2.2, pose: "pick", dish: iconOf(id) });
       for (const p of route.slice(1)) stops.push({ ...p });
       stops.push({ ...S.counterBack, hold: 1.6, pose: "drop" });
-      for (const p of route.slice(1, -1).reverse()) stops.push({ ...p });
     }
     cast.push({
       id: `server-${i}`,
@@ -351,7 +354,13 @@ export function floorCast(floor: SecondFloorState, wide = false): FloorActor[] {
         { x: S.aisleX, y: S.aisleBottom },
         { x: S.aisleX, y: S.counterFront.y },
         // Each guest has a place of their own along the counter (no one stands on another).
-        { x: S.counterFront.x + ((i % 5) - 2) * 3.2, y: S.counterFront.y, hold: 2.4, pose: "pick" },
+        {
+          x: S.counterFront.x + ((i % 5) - 2) * 3.2,
+          y: S.counterFront.y,
+          hold: 2.4,
+          pose: "pick",
+          dish: iconOf(working[i % working.length]!),
+        },
         { x: S.aisleX, y: S.counterFront.y },
         ...there,
         { ...seat, hold: 12 + rand() * 6, pose: "sit" },
@@ -387,10 +396,21 @@ export function floorCast(floor: SecondFloorState, wide = false): FloorActor[] {
   return cast;
 }
 
+/**
+ * Which way the painted person faces on a stretch of walk of (dx, dy) map percent: sideways only when the walk is CLEARLY sideways (developer 2026-11-26: a diagonal used to be drawn
+ * sideways, and so were people in the street door); otherwise toward the camera (down) or away from it (up).
+ */
+export function facingOf(dx: number, dy: number): "r" | "l" | "down" | "up" {
+  if (Math.abs(dx) > Math.abs(dy) * 1.25) return dx > 0 ? "r" : "l";
+  return dy > 0 ? "down" : "up";
+}
+
 export type Frame = Spot & {
   /** Percent of the lap (0–100). */
   at: number;
   pose: "walk" | NonNullable<Stop["pose"]>;
+  /** The dish picked up at this stop (on the frame of arriving at a "pick" stop). */
+  dish?: string;
 };
 
 /**
@@ -404,7 +424,7 @@ export function timeline(
   speed = 1,
 ): { seconds: number; frames: Frame[] } {
   if (stops.length === 0) return { seconds: 0, frames: [] };
-  const points: { t: number; x: number; y: number; pose: Frame["pose"] }[] = [];
+  const points: { t: number; x: number; y: number; pose: Frame["pose"]; dish?: string }[] = [];
   let t = 0;
   const loop = [...stops, stops[0]!];
   for (let i = 0; i < loop.length; i++) {
@@ -417,18 +437,25 @@ export function timeline(
       points.push({ t, x: s.x, y: s.y, pose: "walk" });
       break;
     }
-    points.push({ t, x: s.x, y: s.y, pose: s.hold ? (s.pose ?? "walk") : "walk" });
+    points.push({
+      t,
+      x: s.x,
+      y: s.y,
+      pose: s.hold ? (s.pose ?? "walk") : "walk",
+      ...(s.hold && s.dish ? { dish: s.dish } : {}),
+    });
     if (s.hold) {
       t += s.hold;
       points.push({ t, x: s.x, y: s.y, pose: "walk" });
     }
   }
   const seconds = Math.max(t, 1);
-  const frames = points.map((p) => ({
+  const frames: Frame[] = points.map((p) => ({
     at: Math.round((p.t / seconds) * 10_000) / 100,
     x: p.x,
     y: p.y,
     pose: p.pose,
+    ...(p.dish ? { dish: p.dish } : {}),
   }));
   return { seconds: Math.round(seconds * 100) / 100, frames };
 }

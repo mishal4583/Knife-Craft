@@ -96,6 +96,56 @@
   left: 50%;
 }
 
+/* The REAL dish on the waiter's tray (mapDishes.ts, the dish's own painted plate): drawn inside each carrying pose, over the tray the painted person already holds, at the spot of the tray
+   in that pose (measured on the sheet: from the side the tray is in front of the body, a little above the waist; facing the camera it is centred on the chest). The cloches of the painted
+   tray are covered by the plate. The picture is a top-down plate, so it reads as a plate held out in front. */
+.cs-layer .floor-dish {
+  position: absolute;
+  top: 41%;
+  left: 59%;
+  width: 27%;
+  height: auto;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.cs-layer[data-pose="carry-l"] .floor-dish {
+  left: 41%;
+}
+.cs-layer[data-pose="carry-down"] .floor-dish,
+.cs-layer[data-pose="carry-idle"] .floor-dish {
+  left: 50%;
+  top: 43%;
+}
+
+/* The guest's bubble: the dish's plate instead of an emoji. */
+.floor-carry .floor-bubble-dish {
+  display: block;
+  width: clamp(12px, 2.8vw, 18px);
+  height: auto;
+}
+/* the plate bubble floats above the head (it used to sit on it and hide the face) */
+.floor-person.floor-person--sprite .floor-carry--guest:has(.floor-bubble-dish) {
+  bottom: 96%;
+  padding: 1px;
+  border-radius: 50%;
+}
+.floor-carry .floor-bubble-dish + .floor-bubble-dish {
+  position: absolute;
+  inset: 1px;
+}
+
+/* A tray carried toward the camera: a little bob in step with the walk (transform only). */
+.cs-bob {
+  animation: cs-bob .5s ease-in-out infinite alternate;
+}
+@keyframes cs-bob {
+  from { transform: translateY(0); }
+  to { transform: translateY(-2%); }
+}
+.kc-reduced-motion .cs-bob {
+  animation: none;
+}
+
 /* The dining-room views (ServiceFloor, DiningCashView): the painted person fills the old puppet's box (the caller's `.sf-person`). The
    figure is 80 % of its cell, feet on the 92.5 % line, so the cell is scaled up to the puppet's box and lifted a little. */
 .guest-sprite {

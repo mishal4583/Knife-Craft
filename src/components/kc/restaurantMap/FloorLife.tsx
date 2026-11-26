@@ -1,5 +1,6 @@
 import { useMemo, type CSSProperties, type ReactNode } from "react";
 import {
+  facingOf,
   floorCast,
   speedOf,
   timeline,
@@ -10,6 +11,7 @@ import { CELL, PEOPLE_LOOKS, WORK_CELLS, type PeopleLook } from "@/game/restaura
 import type { SecondFloorState } from "@/game/restaurant/secondFloor";
 import { GuestPoses } from "./GuestPoses";
 import { PoseCell } from "./CharacterSprite";
+import { plateUrl } from "@/game/restaurant/mapDishes";
 import { usePeopleSheets } from "./peopleSheets";
 
 /**
@@ -57,10 +59,14 @@ function stepsFor(actor: FloorActor, frames: Frame[], carrying: boolean[]): Step
       out.push({ layer, food });
       continue;
     }
-    const side = Math.abs(dx) >= Math.abs(dy) * 0.8;
-    const dir = side ? (dx > 0 ? "r" : "l") : dy > 0 ? "down" : "up";
-    const carries = carrying[i]! && !isGuest(look) && side;
-    out.push({ layer: `${carries ? "carry" : "walk"}-${dir}`, food });
+    // Sideways only when the walk is clearly sideways (developer 2026-11-26: people were drawn walking sideways on a diagonal, and in the street door): a diagonal walk faces the camera or away from it.
+    const dir = facingOf(dx, dy);
+    const side = dir === "r" || dir === "l";
+    const holds = carrying[i]! && !isGuest(look);
+    // A waiter with a plate: the tray pose from the side, and the front-facing tray pose when walking toward the camera (there is no tray pose from behind).
+    const layer =
+      holds && side ? `carry-${dir}` : holds && dir === "down" ? "carry-down" : `walk-${dir}`;
+    out.push({ layer, food });
   }
   return out;
 }
@@ -78,6 +84,8 @@ function layerProps(
   eat?: boolean;
   /** A seated guest seen from behind: they face the table, away from the camera (developer 2026-11-08). */
   back?: boolean;
+  /** A tray carried toward the camera bobs a little as the waiter walks (transform only). */
+  bob?: boolean;
 } {
   if (key.startsWith("work:")) return { sheet: "b", col: Number(key.slice(5)), row: 0 };
   switch (key) {
@@ -93,6 +101,8 @@ function layerProps(
       return { sheet: "a", col: 0, row: 3, walk: true };
     case "carry-l":
       return { sheet: "a", col: 0, row: 3, walk: true, flip: true };
+    case "carry-down":
+      return { sheet: "a", col: CELL.carryIdle, row: 3, bob: true };
     case "carry-idle":
       return { sheet: "a", col: CELL.carryIdle, row: 3 };
     case "hand":
@@ -123,10 +133,16 @@ function keyframesFor(actor: FloorActor, frames: Frame[], steps: Step[], layers:
   const state = (on: (f: Frame, i: number) => boolean) =>
     frames.map((f, i) => `${f.at}%{opacity:${on(f, i) ? 1 : 0}}`).join("");
   const carrying = carryingOf(frames);
+  const dishes = carriedDishes(frames);
+  const tokens = [...new Set(dishes.filter((d): d is string => !!d))];
   const own = actor.look
     ? layers
         .map((layer, n) => `@keyframes ${k}-l${n}{${state((_, i) => steps[i]!.layer === layer)}}`)
-        .join("") + `@keyframes ${k}-food{${state((_, i) => steps[i]!.food)}}`
+        .join("") +
+      `@keyframes ${k}-food{${state((_, i) => steps[i]!.food)}}` +
+      tokens
+        .map((tok, n) => `@keyframes ${k}-dish${n}{${state((_, i) => dishes[i] === tok)}}`)
+        .join("")
     : "";
   return (
     `@keyframes ${k}-move{${move}}` +
@@ -136,6 +152,17 @@ function keyframesFor(actor: FloorActor, frames: Frame[], steps: Step[], layers:
     `@keyframes ${k}-carry{${state((_, i) => carrying[i]!)}}` +
     own
   );
+}
+
+/** The dish in the hands on each frame: from leaving a "pick" stop that has one until leaving the next "drop" / "sit" stop (null when empty-handed). */
+function carriedDishes(frames: Frame[]): (string | null)[] {
+  let held: string | null = null;
+  return frames.map((_, i) => {
+    const prev = frames[i - 1];
+    if (prev?.pose === "pick") held = prev.dish ?? null;
+    if (prev && (prev.pose === "drop" || prev.pose === "sit")) held = null;
+    return held;
+  });
 }
 
 /** Carrying: from leaving a "pick" stop until leaving the next "drop" / "sit" stop (a cleaner or a cook at work holds their tool). */
@@ -200,7 +227,8 @@ export function MapCast({
         const carrying = carryingOf(t.frames);
         const steps = stepsFor(a, t.frames, carrying);
         const layers = [...new Set(steps.map((s) => s.layer))];
-        return { actor: a, ...t, steps, layers };
+        const tokens = [...new Set(carriedDishes(t.frames).filter((d): d is string => !!d))];
+        return { actor: a, ...t, steps, layers, tokens };
       }),
     [cast],
   );
@@ -221,7 +249,7 @@ export function MapCast({
       data-preview={preview ? "true" : undefined}
     >
       <style>{css}</style>
-      {lines.map(({ actor, seconds, steps, layers }) => {
+      {lines.map(({ actor, seconds, layers, tokens }) => {
         const k = `fl-${actor.id}`;
         const timing = `${seconds}s ${actor.delay}s infinite both`;
         const info = actor.look ? PEOPLE_LOOKS[actor.look] : undefined;
@@ -270,10 +298,33 @@ export function MapCast({
                               : "cs-back"
                             : p.eat
                               ? "cs-eat"
-                              : ""
+                              : p.bob
+                                ? "cs-bob"
+                                : ""
                         }
                         style={p.eat ? { animationDelay: `${-(actor.delay % 16)}s` } : undefined}
                       />
+                      {/* the real dish on the waiter's tray, in the hands of this pose (one picture per dish carried; the keyframes show the one being carried) */}
+                      {layer.startsWith("carry-")
+                        ? tokens.map((tok, tn) => {
+                            const url = plateUrl(tok);
+                            return url ? (
+                              <img
+                                key={tok}
+                                className="floor-dish"
+                                data-testid="floor-dish"
+                                data-dish={tok}
+                                src={url}
+                                alt=""
+                                draggable={false}
+                                style={{
+                                  opacity: 0,
+                                  animation: `${k}-dish${tn} ${timing} step-end`,
+                                }}
+                              />
+                            ) : null;
+                          })
+                        : null}
                     </div>
                   );
                 })}
@@ -282,7 +333,23 @@ export function MapCast({
                     className={`floor-carry floor-carry--${actor.kind}`}
                     style={{ opacity: 0, animation: `${k}-food ${timing} step-end` }}
                   >
-                    {actor.food}
+                    {actor.kind === "guest" && tokens.some((t) => plateUrl(t))
+                      ? tokens.map((tok, tn) => {
+                          const url = plateUrl(tok);
+                          return url ? (
+                            <img
+                              key={tok}
+                              className="floor-bubble-dish"
+                              data-testid="floor-dish"
+                              data-dish={tok}
+                              src={url}
+                              alt=""
+                              draggable={false}
+                              style={{ opacity: 0, animation: `${k}-dish${tn} ${timing} step-end` }}
+                            />
+                          ) : null;
+                        })
+                      : actor.food}
                   </span>
                 ) : null}
               </div>

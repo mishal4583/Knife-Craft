@@ -76,6 +76,8 @@ export interface RestaurantMapProps {
     context: import('@/game/restaurant/staffLife').StaffLifeContext;
     preview: boolean;
   };
+  /** The dishes (recipe ids with a painted picture) the Server and the guests carry on the map (game/restaurant/mapDishes.ts `mapDishIds`). */
+  dishIds?: readonly string[];
   /** The Cleaner finished a real restroom job on the map (the game cleans that task). */
   onCleanerDone?: (job: import('@/game/restaurant/cleanliness').TaskKind) => void;
   /** Live, derived count of open attention items for each map room. */

@@ -26,6 +26,7 @@ import type { KitchenMapArtStage } from '@/game/kitchen/kitchenMapArt';
 import type { WalkStage } from '@/game/restaurant/guestWalk';
 import { MAP_STAGES } from '@/game/restaurant/staffLife';
 import { StaffLife } from './StaffLife';
+import { withDishes } from '@/game/restaurant/mapDishes';
 import { TableCash } from '../common/TableCash';
 
 export const RestaurantMap: React.FC<RestaurantMapProps> = ({
@@ -40,6 +41,7 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
   onRestaurantNameChange,
   reducedMotion = false,
   staffOnMap,
+  dishIds,
   onCleanerDone,
   attentionCounts = {},
   attentionSymbols = {},
@@ -258,8 +260,8 @@ export const RestaurantMap: React.FC<RestaurantMapProps> = ({
           </picture>
 
           {wide ? null : <FridgeMapOverlay tier={fridgeTier} />}
-          <AnimatedGuestTraffic stage={wide ? wideOf(stageId) : stageId} />
-          {staffOnMap ? <StaffLife hiredRoles={staffOnMap.roles} context={{ ...staffOnMap.context, wide, diningOpen: staffOnMap.context.diningOpen && mapRoomOpen('dining', playerLevel), serviceOpen: staffOnMap.context.serviceOpen && mapRoomOpen('service', playerLevel) }} preview={staffOnMap.preview} onCleanerDone={onCleanerDone} /> : null}
+          <AnimatedGuestTraffic stage={wide ? wideOf(stageId) : stageId} dishIds={dishIds} />
+          {staffOnMap ? <StaffLife hiredRoles={staffOnMap.roles} dishIds={dishIds} context={{ ...staffOnMap.context, wide, diningOpen: staffOnMap.context.diningOpen && mapRoomOpen('dining', playerLevel), serviceOpen: staffOnMap.context.serviceOpen && mapRoomOpen('service', playerLevel) }} preview={staffOnMap.preview} onCleanerDone={onCleanerDone} /> : null}
 
           {tableCash && tableCash.cents > 0 ? (
             <TableCash stage={tableCash.stage} cents={tableCash.cents} onCollect={tableCash.onCollect} tables={wide ? wideCashTables(tableCash.stage) : undefined} />
@@ -459,8 +461,10 @@ function stageOfImage(url?: string): KitchenMapArtStage {
   return (MAP_STAGES as readonly string[]).includes(name ?? '') ? (name as KitchenMapArtStage) : 'humble';
 }
 
-function AnimatedGuestTraffic({ stage }: { stage: WalkStage }) {
-  const cast = useMemo(() => firstFloorGuests(stage), [stage]);
+function AnimatedGuestTraffic({ stage, dishIds }: { stage: WalkStage; dishIds?: readonly string[] | undefined }) {
+  const dishKey = (dishIds ?? []).join(',');
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `dishKey` captures what the cast reads
+  const cast = useMemo(() => withDishes(firstFloorGuests(stage), dishIds ?? []), [stage, dishKey]);
   return <MapCast cast={cast} testId="guest-life" />;
 }
 

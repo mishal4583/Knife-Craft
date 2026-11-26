@@ -82,7 +82,23 @@ const ROOM = { x0: 35, x1: 79, y0: 55, y1: 77.2 } as const;
 const ROOM_X1: Partial<Record<KitchenMapArtStage, number>> = { "neighborhood-cafe": 81, grand: 83 };
 /** The nine-table room fills the floor to the front wall, so its walkway runs a little lower. */
 const ROOM_Y1: Partial<Record<KitchenMapArtStage, number>> = { grand: 78.4 };
-const DOORWAY = { x0: 45, x1: 56, y1: 96 } as const;
+/**
+ * THE STREET DOOR (developer 2026-11-26: "the customers are not walking out through the proper door, some are walking out sideways"). Measured on all twelve pictures (the six tall plans and
+ * the six wide ones) the open gap between the two door leaves is only about 4 to 6 % wide, centred near x 50 (the old doorway was 45 to 56, so a guest on the lane at 47 or 53 walked
+ * through a leaf or the wall). A person is about 2.6 % wide, so the walkable doorway is the gap less `DOOR_PAD` on each side, and everybody goes through it on a lane of their own inside it
+ * (`doorLanes`), in a straight vertical line.
+ */
+export const DOOR_GAP_TALL = { x0: 47.6, x1: 53.0 } as const;
+export const DOOR_GAP_WIDE: Readonly<Record<KitchenMapArtStage, { x0: number; x1: number }>> = {
+  humble: { x0: 47.4, x1: 51.1 },
+  growing: { x0: 47.95, x1: 51.75 },
+  established: { x0: 47.5, x1: 53.0 },
+  "neighborhood-cafe": { x0: 47.3, x1: 51.1 },
+  "flourishing-cafe": { x0: 47.2, x1: 53.1 },
+  grand: { x0: 47.7, x1: 52.5 },
+};
+/** Half a person's width plus a little air: how far from a door leaf a walker keeps. */
+export const DOOR_PAD = 1.3;
 
 /**
  * A walking stage: one of the six tall plans (`"humble"` ...), or the same stage on the WIDE landscape plan (`"humble@wide"`, developer 2026-11-20, 1920 x 1080
@@ -121,7 +137,7 @@ const TALL_GEO: Record<KitchenMapArtStage, Geo> = Object.fromEntries(
       chair: CHAIR,
       slot: SLOT_OFFSET,
       room: { x0: ROOM.x0, x1: ROOM_X1[st] ?? ROOM.x1, y0: ROOM.y0, y1: ROOM_Y1[st] ?? ROOM.y1 },
-      doorway: DOORWAY,
+      doorway: { x0: DOOR_GAP_TALL.x0 + DOOR_PAD, x1: DOOR_GAP_TALL.x1 - DOOR_PAD, y1: 96 },
       grid: { x0: 30, y0: 50, w: 134, h: 96 },
       counterY: 56,
       insideY: 80,
@@ -244,7 +260,11 @@ const WIDE_GEO: Record<KitchenMapArtStage, Geo> = Object.fromEntries(
         y0: WIDE_ROOM[st].y0,
         y1: WIDE_ROOM[st].y1,
       },
-      doorway: { x0: 45, x1: 54, y1: 96 },
+      doorway: {
+        x0: DOOR_GAP_WIDE[st].x0 + DOOR_PAD,
+        x1: DOOR_GAP_WIDE[st].x1 - DOOR_PAD,
+        y1: 96,
+      },
       grid: { x0: 20, y0: 55, w: 156, h: 84 },
       counterY: WIDE_ROOM[st].counterY,
       insideY: 80,
@@ -257,6 +277,19 @@ const WIDE_GEO: Record<KitchenMapArtStage, Geo> = Object.fromEntries(
 
 export const geoOf = (stage: WalkStage): Geo =>
   isWide(stage) ? WIDE_GEO[baseStage(stage)] : TALL_GEO[stage as KitchenMapArtStage];
+
+/**
+ * `n` lanes through the street door, spread evenly across its walkable width (the same on the way in and the way out, so a guest never crosses a door leaf or the wall). The first
+ * is the lane nearest the middle of the gap; a narrow door (the humble kitchen's wide plan) has lanes close together, which is fine: the guests come through one at a time.
+ */
+export function doorLanes(stage: WalkStage, n: number): number[] {
+  const { x0, x1 } = geoOf(stage).doorway;
+  if (n <= 1) return [Math.round(((x0 + x1) / 2) * 10) / 10];
+  return Array.from(
+    { length: n },
+    (_, i) => Math.round((x0 + ((x1 - x0) * i) / (n - 1)) * 10) / 10,
+  );
+}
 
 const inRoom = (stage: WalkStage, x: number, y: number): boolean => {
   const g = geoOf(stage);
@@ -457,6 +490,46 @@ export function walkPath(stage: WalkStage, from: Pt, to: Pt, own?: Pt): Pt[] | n
     a = b;
   }
   return out.map((p) => ({ x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10 }));
+}
+
+/** Open at the spot AND at the centre of the search-grid cell it falls in (a spot in an open patch whose grid cell is closed could join two rooms that are really apart). */
+const openAt = (stage: WalkStage, p: Pt): boolean => {
+  if (blockedAt(stage, p)) return false;
+  const { x0, y0 } = geoOf(stage).grid;
+  const c = {
+    x: Math.round((p.x - x0) / STEP) * STEP + x0,
+    y: Math.round((p.y - y0) / STEP) * STEP + y0,
+  };
+  return !blockedAt(stage, c);
+};
+
+/**
+ * The open spot nearest to `p` on this stage's dining floor (a person never stands on a cloth, a chair or off the floor); `p` itself when it is open. With `from`, only a spot a person can
+ * really WALK to from there counts (a packed room, such as the nine-table Grand dining room, closes its middle: the nearest reachable spot is then on the open floor around the tables).
+ */
+export function nearestOpen(
+  stage: WalkStage,
+  p: Pt,
+  maxR = 9,
+  from?: Pt,
+  /** With `from`: also at least this far from it (a trip to a table should be a trip). */
+  minFrom = 0,
+): Pt {
+  const far = (q: Pt) => !from || Math.hypot(q.x - from.x, q.y - from.y) >= minFrom;
+  if (openAt(stage, p) && far(p) && (!from || canWalk(stage, from, p))) return p;
+  const cands: { q: Pt; d: number }[] = [];
+  for (let dy = -maxR; dy <= maxR; dy += 0.5)
+    for (let dx = -maxR; dx <= maxR; dx += 0.5) {
+      const q = { x: p.x + dx, y: p.y + dy };
+      const d = Math.hypot(dx, dy);
+      if (d <= maxR && openAt(stage, q) && far(q)) cands.push({ q, d });
+    }
+  cands.sort((a, b) => a.d - b.d);
+  for (const c of cands)
+    if (!from || canWalk(stage, from, c.q))
+      return { x: Math.round(c.q.x * 10) / 10, y: Math.round(c.q.y * 10) / 10 };
+  // nothing reachable that is far enough: stay where the walker already is (never a spot behind a wall)
+  return from ?? p;
 }
 
 /** A chair of a table: where the guest's feet go. */

@@ -1,5 +1,6 @@
 import { ScreenReveal } from "@/components/kc/common/ScreenReveal";
 import { staffOnMap } from "@/game/restaurant/staffLife";
+import { mapDishIds } from "@/game/restaurant/mapDishes";
 import { restaurantNameOf } from "@/game/restaurant/restaurantName";
 import {
   cleanerRestroomJob,
@@ -422,6 +423,7 @@ export function ScreensRouter({
                         cleanerJob: cleanerRestroomJob(save),
                         cleanerToday: dayCleanerToday(save) || hourlyAreas(save).length > 0,
                       })}
+                      dishIds={mapDishIds(save)}
                       onCleanerDone={cleanerCleans}
                       attentionCounts={attentionBadges.map}
                       attentionSymbols={attentionBadges.mapSymbols}
