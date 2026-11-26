@@ -73,14 +73,12 @@ export function KitchenAmbient({ skin, layout }: { skin: KitchenSkinId; layout: 
             {
               left: pct(l.x),
               top: pct(l.y),
-              width: pct(l.r * 0.95),
+              width: pct(l.r),
               "--ld": `${(2.6 + spread(i, 7) * 2).toFixed(1)}s`,
               "--d": `${(spread(i, 8) * 2.5).toFixed(1)}s`,
             } as CSSProperties
           }
-        >
-          <img src={fx("glow-1")} alt="" draggable={false} decoding="async" />
-        </span>
+        ></span>
       ))}
 
       {/* petals and leaves drifting past the window (the garden outside) */}
@@ -108,32 +106,6 @@ export function KitchenAmbient({ skin, layout }: { skin: KitchenSkinId; layout: 
         />
       ))}
 
-      {/* the burner's painted flame (four frames of a loop, shown one after another by opacity) peeking out around the base of each pot */}
-      {s.pots.map((p, pi) => (
-        <span
-          key={`flame-${pi}`}
-          className="ka-flame"
-          data-testid="ka-flame"
-          style={
-            {
-              left: pct(p.x),
-              top: pct(p.y + (wide ? 4.6 : 6.2)),
-              width: pct(steamW * 1.45),
-            } as CSSProperties
-          }
-        >
-          {[1, 2, 4, 5].map((f, fi) => (
-            <img
-              key={f}
-              src={fx(`flame-burner-${f}`)}
-              alt=""
-              draggable={false}
-              decoding="async"
-              style={{ "--fi": fi } as CSSProperties}
-            />
-          ))}
-        </span>
-      ))}
       {/* the burner's warm light under each pot, and a low haze at its rim */}
       {s.pots.map((p, pi) => (
         <span

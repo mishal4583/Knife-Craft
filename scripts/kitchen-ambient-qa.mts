@@ -152,8 +152,7 @@ console.log("C. The animation is light");
   );
   assert(!/animation[^;]*filter|blur\(/.test(css), "C4: nothing is blurred or filtered");
   const comp = read("src/components/kc/KitchenAmbient.tsx");
-  // RULE CHANGE (developer 2026-11-26, "where are other animations?"): the layer now also uses the small painted FX sprites (public/fx: lamp glow, glint, petals and leaves, the burner's
-  // flame), besides the painted steam wisp. Still no canvas, video, request or randomness; every picture is a small local file, and each name it builds must exist (checked below).
+  // RULE CHANGE (developer 2026-11-26, "where are other animations?"): the layer now also uses the small painted FX sprites (public/fx: glint, petals and leaves), besides the painted steam wisp. (A painted burner flame and lamp glow were tried and removed the same day: pasted over the painting they read as burning pots and discs.) Still no canvas, video, request or randomness; every picture is a small local file, and each name it builds must exist (checked below).
   assert(
     /kitchen-fx\/steam-/.test(comp) &&
       /KITCHEN_STEAM_SPRITES > 0/.test(comp) &&
@@ -166,13 +165,8 @@ console.log("C. The animation is light");
     "C5: the layer draws no canvas or video, makes no request, never re-rolls (no Math.random), and its pictures are only the painted steam wisps and the small painted FX sprites",
   );
   const fxNames = [
-    "glow-1",
     "glint-1",
     "glint-2",
-    "flame-burner-1",
-    "flame-burner-2",
-    "flame-burner-4",
-    "flame-burner-5",
     ...[1, 2, 3, 4, 5, 6].map((n) => `petal-${n}`),
     "leaf-1",
     "leaf-2",

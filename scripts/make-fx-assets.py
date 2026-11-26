@@ -56,8 +56,18 @@ total = 0
 # FX-1 steam and mist: keep the whole cell (the wisp's foot sits near the bottom-centre), scaled to 160x240
 sheet = load(1)
 names = [f"steam-{i}" for i in range(1, 7)] + ["mist-1", "mist-2"]
+def whiten(im, k):
+    """Push the colour toward white (alpha untouched): the painted steam is grey-cream, which reads as dirty smoke over a warm painting."""
+    a = np.array(im).astype(np.float32)
+    a[:, :, :3] = a[:, :, :3] * (1 - k) + 255 * k
+    return Image.fromarray(a.astype(np.uint8), "RGBA")
+
+
 for (j, i, c), name in zip(cells(sheet, 4, 2), names):
-    total += save(c.resize((160, 240), Image.LANCZOS), KFX / f"{name}.webp", 78)
+    c = c.resize((160, 240), Image.LANCZOS)
+    if name.startswith("steam"):
+        c = whiten(c, 0.6)
+    total += save(c, KFX / f"{name}.webp", 78)
 
 # FX-2 flames: split the sheet into row bands by empty alpha rows, one shared crop per band
 sheet = load(2)
