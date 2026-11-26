@@ -3,6 +3,7 @@ import {
   DESSERTS,
   GRID,
   RUN_PALETTE,
+  inWell,
   type Dessert,
   type DessertId,
   type DessertTier,
@@ -51,8 +52,8 @@ export const GUESTS = [
 ] as const;
 export const GUEST_PLATE_Y = 565;
 export const QUEUE = { rows: 3, tileH: 52, gap: 8, x: 16, y: 770 } as const;
-/** Pixels a runner covers in a second at speed x1. */
-const RUN_SPEED = 700;
+/** Pixels a runner covers in a second at speed x1 (850 since 2026-11-26: a waiter now walks round the plate and through the opened cubes, which is longer than the old straight line). */
+const RUN_SPEED = 850;
 /** Fixed step the whole game runs on, so a replay is the same on every phone. */
 export const STEP = 1 / 60;
 
@@ -271,10 +272,124 @@ export function cellCenter(i: number) {
 
 /* ---------- dealing a plate ---------- */
 
+/* ---------- walking: a waiter never steps on a cube ---------- */
+
+/**
+ * The walking circle on the plate's blue rim, just outside the well (pixels from the plate's middle); the visible cubes end at WELL_R. Developer 2026-11-26: "the waiters are not walking through
+ * the opened part of the desserts, they are walking through the centre like walking on the food: let them only enter the opened area".
+ */
+export const RIM_R = WELL_R + 8;
+
+const CELLS = GRID * GRID;
+const IN_WELL = Uint8Array.from({ length: CELLS }, (_, i) =>
+  inWell(i % GRID, (i / GRID) | 0) ? 1 : 0,
+);
+const neighbours = (i: number) => {
+  const x = i % GRID;
+  const y = (i / GRID) | 0;
+  return [
+    x > 0 ? i - 1 : -1,
+    x < GRID - 1 ? i + 1 : -1,
+    y > 0 ? i - GRID : -1,
+    y < GRID - 1 ? i + GRID : -1,
+  ];
+};
+const fromMiddle = (p: PathPoint) => Math.hypot(p.x - PLATE.x, p.y - PLATE.y);
+/** For a cube with a side open to the plate's rim: the middle of the cell on that side (outside the well); else null. */
+const EXIT: ReadonlyArray<PathPoint | null> = Array.from({ length: CELLS }, (_, i) => {
+  if (!IN_WELL[i]) return null;
+  let best: PathPoint | null = null;
+  for (const j of neighbours(i)) {
+    if (j < 0 || IN_WELL[j]) continue;
+    const c = cellCenter(j);
+    if (!best || fromMiddle(c) > fromMiddle(best)) best = c;
+  }
+  return best;
+});
+
+/** The angle of a point round the plate, from the bottom (where the aisle is), -PI..PI. */
+const turnOf = (p: PathPoint) => {
+  const a = Math.atan2(p.y - PLATE.y, p.x - PLATE.x) - Math.PI / 2;
+  return Math.atan2(Math.sin(a), Math.cos(a));
+};
+const rimPoint = (turn: number): PathPoint => ({
+  x: PLATE.x + RIM_R * Math.cos(Math.PI / 2 + turn),
+  y: PLATE.y + RIM_R * Math.sin(Math.PI / 2 + turn),
+});
+/** From the foot of the plate round its rim to a turn, the short way. */
+function rimWalk(turn: number): PathPoint[] {
+  const n = Math.max(1, Math.ceil(Math.abs(turn) / 0.22));
+  return Array.from({ length: n + 1 }, (_, k) => rimPoint((turn * k) / n));
+}
+
+const dist = new Int16Array(CELLS);
+const next = new Int16Array(CELLS);
+const queue = new Int16Array(CELLS);
+
+/**
+ * The way from the foot of the plate to where a waiter stands to take cube `cell`: round the rim, then (for a cube inside the dessert) in through cubes already taken, ending BESIDE the cube,
+ * never on it. A cube at the plate's edge is taken from the rim. Of all the ways in, the shortest walk. `grid` is the board as it is now.
+ */
+export function walkTo(grid: Int8Array, cell: number): PathPoint[] {
+  const out = EXIT[cell];
+  if (out) return rimWalk(turnOf(out));
+  const open = (i: number) => i >= 0 && IN_WELL[i] === 1 && grid[i] === -1;
+  // outwards from the opened cells beside the cube, until the way out that makes the whole walk shortest; `next` leads back towards the cube
+  dist.fill(-1);
+  let head = 0;
+  let tail = 0;
+  for (const j of neighbours(cell))
+    if (open(j)) {
+      dist[j] = 0;
+      next[j] = -1;
+      queue[tail++] = j;
+    }
+  let gate = -1;
+  let cost = Infinity;
+  while (head < tail) {
+    const c = queue[head++]!;
+    if (dist[c]! * CELL >= cost) break;
+    const exit = EXIT[c];
+    if (exit) {
+      const total = dist[c]! * CELL + Math.abs(turnOf(exit)) * RIM_R;
+      if (total < cost) {
+        cost = total;
+        gate = c;
+      }
+    }
+    for (const j of neighbours(c))
+      if (open(j) && dist[j] === -1) {
+        dist[j] = dist[c]! + 1;
+        next[j] = c;
+        queue[tail++] = j;
+      }
+  }
+  // a reachable cube is always beside the rim or an opened cell joined to it; should that ever fail, the waiter reaches from the rim
+  if (gate < 0) return rimWalk(turnOf(cellCenter(cell)));
+  const way: number[] = [gate];
+  for (let c = gate; next[c]! >= 0; c = next[c]!) way.push(next[c]!);
+  // a staircase is walked on the slant, where the cell on the inside of the corner is open too
+  const cells: number[] = [way[0]!];
+  for (let k = 1; k < way.length - 1; k++) {
+    const a = cells[cells.length - 1]!;
+    const b = way[k]!;
+    const c = way[k + 1]!;
+    const slant =
+      Math.abs((a % GRID) - (c % GRID)) === 1 &&
+      Math.abs(((a / GRID) | 0) - ((c / GRID) | 0)) === 1;
+    if (!slant || !open(a + c - b)) cells.push(b);
+  }
+  if (way.length > 1) cells.push(way[way.length - 1]!);
+  const exit = EXIT[gate]!;
+  return [...rimWalk(turnOf(exit)), exit, ...cells.map(cellCenter)];
+}
+
 /**
  * The waiters, in the order they are meant to go. The deck is built by taking the dessert apart in a
  * sequence that can always continue; the live rules then replay it (the QA proves that for every shipped
- * seed, with taps late by a random time too).
+ * seed, with taps late by a random time too). It OPENS on the board: only the board's ring is within reach at
+ * the start, so the first waiter of every lane fetches the board (developer 2026-11-26: "if the edge are blue
+ * then give blue").
  */
 export function makeDeck(dessertId: DessertId, seed: number, tier: RunTier): DeckEntry[] {
   const dessert = DESSERTS[dessertId];
@@ -311,6 +426,8 @@ export function makeDeck(dessertId: DessertId, seed: number, tier: RunTier): Dec
       }
     }
     if (rand() < tier.narrow) chosen = options.reduce((a, b) => (b[1] < a[1] ? b : a));
+    // the openers (one a lane) are the board, group 1: the only colour round the edge
+    if (out.length < tier.lanes) chosen = options.find(([k]) => k === 1) ?? chosen;
     const [k, reachable] = chosen;
     let take = Math.min(reachable, tier.min + Math.floor(rand() * tier.spread));
     // No tiny waiter left over at the end of a colour.
@@ -365,14 +482,20 @@ export function makeRun(dessertId: DessertId, seed: number, tier: RunTier): RunS
 
 /**
  * Deals the deck into lanes of nearly equal length in a shuffled pattern. Each lane keeps deck order, so
- * sending the waiters in deck order is always possible; the lane fronts, though, can be far ahead of it.
+ * sending the waiters in deck order is always possible; the lane fronts, though, can be far ahead of it,
+ * except at the start: the first waiters of the deck (the board openers) head the lanes, one each.
  */
 function dealLanes(count: number, lanes: number, rand: () => number): number[] {
   const labels = Array.from({ length: count }, (_, i) => i % lanes);
-  for (let i = labels.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [labels[i], labels[j]] = [labels[j]!, labels[i]!];
-  }
+  const shuffle = (from: number, to: number) => {
+    for (let i = to - 1; i > from; i--) {
+      const j = from + Math.floor(rand() * (i - from + 1));
+      [labels[i], labels[j]] = [labels[j]!, labels[i]!];
+    }
+  };
+  const openers = Math.min(lanes, count);
+  shuffle(0, openers);
+  shuffle(openers, count);
   return labels;
 }
 
@@ -405,13 +528,17 @@ function planTrip(state: RunState, spot: Spot): boolean {
   const cell = pickNearest(state.grid, state.ext, spot.k, state.reserved);
   if (cell < 0) return false;
   state.reserved[cell] = 1;
-  const c = cellCenter(cell);
   const run = spot.run;
+  const way = walkTo(state.grid, cell);
+  const stand = way[way.length - 1]!;
   const path: PathPoint[] = [];
   if (run.y > AISLE.y + AISLE.h) path.push({ x: ENTRY.x, y: AISLE.y + AISLE.h });
+  // in beside the cube, take it, and back the same way (it is all still open: cubes only ever leave)
   path.push(
     { x: ENTRY.x, y: ENTRY.y },
-    { x: c.x, y: c.y, act: "pick", cell },
+    ...way.slice(0, -1),
+    { x: stand.x, y: stand.y, act: "pick", cell },
+    ...way.slice(0, -1).reverse(),
     { x: ENTRY.x, y: ENTRY.y },
     { x: CART.x, y: CART.y + 6, act: "drop" },
   );

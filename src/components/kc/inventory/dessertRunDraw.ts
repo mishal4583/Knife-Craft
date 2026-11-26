@@ -18,7 +18,7 @@ import {
   spotCenter,
   type RunState,
 } from "@/game/business/dessertRun";
-import { GRID, RUN_PALETTE, boardCheck } from "@/game/business/dessertGallery";
+import { GRID, RUN_PALETTE } from "@/game/business/dessertGallery";
 import { FRAME, dessertPicture, waiterSheet, type RunArt } from "./dessertRunArt";
 
 /**
@@ -192,8 +192,8 @@ function cubeEdge(w: number, h: number): HTMLCanvasElement {
 const mosaics = new WeakMap<RunState, { key: string; canvas: HTMLCanvasElement }>();
 /**
  * THE DESSERT: its cubes on a layer in DEVICE pixels, blitted 1:1 and painted again only when a cube leaves (or the picture arrives). A board cube is its flat tile; every other cube is its own
- * square of the dessert's picture over the board's tile (a cube at the dessert's edge is part picture, part plate), with a faint cube edge. Without the picture (still loading, or it failed)
- * every cube is its flat tile. `ox`, `oy` is where the grid starts and `cell` a cube's side, in the stage's logical pixels; tile edges sit on whole device pixels (no gap, no blur).
+ * square of the dessert's picture, full and in its waiter's colour (never any board showing through: developer 2026-11-26, what you see is what a waiter takes), with a faint cube edge.
+ * Without the picture (still loading, or it failed) every cube is its flat tile. `ox`, `oy` is where the grid starts and `cell` a cube's side, in the stage's logical pixels; tile edges sit on whole device pixels (no gap, no blur).
  */
 export function drawMosaic(
   ctx: CanvasRenderingContext2D,
@@ -219,7 +219,6 @@ export function drawMosaic(
     canvas.height = py(GRID);
     const g = canvas.getContext("2d")!;
     g.imageSmoothingQuality = "high";
-    const board = state.dessert.toneNames[1]!;
     for (let i = 0; i < state.grid.length; i++) {
       const group = state.grid[i]!;
       if (group < 0) continue;
@@ -234,7 +233,8 @@ export function drawMosaic(
         g.drawImage(tileSprite(cellHex(state, i), w, h), x, y);
         continue;
       }
-      g.drawImage(tileSprite(RUN_PALETTE[board[boardCheck(col, row)]!], w, h), x, y);
+      // the cube's own flat tone underneath, so scaling can never let anything else show at its edge
+      g.drawImage(tileSprite(cellHex(state, i), w, h), x, y);
       g.drawImage(
         picture,
         col * PICTURE_CUBE,
@@ -422,6 +422,23 @@ export const GUEST_SIZE = 95;
 export const GUEST_BOTTOM = 579;
 /** The running waiter is drawn 72 px tall (62 before, developer 2026-11-18). */
 export const RUNNER_SIZE = 72;
+/** On the plate, walking round its rim and through the opened cubes, a waiter is smaller (about 3.5 cubes), so it reads as walking IN the dessert's opened part and hides little of it. */
+export const RUNNER_ON_PLATE = 50;
+/** A runner's height by where it is: small on the plate, growing to full size on the way down the aisle. */
+export function runnerSize(x: number, y: number): number {
+  const out = Math.hypot(x - PLATE.x, y - PLATE.y);
+  const t = Math.min(1, Math.max(0, (out - (WELL_R + 10)) / 55));
+  return RUNNER_ON_PLATE + (RUNNER_SIZE - RUNNER_ON_PLATE) * t;
+}
+/** A runner's feet stand this far under the path point it walks on, so they stay on its cell (a cube is 13.5 px). */
+export const FEET = 4;
+/** The runners on the move, the farthest (highest on screen) first, so a nearer one is drawn in front. */
+export function movingSpots(state: RunState): number[] {
+  return state.spots
+    .map((spot, i) => (spot && !spot.done && spot.run.path ? i : -1))
+    .filter((i) => i >= 0)
+    .sort((a, b) => state.spots[a]!.run.y - state.spots[b]!.run.y);
+}
 /**
  * The cream well of a guest's plate, in stage pixels from the plate's centre (the picture is 84 x 42 and its well measures 63 x 27.6).
  * Served cubes are laid on a lattice inside it, middle first, as small as it takes to hold every cube the guest will be served.
@@ -619,27 +636,39 @@ export function drawRun(ctx: CanvasRenderingContext2D, state: RunState, view: Dr
 
   // ---- runners and flying cubes
   const step = Math.floor(state.time * 9) % 2;
-  state.spots.forEach((spot) => {
-    if (!spot || spot.done || !spot.run.path) return;
+  for (const si of movingSpots(state)) {
+    const spot = state.spots[si]!;
     const run = spot.run;
     const carrying = run.carry >= 0;
     const f = carrying
       ? frameOf(art, "run", spot.k, spot.hex, step, 1)
       : frameOf(art, "run", spot.k, spot.hex, 2 + step, 0);
+    const size = runnerSize(run.x, run.y);
     if (f) {
-      const size = RUNNER_SIZE;
-      drawFrame(ctx, f, run.x, run.y + 14, size);
+      drawFrame(ctx, f, run.x, run.y + FEET, size);
       // the cube rides ON the tray: in the carrying frames the tray is held at the chest, 0.58 of the picture's height above the feet and a hair right of the middle
-      if (carrying)
+      if (carrying) {
+        const c = size * 0.194;
         drawCube(
           ctx,
-          run.x + size * 0.035 - 7,
-          run.y + 14 - size * 0.58 - 10,
-          14,
+          run.x + size * 0.035 - c / 2,
+          run.y + FEET - size * 0.58 - c * 0.71,
+          c,
           hexOfK(run.carry),
         );
-    } else drawPlainWaiter(ctx, run.x, run.y, 34, spot.hex, carrying ? hexOfK(run.carry) : null);
-  });
+      }
+    } else {
+      const s = size * 0.47;
+      drawPlainWaiter(
+        ctx,
+        run.x,
+        run.y + FEET - s / 2,
+        s,
+        spot.hex,
+        carrying ? hexOfK(run.carry) : null,
+      );
+    }
+  }
   for (const f of state.flights) {
     const g = GUESTS[f.guest]!;
     const x = CART.x + (g.x - CART.x) * f.t;

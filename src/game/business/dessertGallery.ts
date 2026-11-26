@@ -142,7 +142,7 @@ export type Dessert = {
  * plate at the rim) and none is hidden outside it. `dessert-run-qa` checks both.
  */
 export const WELL_CELLS = 175 / 13.5;
-const inWell = (x: number, y: number) =>
+export const inWell = (x: number, y: number) =>
   Math.hypot(
     Math.max(Math.abs(x + 0.5 - GRID / 2) - 0.5, 0),
     Math.max(Math.abs(y + 0.5 - GRID / 2) - 0.5, 0),

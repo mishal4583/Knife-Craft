@@ -166,6 +166,67 @@ try {
     );
   }
 
+  // ---- B3. What you see is what a waiter takes (RULE CHANGE, developer 2026-11-26: "if the edge are blue then give blue", "there is orange available" while the game was jammed) --------
+  {
+    const lab = (hex: string) => {
+      const [r, g, b] = [1, 3, 5].map((k) => {
+        const c = parseInt(hex.slice(k, k + 2), 16) / 255;
+        return c > 0.04045 ? ((c + 0.055) / 1.055) ** 2.4 : c / 12.92;
+      }) as [number, number, number];
+      const f = (v: number) => (v > 0.008856 ? Math.cbrt(v) : 7.787 * v + 16 / 116);
+      const x = f((0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / 0.95047);
+      const y = f(0.2126729 * r + 0.715152 * g + 0.072175 * b);
+      const z = f((0.0193339 * r + 0.119192 * g + 0.9503041 * b) / 1.08883);
+      return [116 * y - 16, 500 * (x - y), 200 * (y - z)] as const;
+    };
+    const apart = (a: string, b: string) => {
+      const p = lab(a);
+      const q = lab(b);
+      return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+    };
+    let closest = Infinity;
+    let closestBoard = Infinity;
+    for (const id of DESSERT_LADDER as string[]) {
+      const d = DESSERTS[id];
+      const grid: Int8Array = d.build();
+      const ext: Uint8Array = run.computeExt(grid);
+      let open = 0;
+      grid.forEach((v, i) => {
+        if (v >= 0 && run.isExposed(ext, i)) {
+          assert.equal(
+            v,
+            1,
+            `${id}: only the board is within reach at the start (cell ${i} is ${d.keys[v]})`,
+          );
+          open += 1;
+        }
+      });
+      assert.ok(open >= 60, `${id}: a whole ring of board to start on (${open} cubes)`);
+      const colours = (d.keys as string[]).map((k) => RUN_PALETTE[k] as string);
+      for (let a = 0; a < colours.length; a++)
+        for (let b = a + 1; b < colours.length; b++) {
+          const gap = apart(colours[a]!, colours[b]!);
+          if (a === 1 || b === 1) closestBoard = Math.min(closestBoard, gap);
+          else closest = Math.min(closest, gap);
+          assert.ok(
+            gap >= (a === 1 || b === 1 ? 30 : 22),
+            `${id}: waiters ${d.keys[a]} and ${d.keys[b]} look alike (${gap.toFixed(1)})`,
+          );
+        }
+    }
+    const drawText = readFileSync("src/components/kc/inventory/dessertRunDraw.ts", "utf8");
+    assert.ok(!drawText.includes("boardCheck"), "no board tile is ever drawn under a dessert cube");
+    assert.ok(
+      drawText.includes(
+        "g.drawImage(tileSprite(cellHex(state, i), w, h), x, y);\n      g.drawImage(",
+      ),
+      "a dessert cube has only its own tone under its picture",
+    );
+    console.log(
+      `PASS B3 colours: only the board is reachable at the start; no two waiter colours alike (closest ${closest.toFixed(0)}, board ${closestBoard.toFixed(0)}); no board under a dessert cube`,
+    );
+  }
+
   // ---- C. Source guard: the plate must be the same on every browser -------------------------------
   for (const file of [
     "src/game/business/dessertRun.ts",
@@ -370,6 +431,15 @@ try {
     for (const seed of seeds) {
       const round = run.makeRun(id, seed, tier);
       assert.equal(run.runDeckProblem(round, tier), null, `${key} ${seed}: deck follows the plan`);
+      // the opening (RULE CHANGE 2026-11-26): the front waiter of every lane takes the board, the colour all round the edge, and the "Tap me" lane can fetch
+      assert.ok(
+        round.lanes.every((lane: Array<{ k: number }>) => lane[0]?.k === 1),
+        `${key} ${seed}: every lane opens on a board waiter`,
+      );
+      assert.ok(
+        run.reachableCells(round, round.lanes[run.hintLane(round)][0].k).length > 0,
+        `${key} ${seed}: the first tap can fetch`,
+      );
       const onTime = run.playDeckOrder(run.makeRun(id, seed, tier), tier);
       assert.equal(onTime.won, true, `${key} ${seed}: not won in deck order`);
       longest = Math.max(longest, onTime.steps);
@@ -609,6 +679,142 @@ try {
     );
     console.log(
       "PASS I plate: served cubes lie inside the plate; guests a little smaller, runners a little bigger",
+    );
+  }
+
+  // ---- J. Memory (a bug found 2026-11-26): every dessert has its own waiter colours, so the recoloured sheets (0.6 to 1.1 MB each) must not pile up while the player goes on with "Next dessert" --
+  {
+    const artMod = await vite.ssrLoadModule("/src/components/kc/inventory/dessertRunArt.ts");
+    const g = globalThis as unknown as { document?: unknown; Image?: unknown };
+    const before = { document: g.document, Image: g.Image };
+    const ctx = {
+      drawImage() {},
+      getImageData: () => ({ data: new Uint8ClampedArray(0) }),
+      putImageData() {},
+    };
+    g.document = { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }) };
+    g.Image = class {
+      onload: (() => void) | null = null;
+      set src(_: string) {}
+    };
+    try {
+      const picture = (naturalHeight: number) => ({ naturalWidth: 768, naturalHeight });
+      const art = {
+        images: { "waiter-stand": picture(192), "waiter-run": picture(384) },
+        sheets: new Map(),
+        desserts: new Map(),
+      };
+      const colour = (n: number) => `#${(n * 1543 + 4096).toString(16).padStart(6, "0")}`;
+      const sheetOf = (n: number, kind: "stand" | "run") =>
+        artMod.waiterSheet(art, kind, 0, colour(n)) as { width: number };
+      const made: Array<{ width: number }> = [];
+      for (let n = 0; n < 150; n++) made.push(sheetOf(n, "stand"), sheetOf(n, "run"));
+      const limit = artMod.SHEET_LIMIT as number;
+      assert.ok(limit >= 36, "one round (9 colours x 2 sheets, both waiters) always fits");
+      assert.equal(art.sheets.size, limit, "after 300 sheets only the newest are kept");
+      assert.equal(
+        made.filter((c) => c.width > 0).length,
+        limit,
+        "every dropped sheet gave its pixels back",
+      );
+      assert.ok(
+        made.slice(-limit).every((c) => c.width > 0),
+        "the newest sheets are the ones kept",
+      );
+      // a sheet used again becomes the newest, so it outlives the others
+      const oldest = made[made.length - limit]!;
+      const oldestColour = (made.length - limit) / 2;
+      assert.equal(
+        sheetOf(oldestColour, "stand"),
+        oldest,
+        "a kept sheet is handed back, not redrawn",
+      );
+      for (let n = 200; n < 219; n++) {
+        sheetOf(n, "stand");
+        sheetOf(n, "run");
+      }
+      assert.ok(oldest.width > 0, "the sheet used again outlived older ones");
+      for (const id of DESSERT_LADDER as string[]) artMod.dessertPicture(art, DESSERTS[id].art);
+      assert.equal(
+        art.desserts.size,
+        artMod.PICTURE_LIMIT,
+        "only the last few dessert pictures are kept",
+      );
+      console.log(
+        `PASS J memory: at most ${limit} waiter sheets and ${artMod.PICTURE_LIMIT} dessert pictures kept, dropped sheets released`,
+      );
+    } finally {
+      g.document = before.document;
+      g.Image = before.Image;
+    }
+  }
+
+  // ---- K. Walking (developer 2026-11-26: "the waiters are walking through the centre like walking on the food: let them only enter the opened area") ----------------------------------
+  {
+    const { PLATE, WELL_R, ORIGIN, CELL } = run;
+    let steps = 0;
+    let walks = 0;
+    let deepest = Infinity;
+    for (const [n, id] of (DESSERT_LADDER as string[]).entries()) {
+      const tier = RUN_TIERS[tierOfLadderLevel(n + 1) - 1];
+      const seed = DESSERT_RUN_SEEDS[`${id}-${tier.id}`][n % 6];
+      const s = run.makeRun(id, seed, tier);
+      // the cube under a point of the visible well, or -1 outside it
+      const onCube = (x: number, y: number) => {
+        if (Math.hypot(x - PLATE.x, y - PLATE.y) >= WELL_R - 1.5) return false;
+        const cx = Math.floor((x - ORIGIN.x) / CELL);
+        const cy = Math.floor((y - ORIGIN.y) / CELL);
+        return cx >= 0 && cy >= 0 && cx < GRID && cy < GRID && s.grid[cy * GRID + cx] >= 0;
+      };
+      const seen = new WeakSet<object>();
+      const total = s.lanes.reduce((m: number, lane: unknown[]) => m + lane.length, 0);
+      let next = 0;
+      for (let k = 0; k < 120_000 && s.phase === "play"; k++) {
+        if (next < total && s.spots.indexOf(null) >= 0) run.tapLane(s, s.deckLanes[next++]);
+        run.stepRun(s, STEP, 1);
+        for (const spot of s.spots) {
+          const path = spot?.run.path;
+          if (!path) continue;
+          steps += 1;
+          const { x, y } = spot.run;
+          assert.ok(
+            !onCube(x, y),
+            `${id}: a waiter stands on a cube at ${x.toFixed(1)}, ${y.toFixed(1)}`,
+          );
+          deepest = Math.min(deepest, Math.hypot(x - PLATE.x, y - PLATE.y));
+          if (seen.has(path)) continue;
+          seen.add(path);
+          walks += 1;
+          // the whole walk, checked against the board it was planned on (cubes only ever leave, so it stays clear)
+          for (let i = 1; i < path.length; i++) {
+            const a_ = path[i - 1];
+            const b_ = path[i];
+            const len = Math.hypot(b_.x - a_.x, b_.y - a_.y);
+            for (let t_ = 0; t_ <= len; t_ += 1.5) {
+              const f = len ? t_ / len : 0;
+              assert.ok(
+                !onCube(a_.x + (b_.x - a_.x) * f, a_.y + (b_.y - a_.y) * f),
+                `${id}: a planned walk crosses a cube`,
+              );
+            }
+          }
+          const pick = path.find((p: { act?: string }) => p.act === "pick");
+          const cube = run.cellCenter(pick.cell);
+          const reach = Math.hypot(pick.x - cube.x, pick.y - cube.y);
+          assert.ok(
+            reach <= CELL * 2.5,
+            `${id}: a waiter takes a cube from beside it (${reach.toFixed(1)} px away)`,
+          );
+        }
+      }
+      assert.equal(s.phase, "won", `${id}: the walked round is won`);
+    }
+    assert.ok(
+      deepest < WELL_R - 80,
+      `waiters walk deep into the opened dessert (${deepest.toFixed(0)} px from the middle)`,
+    );
+    console.log(
+      `PASS K walking: ${walks} walks over 50 rounds (${steps} steps) never over a cube, each taken from beside it, deepest ${deepest.toFixed(0)} px from the middle`,
     );
   }
 

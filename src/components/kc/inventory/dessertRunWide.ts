@@ -16,10 +16,12 @@ import {
 } from "@/game/business/dessertRun";
 import { RUN_PALETTE } from "@/game/business/dessertGallery";
 import {
+  FEET,
   FONT,
   GUEST_BOTTOM,
   GUEST_SIZE,
-  RUNNER_SIZE,
+  movingSpots,
+  runnerSize,
   drawCube,
   drawFrame,
   drawPlainGuest,
@@ -291,26 +293,39 @@ export function drawRunWide(ctx: CanvasRenderingContext2D, state: RunState, view
 
   // ---- runners and flying cubes
   const step = Math.floor(state.time * 9) % 2;
-  const runSize = RUNNER_SIZE * 0.86;
-  state.spots.forEach((spot, si) => {
-    if (!spot || spot.done || !spot.run.path) return;
+  for (const si of movingSpots(state)) {
+    const spot = state.spots[si]!;
+    const runSize = runnerSize(spot.run.x, spot.run.y) * 0.86;
+    const feet = FEET * SCALE;
     const at = runnerAt(state, si);
     const carrying = spot.run.carry >= 0;
     const f = carrying
       ? frameOf(art, "run", spot.k, spot.hex, step, 1)
       : frameOf(art, "run", spot.k, spot.hex, 2 + step, 0);
     if (f) {
-      drawFrame(ctx, f, at.x, at.y + 12, runSize);
-      if (carrying)
+      drawFrame(ctx, f, at.x, at.y + feet, runSize);
+      if (carrying) {
+        const c = runSize * 0.194;
         drawCube(
           ctx,
-          at.x + runSize * 0.035 - 6,
-          at.y + 12 - runSize * 0.58 - 8,
-          12,
+          at.x + runSize * 0.035 - c / 2,
+          at.y + feet - runSize * 0.58 - c * 0.71,
+          c,
           hexOfK(spot.run.carry),
         );
-    } else drawPlainWaiter(ctx, at.x, at.y, 30, spot.hex, carrying ? hexOfK(spot.run.carry) : null);
-  });
+      }
+    } else {
+      const s = runSize * 0.47;
+      drawPlainWaiter(
+        ctx,
+        at.x,
+        at.y + feet - s / 2,
+        s,
+        spot.hex,
+        carrying ? hexOfK(spot.run.carry) : null,
+      );
+    }
+  }
   for (const f of state.flights) {
     const at = guestAt(f.guest);
     const x = cartX + (at.x - cartX) * f.t;

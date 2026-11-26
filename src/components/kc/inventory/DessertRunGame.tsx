@@ -303,7 +303,7 @@ export function DessertRunGame({
           }}
         />
         <header
-          className={`pointer-events-none absolute inset-x-0 top-0 flex items-center pt-[max(6px,env(safe-area-inset-top))] ${wide ? "gap-3 px-[3%]" : "gap-2 px-2"}`}
+          className={`pointer-events-none absolute inset-x-0 top-0 flex items-center pt-[max(6px,env(safe-area-inset-top))] ${wide ? "gap-3 px-[3%]" : "gap-2 px-2 max-[379px]:gap-1 max-[379px]:px-1"}`}
         >
           <button
             type="button"
@@ -315,14 +315,24 @@ export function DessertRunGame({
             ←
           </button>
           <div
-            className={`min-w-0 border border-[#d7a95c] bg-[#fff8e8] shadow-md ${wide ? "w-[40%] max-w-[420px] flex-none rounded-full px-5 py-1" : "flex-1 rounded-2xl px-3 py-1"}`}
+            className={`min-w-0 border border-[#d7a95c] bg-[#fff8e8] shadow-md ${wide ? "w-[40%] max-w-[420px] flex-none rounded-full px-5 py-1" : "flex-1 rounded-2xl px-3 py-1 max-[379px]:px-2"}`}
           >
-            <p className="text-[11px] font-black uppercase tracking-[.16em] text-[#a56a31]">
+            {/* a narrow phone has room for the dessert's name and the count only (a bug found 2026-11-26: the label wrapped to three lines over the plate and the name and count were cut off) */}
+            <p className="truncate text-[11px] font-black uppercase tracking-[.16em] text-[#a56a31] max-[399px]:tracking-[.06em] max-[359px]:hidden">
               🍰 Dessert Run
             </p>
-            <p className="truncate text-sm font-extrabold" data-testid="dr-name">
-              {state?.dessert.short}
-              <span className="ml-2 text-[12px] font-bold text-[#a56a31]" data-testid="dr-count">
+            {/* the count goes to its own line when it does not fit beside the name: neither is ever cut off */}
+            <p
+              className="flex flex-wrap items-baseline gap-x-2 text-sm font-extrabold leading-tight max-[379px]:text-[13px]"
+              data-testid="dr-name"
+            >
+              <span className="min-w-0 max-w-full truncate" data-testid="dr-dessert">
+                {state?.dessert.short}
+              </span>
+              <span
+                className="shrink-0 text-[12px] font-bold text-[#a56a31]"
+                data-testid="dr-count"
+              >
                 {delivered}/{total}
               </span>
             </p>

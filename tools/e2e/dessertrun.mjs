@@ -10,10 +10,13 @@
 //   D6 five phone sizes x Levels 18, 54 and 91 (3, 4 and 5 lanes): no sideways scroll, every header button 48 px, the stage inside the screen
 //   D7 Back leaves the game
 //   D8 no console errors
+//   D10 every dessert's picture, decoded in the browser, cube by cube: a dessert cube is full (no board shows through it) and a board cube empty (developer 2026-11-26: what you see is what a
+//      waiter takes). D6 also checks that the header shows the dessert's name and the count in full at every phone size (it was cut off at 320 px).
 //   D9 a WIDE window (developer 2026-11-20: 1280 x 720, 1917 x 912, a phone on its side 844 x 390) gets the LANDSCAPE board: a 16:9 canvas that fills the window on the Codex
 //      room (no 9:16 stage, no side copies, no "turn your phone" card), 48 px buttons, no sideways scroll; a tap on a waiter's COLUMN sends it and cubes reach the guests;
 //      careless play there still ends in a result card
 // Screenshots: out/dessertrun-*.png. Prints PASS/FAIL per check and exits 1 on any failure.
+import { readFileSync } from "node:fs";
 import {
   MOVED_IN_BUSINESS,
   PAIGE_QUIET,
@@ -251,14 +254,23 @@ for (const [w, h] of [
   [430, 900],
   [768, 1024],
 ]) {
-  for (const level of [18, 54, 91]) {
+  // 81 is Mango Mousse Cake, one of the longest names
+  for (const level of [18, 54, 81, 91]) {
     await open(level, w, h);
     const m = await page.evaluate(() => {
       const c = document.querySelector('[data-testid="dr-canvas"]').getBoundingClientRect();
       const small = [...document.querySelectorAll('[data-testid="dessert-run-game"] header button')]
         .map((b) => b.getBoundingClientRect())
         .filter((r) => r.width < 47.5 || r.height < 47.5).length;
+      const name = document.querySelector('[data-testid="dr-dessert"]');
+      const count = document.querySelector('[data-testid="dr-count"]');
+      const box = name.closest("div").getBoundingClientRect();
+      const cr = count.getBoundingClientRect();
       return {
+        // the header: the whole name and the count show, in a box no taller than three short lines
+        nameCut: name.scrollWidth > name.clientWidth + 1,
+        countIn: cr.width > 0 && cr.right <= box.right + 0.5 && cr.bottom <= box.bottom + 0.5,
+        boxH: Math.round(box.height),
         sw: document.documentElement.scrollWidth,
         iw: innerWidth,
         small,
@@ -270,8 +282,11 @@ for (const [w, h] of [
       };
     });
     check(
-      `D6 Level ${level} at ${w} x ${h}: no sideways scroll, 48 px header buttons, the stage inside the screen`,
-      m.sw <= m.iw &&
+      `D6 Level ${level} at ${w} x ${h}: no sideways scroll, 48 px header buttons, the stage inside the screen, the name and count in full`,
+      !m.nameCut &&
+        m.countIn &&
+        m.boxH <= 64 &&
+        m.sw <= m.iw &&
         m.small === 0 &&
         m.top >= -1 &&
         m.bottom <= m.ih + 1 &&
@@ -357,6 +372,49 @@ await open(18);
 await page.click('[data-testid="dr-back"]');
 await sleep(800);
 check("D7 Back leaves the game", !(await page.$(GAME)), {});
+
+// D10: the pictures themselves, as the browser decodes them
+const ladderText = readFileSync(
+  new URL("../../src/game/business/dessertLadderArt.ts", import.meta.url),
+  "utf8",
+);
+const ladder = JSON.parse(ladderText.match(/\/\/ data: (\{.*\})\r?\n/)[1]);
+const rows = Object.fromEntries(Object.entries(ladder).map(([id, v]) => [id, v.rows]));
+const pictures = await page.evaluate(async (all) => {
+  const bad = [];
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 448;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  for (const [id, grid] of Object.entries(all)) {
+    const img = new Image();
+    img.src = new URL(`business/dessertrun/desserts/${id}.webp`, location.href).href;
+    await img.decode();
+    ctx.clearRect(0, 0, 448, 448);
+    ctx.drawImage(img, 0, 0);
+    const px = ctx.getImageData(0, 0, 448, 448).data;
+    for (let y = 0; y < 28; y++)
+      for (let x = 0; x < 28; x++) {
+        let low = 255;
+        let high = 0;
+        for (let v = y * 16; v < y * 16 + 16; v++)
+          for (let u = x * 16; u < x * 16 + 16; u++) {
+            const a = px[(v * 448 + u) * 4 + 3];
+            low = Math.min(low, a);
+            high = Math.max(high, a);
+          }
+        if (grid[y][x] === "." ? high > 40 : low < 215)
+          bad.push(
+            `${id} ${x},${y} ${grid[y][x] === "." ? "board shows picture" : "dessert cube see-through"}`,
+          );
+      }
+  }
+  return { count: Object.keys(all).length, bad: bad.length, first: bad.slice(0, 5) };
+}, rows);
+check(
+  "D10 all 50 pictures, cube by cube: dessert cubes full, board cubes empty",
+  pictures.count === 50 && pictures.bad === 0,
+  pictures,
+);
 
 check(
   "D8 no console errors",

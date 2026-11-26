@@ -32,6 +32,17 @@ GRID = 28
 CUBE = 16  # picture pixels per cube
 WELL = 175 / 13.5  # the plate's round well, in cubes (dessertGallery.ts WELL_CELLS)
 DARK_L = 17  # Lab lightness under which a pixel is the picture's dark outline
+# WHAT YOU SEE IS WHAT A WAITER TAKES (developer 2026-11-26: "if the edges are blue then give blue", "there is orange available" while the game was jammed)
+COVER = 0.5  # a cube is the dessert's only when the dessert covers at least this much of it; else it is a plain board cube
+OUTLINE_MIN = 8  # the outline is a waiter's colour too: at least this many cubes
+SEP = 34.0  # two waiter colours are at least this far apart (Lab); closer ones are one colour
+MOST = 6  # colour groups at most (besides the outline and the board)
+HUE_CHROMA = 55.0  # two colours at least this strong, this far apart in Lab and in hue (degrees), stay two colours
+HUE_FAR = 22.0
+HUE_TURN = 11.0
+RED_HUES = (-20.0, 42.0)  # degrees: the reds and pinks
+BOARD_GAP = 30.0  # the board is at least this far from every waiter colour of the dessert (Lab)
+SEP_OUTLINE = 28.0  # and a dessert colour at least this far from the outline's dark brown (it is lightened until it is)
 
 LIST = [
     ("cookie", "Biscuit"), ("candy", "Candy"), ("jelly", "Jelly"), ("donut", "Simple Donut"), ("macaron", "Macaron"), ("cupcake", "Cupcake"), ("pancakes", "Pancake"), ("cone", "Ice Cream"), ("cakeslice", "Cake Slice"), ("lollipop", "Lollipop"),
@@ -67,7 +78,8 @@ TUNING = {
     "raspberrymousse": {"max": 4},
     "sachertorte": {"max": 4},  # thin dark layers block each other: with five or six colours almost no deal could be won
     "fruitgateau": {"max": 5},
-    "lollipop": {"rows": (0.35, 1.2), "peel": 1},
+    # a rainbow: its colours may sit closer together than other desserts' (the spiral is the point)
+    "lollipop": {"rows": (0.35, 1.2), "peel": 1, "sep": 30.0, "gloss": True},
     "macaron": {"grow": 3},
     "bakedalaska": {"rows": (-0.5, -0.1), "peel": 2},
     "bettycake": {"keep": 60, "rows": (-0.5, 0.55), "peel": 1},
@@ -202,6 +214,18 @@ def cutout(n):
     bg |= (ya <= tag_bottom) & (np.abs(xa - cx) <= tag_half)
     bg |= (ya <= tag_bottom + 15) & (blue - red > 14) & (lum > 95) & (lum < 188)
     bg |= ya >= LABELS[row]
+    # the label's cream top edge rises above that on a two-line label: the first solid cream row (with cream below it) in the middle of the plate starts the label
+    creamy = (red > 225) & (green > 195) & (blue < 228) & (red - blue > 22)
+    # (only the levels 16 to 30 sheet needs it: there the dessert reaches down to the label; a real label edge has outline or shadow above it, never more cream)
+    for y in range(4, h - 6) if name == _B else ():
+        if (
+            ya[y, 0] >= LABELS[row] - 16
+            and creamy[y, R - 30 : R + 31].mean() > 0.7
+            and creamy[y + 4, R - 30 : R + 31].mean() > 0.6
+            and creamy[y - 4, R - 30 : R + 31].mean() < 0.3
+        ):
+            bg[y:] = True
+            break
     bg |= (ya >= LABELS[row] - 6) & (red > 165) & (blue < 150) & (lum > 100)  # the label's gold top edge
     grey = (lum > 105) & (chroma < 58) & (warm < 18) & inside & ~wall
     for _ in range(o.get("grow", 2)):
@@ -242,6 +266,21 @@ def cutout(n):
         if not (edge & shadow).any():
             break
         fg &= ~(edge & shadow)
+    # LEFTOVERS (found 2026-11-26 on a magenta check): the name label's cream top edge under the dessert, and white scraps of plate beside it.
+    # (b) a small pale piece the dark outline cuts off from the dessert, lying on its outside, is plate
+    sep = fg & ~ndimage.binary_dilation(dark & fg, iterations=1)
+    parts, n_parts = ndimage.label(sep)
+    outside = ndimage.binary_dilation(~fg, iterations=2)
+    for i, sl in enumerate(ndimage.find_objects(parts), 1):
+        piece = parts[sl] == i
+        size = int(piece.sum())
+        if size > o.get("scrap", 160) or not (piece & outside[sl]).any():
+            continue
+        # on the levels 16 to 30 sheet a cream stub of the label can hang under the outline: any light colour counts there
+        stub = name == _B and ya[sl][piece].min() >= LABELS[row] - 12 and lum[sl][piece].mean() > 150
+        if stub or (lum[sl][piece].mean() > 170 and chroma[sl][piece].mean() < 58):
+            fg[sl] &= ~piece
+            fg[sl] &= ~(ndimage.binary_dilation(piece, iterations=1) & (lum[sl] > 150) & (chroma[sl] < 70))
     # slivers of the tag's bottom edge and of the label's top edge: lines under 4 px tall in those two bands are not the dessert
     thick = ndimage.binary_opening(fg, structure=np.ones((4, 1)))
     bands = (ya <= tag_bottom + 9) | (ya >= LABELS[row] - 16)
@@ -255,8 +294,24 @@ def cutout(n):
 
 # --------------------------------------------------------------------------------------------- the picture
 
+def cube_cover(alpha):
+    """The share of every cube (28 x 28) the picture covers."""
+    return (alpha > 127).reshape(GRID, CUBE, GRID, CUBE).mean(axis=(1, 3))
+
+
+def on_rim(x, y):
+    """A board cube with no board on one of its four sides: the ring a waiter can reach from the plate's rim at the start."""
+    return any(not (0 <= x + dx < GRID and 0 <= y + dy < GRID and in_well(x + dx, y + dy)) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+
+
+@lru_cache(maxsize=1)
+def inner_mask():
+    """The cubes the dessert may use: on the board and not on its outer ring, so the board all round the dessert is what the first waiters fetch."""
+    return np.array([[in_well(x, y) and not on_rim(x, y) for x in range(GRID)] for y in range(GRID)])
+
+
 def place(crop, fg):
-    """The cut-out upscaled, sharpened and placed on the 448 x 448 board picture, as large as the plate's round well allows."""
+    """The cut-out upscaled, sharpened and placed on the 448 x 448 board picture, as large as the board allows with a full ring of board cubes left round it."""
     ys, xs = np.nonzero(fg)
     y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
     rgb = crop[y0:y1, x0:x1].astype(np.uint8)
@@ -268,21 +323,28 @@ def place(crop, fg):
     big = Image.fromarray(rgb, "RGB").resize((rgb.shape[1] * 4, rgb.shape[0] * 4), Image.LANCZOS).filter(ImageFilter.UnsharpMask(radius=2.4, percent=85, threshold=1))
     abig = Image.fromarray((alpha * 255).astype(np.uint8), "L").resize(big.size, Image.LANCZOS)
     S = GRID * CUBE
+    # the largest size at which some nearby position keeps every dessert cube off the outer ring; there, the position with the fewest half-covered cubes (the picture sits ON the cubes)
     for tenth in range(250, 159, -2):
         T = tenth / 10
         scale = T * CUBE / max(big.size)
         w, h = max(1, round(big.width * scale)), max(1, round(big.height * scale))
         part = big.resize((w, h), Image.LANCZOS).convert("RGBA")
         part.putalpha(abig.resize((w, h), Image.LANCZOS))
-        ox, oy = round((S - w) / 2), round((S - h) / 2 + 0.3 * CUBE)
-        a = np.array(part)[..., 3]
-        py, px = np.nonzero(a > 100)
-        far = np.hypot(px + ox - S / 2, py + oy - S / 2).max()
-        if far <= (WELL - 0.12) * CUBE:
-            break
-    canvas = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    canvas.paste(part, (ox, oy), part)
-    return canvas
+        best = None
+        for dy in range(-10, 13, 2):
+            for dx in range(-8, 9, 2):
+                ox, oy = round((S - w) / 2) + dx, round((S - h) / 2 + 0.3 * CUBE) + dy
+                canvas = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+                canvas.paste(part, (ox, oy), part)
+                cover = cube_cover(np.array(canvas)[..., 3])
+                if ((cover >= COVER) & ~inner_mask()).any():
+                    continue
+                score = (int(((cover > 0.2) & (cover < 0.8)).sum()), abs(dx) + abs(dy))
+                if best is None or score < best[0]:
+                    best = (score, canvas)
+        if best:
+            return best[1]
+    raise SystemExit("a dessert does not fit inside the board's ring")
 
 
 # --------------------------------------------------------------------------------------------- the cubes
@@ -296,30 +358,43 @@ def band_range(level):
     return {0: (3, 4), 1: (3, 4), 2: (4, 5), 3: (5, 5), 4: (5, 6)}[(level - 1) // 10]
 
 
-def cubes_of(canvas, level, cap=None):
+def cubes_of(canvas, level, cap=None, colours=None, sep=SEP, gloss=False):
     """(kind per cube: None board, 'outline' or the group index), (flat tone index per cube), the groups' tones (hex, light to dark) and the groups' waiter colours."""
     a = np.array(canvas).astype(np.float64)
     lab = srgb_to_lab(a[..., :3])
     alpha = a[..., 3] / 255
     kind = {}
     feats, weights, where = [], [], []
+    shine = []  # cubes that are all shine (gloss): they take the strongest colour next to them
+    darkness = {}  # each cube's share of dark outline pixels
     for y in range(GRID):
         for x in range(GRID):
             blk = (slice(y * CUBE, (y + 1) * CUBE), slice(x * CUBE, (x + 1) * CUBE))
             op = alpha[blk] > 0.5
             cover = op.mean()
-            if cover < 0.2 or not in_well(x, y):
+            if cover < COVER or not in_well(x, y):
                 continue
             px = lab[blk][op]
             dark = (px[:, 0] < DARK_L).mean()
+            darkness[(x, y)] = dark
             if dark >= 0.52:
                 kind[(x, y)] = "outline"
                 continue
             light = px[px[:, 0] >= DARK_L]
+            if gloss:
+                # the glossy shine is not the cube's colour: where a cube has a strong colour under it, that is its colour (the lollipop's yellow, not its white shine)
+                strong = light[np.hypot(light[:, 1], light[:, 2]) > 45]
+                if len(strong) >= 0.25 * len(light):
+                    light = strong
             # the cube's own colour: the median of its non-outline pixels, the middle of the cube counted twice
             inner = lab[blk][3:-3, 3:-3][op[3:-3, 3:-3]]
             inner = inner[inner[:, 0] >= DARK_L] if len(inner) else inner
+            if gloss and len(inner):
+                inner = inner[np.hypot(inner[:, 1], inner[:, 2]) > 45]
             colour = np.median(np.concatenate([light, inner]) if len(inner) else light, axis=0)
+            if gloss and math.hypot(colour[1], colour[2]) < 40 and colour[0] > 60:
+                shine.append((x, y, cover))
+                continue
             # a muddy dark mix (the outline's soft edge) is outline, not a colour of its own: no waiter fetches grey-brown
             if colour[0] < 48 and math.hypot(colour[1], colour[2]) < 17:
                 kind[(x, y)] = "outline"
@@ -327,13 +402,29 @@ def cubes_of(canvas, level, cap=None):
             feats.append(colour)
             weights.append(cover)
             where.append((x, y))
+    for x, y, cover in shine:
+        near = [feats[where.index((x + a, y + b))] for a in (-1, 0, 1) for b in (-1, 0, 1) if (x + a, y + b) in where]
+        if near:
+            feats.append(max(near, key=lambda c: math.hypot(c[1], c[2])))
+            weights.append(cover)
+            where.append((x, y))
+        else:
+            kind[(x, y)] = "outline"
+    # an outline that fell across the cubes (a thin line split in half) still gets its waiter: the darkest cubes join it
+    outlined = sum(1 for k_ in kind.values() if k_ == "outline")
+    if outlined < OUTLINE_MIN:
+        for key in sorted(where, key=lambda w_: -darkness[w_])[: OUTLINE_MIN - outlined]:
+            i = where.index(key)
+            del feats[i], weights[i], where[i]
+            kind[key] = "outline"
     feats = np.array(feats)
     weights = np.array(weights)
     scale = np.array([0.7, 1.0, 1.0])  # hue tells groups apart better than lightness
-    lo, hi = band_range(level)
+    lo, hi = colours or band_range(level)
     if cap:
         lo, hi = min(lo, cap), min(hi, cap)
-    cent, lab_ = kmeans(feats * scale, hi + 1, weights)
+    # many fine groups first, so a small distinct colour (a cherry, a strawberry) is never swallowed by a bigger one before the look-alikes are joined
+    cent, lab_ = kmeans(feats * scale, min(12, len(feats)), weights)
     groups = [list(np.nonzero(lab_ == j)[0]) for j in range(len(cent))]
     groups = [g for g in groups if g]
 
@@ -343,19 +434,33 @@ def cubes_of(canvas, level, cap=None):
     def dist(g, h):
         return float(np.linalg.norm(mean(g) - mean(h)))
 
+    def apart(g, h):
+        """How far apart two colours LOOK: their Lab distance, and two strong colours of clearly different hue (a red strawberry and an orange crust) are never one colour."""
+        a_, b_ = mean(g), mean(h)
+        d = float(np.linalg.norm(a_ - b_))
+        ca, cb = math.hypot(a_[1], a_[2]), math.hypot(b_[1], b_[2])
+        if min(ca, cb) > HUE_CHROMA and d > HUE_FAR:
+            ha, hb = math.degrees(math.atan2(a_[2], a_[1])), math.degrees(math.atan2(b_[2], b_[1]))
+            turn = abs((ha - hb + 180) % 360 - 180)
+            # reds and pinks only: a red strawberry on an orange crust stays red, but a gold and an orange are one colour to the player
+            if turn > HUE_TURN and any(RED_HUES[0] < h < RED_HUES[1] for h in (ha, hb)):
+                return d + sep  # never joined on closeness, and the last pair joined when there are too many colours
+        return d
+
     def closest():
-        pairs = [(dist(groups[i], groups[j]), i, j) for i in range(len(groups)) for j in range(i + 1, len(groups))]
+        pairs = [(apart(groups[i], groups[j]), i, j) for i in range(len(groups)) for j in range(i + 1, len(groups))]
         return min(pairs)
 
-    # waiters must be told apart by their colour: join groups whose colours are close, and small ones into their nearest
-    while len(groups) > 3:
+    # waiters must be told apart by their colour: join the groups that look alike (an orange and a darker orange are one colour to the player); a few stray cubes join their nearest
+    most = max(hi, MOST) if not cap else hi
+    while len(groups) > 2:
         d, i, j = closest()
         small = min(range(len(groups)), key=lambda k: len(groups[k]))
-        if len(groups[small]) < 7:
+        if len(groups[small]) < 4:
             other = min((k for k in range(len(groups)) if k != small), key=lambda k: dist(groups[small], groups[k]))
             groups[other] += groups[small]
             del groups[small]
-        elif d < 15 or len(groups) > hi:
+        elif d < sep or len(groups) > most:
             groups[i] += groups[j]
             del groups[j]
         else:
@@ -369,7 +474,7 @@ def cubes_of(canvas, level, cap=None):
             part = [[g[t] for t in range(len(g)) if l2[t] == s] for s in (0, 1)]
             if min(len(part[0]), len(part[1])) >= 7:
                 d = dist(part[0], part[1])
-                if d >= 11 and (best is None or d > best[0]):
+                if d >= sep and (best is None or d > best[0]):
                     best = (d, k, part)
         if not best:
             break
@@ -377,24 +482,37 @@ def cubes_of(canvas, level, cap=None):
         groups[k] = part[0]
         groups.append(part[1])
     groups.sort(key=lambda g: -mean(g)[0])
-    tones, rep, tone_of = [], [], {}
-    taken = [hex_lab(OUTLINE_HEX)]
+    # each group's waiter colour: the middle colour of its cubes, lightened until nobody can take it for the outline
+    outline = hex_lab(OUTLINE_HEX)
+    reps = []
+    for g in groups:
+        c = np.median(feats[g], axis=0)
+        while np.linalg.norm(c - outline) < SEP_OUTLINE and c[0] < 70:
+            c = c + np.array([2.0, 0.4, 0.6])
+        reps.append(c)
+    tones, rep, tone_of, targets = [], [], {}, {}
     for gi, g in enumerate(groups):
-        k = min(4, max(1, len(g) // 12 + 1))
-        c, l = kmeans(feats[g], k, weights[g])
+        # a cube keeps a little of its own shade, never so much that it could pass for another waiter's colour
+        shift = (feats[g] - reps[gi]) * 0.55
+        far = np.linalg.norm(shift, axis=1)
+        want = reps[gi] + shift * np.minimum(1.0, 12.0 / np.maximum(far, 1e-6))[:, None]
+        k = min(3, max(1, len(g) // 20 + 1))
+        c, l = kmeans(want, k, weights[g])
         order = sorted((j for j in range(len(c)) if (l == j).any()), key=lambda j: -c[j][0])
         names = [lab_to_hex(c[j]) for j in order]
+        own = lab_to_hex(reps[gi])
+        if own not in names:
+            names.append(own)
         tones.append(names)
-        # the waiter's colour: of the group's tones that many cubes have, the one that stands furthest from the outline and the other waiters (then the commonest)
-        counts = {j: int((l == j).sum()) for j in order}
-        often = [j for j in order if counts[j] >= max(2, 0.18 * len(g))] or order
-        best_j = max(often, key=lambda j: (min(min(float(np.linalg.norm(c[j] - t_)) for t_ in taken), 34.0), counts[j]))
-        taken.append(c[best_j])
-        rep.append(order.index(best_j))
-        for t, cube in enumerate(g):
+        rep.append(names.index(own))
+        for t_, cube in enumerate(g):
             kind[where[cube]] = gi
-            tone_of[where[cube]] = order.index(l[t])
-    return kind, tone_of, tones, rep
+            tone_of[where[cube]] = order.index(l[t_])
+            targets[where[cube]] = want[t_]
+    for key, k_ in kind.items():
+        if k_ == "outline":
+            targets[key] = outline
+    return kind, tone_of, tones, rep, targets
 
 
 def pick_board(tones, rep, level):
@@ -404,11 +522,56 @@ def pick_board(tones, rep, level):
     def gap(name):
         return min(float(np.linalg.norm(hex_lab(h) - c)) for h in BOARDS[name][:2] for c in reps)
 
-    if gap("plate") >= 20:
+    # the board must never look like part of the dessert (a white cake on the white plate, a blue glass on the blue board)
+    if gap("plate") >= BOARD_GAP:
         return "plate"
     scored = sorted(((gap(b), b) for b in BOARDS if b != "plate"), reverse=True)
-    good = [b for g, b in scored if g >= scored[0][0] - 8]
+    good = [b for g, b in scored if g >= max(scored[0][0] - 8, min(BOARD_GAP, scored[0][0]))]
     return good[level % len(good)]
+
+
+# --------------------------------------------------------------------------------------------- the cubes' faces
+
+def lab_to_rgb(lab):
+    fy = (lab[..., 0] + 16) / 116
+    f = np.stack([fy + lab[..., 1] / 500, fy, fy - lab[..., 2] / 200], axis=-1)
+    xyz = np.where(f**3 > 0.008856, f**3, (f - 16 / 116) / 7.787) * np.array([0.95047, 1.0, 1.08883])
+    m = np.array([[3.2404542, -1.5371385, -0.4985314], [-0.9692660, 1.8760108, 0.0415560], [0.0556434, -0.2040259, 1.0572252]])
+    rgb = xyz @ m.T
+    rgb = np.where(rgb > 0.0031308, 1.055 * np.power(np.clip(rgb, 0, None), 1 / 2.4) - 0.055, 12.92 * rgb)
+    return np.clip(np.round(rgb * 255), 0, 255).astype(np.uint8)
+
+
+def faces(canvas, kind, targets):
+    """The picture the game shows: only the dessert's cubes, each one FULL (no plate showing through it) and each one in its waiter's colour: the cube's middle colour is moved onto its target
+    and the picture's light and dark inside it stay (the shading, the icing lines and the crumbs are still there), but never as another waiter's colour."""
+    a = np.array(canvas)
+    solid = a[..., 3] > 127
+    idx = ndimage.distance_transform_edt(~solid, return_distances=False, return_indices=True)
+    lab = srgb_to_lab(a[..., :3][idx[0], idx[1]])
+    out = np.zeros_like(a)
+    for (x, y), k in kind.items():
+        blk = (slice(y * CUBE, (y + 1) * CUBE), slice(x * CUBE, (x + 1) * CUBE))
+        px = lab[blk]
+        own = px[solid[blk]]
+        if k == "outline":
+            med = np.median(own[own[:, 0] <= np.percentile(own[:, 0], 70)], axis=0)
+            lo_, hi_ = -8.0, 14.0
+        else:
+            body = own[own[:, 0] >= DARK_L]
+            med = np.median(body if len(body) > 20 else own, axis=0)
+            lo_, hi_ = -22.0, 20.0
+        dl = np.clip((px[..., 0] - med[0]) * 0.8, lo_, hi_)
+        dab = (px[..., 1:] - med[1:]) * 0.3
+        far = np.linalg.norm(dab, axis=-1, keepdims=True)
+        dab = dab * np.minimum(1.0, 12.0 / np.maximum(far, 1e-6))
+        new = np.empty_like(px)
+        new[..., 0] = np.clip(targets[(x, y)][0] + dl, 0, 100)
+        new[..., 1:] = targets[(x, y)][1:] + dab
+        face = np.full((CUBE, CUBE, 4), 255, dtype=np.uint8)
+        face[..., :3] = lab_to_rgb(new)
+        out[blk] = face
+    return Image.fromarray(out, "RGBA")
 
 
 # --------------------------------------------------------------------------------------------- one dessert
@@ -417,15 +580,10 @@ def make(id_):
     n = IDS.index(id_) + 1
     crop, fg = cutout(n)
     canvas = place(crop, fg)
-    kind, tone_of, tones, rep = cubes_of(canvas, n, TUNING.get(id_, {}).get("max"))
+    o = TUNING.get(id_, {})
+    kind, tone_of, tones, rep, targets = cubes_of(canvas, n, o.get("max"), o.get("colours"), o.get("sep", SEP), o.get("gloss", False))
     board = pick_board(tones, rep, n)
-    # cubes that are not the dessert do not show the picture: clear them (a sliver under a fifth of a cube)
-    a = np.array(canvas)
-    for y in range(GRID):
-        for x in range(GRID):
-            if (x, y) not in kind:
-                a[y * CUBE : (y + 1) * CUBE, x * CUBE : (x + 1) * CUBE, 3] = 0
-    canvas = Image.fromarray(a, "RGBA")
+    canvas = faces(canvas, kind, targets)
     flat = [(gi, ti) for gi, t in enumerate(tones) for ti in range(len(t))]
     index = {f: i for i, f in enumerate(flat)}
     chars = "0123456789abcdefghijklmnopqrstuvwxyz"

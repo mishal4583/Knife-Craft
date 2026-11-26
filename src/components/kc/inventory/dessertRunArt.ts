@@ -35,15 +35,42 @@ export type RunArt = {
   desserts: Map<string, HTMLImageElement | null>;
 };
 
+/**
+ * KEPT ONLY WHAT IS NEEDED (a bug found 2026-11-26): every dessert now has waiter colours of its own (240 over the 50) and every recoloured waiter sheet is 0.6 to 1.1 MB, so keeping them all while
+ * the player went on with "Next dessert" grew by about 15 MB a dessert. One round uses at most 9 colours x 2 sheets; both caches keep the most recently used and drop the rest.
+ */
+export const SHEET_LIMIT = 40;
+export const PICTURE_LIMIT = 4;
+
+/** Puts `key` at the newest end of a cache and drops the oldest entries beyond `limit`, handing each dropped value to `drop`. */
+function keepNewest<V>(
+  cache: Map<string, V>,
+  key: string,
+  value: V,
+  limit: number,
+  drop?: (v: V) => void,
+) {
+  cache.delete(key);
+  cache.set(key, value);
+  for (const [oldKey, old] of cache) {
+    if (cache.size <= limit) break;
+    cache.delete(oldKey);
+    drop?.(old);
+  }
+}
+
 /** A dessert's picture once it has loaded (asking the first time starts the load); null until then, or if it failed: the cubes are drawn in their flat tones. */
 export function dessertPicture(art: RunArt | null, path: string): HTMLImageElement | null {
   if (!art) return null;
   const hit = art.desserts.get(path);
-  if (hit !== undefined) return hit;
-  art.desserts.set(path, null);
+  if (hit !== undefined) {
+    keepNewest(art.desserts, path, hit, PICTURE_LIMIT);
+    return hit;
+  }
+  keepNewest(art.desserts, path, null, PICTURE_LIMIT);
   const img = new Image();
   img.onload = () => {
-    art.desserts.set(path, img);
+    if (art.desserts.has(path)) art.desserts.set(path, img);
   };
   img.src = `${import.meta.env.BASE_URL}${path}`;
   return null;
@@ -126,8 +153,12 @@ export function waiterSheet(
     } catch {
       return null; // a browser that will not read the picture back: the plain waiter stays
     }
-    art.sheets.set(key, sheet);
   }
+  // a dropped sheet gives its pixels back at once (iOS Safari counts canvas memory until its size is zero)
+  keepNewest(art.sheets, key, sheet, SHEET_LIMIT, (old) => {
+    old.width = 0;
+    old.height = 0;
+  });
   return sheet;
 }
 
