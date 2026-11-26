@@ -542,6 +542,82 @@ check(
 );
 wideMode = false;
 
+// K13: the level picker (developer 2026-11-26)
+await open(40);
+await page.click('[data-testid="kd-choose"]');
+await sleep(500);
+const kdPick = await page.evaluate(() => {
+  const tiles = [...document.querySelectorAll('[data-testid^="kd-picker-tile-"]')];
+  return {
+    tiles: tiles.length,
+    open: tiles.filter((b) => !b.disabled).length,
+    current: tiles.find((b) => b.getAttribute("aria-current"))?.dataset.testid,
+  };
+});
+const clock0 = await seconds();
+await sleep(1600);
+const clockHeld = (await seconds()) === clock0;
+await shot(page, "kitchendispatch-picker");
+await page.click('[data-testid="kd-picker-tile-22"]');
+await sleep(600);
+const kdChosen = {
+  level: (await text("kd-level")).trim(),
+  phase: await data("phase"),
+  closed: !(await page.$('[data-testid="kd-picker"]')),
+};
+await page.click('[data-testid="kd-pause"]');
+await sleep(300);
+await page.click('[data-testid="kd-levels"]');
+await sleep(300);
+const kdFromCard = !!(await page.$('[data-testid="kd-picker"]'));
+await page.click('[data-testid="kd-picker-close"]');
+check(
+  "K13 the level picker: levels 18-91, those up to the player's own open, the clock waits; choosing an earlier one plays it; the pause card opens it too",
+  kdPick.tiles === 74 &&
+    kdPick.open === 23 &&
+    kdPick.current === "kd-picker-tile-40" &&
+    clockHeld &&
+    kdChosen.level === "22" &&
+    kdChosen.phase === "play" &&
+    kdChosen.closed &&
+    kdFromCard,
+  { kdPick, clockHeld, kdChosen, kdFromCard },
+);
+for (const [w, h] of [
+  [320, 568],
+  [844, 390],
+  [1280, 720],
+]) {
+  await open(91, w, h);
+  await page.click('[data-testid="kd-choose"]');
+  await sleep(500);
+  const fit = await page.evaluate(() => {
+    const panel = document
+      .querySelector('[data-testid="kd-picker"] section')
+      .getBoundingClientRect();
+    const tiles = [...document.querySelectorAll('[data-testid^="kd-picker-tile-"]')].map((b) =>
+      b.getBoundingClientRect(),
+    );
+    const badge = document.querySelector('[data-testid="kd-choose"]').getBoundingClientRect();
+    return {
+      inside:
+        panel.top >= -1 &&
+        panel.bottom <= innerHeight + 1 &&
+        panel.left >= -1 &&
+        panel.right <= innerWidth + 1,
+      smallTiles: tiles.filter((r) => r.width < 47.5 || r.height < 47.5).length,
+      badge: [Math.round(badge.width), Math.round(badge.height)],
+      sideways: document.documentElement.scrollWidth > innerWidth,
+    };
+  });
+  check(
+    `K13 the picker at ${w} x ${h}: inside the screen, 48 px tiles and badge, no sideways scroll`,
+    fit.inside && fit.smallTiles === 0 && fit.badge[0] >= 47 && fit.badge[1] >= 47 && !fit.sideways,
+    fit,
+  );
+  if (w === 320) await shot(page, "kitchendispatch-picker-320");
+}
+
 // K10
 await open(18);
 await page.click('[data-testid="kd-back"]');

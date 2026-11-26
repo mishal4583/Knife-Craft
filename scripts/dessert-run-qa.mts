@@ -115,15 +115,9 @@ try {
     [1, 2, 3, 5, 6],
     "Intro, Easy, Medium, Hard, Expert are tiers 1, 2, 3, 5, 6",
   );
-  // RULE CHANGE (developer 2026-11-26, "refer these images in order and fix the desserts ... exactly like in the reference"): no dessert is hand-painted any more: all 50, the former eight too,
-  // are the developer's reference pictures (scripts/make-dessert-art.py); the former eight keep their places on the list.
-  assert.deepEqual(
-    ["cookie", "donut", "macaron", "cupcake", "pancakes", "cone", "cakeslice", "lollipop"].map(
-      (id) => DESSERT_LADDER.indexOf(id) + 1,
-    ),
-    [1, 4, 5, 6, 7, 8, 9, 10],
-    "biscuit L1, donut L4, macaron L5, cupcake L6, pancake L7, ice cream L8, cake slice L9, lollipop L10",
-  );
+  // RULE CHANGE (developer 2026-11-26, "refer these images in order and fix the desserts ... exactly like in the reference"): no dessert is hand-painted any more: all 50 are the developer's
+  // reference pictures (scripts/make-dessert-art.py). RULE CHANGE (developer 2026-11-27, "sort the desserts according to the toughness of completing them, easy first then gradually tougher"):
+  // the list is no longer in the reference sheets' order (the former eight no longer keep their places); F3 checks that the shipped deals climb from the first dessert to the last.
   console.log(
     "PASS B gallery: the 50 desserts of the list, 5 to 9 colour groups each (several tones inside a group), outline first, cube counts",
     JSON.stringify({ desserts: Object.keys(cubes).length }),
@@ -526,6 +520,40 @@ try {
       }
       bandMean.push(sum / count);
     }
+    // ---- F3. Easiest first (developer 2026-11-27, "easy first then gradually tougher"): the average of every dessert's six deals (what a player meets over the days) never falls back more than a
+    // quarter of one careful round in twelve (the rating's own step) from the dessert before, and each ten is harder than the ten before
+    {
+      const climb = (DESSERT_LADDER as string[]).map((id, n) => {
+        const tier = RUN_TIERS[tierOfLadderLevel(n + 1) - 1];
+        const seeds: number[] = DESSERT_RUN_SEEDS[`${id}-${tier.id}`];
+        return (
+          seeds.reduce((sum, seed) => sum + run.ratePlate(id, seed, tier, 12).hardness, 0) /
+          seeds.length
+        );
+      });
+      let worst = 0;
+      for (let n = 1; n < climb.length; n++) {
+        const drop = climb[n - 1]! - climb[n]!;
+        worst = Math.max(worst, drop);
+        assert.ok(
+          drop <= 1 / 48 + 1e-9,
+          `dessert ${n + 1} (${DESSERT_LADDER[n]}, ${climb[n]!.toFixed(2)}) is easier than the one before (${DESSERT_LADDER[n - 1]}, ${climb[n - 1]!.toFixed(2)})`,
+        );
+      }
+      const tens = Array.from(
+        { length: 5 },
+        (_, b) => climb.slice(b * 10, b * 10 + 10).reduce((a, v) => a + v, 0) / 10,
+      );
+      for (let b = 1; b < 5; b++)
+        assert.ok(
+          tens[b]! > tens[b - 1]!,
+          `desserts ${b * 10 + 1} to ${b * 10 + 10} are harder than the ten before`,
+        );
+      assert.ok(climb[49]! - climb[0]! >= 0.4, "from very easy to very tough");
+      console.log(
+        `PASS F3 easiest first: from ${climb[0]!.toFixed(2)} to ${climb[49]!.toFixed(2)}, by tens ${tens.map((m) => m.toFixed(2)).join(" / ")}; biggest step back ${worst.toFixed(3)}`,
+      );
+    }
     console.log(
       "     careful-player hardness by band:",
       bandMean.map((m) => m.toFixed(2)).join(" / "),
@@ -541,20 +569,21 @@ try {
   {
     const a = content.dessertRunFor(20, 3);
     assert.deepEqual(content.dessertRunFor(20, 3), a, "the same level and day is the same plate");
+    // RULE CHANGE (developer 2026-11-27, the list sorted from the easiest to the toughest): the list's first dessert is no longer the biscuit of the reference sheets.
     assert.equal(
       a.dessertId,
-      "cookie",
+      DESSERT_LADDER[0],
       "the first level of Dessert Run plays the list's first dessert",
     );
     assert.equal(a.ladderLevel, 1);
     assert.equal(
       content.dessertRunFor(91, 1).dessertId,
-      "granddessert",
+      DESSERT_LADDER[49], // RULE CHANGE (developer 2026-11-27): the toughest dessert is last (the Grand Dessert was, on the reference sheets)
       "the campaign's last level plays the 50th",
     );
     assert.equal(
       content.dessertRunFor(17, 3).dessertId,
-      "cookie",
+      DESSERT_LADDER[0],
       "below the first Dessert Run level reads the first dessert",
     );
     assert.notEqual(
@@ -564,7 +593,7 @@ try {
     );
     assert.equal(
       content.dessertRunFor(91, 1, 1).dessertId,
-      "cookie",
+      DESSERT_LADDER[0],
       "after the 50th the list starts again",
     );
     // every level: the dessert is the list's, at its band's tier, from proven seeds only
@@ -815,6 +844,51 @@ try {
     );
     console.log(
       `PASS K walking: ${walks} walks over 50 rounds (${steps} steps) never over a cube, each taken from beside it, deepest ${deepest.toFixed(0)} px from the middle`,
+    );
+  }
+
+  // ---- L. Choosing a dessert (developer 2026-11-26: "there is no option to choose the levels for replaying or viewing previous levels") ----------------------------------------
+  {
+    const levels = await vite.ssrLoadModule("/src/game/business/miniGameLevels.ts");
+    for (let level = 20; level <= 91; level++) {
+      const open = levels.dessertsOpenAt(level) as number;
+      assert.equal(
+        open,
+        content.ladderLevelFor(level),
+        `level ${level}: the desserts up to its own are open`,
+      );
+      // choosing any open dessert plays exactly it, with a proven deal
+      for (let ladder = 1; ladder <= open; ladder++) {
+        const chosen = content.dessertRunFor(level, 3, ladder - content.ladderLevelFor(level));
+        assert.equal(
+          chosen.ladderLevel,
+          ladder,
+          `level ${level}: choosing dessert ${ladder} plays it`,
+        );
+        assert.ok(DESSERT_RUN_SEEDS[`${chosen.dessertId}-${chosen.tier.id}`].includes(chosen.seed));
+      }
+    }
+    for (let ladder = 1; ladder <= 50; ladder++) {
+      const at = levels.levelOpeningDessert(ladder) as number;
+      assert.ok(
+        at >= 20 && at <= 91 && content.ladderLevelFor(at) >= ladder,
+        `dessert ${ladder} opens at ${at}`,
+      );
+      assert.ok(
+        at === 20 || content.ladderLevelFor(at - 1) < ladder,
+        `dessert ${ladder}: not open before ${at}`,
+      );
+    }
+    const game = readFileSync("src/components/kc/inventory/DessertRunGame.tsx", "utf8");
+    assert.ok(
+      game.includes('data-testid="dr-choose"') &&
+        game.includes('data-testid="dr-levels"') &&
+        game.includes("<LevelPicker"),
+      "the name and the result card open the picker",
+    );
+    assert.ok(!/localStorage|updateSave|onSave/.test(game), "choosing writes nothing");
+    console.log(
+      "PASS L choice: every open dessert can be chosen and plays exactly it; later ones say which level opens them",
     );
   }
 

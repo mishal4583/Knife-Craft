@@ -699,6 +699,29 @@ try {
       );
     },
   );
+  const levels = await vite.ssrLoadModule("/src/game/business/miniGameLevels.ts");
+  check(
+    "level picker (developer 2026-11-26): every level 18 to 91 is listed once with its board, and each can be played",
+    () => {
+      const list = levels.VAN_LEVELS as number[];
+      assert.deepEqual(
+        list,
+        Array.from({ length: 74 }, (_, i) => 18 + i),
+      );
+      for (const level of list) {
+        assert.match(levels.vanLevelLine(level) as string, /^\d×\d · \d+(-\d+)? crates$/);
+        const round = startRound(level, level * 1000003 + 9176);
+        assert.ok(round.board.bricks.length > 0);
+      }
+      const game = readFileSync("src/components/kc/inventory/KitchenDispatchGame.tsx", "utf8");
+      assert.ok(
+        game.includes('data-testid="kd-choose"') &&
+          game.includes('data-testid="kd-levels"') &&
+          game.includes("<LevelPicker"),
+        "the badge and the result card open the picker",
+      );
+    },
+  );
 } finally {
   await vite.close();
 }

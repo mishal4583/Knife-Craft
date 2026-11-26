@@ -14,6 +14,7 @@ import { StageSides } from "@/components/kc/common/StageSides";
 import { TurnUprightCard } from "@/components/kc/common/TurnUprightCard";
 import { useTurnUpright } from "@/components/kc/common/useTurnUpright";
 import {
+  CRATE_FIRST_LEVEL,
   FREEZE_SECONDS,
   brickAtCell,
   crateStars,
@@ -32,6 +33,9 @@ import {
   type Brick,
   type CrateRound,
 } from "@/game/business/crateDispatch";
+import { VAN_LEVELS, vanLevelLine } from "@/game/business/miniGameLevels";
+import { LevelPicker } from "./LevelPicker";
+import { useUnlockText } from "@/components/kc/navLevel";
 import {
   KD_PORTRAIT,
   KD_STAGE,
@@ -137,8 +141,14 @@ export function KitchenDispatchGame({
   /** "Next dispatch" moves to the next board; "Try again" replays the same one. */
   const [boardNo, setBoardNo] = useState(0);
   const [attempt, setAttempt] = useState(0);
-  const seed = level * 1000003 + day * 9176 + boardNo;
-  const initial = useMemo(() => startRound(level, seed), [level, seed]);
+  /** The level being unloaded: the player's own to start with, or one chosen in the level picker (developer 2026-11-26: replay and look back at earlier levels). */
+  const [playLevel, setPlayLevel] = useState(level);
+  const [picking, setPicking] = useState(false);
+  const openUpTo = Math.max(level, CRATE_FIRST_LEVEL);
+  /** What opens a locked tile, in the game's own words (services in the restaurant game, developer 2026-10-30). */
+  const unlock = useUnlockText();
+  const seed = playLevel * 1000003 + day * 9176 + boardNo;
+  const initial = useMemo(() => startRound(playLevel, seed), [playLevel, seed]);
   const [round, setRound] = useState<CrateRound>(initial);
   const [phase, setPhase] = useState<Phase>("play");
   const [paused, setPaused] = useState(false);
@@ -220,8 +230,8 @@ export function KitchenDispatchGame({
   );
   useEffect(() => {
     heldRef.current = held;
-    pausedRef.current = paused || held;
-  }, [paused, held]);
+    pausedRef.current = paused || held || picking;
+  }, [paused, held, picking]);
 
   // the draw loop and the clock
   useEffect(() => {
@@ -589,10 +599,15 @@ export function KitchenDispatchGame({
         >
           ←
         </button>
-        <div
-          className="grid place-items-center font-black text-white"
+        <button
+          type="button"
+          onClick={() => setPicking(true)}
+          aria-label="Choose a level"
+          data-testid="kd-choose"
+          className="pointer-events-auto grid place-items-center font-black text-white active:scale-95"
           style={{
             ...box(...ui.level),
+            ...TOUCH,
             backgroundImage: img("level-badge"),
             backgroundSize: "100% 100%",
           }}
@@ -602,16 +617,16 @@ export function KitchenDispatchGame({
             className="absolute left-0 right-0 text-center font-extrabold text-[#dff0ff] drop-shadow-[0_1px_0_rgba(0,0,0,.4)]"
             style={{ top: "21%", ...fs(9.5) }}
           >
-            Level
+            Level ▾
           </span>
           <span
             data-testid="kd-level"
             className="mt-[20%] drop-shadow-[0_2px_0_rgba(0,0,0,.4)]"
             style={fs(24)}
           >
-            {level}
+            {playLevel}
           </span>
-        </div>
+        </button>
         <div
           className="grid place-items-center text-center font-black text-[#fff4d9]"
           style={{
@@ -683,7 +698,8 @@ export function KitchenDispatchGame({
             leaves by the mushroom door, a lettuce crate only by the lettuce door, and so on for
             every food. Unload every crate before the timer ends. Freeze stops the clock for 10
             seconds, Rocket sends one crate out, Hammer smashes one dark block and Undo takes back
-            your last move. More time left earns more stars.
+            your last move. More time left earns more stars. Tap the level badge to replay an
+            earlier level.
           </InfoTip>
         </span>
 
@@ -851,7 +867,7 @@ export function KitchenDispatchGame({
                   alt=""
                   aria-hidden="true"
                   data-testid="kd-picture"
-                  className="mx-auto h-auto max-h-44 w-auto max-w-full"
+                  className="mx-auto h-auto max-h-44 w-auto max-w-full [@media(max-height:480px)]:max-h-20"
                 />
               )}
               <h2 className="mt-1 text-2xl font-black">
@@ -900,19 +916,56 @@ export function KitchenDispatchGame({
                 >
                   {phase === "lost" ? "Try again" : phase === "won" ? "Play it again" : "Restart"}
                 </button>
-                <button
-                  type="button"
-                  onClick={onExit}
-                  data-testid="kd-leave"
-                  className="min-h-12 rounded-2xl border border-[#cfb58a] p-3 font-bold"
-                >
-                  Leave
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPicking(true)}
+                    data-testid="kd-levels"
+                    className="min-h-12 rounded-2xl border border-[#cfb58a] p-2 font-bold"
+                  >
+                    All levels
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onExit}
+                    data-testid="kd-leave"
+                    className="min-h-12 rounded-2xl border border-[#cfb58a] p-2 font-bold"
+                  >
+                    Leave
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         ) : null}
       </div>
+      {picking ? (
+        <LevelPicker
+          testId="kd-picker"
+          title="Choose a level"
+          line={
+            openUpTo >= VAN_LEVELS[VAN_LEVELS.length - 1]!
+              ? "Every level open"
+              : `${openUpTo - CRATE_FIRST_LEVEL + 1} of ${VAN_LEVELS.length} open · more open as you serve`
+          }
+          tiles={VAN_LEVELS.map((k) => ({
+            id: k,
+            open: k <= openUpTo,
+            current: k === playLevel,
+            // the tile's number is the van's level, as on its badge; a locked one says what opens it
+            title: `${k}`,
+            sub: k <= openUpTo ? vanLevelLine(k) : unlock.when(k),
+          }))}
+          onPick={(k) => {
+            setPlayLevel(k);
+            setBoardNo(0);
+            setAttempt((a) => a + 1);
+            setPaused(false);
+            setPicking(false);
+          }}
+          onClose={() => setPicking(false)}
+        />
+      ) : null}
       {held ? (
         <TurnUprightCard
           game="Unload the Van"

@@ -117,9 +117,9 @@ check(
     d1.sw <= d1.iw &&
     d1.top >= 0 &&
     d1.bottom <= d1.ih &&
-    // RULE CHANGE (developer 2026-11-26, the 50-level list from the reference sheets): below the first Dessert Run level the list's first dessert is played, named "Biscuit" on the sheet
-    // (it was "Cookie" or "Donut" when a tier rotated three desserts).
-    /^Biscuit\s*0\/\d+$/.test(name1) &&
+    // RULE CHANGE (developer 2026-11-26, the 50-level list from the reference sheets): below the first Dessert Run level the list's first dessert is played.
+    // RULE CHANGE (developer 2026-11-27, the list sorted from the easiest to the toughest): the first dessert is now "Pie" (it was "Biscuit", the first on the reference sheets).
+    /^Pie\s*0\/\d+$/.test(name1) &&
     (await attr("tier")) === "1",
   { d1, name1 },
 );
@@ -264,7 +264,7 @@ for (const [w, h] of [
         .filter((r) => r.width < 47.5 || r.height < 47.5).length;
       const name = document.querySelector('[data-testid="dr-dessert"]');
       const count = document.querySelector('[data-testid="dr-count"]');
-      const box = name.closest("div").getBoundingClientRect();
+      const box = name.closest('[data-testid="dr-choose"]').getBoundingClientRect();
       const cr = count.getBoundingClientRect();
       return {
         // the header: the whole name and the count show, in a box no taller than three short lines
@@ -372,6 +372,99 @@ await open(18);
 await page.click('[data-testid="dr-back"]');
 await sleep(800);
 check("D7 Back leaves the game", !(await page.$(GAME)), {});
+
+// D11: the dessert picker (developer 2026-11-26). Level 75 plays the Lemon Tart (39): 39 open, the rest locked with the level that opens them.
+await open(75);
+await laneClick(0, 5);
+await sleep(600);
+await page.click('[data-testid="dr-choose"]');
+await sleep(500);
+const picker = await page.evaluate(() => {
+  const tiles = [...document.querySelectorAll('[data-testid^="dr-picker-tile-"]')];
+  return {
+    tiles: tiles.length,
+    open: tiles.filter((b) => !b.disabled).length,
+    current: tiles.find((b) => b.getAttribute("aria-current"))?.dataset.testid,
+    locked40: document.querySelector('[data-testid="dr-picker-tile-40"]')?.textContent,
+  };
+});
+const paused0 = await served();
+await sleep(1500);
+const heldStill = (await served()) === paused0;
+await shot(page, "dessertrun-picker");
+await page.click('[data-testid="dr-picker-tile-12"]');
+await sleep(600);
+const chosen = {
+  dessert: await attr("dessert"),
+  served: await served(),
+  phase: await attr("phase"),
+  name: await text("dr-dessert"),
+  closed: !(await page.$('[data-testid="dr-picker"]')),
+};
+await page.click('[data-testid="dr-pause"]');
+await sleep(300);
+await page.click('[data-testid="dr-levels"]');
+await sleep(300);
+const fromCard = !!(await page.$('[data-testid="dr-picker"]'));
+await page.click('[data-testid="dr-picker-close"]');
+await sleep(300);
+check(
+  "D11 the dessert picker: 50 tiles, those up to the player's own open, the round waits; choosing an earlier one plays it; the pause card opens it too",
+  picker.tiles === 50 &&
+    picker.open === 39 &&
+    picker.current === "dr-picker-tile-39" &&
+    /after the next service|in \d+ services/.test(picker.locked40) &&
+    heldStill &&
+    // (dessert 12 of the sorted list)
+    chosen.dessert === "eclair" &&
+    chosen.served === 0 &&
+    chosen.phase === "play" &&
+    chosen.name.trim() === "Eclair" &&
+    chosen.closed &&
+    fromCard &&
+    !(await page.$('[data-testid="dr-picker"]')),
+  { picker, heldStill, chosen, fromCard },
+);
+for (const [w, h] of [
+  [320, 568],
+  [390, 844],
+  [768, 1024],
+  [844, 390],
+  [1280, 720],
+]) {
+  await open(91, w, h);
+  await page.click('[data-testid="dr-choose"]');
+  await sleep(500);
+  const fit = await page.evaluate(() => {
+    const panel = document
+      .querySelector('[data-testid="dr-picker"] section')
+      .getBoundingClientRect();
+    const tiles = [...document.querySelectorAll('[data-testid^="dr-picker-tile-"]')].map((b) =>
+      b.getBoundingClientRect(),
+    );
+    const close = document.querySelector('[data-testid="dr-picker-close"]').getBoundingClientRect();
+    const list = document.querySelector('[data-testid="dr-picker"] ul');
+    return {
+      inside:
+        panel.top >= -1 &&
+        panel.bottom <= innerHeight + 1 &&
+        panel.left >= -1 &&
+        panel.right <= innerWidth + 1,
+      smallTiles: tiles.filter((r) => r.width < 47.5 || r.height < 47.5).length,
+      close: Math.round(Math.min(close.width, close.height)),
+      sideways:
+        list.scrollWidth > list.clientWidth + 1 ||
+        document.documentElement.scrollWidth > innerWidth,
+      shown: tiles.filter((r) => r.bottom > panel.top && r.top < panel.bottom).length,
+    };
+  });
+  check(
+    `D11 the picker at ${w} x ${h}: inside the screen, 48 px tiles and close, no sideways scroll`,
+    fit.inside && fit.smallTiles === 0 && fit.close >= 47 && !fit.sideways && fit.shown >= 6,
+    fit,
+  );
+  if (w === 844 || w === 320) await shot(page, `dessertrun-picker-${w}`);
+}
 
 // D10: the pictures themselves, as the browser decodes them
 const ladderText = readFileSync(

@@ -5,7 +5,11 @@ import { InfoTip } from "@/components/kc/common/InfoTip";
 import { StageSides } from "@/components/kc/common/StageSides";
 import { TurnUprightCard } from "@/components/kc/common/TurnUprightCard";
 import { useTurnUpright } from "@/components/kc/common/useTurnUpright";
-import { dessertRunFor } from "@/game/business/dessertRunContent";
+import { dessertRunFor, ladderLevelFor } from "@/game/business/dessertRunContent";
+import { DESSERTS, DESSERT_LADDER } from "@/game/business/dessertGallery";
+import { dessertsOpenAt, levelOpeningDessert } from "@/game/business/miniGameLevels";
+import { LevelPicker } from "./LevelPicker";
+import { useUnlockText } from "@/components/kc/navLevel";
 import {
   STAGE,
   STEP,
@@ -45,6 +49,21 @@ export function DessertRunGame({
   const day = save.business.calendar.businessDay;
   const [round, setRound] = useState(0);
   const pick = useMemo(() => dessertRunFor(level, day, round), [level, day, round]);
+  /** The dessert picker (developer 2026-11-26): every dessert up to the player's own, or the farthest "Next dessert" reached in this visit, can be chosen. The round waits behind it. */
+  const [picking, setPicking] = useState(false);
+  const [reached, setReached] = useState(0);
+  useEffect(() => {
+    setReached((r) => Math.max(r, pick.ladderLevel));
+  }, [pick]);
+  const openUpTo = Math.max(dessertsOpenAt(level), reached);
+  /** What opens a locked tile, in the game's own words (services in the restaurant game, developer 2026-10-30). */
+  const unlock = useUnlockText();
+  const chooseDessert = (ladder: number) => {
+    setRound(ladder - ladderLevelFor(level));
+    setAttempt((a) => a + 1);
+    setPaused(false);
+    setPicking(false);
+  };
   /** "Try again" replays the same plate: only the attempt number changes. */
   const [attempt, setAttempt] = useState(0);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(2);
@@ -79,8 +98,8 @@ export function DessertRunGame({
   const pausedRef = useRef(false);
   useEffect(() => {
     speedRef.current = speed;
-    pausedRef.current = paused || held;
-  }, [speed, paused, held]);
+    pausedRef.current = paused || held || picking;
+  }, [speed, paused, held, picking]);
 
   useEffect(() => {
     const state = makeRun(pick.dessertId, pick.seed, pick.tier);
@@ -314,29 +333,41 @@ export function DessertRunGame({
           >
             ←
           </button>
-          <div
-            className={`min-w-0 border border-[#d7a95c] bg-[#fff8e8] shadow-md ${wide ? "w-[40%] max-w-[420px] flex-none rounded-full px-5 py-1" : "flex-1 rounded-2xl px-3 py-1 max-[379px]:px-2"}`}
+          <button
+            type="button"
+            onClick={() => setPicking(true)}
+            aria-label={`Dessert ${pick.ladderLevel} of 50. Choose a dessert`}
+            data-testid="dr-choose"
+            className={`pointer-events-auto flex min-h-12 min-w-0 items-center gap-1 border border-[#d7a95c] bg-[#fff8e8] text-left shadow-md ${wide ? "w-[40%] max-w-[420px] flex-none rounded-full px-5 py-1" : "flex-1 rounded-2xl px-3 py-1 max-[379px]:px-2"}`}
           >
-            {/* a narrow phone has room for the dessert's name and the count only (a bug found 2026-11-26: the label wrapped to three lines over the plate and the name and count were cut off) */}
-            <p className="truncate text-[11px] font-black uppercase tracking-[.16em] text-[#a56a31] max-[399px]:tracking-[.06em] max-[359px]:hidden">
-              🍰 Dessert Run
-            </p>
-            {/* the count goes to its own line when it does not fit beside the name: neither is ever cut off */}
-            <p
-              className="flex flex-wrap items-baseline gap-x-2 text-sm font-extrabold leading-tight max-[379px]:text-[13px]"
-              data-testid="dr-name"
-            >
-              <span className="min-w-0 max-w-full truncate" data-testid="dr-dessert">
-                {state?.dessert.short}
-              </span>
-              <span
-                className="shrink-0 text-[12px] font-bold text-[#a56a31]"
-                data-testid="dr-count"
+            <span className="block min-w-0 flex-1">
+              {/* a narrow phone has room for the dessert's name and the count only (a bug found 2026-11-26: the label wrapped to three lines over the plate and the name and count were cut off) */}
+              <p className="truncate text-[11px] font-black uppercase tracking-[.16em] text-[#a56a31] max-[399px]:tracking-[.06em] max-[359px]:hidden">
+                🍰 Dessert Run
+              </p>
+              {/* the count goes to its own line when it does not fit beside the name: neither is ever cut off */}
+              <p
+                className="flex flex-wrap items-baseline gap-x-2 text-sm font-extrabold leading-tight max-[379px]:text-[13px]"
+                data-testid="dr-name"
               >
-                {delivered}/{total}
-              </span>
-            </p>
-          </div>
+                <span
+                  className="min-w-0 max-w-full truncate max-[359px]:whitespace-normal max-[359px]:text-[12px]"
+                  data-testid="dr-dessert"
+                >
+                  {state?.dessert.short}
+                </span>
+                <span
+                  className="shrink-0 text-[12px] font-bold text-[#a56a31]"
+                  data-testid="dr-count"
+                >
+                  {delivered}/{total}
+                </span>
+              </p>
+            </span>
+            <span aria-hidden="true" className="shrink-0 text-base font-black text-[#a56a31]">
+              ▾
+            </span>
+          </button>
           {/* the mock-up's header: back and the name on the left, speed, tip and pause on the right */}
           {wide ? <span aria-hidden="true" className="min-w-0 flex-1" /> : null}
           <button
@@ -353,8 +384,9 @@ export function DessertRunGame({
               Tap a waiter at the front of a lane. It goes to a free standby spot and fetches the
               cubes of its colour from the outside of the dessert, one at a time. A runner takes
               each one to a guest. A waiter with nothing it can reach waits, and goes on by itself
-              when you open the way. When all five spots wait, the kitchen is jammed. Hold a waiter
-              to see the cubes it can reach. Fewer waiters waiting at once earns more stars.
+              when you open the way. Tap the dessert's name to choose another. When all five spots
+              wait, the kitchen is jammed. Hold a waiter to see the cubes it can reach. Fewer
+              waiters waiting at once earns more stars.
             </InfoTip>
           </span>
           <button
@@ -385,7 +417,7 @@ export function DessertRunGame({
                   alt=""
                   aria-hidden="true"
                   data-testid="dr-picture"
-                  className="mx-auto h-32 w-auto"
+                  className="mx-auto h-32 w-auto [@media(max-height:480px)]:h-20"
                 />
               )}
               <h2 className="mt-2 text-2xl font-black">
@@ -436,19 +468,50 @@ export function DessertRunGame({
                 >
                   {phase === "jam" ? "Try again" : phase === "won" ? "Play it again" : "Restart"}
                 </button>
-                <button
-                  type="button"
-                  onClick={onExit}
-                  data-testid="dr-leave"
-                  className="min-h-12 rounded-2xl border border-[#cfb58a] p-3 font-bold"
-                >
-                  Leave
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPicking(true)}
+                    data-testid="dr-levels"
+                    className="min-h-12 rounded-2xl border border-[#cfb58a] p-2 font-bold"
+                  >
+                    All desserts
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onExit}
+                    data-testid="dr-leave"
+                    className="min-h-12 rounded-2xl border border-[#cfb58a] p-2 font-bold"
+                  >
+                    Leave
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         ) : null}
       </div>
+      {picking ? (
+        <LevelPicker
+          testId="dr-picker"
+          title="Choose a dessert"
+          line={openUpTo >= 50 ? "All 50 open" : `${openUpTo} of 50 open · more open as you serve`}
+          tiles={DESSERT_LADDER.map((id, i) => {
+            const ladder = i + 1;
+            const open = ladder <= openUpTo;
+            return {
+              id: ladder,
+              open,
+              current: ladder === pick.ladderLevel,
+              title: `${ladder}. ${open ? DESSERTS[id].short : "Locked"}`,
+              sub: open ? undefined : unlock.when(levelOpeningDessert(ladder)),
+              picture: `${import.meta.env.BASE_URL}${DESSERTS[id].art}`,
+            };
+          })}
+          onPick={chooseDessert}
+          onClose={() => setPicking(false)}
+        />
+      ) : null}
       {held ? (
         <TurnUprightCard
           game="Dessert Run"
