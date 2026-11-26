@@ -18,8 +18,8 @@ import {
   spotCenter,
   type RunState,
 } from "@/game/business/dessertRun";
-import { GRID, RUN_PALETTE } from "@/game/business/dessertGallery";
-import { FRAME, waiterSheet, type RunArt } from "./dessertRunArt";
+import { GRID, RUN_PALETTE, boardCheck } from "@/game/business/dessertGallery";
+import { FRAME, dessertPicture, waiterSheet, type RunArt } from "./dessertRunArt";
 
 /**
  * Dessert Run drawn in the 540 x 960 stage. The painted pieces (Dessert Run Assets) are used when they have
@@ -162,6 +162,96 @@ export function tileSprite(hex: string, w: number, h: number): HTMLCanvasElement
   // (no white glint on the face: developer 2026-11-18, "remove these white dots from the mosaics")
   tileCache.set(key, c);
   return c;
+}
+
+/** The dessert picture's pixels a cube (448 x 448 for the 28 x 28 board). */
+const PICTURE_CUBE = 16;
+
+const edgeCache = new Map<string, HTMLCanvasElement>();
+/** The faint edge laid over a picture cube, so the dessert still reads as the cubes the waiters fetch: a thin light line at the top and left, a thin shade at the bottom and right. */
+function cubeEdge(w: number, h: number): HTMLCanvasElement {
+  const key = `${w}|${h}`;
+  let c = edgeCache.get(key);
+  if (c) return c;
+  c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const g = c.getContext("2d")!;
+  const t = Math.max(1, Math.round(h * 0.05));
+  const l = Math.max(1, Math.round(w * 0.05));
+  g.fillStyle = "rgba(255,255,255,.14)";
+  g.fillRect(0, 0, w, t);
+  g.fillRect(0, t, l, h - t);
+  g.fillStyle = "rgba(0,0,0,.13)";
+  g.fillRect(l, h - t, w - l, t);
+  g.fillRect(w - l, t, l, h - 2 * t);
+  edgeCache.set(key, c);
+  return c;
+}
+
+const mosaics = new WeakMap<RunState, { key: string; canvas: HTMLCanvasElement }>();
+/**
+ * THE DESSERT: its cubes on a layer in DEVICE pixels, blitted 1:1 and painted again only when a cube leaves (or the picture arrives). A board cube is its flat tile; every other cube is its own
+ * square of the dessert's picture over the board's tile (a cube at the dessert's edge is part picture, part plate), with a faint cube edge. Without the picture (still loading, or it failed)
+ * every cube is its flat tile. `ox`, `oy` is where the grid starts and `cell` a cube's side, in the stage's logical pixels; tile edges sit on whole device pixels (no gap, no blur).
+ */
+export function drawMosaic(
+  ctx: CanvasRenderingContext2D,
+  state: RunState,
+  art: RunArt | null,
+  ox: number,
+  oy: number,
+  cell: number,
+) {
+  const k = ctx.getTransform().a || 1;
+  const x0 = Math.floor(ox * k);
+  const y0 = Math.floor(oy * k);
+  const px = (n: number) => Math.floor((ox + n * cell) * k) - x0;
+  const py = (n: number) => Math.floor((oy + n * cell) * k) - y0;
+  const picture = dessertPicture(art, state.dessert.art);
+  let left = 0;
+  for (let i = 0; i < state.grid.length; i++) if (state.grid[i]! >= 0) left++;
+  const key = `${left}|${px(GRID)}|${py(GRID)}|${picture ? 1 : 0}`;
+  let hit = mosaics.get(state);
+  if (!hit || hit.key !== key) {
+    const canvas = hit?.canvas ?? document.createElement("canvas");
+    canvas.width = px(GRID);
+    canvas.height = py(GRID);
+    const g = canvas.getContext("2d")!;
+    g.imageSmoothingQuality = "high";
+    const board = state.dessert.toneNames[1]!;
+    for (let i = 0; i < state.grid.length; i++) {
+      const group = state.grid[i]!;
+      if (group < 0) continue;
+      const col = i % GRID;
+      const row = (i / GRID) | 0;
+      const x = px(col);
+      const y = py(row);
+      const w = px(col + 1) - x;
+      const h = py(row + 1) - y;
+      // group 1 is the board (dessertGallery.ts); the others show the picture
+      if (!picture || group === 1) {
+        g.drawImage(tileSprite(cellHex(state, i), w, h), x, y);
+        continue;
+      }
+      g.drawImage(tileSprite(RUN_PALETTE[board[boardCheck(col, row)]!], w, h), x, y);
+      g.drawImage(
+        picture,
+        col * PICTURE_CUBE,
+        row * PICTURE_CUBE,
+        PICTURE_CUBE,
+        PICTURE_CUBE,
+        x,
+        y,
+        w,
+        h,
+      );
+      g.drawImage(cubeEdge(w, h), x, y);
+    }
+    hit = { key, canvas };
+    mosaics.set(state, hit);
+  }
+  ctx.drawImage(hit.canvas, x0 / k, y0 / k, hit.canvas.width / k, hit.canvas.height / k);
 }
 
 export function drawCube(
@@ -512,32 +602,12 @@ export function drawRun(ctx: CanvasRenderingContext2D, state: RunState, view: Dr
   }
 
   // ---- the dessert
-  const dprK = ctx.getTransform().a || 1;
   // The cubes are cut by the plate's round well, so the ones at the edge follow its shape (the board holds every cube that meets the circle).
   ctx.save();
   ctx.beginPath();
   ctx.arc(PLATE.x, PLATE.y, WELL_R, 0, Math.PI * 2);
   ctx.clip();
-  for (let i = 0; i < state.grid.length; i++) {
-    const k = state.grid[i]!;
-    if (k < 0) continue;
-    const col = i % GRID;
-    const row = (i / GRID) | 0;
-    // Tile edges sit on whole device pixels: the right edge of one tile is the left edge of the next, never a gap.
-    const x = Math.floor((ORIGIN.x + col * CELL) * dprK) / dprK;
-    const y = Math.floor((ORIGIN.y + row * CELL) * dprK) / dprK;
-    const x2 = Math.floor((ORIGIN.x + (col + 1) * CELL) * dprK) / dprK;
-    const y2 = Math.floor((ORIGIN.y + (row + 1) * CELL) * dprK) / dprK;
-    // The tile's box is whole device pixels; its sprite is blitted 1:1, so the right edge of one tile is the left
-    // edge of the next and nothing can show or blur between them.
-    ctx.drawImage(
-      tileSprite(cellHex(state, i), Math.round((x2 - x) * dprK), Math.round((y2 - y) * dprK)),
-      x,
-      y,
-      x2 - x,
-      y2 - y,
-    );
-  }
+  drawMosaic(ctx, state, art, ORIGIN.x, ORIGIN.y, CELL);
   ctx.globalAlpha = 1;
   // a soft shade just inside the rim, so the mosaic sits down in the dish
   const rim = ctx.createRadialGradient(PLATE.x, PLATE.y, WELL_R - 10, PLATE.x, PLATE.y, WELL_R);

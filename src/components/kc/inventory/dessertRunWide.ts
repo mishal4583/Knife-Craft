@@ -9,13 +9,12 @@ import {
   SPOT_COUNT,
   TABLES,
   WELL_R,
-  cellHex,
   hintLane,
   isWaiting,
   spotCenter,
   type RunState,
 } from "@/game/business/dessertRun";
-import { GRID, RUN_PALETTE } from "@/game/business/dessertGallery";
+import { RUN_PALETTE } from "@/game/business/dessertGallery";
 import {
   FONT,
   GUEST_BOTTOM,
@@ -30,7 +29,7 @@ import {
   plateLayout,
   rr,
   shade,
-  tileSprite,
+  drawMosaic,
   type DrawView,
   drawWaitingTag,
 } from "./dessertRunDraw";
@@ -189,7 +188,6 @@ export function drawRunWide(ctx: CanvasRenderingContext2D, state: RunState, view
     ctx.fillStyle = "#c9a06a";
     ctx.fillRect(mapX(AISLE.x), mapY(AISLE.y), AISLE.w * SCALE, AISLE.h * SCALE);
   }
-  const dpr = ctx.getTransform().a || 1;
   const cell = CELL * SCALE;
   const ox = mapX(ORIGIN.x);
   const oy = mapY(ORIGIN.y);
@@ -197,22 +195,7 @@ export function drawRunWide(ctx: CanvasRenderingContext2D, state: RunState, view
   ctx.beginPath();
   ctx.arc(px, py, WELL_R * SCALE, 0, Math.PI * 2);
   ctx.clip();
-  for (let i = 0; i < state.grid.length; i++) {
-    if (state.grid[i]! < 0) continue;
-    const col = i % GRID;
-    const row = (i / GRID) | 0;
-    const x = Math.floor((ox + col * cell) * dpr) / dpr;
-    const y = Math.floor((oy + row * cell) * dpr) / dpr;
-    const x2 = Math.floor((ox + (col + 1) * cell) * dpr) / dpr;
-    const y2 = Math.floor((oy + (row + 1) * cell) * dpr) / dpr;
-    ctx.drawImage(
-      tileSprite(cellHex(state, i), Math.round((x2 - x) * dpr), Math.round((y2 - y) * dpr)),
-      x,
-      y,
-      x2 - x,
-      y2 - y,
-    );
-  }
+  drawMosaic(ctx, state, art, ox, oy, cell);
   const rim = ctx.createRadialGradient(px, py, WELL_R * SCALE - 10, px, py, WELL_R * SCALE);
   rim.addColorStop(0, "rgba(70,35,10,0)");
   rim.addColorStop(1, "rgba(70,35,10,.32)");

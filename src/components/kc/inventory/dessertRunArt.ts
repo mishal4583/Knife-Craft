@@ -31,10 +31,26 @@ export type RunArt = {
   images: Partial<Record<ArtName, HTMLImageElement>>;
   /** Recoloured waiter sheets, by sheet name and colour. */
   sheets: Map<string, HTMLCanvasElement>;
+  /** The dessert pictures (`business/dessertrun/desserts/`, scripts/make-dessert-art.py), each loaded the first time its dessert is drawn; null while it loads, or if it failed. */
+  desserts: Map<string, HTMLImageElement | null>;
 };
 
+/** A dessert's picture once it has loaded (asking the first time starts the load); null until then, or if it failed: the cubes are drawn in their flat tones. */
+export function dessertPicture(art: RunArt | null, path: string): HTMLImageElement | null {
+  if (!art) return null;
+  const hit = art.desserts.get(path);
+  if (hit !== undefined) return hit;
+  art.desserts.set(path, null);
+  const img = new Image();
+  img.onload = () => {
+    art.desserts.set(path, img);
+  };
+  img.src = `${import.meta.env.BASE_URL}${path}`;
+  return null;
+}
+
 export function loadRunArt(): RunArt {
-  const art: RunArt = { images: {}, sheets: new Map() };
+  const art: RunArt = { images: {}, sheets: new Map(), desserts: new Map() };
   for (const name of NAMES) {
     const img = new Image();
     img.onload = () => {

@@ -114,7 +114,9 @@ check(
     d1.sw <= d1.iw &&
     d1.top >= 0 &&
     d1.bottom <= d1.ih &&
-    /^(Cookie|Donut)\s*0\/\d+$/.test(name1) &&
+    // RULE CHANGE (developer 2026-11-26, the 50-level list from the reference sheets): below the first Dessert Run level the list's first dessert is played, named "Biscuit" on the sheet
+    // (it was "Cookie" or "Donut" when a tier rotated three desserts).
+    /^Biscuit\s*0\/\d+$/.test(name1) &&
     (await attr("tier")) === "1",
   { d1, name1 },
 );

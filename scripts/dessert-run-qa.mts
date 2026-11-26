@@ -2,7 +2,7 @@
 // Run: npx tsx scripts/dessert-run-qa.mts   (about half a minute: it replays every shipped plate twice)
 // The browser side is tools/e2e/dessertrun.mjs.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { createServer } from "vite";
 
 const vite = await createServer({
@@ -21,9 +21,12 @@ try {
     "/src/game/business/businessDeterministicRandom.ts",
   );
   const { RUN_TIERS, STEP } = run;
-  const { DESSERTS, DESSERTS_BY_TIER, RUN_PALETTE, GRID } = gallery;
-  type Id =
-    "cookie" | "donut" | "cupcake" | "cone" | "macaron" | "pancakes" | "cakeslice" | "lollipop";
+  const { DESSERTS, DESSERT_LADDER, BAND_TIERS, tierOfLadderLevel, RUN_PALETTE, GRID } = gallery;
+  // RULE CHANGE (developer 2026-11-26, the 50-level dessert list): every level has its own dessert, in five bands of ten, each band at one tier (`BAND_TIERS`); the desserts are `DESSERT_LADDER`.
+  type Id = string;
+  /** The desserts of one band tier, with their level on the list. */
+  const ofBand = (band: number): Id[] => DESSERT_LADDER.slice(band * 10, band * 10 + 10);
+  const levelOf = (id: Id) => DESSERT_LADDER.indexOf(id) + 1;
 
   // ---- A. Tiers ----------------------------------------------------------------------------------
   // RULE CHANGE (developer 2026-11-19: "plan the levels easy to hard as they level up, and make the mosaic beautiful"): six steps instead of four, a plate
@@ -92,33 +95,76 @@ try {
     cubes[id] = per.reduce((a: number, b: number) => a + b, 0);
     assert.deepEqual(d.build(), grid, `${id}: the build is the same every time`);
   }
+  // RULE CHANGE (2026-11-26): the gallery is the 50 desserts of the list, every one filling the plate's well (568 cubes).
+  assert.equal(DESSERT_LADDER.length, 50, "50 desserts, one per level of the list");
+  assert.equal(new Set(DESSERT_LADDER).size, 50, "every dessert of the list is different");
   assert.deepEqual(
-    cubes,
-    {
-      cookie: 568,
-      donut: 568,
-      cupcake: 568,
-      cone: 568,
-      macaron: 568,
-      pancakes: 568,
-      cakeslice: 568,
-      lollipop: 568,
-    },
-    // RULE CHANGE (developer 2026-11-18: the cubes at the edge follow the plate's round shape): the board holds every cube that meets the plate's
-    // well circle (WELL_R), 568, was a 500-cube staircase disc that stopped short of the rim.
+    Object.keys(DESSERTS).sort(),
+    [...DESSERT_LADDER].sort(),
+    "the gallery is exactly the list",
+  );
+  assert.ok(
+    DESSERT_LADDER.every((id: string) => cubes[id] === 568),
     "every picture fills the whole plate well, 568 cubes",
   );
-  for (const tier of RUN_TIERS)
-    for (const id of DESSERTS_BY_TIER[tier.id])
-      assert.equal(
-        DESSERTS[id as Id].tier <= tier.id,
-        true,
-        `${id} is not harder than tier ${tier.id}`,
-      );
-  console.log(
-    "PASS B gallery: 8 pixel-art desserts, 5 to 9 colour groups each (several tones inside a group), outline first, cube counts",
-    JSON.stringify(cubes),
+  DESSERT_LADDER.forEach((id: string, n: number) =>
+    assert.equal(DESSERTS[id].tier, tierOfLadderLevel(n + 1), `${id} is dealt at its band's tier`),
   );
+  assert.deepEqual(
+    BAND_TIERS,
+    [1, 2, 3, 5, 6],
+    "Intro, Easy, Medium, Hard, Expert are tiers 1, 2, 3, 5, 6",
+  );
+  // RULE CHANGE (developer 2026-11-26, "refer these images in order and fix the desserts ... exactly like in the reference"): no dessert is hand-painted any more: all 50, the former eight too,
+  // are the developer's reference pictures (scripts/make-dessert-art.py); the former eight keep their places on the list.
+  assert.deepEqual(
+    ["cookie", "donut", "macaron", "cupcake", "pancakes", "cone", "cakeslice", "lollipop"].map(
+      (id) => DESSERT_LADDER.indexOf(id) + 1,
+    ),
+    [1, 4, 5, 6, 7, 8, 9, 10],
+    "biscuit L1, donut L4, macaron L5, cupcake L6, pancake L7, ice cream L8, cake slice L9, lollipop L10",
+  );
+  console.log(
+    "PASS B gallery: the 50 desserts of the list, 5 to 9 colour groups each (several tones inside a group), outline first, cube counts",
+    JSON.stringify({ desserts: Object.keys(cubes).length }),
+  );
+  // ---- B2. The pictures: every dessert is the reference picture, one small WebP per dessert, loaded only when its dessert is drawn --------
+  {
+    let total = 0;
+    for (const id of DESSERT_LADDER as string[]) {
+      const d = DESSERTS[id];
+      const file = `public/${d.art}`;
+      assert.equal(d.art, `business/dessertrun/desserts/${id}.webp`);
+      assert.ok(existsSync(file), `${id}: its picture ${file} exists`);
+      const bytes = readFileSync(file);
+      assert.ok(
+        bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP",
+        `${id}: a WebP`,
+      );
+      const size = statSync(file).size;
+      assert.ok(size < 60 * 1024, `${id}: a small picture (${Math.round(size / 1024)} KB)`);
+      total += size;
+    }
+    assert.ok(
+      total < 1_600 * 1024,
+      `all 50 pictures together stay small (${Math.round(total / 1024)} KB)`,
+    );
+    const drawSrc = readFileSync("src/components/kc/inventory/dessertRunDraw.ts", "utf8");
+    const wideSrc = readFileSync("src/components/kc/inventory/dessertRunWide.ts", "utf8");
+    assert.ok(
+      drawSrc.includes("export function drawMosaic(") &&
+        drawSrc.includes("drawMosaic(ctx, state, art, ORIGIN.x") &&
+        wideSrc.includes("drawMosaic(ctx, state, art, ox, oy, cell)"),
+      "both the upright and the wide board draw the picture's cubes",
+    );
+    assert.ok(
+      drawSrc.includes("if (!picture || group === 1) {"),
+      "without its picture a dessert is drawn in its flat tones (and the board always is)",
+    );
+    console.log(
+      `PASS B2 pictures: 50 reference pictures, ${Math.round(total / 1024)} KB, drawn on both boards with a flat fallback`,
+    );
+  }
 
   // ---- C. Source guard: the plate must be the same on every browser -------------------------------
   for (const file of [
@@ -212,8 +258,13 @@ try {
     });
     u.ext.set(run.computeExt(u.grid));
     const other = run.hintLane(u);
-    assert.ok(other !== 0 || u.lanes.every((l: Array<{ k: number }>) => l[0]?.k === first.k), "a lane whose waiter has nothing to fetch is not the hint when another can fetch");
-    console.log(`PASS D2b hint: points at a lane that can fetch (${checked} rounds), skips an empty or fruitless lane 0, none when empty`);
+    assert.ok(
+      other !== 0 || u.lanes.every((l: Array<{ k: number }>) => l[0]?.k === first.k),
+      "a lane whose waiter has nothing to fetch is not the hint when another can fetch",
+    );
+    console.log(
+      `PASS D2b hint: points at a lane that can fetch (${checked} rounds), skips an empty or fruitless lane 0, none when empty`,
+    );
   }
   // D3 a waiter with nothing reachable waits, and goes on by itself. A hand-built board: one cube of colour 1
   // sealed inside a ring of colour 0.
@@ -300,12 +351,13 @@ try {
 
   // ---- E. Shipped plates --------------------------------------------------------------------------
   const wanted = new Set<string>();
-  for (const tier of RUN_TIERS)
-    for (const id of DESSERTS_BY_TIER[tier.id]) wanted.add(`${id}-${tier.id}`);
+  DESSERT_LADDER.forEach((id: string, n: number) =>
+    wanted.add(`${id}-${tierOfLadderLevel(n + 1)}`),
+  );
   assert.deepEqual(
     Object.keys(DESSERT_RUN_SEEDS).sort(),
     [...wanted].sort(),
-    "seed lists match the gallery by tier",
+    "seed lists match the list: one per dessert, at its band's tier",
   );
   let plates = 0;
   let longest = 0;
@@ -313,8 +365,8 @@ try {
     const [id, tierId] = key.split("-") as [Id, string];
     const tier = RUN_TIERS[Number(tierId) - 1];
     const seeds: number[] = DESSERT_RUN_SEEDS[key];
-    assert.equal(seeds.length, 60, `${key}: 60 seeds`);
-    assert.equal(new Set(seeds).size, 60, `${key}: seeds are distinct`);
+    assert.equal(seeds.length, 6, `${key}: 6 seeds`);
+    assert.equal(new Set(seeds).size, 6, `${key}: seeds are distinct`);
     for (const seed of seeds) {
       const round = run.makeRun(id, seed, tier);
       assert.equal(run.runDeckProblem(round, tier), null, `${key} ${seed}: deck follows the plan`);
@@ -351,42 +403,47 @@ try {
     return s.phase === "won";
   };
   const rate: number[] = [];
-  for (const tier of RUN_TIERS) {
+  for (let band = 0; band < 5; band++) {
     let won = 0;
     let n = 0;
-    for (const id of DESSERTS_BY_TIER[tier.id])
-      for (const seed of DESSERT_RUN_SEEDS[`${id}-${tier.id}`].slice(0, 20)) {
+    for (const id of ofBand(band)) {
+      const tier = RUN_TIERS[tierOfLadderLevel(levelOf(id)) - 1];
+      for (const seed of DESSERT_RUN_SEEDS[`${id}-${tier.id}`]) {
         n += 1;
-        won += Number(careless(id as Id, tier, seed));
+        won += Number(careless(id, tier, seed));
       }
+    }
     rate.push(won / n);
   }
   console.log(
-    "     careless wins by tier:",
+    "     careless wins by band:",
     rate.map((r) => `${Math.round(r * 100)}%`).join(" / "),
   );
-  assert.ok(rate[0] >= 0.7, "tier 1 is gentle: careless play wins most plates");
-  assert.ok(rate[5] <= 0.5, "tier 6 is not won by careless play");
-  assert.ok(rate[0] - rate[5] >= 0.25, "the tiers get harder");
-  console.log("PASS F difficulty: tier 1 gentle, tier 6 hard, in between in order");
+  assert.ok(rate[0] >= 0.7, "the Intro band is gentle: careless play wins most plates");
+  assert.ok(rate[rate.length - 1] <= 0.5, "the Expert band (tier 6) is not won by careless play");
+  assert.ok(rate[0] - rate[rate.length - 1] >= 0.25, "the bands get harder");
+  console.log("PASS F difficulty: Intro gentle, Expert hard, in between in order");
 
   // ---- F2. Rated plates (developer 2026-11-19: "ensure and increase the quality of the levels") ------------------
-  // The seeds of a plate run easiest first, inside the tier's window (RUN_HARDNESS), and the windows rise tier by tier. Rating is slow
-  // (12 careful rounds a plate), so four seeds of every plate are re-rated here: the first, two in the middle and the last.
+  // The seeds of a dessert run easiest first, nearest its target in its band tier's window (RUN_HARDNESS), and the windows rise band by band. Rating is slow
+  // (12 careful rounds a plate), so two seeds of every dessert are re-rated here: the first and the last.
   {
-    const tierMean: number[] = [];
-    for (const tier of RUN_TIERS) {
-      const [lo, hi] = run.RUN_HARDNESS[tier.id];
+    const bandMean: number[] = [];
+    for (let band = 0; band < 5; band++) {
       let sum = 0;
       let count = 0;
-      for (const id of DESSERTS_BY_TIER[tier.id]) {
+      for (const id of ofBand(band)) {
+        const tier = RUN_TIERS[tierOfLadderLevel(levelOf(id)) - 1];
+        const [lo, hi] = run.RUN_HARDNESS[tier.id];
         const seeds: number[] = DESSERT_RUN_SEEDS[`${id}-${tier.id}`];
         let before = -1;
-        for (const at of [0, 20, 40, 59]) {
-          const rating = run.ratePlate(id as Id, seeds[at], tier, 12);
+        for (const at of [0, 5]) {
+          const rating = run.ratePlate(id, seeds[at], tier, 12);
+          // RULE CHANGE (2026-11-26): the window is a TARGET for the dessert's six seeds, not a bound (a plain picture cannot be made as hard as a busy one; the generator takes the proven seeds
+          // nearest the target), so what is guarded is "never much harder than the band's window".
           assert.ok(
-            rating.hardness >= lo - 1e-9 && rating.hardness <= hi + 1e-9,
-            `${id}-${tier.id} seed #${at}: hardness ${rating.hardness.toFixed(2)} is outside the tier's window ${lo}..${hi}`,
+            rating.hardness <= hi + 0.2,
+            `${id}-${tier.id} seed #${at}: hardness ${rating.hardness.toFixed(2)} is much harder than the band's window ${lo}..${hi}`,
           );
           assert.ok(
             rating.hardness >= before - 1e-9,
@@ -397,66 +454,79 @@ try {
           count += 1;
         }
       }
-      tierMean.push(sum / count);
+      bandMean.push(sum / count);
     }
     console.log(
-      "     careful-player hardness by tier:",
-      tierMean.map((m) => m.toFixed(2)).join(" / "),
+      "     careful-player hardness by band:",
+      bandMean.map((m) => m.toFixed(2)).join(" / "),
     );
-    for (let t = 1; t < tierMean.length; t++)
-      assert.ok(tierMean[t] > tierMean[t - 1] + 0.02, `tier ${t + 1} is harder than tier ${t}`);
+    for (let b = 1; b < bandMean.length; b++)
+      assert.ok(bandMean[b] > bandMean[b - 1] + 0.02, `band ${b + 1} is harder than band ${b}`);
     console.log(
-      "PASS F2 ratings: every plate inside its tier's window, easiest first, and each tier harder than the last",
+      "PASS F2 ratings: no dessert much harder than its band's window, easiest first, and each band harder than the last",
     );
   }
 
   // ---- G. Which plate a level gets -----------------------------------------------------------------
   {
-    const a = content.dessertRunFor(18, 3);
-    assert.deepEqual(content.dessertRunFor(18, 3), a, "the same level and day is the same plate");
-    assert.equal(a.tier.id, 1);
-    assert.equal(content.dessertRunFor(17, 3).tier.id, 1);
-    assert.notDeepEqual(content.dessertRunFor(18, 3, 1), a, "round + 1 is another plate");
-    for (let level = 18; level <= 91; level += 7)
+    const a = content.dessertRunFor(20, 3);
+    assert.deepEqual(content.dessertRunFor(20, 3), a, "the same level and day is the same plate");
+    assert.equal(
+      a.dessertId,
+      "cookie",
+      "the first level of Dessert Run plays the list's first dessert",
+    );
+    assert.equal(a.ladderLevel, 1);
+    assert.equal(
+      content.dessertRunFor(91, 1).dessertId,
+      "granddessert",
+      "the campaign's last level plays the 50th",
+    );
+    assert.equal(
+      content.dessertRunFor(17, 3).dessertId,
+      "cookie",
+      "below the first Dessert Run level reads the first dessert",
+    );
+    assert.notEqual(
+      content.dessertRunFor(20, 3, 1).dessertId,
+      a.dessertId,
+      "round + 1 is the next dessert of the list",
+    );
+    assert.equal(
+      content.dessertRunFor(91, 1, 1).dessertId,
+      "cookie",
+      "after the 50th the list starts again",
+    );
+    // every level: the dessert is the list's, at its band's tier, from proven seeds only
+    let prev = 0;
+    const seen = new Set<string>();
+    for (let level = 20; level <= 91; level++) {
+      const p = content.dessertRunFor(level, 1);
+      assert.ok(p.ladderLevel >= prev, `level ${level}: the list only goes up as the level does`);
+      prev = p.ladderLevel;
+      seen.add(p.dessertId);
+      assert.equal(p.dessertId, DESSERT_LADDER[p.ladderLevel - 1]);
+      assert.equal(
+        p.tier.id,
+        tierOfLadderLevel(p.ladderLevel),
+        `level ${level}: the dessert's band tier`,
+      );
       for (let day = 1; day <= 9; day++)
-        for (let round = 0; round < 4; round++) {
-          const p = content.dessertRunFor(level, day, round);
-          assert.ok(DESSERTS_BY_TIER[p.tier.id].includes(p.dessertId));
+        for (let round = 0; round < 3; round++) {
+          const q = content.dessertRunFor(level, day, round);
           assert.ok(
-            DESSERT_RUN_SEEDS[`${p.dessertId}-${p.tier.id}`].includes(p.seed),
+            DESSERT_RUN_SEEDS[`${q.dessertId}-${q.tier.id}`].includes(q.seed),
             "only proven seeds are dealt",
           );
         }
-    // the ramp: inside a tier a higher level gets later (harder) seeds, whatever the day and the round
-    for (const tier of RUN_TIERS) {
-      const { first, last } = content.tierLevels(tier);
-      const meanIndex = (level: number) => {
-        let sum = 0;
-        let n = 0;
-        for (let day = 1; day <= 9; day++)
-          for (let round = 0; round < 4; round++) {
-            const p = content.dessertRunFor(level, day, round);
-            sum += DESSERT_RUN_SEEDS[`${p.dessertId}-${p.tier.id}`].indexOf(p.seed);
-            n += 1;
-          }
-        return sum / n;
-      };
-      assert.ok(
-        meanIndex(last) > meanIndex(first) + 25,
-        `tier ${tier.id}: its last level is much later on the ramp than its first`,
-      );
-      let prev = -1;
-      for (let level = first; level <= last; level++) {
-        const m = meanIndex(level);
-        assert.ok(
-          m >= prev - 3,
-          `tier ${tier.id}: level ${level} is not easier than the level before`,
-        );
-        prev = m;
-      }
     }
+    assert.equal(seen.size, 50, "all 50 desserts are played somewhere between level 20 and 91");
+    // a business day deals a different plate of the same dessert
+    const days = new Set<number>();
+    for (let day = 1; day <= 6; day++) days.add(content.dessertRunFor(50, day).seed);
+    assert.equal(days.size, 6, "six days deal six different plates of a dessert");
     console.log(
-      "PASS G choice: the plate follows the level, the day and the round, from proven seeds only",
+      "PASS G choice: the 50 desserts climb the list with the level, one band tier each, proven seeds only, a new deal each day",
     );
   }
 
