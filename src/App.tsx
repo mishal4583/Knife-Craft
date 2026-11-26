@@ -3774,7 +3774,6 @@ export function App() {
         : false;
     if (rushCleared_) {
       nextSave = addHype(withRushCleared(nextSave), DINNER_RUSH.hype);
-      sendAnalyticsEvent("dinner_rush_cleared", { level: levelNumber(level.id) });
     }
     // Unified Restaurant: a first completion is one service of the day.
     // Phase G: then the wash-up (dish soap) for the settings it used.
@@ -3967,6 +3966,8 @@ export function App() {
     // (audit F2) only if that save was really written: persist() refuses a save that breaks the wallet invariant and says so through this flag
     if (saveWrittenRef.current) {
       for (const k of serviceKinds) sendAnalyticsEvent("record_broken", { kind: k });
+      // (Chef Pride audit F2) leaves only after the save that holds the cleared rush was written
+      if (rushCleared_) sendAnalyticsEvent("dinner_rush_cleared", { level: levelNumber(level.id) });
       if (prestigeEvent !== null) sendAnalyticsEvent("prestige_reached", { tier: prestigeEvent });
       if (titleEvent)
         sendAnalyticsEvent("title_earned", {

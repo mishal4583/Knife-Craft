@@ -198,6 +198,12 @@ console.log("C. The wiring");
     /dinnerRushCelebration\(/.test(app) && /"dinner_rush_cleared"/.test(app),
     "C3: a cleared rush shows its card and is measured",
   );
+  assert(
+    /saveWrittenRef\.current\) \{[\s\S]*?if \(rushCleared_\) sendAnalyticsEvent\("dinner_rush_cleared"/.test(
+      app,
+    ),
+    "C3b: the event leaves only after the save that holds the cleared rush was written (Chef Pride audit F2)",
+  );
   const kitchen = read("src/components/kc/Kitchen.tsx");
   assert(
     /data-testid="kitchen-rush"/.test(kitchen) &&

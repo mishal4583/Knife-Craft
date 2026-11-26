@@ -77,7 +77,8 @@ console.log("C. Wiring");
     "C2: the Hype goes into the level's own save",
   );
   assert(
-    /chestCelebration\(chest, c \? c\.lines : \[\]\)/.test(app),
+    // RULE CHANGE (developer 2026-11-26, the Dinner Rush): the chest card may also carry the rush line ("🔥 Dinner Rush cleared!") ahead of a ranking climb's lines.
+    /chestCelebration\(chest, \[[\s\S]*?\.\.\.\(c \? c\.lines : \[\]\),?\s*\]\)/.test(app),
     "C3: the card shows, with a ranking climb's lines too",
   );
   const src = read("src/game/restaurant/milestoneChests.ts");
