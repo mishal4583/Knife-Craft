@@ -152,15 +152,43 @@ console.log("C. The animation is light");
   );
   assert(!/animation[^;]*filter|blur\(/.test(css), "C4: nothing is blurred or filtered");
   const comp = read("src/components/kc/KitchenAmbient.tsx");
+  // RULE CHANGE (developer 2026-11-26, "where are other animations?"): the layer now also uses the small painted FX sprites (public/fx: lamp glow, glint, petals and leaves, the burner's
+  // flame), besides the painted steam wisp. Still no canvas, video, request or randomness; every picture is a small local file, and each name it builds must exist (checked below).
   assert(
-    // the ONLY picture is the optional painted steam wisp, behind KITCHEN_STEAM_SPRITES (0 until the Codex sheet is cut)
-    (comp.match(/<img/g) ?? []).length === 1 &&
+    /kitchen-fx\/steam-/.test(comp) &&
       /KITCHEN_STEAM_SPRITES > 0/.test(comp) &&
-      (comp.match(/\.(webp|png|jpg|svg|mp4|webm)/g) ?? []).length === 1 &&
-      /kitchen-fx\/steam-/.test(comp) &&
+      /const fx = \(name: string\) => `\$\{import\.meta\.env\.BASE_URL\}fx\/\$\{name\}\.webp`/.test(
+        comp,
+      ) &&
+      (comp.match(/\.(png|jpg|svg|mp4|webm)/g) ?? []).length === 0 &&
       !/fetch\(|new Image|<canvas|<video/.test(comp) &&
       !/Math\.random/.test(comp),
-    "C5: the layer draws no canvas or video, makes no request, never re-rolls (no Math.random), and its only picture is the optional painted steam wisp",
+    "C5: the layer draws no canvas or video, makes no request, never re-rolls (no Math.random), and its pictures are only the painted steam wisps and the small painted FX sprites",
+  );
+  const fxNames = [
+    "glow-1",
+    "glint-1",
+    "glint-2",
+    "flame-burner-1",
+    "flame-burner-2",
+    "flame-burner-4",
+    "flame-burner-5",
+    ...[1, 2, 3, 4, 5, 6].map((n) => `petal-${n}`),
+    "leaf-1",
+    "leaf-2",
+  ];
+  const usedInComp = fxNames.every((n) => {
+    const base = n.replace(/-\d+$/, "");
+    return comp.includes(`"${n}"`) || comp.includes(base);
+  });
+  const fxMissing = fxNames.filter((n) => {
+    const f = new URL(`../public/fx/${n}.webp`, import.meta.url);
+    return !existsSync(f) || statSync(f).size > 60_000;
+  });
+  assert(
+    usedInComp && fxMissing.length === 0,
+    "C5c: every painted FX sprite the layer names exists and is under 60 KB",
+    fxMissing,
   );
   // when the painted wisps exist (the count is raised), every counted file must be there and small
   const sprites = KITCHEN_STEAM_SPRITES;

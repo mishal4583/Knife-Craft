@@ -114,7 +114,10 @@ const WIDE: Record<KitchenSkinId, KitchenAmbientSpec> = {
     origin: { x: 62, y: 58 },
   },
   "skin-06": {
-    pots: [{ x: 47.4, y: 55.5 }],
+    pots: [
+      { x: 47.4, y: 55.5 },
+      { x: 55.9, y: 57.5 },
+    ],
     lamps: [
       { x: 49.7, y: 38, r: 9 },
       { x: 59.3, y: 39.3, r: 9 },

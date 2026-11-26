@@ -13,6 +13,8 @@ import "./kitchenAmbient.css";
  * the painting in any window). Only CSS `transform` and `opacity` move (no filter, no blur, no canvas, no picture, no network); Settings → Reduced motion (and the system's) hides it.
  */
 const pct = (n: number) => `${n}%`;
+/** A painted effect sprite (public/fx, cut from the Codex FX sheets by scripts/make-fx-assets.py). */
+const fx = (name: string) => `${import.meta.env.BASE_URL}fx/${name}.webp`;
 /** A fixed, repeatable spread (index based): the layer never re-rolls between renders. */
 const spread = (i: number, k: number) => ((i * 47 + k * 31) % 100) / 100;
 
@@ -61,7 +63,7 @@ export function KitchenAmbient({ skin, layout }: { skin: KitchenSkinId; layout: 
         />
       ))}
 
-      {/* lamps */}
+      {/* lamps: the painted amber glow, breathing */}
       {s.lamps.map((l, i) => (
         <span
           key={`lamp-${i}`}
@@ -71,14 +73,67 @@ export function KitchenAmbient({ skin, layout }: { skin: KitchenSkinId; layout: 
             {
               left: pct(l.x),
               top: pct(l.y),
-              width: pct(l.r),
-              "--ld": `${(3 + spread(i, 7) * 2.4).toFixed(1)}s`,
+              width: pct(l.r * 0.95),
+              "--ld": `${(2.6 + spread(i, 7) * 2).toFixed(1)}s`,
               "--d": `${(spread(i, 8) * 2.5).toFixed(1)}s`,
+            } as CSSProperties
+          }
+        >
+          <img src={fx("glow-1")} alt="" draggable={false} decoding="async" />
+        </span>
+      ))}
+
+      {/* petals and leaves drifting past the window (the garden outside) */}
+      {Array.from({ length: wide ? 6 : 5 }, (_, i) => (
+        <img
+          key={`petal-${i}`}
+          className="ka-petal"
+          data-testid="ka-petal"
+          src={fx(i % 3 === 2 ? `leaf-${(i % 2) + 1}` : `petal-${(i % 6) + 1}`)}
+          alt=""
+          draggable={false}
+          decoding="async"
+          style={
+            {
+              left: pct(w.x + w.w * (0.1 + spread(i, 10) * 0.7)),
+              top: pct(w.y + w.h * (0.02 + spread(i, 11) * 0.3)),
+              width: pct(wide ? 1.5 : 3.6),
+              "--d": `${(spread(i, 12) * 9).toFixed(1)}s`,
+              "--pd": `${(9 + spread(i, 13) * 6).toFixed(1)}s`,
+              "--px": `${Math.round(120 + spread(i, 14) * 260)}%`,
+              "--py": `${Math.round(380 + spread(i, 15) * 420)}%`,
+              "--pr": `${Math.round(180 + spread(i, 16) * 360)}deg`,
             } as CSSProperties
           }
         />
       ))}
 
+      {/* the burner's painted flame (four frames of a loop, shown one after another by opacity) peeking out around the base of each pot */}
+      {s.pots.map((p, pi) => (
+        <span
+          key={`flame-${pi}`}
+          className="ka-flame"
+          data-testid="ka-flame"
+          style={
+            {
+              left: pct(p.x),
+              top: pct(p.y + (wide ? 4.6 : 6.2)),
+              width: pct(steamW * 1.45),
+            } as CSSProperties
+          }
+        >
+          {[1, 2, 4, 5].map((f, fi) => (
+            <img
+              key={f}
+              src={fx(`flame-burner-${f}`)}
+              alt=""
+              draggable={false}
+              decoding="async"
+              style={{ "--fi": fi } as CSSProperties}
+            />
+          ))}
+        </span>
+      ))}
       {/* the burner's warm light under each pot, and a low haze at its rim */}
       {s.pots.map((p, pi) => (
         <span
@@ -155,7 +210,7 @@ export function KitchenAmbient({ skin, layout }: { skin: KitchenSkinId; layout: 
         )),
       )}
 
-      {/* the copper catches the light */}
+      {/* the copper catches the light: a painted star glint */}
       {s.glints.map((g, i) => (
         <span
           key={`glint-${i}`}
@@ -165,11 +220,13 @@ export function KitchenAmbient({ skin, layout }: { skin: KitchenSkinId; layout: 
             {
               left: pct(g.x),
               top: pct(g.y),
-              width: pct(glintW),
-              "--d": `${(i * 2.1 + spread(i, 9) * 1.5).toFixed(2)}s`,
+              width: pct(glintW * 1.7),
+              "--d": `${(i * 1.7 + spread(i, 9) * 1.2).toFixed(2)}s`,
             } as CSSProperties
           }
-        />
+        >
+          <img src={fx(i % 2 ? "glint-2" : "glint-1")} alt="" draggable={false} decoding="async" />
+        </span>
       ))}
     </div>
   );
