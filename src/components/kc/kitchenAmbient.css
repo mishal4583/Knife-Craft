@@ -117,7 +117,7 @@
   position: absolute;
   aspect-ratio: 1 / 1.85;
   opacity: 0;
-  transform: translate(-50%, -8%) scale(0.5);
+  transform: translate(-50%, -100%) scale(0.5);
   transform-origin: 50% 100%;
   animation: ka-steam-rise 8s ease-out infinite;
   animation-delay: var(--d, 0s);
@@ -152,18 +152,18 @@
 @keyframes ka-steam-rise {
   0% {
     opacity: 0;
-    transform: translate(-50%, -8%) scale(0.5);
+    transform: translate(-50%, -100%) scale(0.5);
   }
   14% {
     opacity: 0.9;
   }
   58% {
     opacity: 0.6;
-    transform: translate(calc(-50% + var(--dx, 0%)), -70%) scale(0.95, 1.05);
+    transform: translate(calc(-50% + var(--dx, 0%)), -122%) scale(0.95, 1.05);
   }
   100% {
     opacity: 0;
-    transform: translate(calc(-50% + var(--dx2, 0%)), -150%) scale(1.3, 1.4);
+    transform: translate(calc(-50% + var(--dx2, 0%)), -158%) scale(1.25, 1.3);
   }
 }
 @keyframes ka-steam-sway {

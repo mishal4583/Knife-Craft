@@ -148,7 +148,7 @@ export function KitchenAmbient({ skin, layout }: { skin: KitchenSkinId; layout: 
             style={
               {
                 left: pct(p.x + (k % 2 ? 0.4 : -0.4) * (wide ? 0.6 : 1.4)),
-                top: pct(p.y),
+                top: pct(p.y + (wide ? 3.4 : 4)),
                 width: pct(steamW * (0.78 + (k % 3) * 0.14)),
                 "--d": `${(k * 1.9 + pi * 1.1).toFixed(2)}s`,
                 "--dx": ["-9%", "13%", "-14%", "9%"][k],
