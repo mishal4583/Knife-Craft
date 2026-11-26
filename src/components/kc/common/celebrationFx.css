@@ -1,0 +1,64 @@
+/* The celebration card's confetti and starburst. transform and opacity only; Reduced motion (the app class and the system's) hides it. */
+.cfx {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.cfx-burst {
+  position: absolute;
+  left: 50%;
+  top: 36px;
+  width: 190px;
+  height: 190px;
+  margin: -95px 0 0 -95px;
+  object-fit: contain;
+  opacity: 0;
+  transform: scale(0.4);
+  animation: cfx-burst 1.6s ease-out 0.1s both;
+}
+.cfx-piece {
+  position: absolute;
+  top: -8%;
+  height: auto;
+  opacity: 0;
+  animation: cfx-fall var(--t, 3s) ease-in var(--d, 0s) 1 both;
+}
+@keyframes cfx-burst {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) rotate(-12deg);
+  }
+  30% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35) rotate(10deg);
+  }
+}
+@keyframes cfx-fall {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  10% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--x, 0), 460px) rotate(var(--r, 360deg));
+  }
+}
+.kc-reduced-motion .cfx {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cfx {
+    display: none;
+  }
+}

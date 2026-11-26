@@ -69,6 +69,8 @@ export type ChefRecord = {
   /** Today's dare, or null (the dare of another day is ignored). Dares won, ever (the dares ladder). */
   challenge: ChallengeState | null;
   daresWon: number;
+  /** Dinner Rushes cleared, ever (restaurant/dinnerRush.ts: 0 or 1 today; the Rush Hour badge reads it). */
+  rushes: number;
   /** The local weekly city league, or null before the first points. */
   league: LeagueState | null;
   /** Short markers of what was already announced (`title:…`, `rival:…`): each line shows once. Kept short. */
@@ -134,6 +136,7 @@ export const DEFAULT_CHEF_RECORD: ChefRecord = {
   bestServicePerfects: 0,
   challenge: null,
   daresWon: 0,
+  rushes: 0,
   league: null,
   seen: [],
 };
@@ -198,6 +201,7 @@ export function clampChefRecord(raw: unknown): ChefRecord {
     bestServicePerfects: whole(r.bestServicePerfects),
     challenge: clampChallenge(r.challenge),
     daresWon: whole(r.daresWon),
+    rushes: whole(r.rushes),
     league: clampLeague(r.league),
     seen: Array.isArray(r.seen)
       ? r.seen.filter((s): s is string => typeof s === "string").slice(-SEEN_KEPT)

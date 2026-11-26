@@ -9,6 +9,12 @@
  */
 import type { KitchenSkinId } from "./kitchenUpgradeTypes";
 
+/**
+ * How many painted steam wisps (`public/kitchen-fx/steam-1..N.webp`, the Codex sheet FX-1) exist. 0 = none yet: the steam is drawn with CSS plumes. When the sheet is cut, set this
+ * to the number of files and the plumes become the painted wisps (same motion); `kitchen-ambient-qa` fails if a counted file is missing.
+ */
+export const KITCHEN_STEAM_SPRITES = 6;
+
 export type AmbientPoint = { x: number; y: number };
 export type AmbientLamp = AmbientPoint & { r: number };
 export type AmbientWindow = { x: number; y: number; w: number; h: number };

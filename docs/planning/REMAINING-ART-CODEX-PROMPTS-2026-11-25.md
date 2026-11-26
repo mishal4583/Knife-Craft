@@ -217,6 +217,8 @@ Leave the centre of any ribbon or plaque blank and plain (the game writes any nu
 
 ---
 
+> **SUPERSEDED 2026-11-26 by `ANIMATION-FX-CODEX-PROMPTS-2026-11-26.md` sheet FX-1** (8 wisps: 6 steam and 2 cool mists, 2048 x 1536). Use that file; this Part is kept for history.
+
 ## Part 6. Kitchen steam wisps: one sheet (optional upgrade, NOT needed: the Kitchen's life works without it)
 
 The Kitchen home now has steam, lamp glow, a beam of sun and glints, drawn with CSS only (no pictures). Its steam is soft round puffs. If you want the curling smoke of the Gemini clip instead, this sheet gives painted wisps; Claude then swaps the puffs for these sprites (the same animation: rise, drift, fade). Save as `Kitchen FX Assets/KF-1.png`.

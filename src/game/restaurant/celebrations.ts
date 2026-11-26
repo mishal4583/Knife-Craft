@@ -31,7 +31,7 @@ export function topMilestone(from: number, to: number): { top: number; next: num
 
 export type Celebration = {
   /** Stable id of the kind: "rank", "title", "popularity", "spotless" or "chest" (the card's data attribute). */
-  kind: "rank" | "popularity" | "spotless" | "chest" | "title" | "prestige" | "league";
+  kind: "rank" | "popularity" | "spotless" | "chest" | "title" | "prestige" | "league" | "rush";
   emoji: string;
   title: string;
   /** The facts, one short line each. */

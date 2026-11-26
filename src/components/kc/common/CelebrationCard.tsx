@@ -6,6 +6,7 @@ import { KButton } from "./primitives";
 import { PaintedPortrait } from "./PaintedPortrait";
 import { prestigeEmblemPath, rivalPortraitPath } from "@/game/chefArt";
 import { PaigeCutout, PaigeNameplate, PaigePiece } from "../assistant/PaigeArt";
+import { CelebrationFx } from "./CelebrationFx";
 import "../assistant/assistant.css";
 
 /**
@@ -42,6 +43,7 @@ export function CelebrationCard({
           className="paige-in relative w-full max-w-[340px] overflow-hidden rounded-[26px] border-[3px] border-olive/70 bg-[radial-gradient(120%_90%_at_50%_0%,#fffdf6,#f6ecce)] px-4 py-4 text-center shadow-lift"
           onClick={(e) => e.stopPropagation()}
         >
+          <CelebrationFx />
           <PaigePiece
             name="ui-sparkle"
             className="paige-sparkle absolute left-3 top-3 h-7 w-7 opacity-80"

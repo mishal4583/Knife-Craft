@@ -1,5 +1,9 @@
 import type { CSSProperties } from "react";
-import { kitchenAmbientFor, type AmbientLayout } from "@/game/kitchen/kitchenAmbient";
+import {
+  KITCHEN_STEAM_SPRITES,
+  kitchenAmbientFor,
+  type AmbientLayout,
+} from "@/game/kitchen/kitchenAmbient";
 import type { KitchenSkinId } from "@/game/kitchen/kitchenUpgradeTypes";
 import "./kitchenAmbient.css";
 
@@ -75,24 +79,79 @@ export function KitchenAmbient({ skin, layout }: { skin: KitchenSkinId; layout: 
         />
       ))}
 
-      {/* steam: three puffs per pot, one after the other, drifting a little to either side */}
+      {/* the burner's warm light under each pot, and a low haze at its rim */}
+      {s.pots.map((p, pi) => (
+        <span
+          key={`burner-${pi}`}
+          className="ka-burner"
+          data-testid="ka-burner"
+          style={
+            {
+              left: pct(p.x),
+              top: pct(p.y + (wide ? 2.4 : 3.4)),
+              width: pct(steamW * 1.5),
+              "--d": `${(pi * 0.8).toFixed(1)}s`,
+            } as CSSProperties
+          }
+        />
+      ))}
+      {s.pots.map((p, pi) => (
+        <span
+          key={`haze-${pi}`}
+          className="ka-haze"
+          style={
+            {
+              left: pct(p.x),
+              top: pct(p.y),
+              width: pct(steamW * 1.7),
+              "--d": `${(pi * 1.3).toFixed(1)}s`,
+            } as CSSProperties
+          }
+        />
+      ))}
+
+      {/* steam: four plumes per pot, each rising and drifting while a second layer inside it sways and widens, so it curls like smoke instead of puffing like a ball */}
       {s.pots.flatMap((p, pi) =>
-        [0, 1, 2].map((k) => (
+        [0, 1, 2, 3].map((k) => (
           <span
             key={`steam-${pi}-${k}`}
             className="ka-steam"
+            data-sprite={KITCHEN_STEAM_SPRITES > 0 ? "1" : undefined}
             data-testid="ka-steam"
             style={
               {
-                left: pct(p.x),
+                left: pct(p.x + (k % 2 ? 0.4 : -0.4) * (wide ? 0.6 : 1.4)),
                 top: pct(p.y),
-                width: pct(steamW * (0.85 + k * 0.1)),
-                "--d": `${(k * 1.75 + pi * 0.9).toFixed(2)}s`,
-                "--dx": k % 2 ? "14%" : "-12%",
-                "--dx2": k % 2 ? "-10%" : "16%",
+                width: pct(steamW * (0.78 + (k % 3) * 0.14)),
+                "--d": `${(k * 1.9 + pi * 1.1).toFixed(2)}s`,
+                "--dx": ["-9%", "13%", "-14%", "9%"][k],
+                "--dx2": ["14%", "-12%", "12%", "-15%"][k],
+                "--sw": `${(2.8 + k * 0.7).toFixed(1)}s`,
+                "--sd": `${(-k * 0.9).toFixed(1)}s`,
+                "--tilt":
+                  KITCHEN_STEAM_SPRITES > 0
+                    ? k % 2
+                      ? "4deg"
+                      : "-4deg"
+                    : k % 2
+                      ? "12deg"
+                      : "-12deg",
               } as CSSProperties
             }
-          />
+          >
+            {KITCHEN_STEAM_SPRITES > 0 ? (
+              <img
+                className="ka-steam-img"
+                src={`${import.meta.env.BASE_URL}kitchen-fx/steam-${((k + pi) % KITCHEN_STEAM_SPRITES) + 1}.webp`}
+                alt=""
+                aria-hidden="true"
+                draggable={false}
+                decoding="async"
+              />
+            ) : (
+              <i className="ka-steam-body" />
+            )}
+          </span>
         )),
       )}
 

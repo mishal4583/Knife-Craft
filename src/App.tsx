@@ -215,6 +215,14 @@ import { afterServeChips, nextCustomerHidden } from "@/game/restaurant/afterServ
 import { newSauceRoundsRewardId } from "@/game/ads/sauceRoundsAd";
 import { levelTeaser } from "@/game/restaurant/levelTeasers";
 import { regularIntroNote, withRegularGuest } from "@/game/restaurant/regularGuest";
+import {
+  DINNER_RUSH,
+  dinnerRushCelebration,
+  dinnerRushFor,
+  rushCleared,
+  rushLabel,
+  withRushCleared,
+} from "@/game/restaurant/dinnerRush";
 import { sectionPictures, warmPictures, whenIdle } from "@/game/preloadArt";
 import { SECOND_FLOOR_FROM_LEVEL } from "@/game/config/earlyLevels";
 import {
@@ -3747,6 +3755,27 @@ export function App() {
     // Milestone chest (developer 2026-11-10): Level 5, 10, 15 and 20 give Hype (never money) on their first completion.
     const chest = RESTAURANT_MODE && isFirstCompletion ? chestAt(levelNumber(level.id)) : null;
     if (chest) nextSave = addHype(nextSave, chest.hype);
+    // The first Dinner Rush (developer 2026-11-26): every guest of this evening service served and nobody walked out pays Hype and the Rush Hour Hero badge, once. Never money. With no door
+    // queue to ask (a reload in the middle of the service) it is not cleared.
+    const rushDoor = doorQueue && doorQueue.guests.length ? doorQueue : null;
+    const rushCleared_ =
+      RESTAURANT_MODE && isFirstCompletion
+        ? (() => {
+            const rush = dinnerRushFor(save, levelNumber(level.id), true);
+            return (
+              !!rush &&
+              rushCleared(
+                rush,
+                menuGuestsServed(save.levelProgress, level.id),
+                rushDoor ? doorView(rushDoor).walkedOut : null,
+              )
+            );
+          })()
+        : false;
+    if (rushCleared_) {
+      nextSave = addHype(withRushCleared(nextSave), DINNER_RUSH.hype);
+      sendAnalyticsEvent("dinner_rush_cleared", { level: levelNumber(level.id) });
+    }
     // Unified Restaurant: a first completion is one service of the day.
     // Phase G: then the wash-up (dish soap) for the settings it used.
     // Supplies plan B: what broke in this service's wash-up (Level Complete says so).
@@ -4036,7 +4065,14 @@ export function App() {
             }
           : null,
       });
-      if (chest) setCelebration(chestCelebration(chest, c ? c.lines : []));
+      if (chest)
+        setCelebration(
+          chestCelebration(chest, [
+            ...(rushCleared_ ? ["🔥 Dinner Rush cleared!"] : []),
+            ...(c ? c.lines : []),
+          ]),
+        );
+      else if (rushCleared_) setCelebration(dinnerRushCelebration(c ? c.lines : []));
       else if (c) setCelebration(c);
     }
     // No ad or Replay Bonus behind the Campaign Finale or THE LAST PAGE.
@@ -4872,6 +4908,15 @@ export function App() {
   // what decides whether leaving the level finishes it (G1).
   // Unified Restaurant (phase D): once the level's own orders are served, a
   // menu guest can be taken (optional; Finish Level stays).
+  // The first Dinner Rush (restaurant/dinnerRush.ts): this service's guests, announced and counted; null when it is not one.
+  const dinnerRush =
+    RESTAURANT_MODE && save && isCampaignService && campaignLevelForSession
+      ? dinnerRushFor(
+          save,
+          levelNumber(campaignLevelForSession.id),
+          !isCompleted(campaignLevelForSession.id, save.levelProgress),
+        )
+      : null;
   const menuGuest =
     RESTAURANT_MODE &&
     save &&
@@ -5232,9 +5277,17 @@ export function App() {
                       : menuGuest.inStock
                         ? {
                             label:
-                              menuGuest.kind === "walk-in"
-                                ? `🚶 Walk-in ${menuGuest.number}/${menuGuest.total}: ${menuGuest.dish.name} · ${formatUsd(menuGuest.pays)}${menuGuest.risePct > 0 ? ` 🔥 +${menuGuest.risePct}%` : ""}`
-                                : `🍽️ Menu guest ${menuGuest.number}/${menuGuest.total}: ${menuGuest.dish.name} · ${formatUsd(menuGuest.pays)}${menuGuest.risePct > 0 ? ` 🔥 +${menuGuest.risePct}%` : ""}`,
+                              dinnerRush && save && campaignLevelForSession
+                                ? `${rushLabel(
+                                    menuGuestsServed(
+                                      save.levelProgress,
+                                      campaignLevelForSession.id,
+                                    ) + 1,
+                                    dinnerRush.guests,
+                                  )}: ${menuGuest.dish.name} · ${formatUsd(menuGuest.pays)}`
+                                : menuGuest.kind === "walk-in"
+                                  ? `🚶 Walk-in ${menuGuest.number}/${menuGuest.total}: ${menuGuest.dish.name} · ${formatUsd(menuGuest.pays)}${menuGuest.risePct > 0 ? ` 🔥 +${menuGuest.risePct}%` : ""}`
+                                  : `🍽️ Menu guest ${menuGuest.number}/${menuGuest.total}: ${menuGuest.dish.name} · ${formatUsd(menuGuest.pays)}${menuGuest.risePct > 0 ? ` 🔥 +${menuGuest.risePct}%` : ""}`,
                             onClick: takeMenuGuest,
                           }
                         : {

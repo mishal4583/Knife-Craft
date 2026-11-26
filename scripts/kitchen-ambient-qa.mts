@@ -8,9 +8,10 @@
  *
  * Run: npx tsx scripts/kitchen-ambient-qa.mts
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import {
   KITCHEN_AMBIENT_SKINS,
+  KITCHEN_STEAM_SPRITES,
   ambientPictureSize,
   coverRect,
   kitchenAmbientFor,
@@ -152,10 +153,26 @@ console.log("C. The animation is light");
   assert(!/animation[^;]*filter|blur\(/.test(css), "C4: nothing is blurred or filtered");
   const comp = read("src/components/kc/KitchenAmbient.tsx");
   assert(
-    !/\.(webp|png|jpg|svg|mp4|webm)/.test(comp) &&
-      !/fetch\(|new Image|<img|<canvas|<video/.test(comp) &&
+    // the ONLY picture is the optional painted steam wisp, behind KITCHEN_STEAM_SPRITES (0 until the Codex sheet is cut)
+    (comp.match(/<img/g) ?? []).length === 1 &&
+      /KITCHEN_STEAM_SPRITES > 0/.test(comp) &&
+      (comp.match(/\.(webp|png|jpg|svg|mp4|webm)/g) ?? []).length === 1 &&
+      /kitchen-fx\/steam-/.test(comp) &&
+      !/fetch\(|new Image|<canvas|<video/.test(comp) &&
       !/Math\.random/.test(comp),
-    "C5: the layer draws no picture, canvas or video, makes no request, and never re-rolls (no Math.random)",
+    "C5: the layer draws no canvas or video, makes no request, never re-rolls (no Math.random), and its only picture is the optional painted steam wisp",
+  );
+  // when the painted wisps exist (the count is raised), every counted file must be there and small
+  const sprites = KITCHEN_STEAM_SPRITES;
+  const missing: string[] = [];
+  for (let i = 1; i <= sprites; i++) {
+    const f = new URL(`../public/kitchen-fx/steam-${i}.webp`, import.meta.url);
+    if (!existsSync(f) || statSync(f).size > 60_000) missing.push(`steam-${i}.webp`);
+  }
+  assert(
+    Number.isInteger(sprites) && sprites >= 0 && sprites <= 12 && missing.length === 0,
+    `C5b: ${sprites} painted steam wisps are counted and every one exists and is under 60 KB`,
+    missing,
   );
   const spans = (comp.match(/className="ka-/g) ?? []).length;
   assert(spans >= 5, "C6: it is made of a handful of small elements", spans);

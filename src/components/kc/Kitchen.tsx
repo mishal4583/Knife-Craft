@@ -17,6 +17,8 @@ import {
   tabOpensAt,
 } from "@/game/restaurant/firstLevels";
 import { restaurantLevelOf } from "@/game/restaurant/restaurantMenu";
+import { DINNER_RUSH, dinnerRushFor } from "@/game/restaurant/dinnerRush";
+import { InfoTip } from "./common/InfoTip";
 import { nextServiceLevel } from "@/game/restaurant/nextService";
 import { openMarketIngredients } from "./marketFocus";
 import { NavAttentionContext, NavGuideContext, NavHandContext, NavLevelContext } from "./navLevel";
@@ -240,6 +242,11 @@ export function Kitchen({
   const dare: DareView | null =
     RESTAURANT_MODE && onDare ? dareToday(chefRecordOf(save), today, reached) : null;
   const dareOffered = dare?.status === "offered";
+  // The first Dinner Rush (restaurant/dinnerRush.ts): when tonight's service is one, the details say so (a marker on "View Details" while they are closed).
+  const rush =
+    RESTAURANT_MODE && !todayCompleted && !campaignComplete
+      ? dinnerRushFor(save, levelNumber(todayLevel.id), true)
+      : null;
   // Measured (Chef Pride, Phase 7): an offered dare counts once per day and visit of the app, so the share who take it can be read (dare_taken / dare_offered).
   const offeredKey = dareOffered ? `${today}:${dare?.dare.id}` : null;
   useEffect(() => {
@@ -806,6 +813,7 @@ export function Kitchen({
               className="press inline-flex min-h-12 shrink-0 items-center gap-1 rounded-full border border-[#8f4d1e] bg-[linear-gradient(145deg,#a85d25,#754018)] px-2.5 font-ui text-[10px] font-extrabold landx:px-4 landx:text-[14px] text-[#fff5df] shadow-[0_2px_6px_rgba(83,41,13,0.32),inset_0_1px_0_rgba(255,255,255,0.25)] transition-transform active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-copper"
             >
               {dareOffered && !orderCardExpanded ? "⚔ " : ""}
+              {rush && !orderCardExpanded ? "🔥 " : ""}
               {orderCardExpanded ? "Hide Details" : "View Details"}
               <span aria-hidden className="text-[14px] leading-none">
                 {orderCardExpanded ? "⌃" : "›"}
@@ -909,6 +917,23 @@ export function Kitchen({
                 data-testid="kitchen-tip"
               >
                 👵 {tip.text}
+              </p>
+            ) : null}
+            {rush ? (
+              <p
+                className="mt-2 flex items-center gap-1.5 rounded-xl bg-[#f3c9a8]/70 px-2.5 py-1 font-ui text-[13px] font-extrabold leading-snug text-walnut-dark"
+                data-testid="kitchen-rush"
+                data-guests={rush.guests}
+              >
+                <span aria-hidden>🔥</span>
+                <span className="min-w-0">
+                  Dinner Rush: serve all {rush.guests} guests · +{DINNER_RUSH.hype} Hype and a badge
+                </span>
+                <InfoTip label="How the Dinner Rush works">
+                  The evening brings extra guests. Serve every one of them and let nobody walk out
+                  to clear it: Hype and the Rush Hour Hero badge, once. It pays no money, and you
+                  can finish the level without it.
+                </InfoTip>
               </p>
             ) : null}
             {dare && dare.status !== "declined" && onDare ? (

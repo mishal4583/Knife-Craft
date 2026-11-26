@@ -352,6 +352,18 @@ const CHEF_LADDERS: readonly Ladder[] = [
       })),
     value: (s) => chefRecordOf(s).daresWon,
   },
+  {
+    // The first Dinner Rush (restaurant/dinnerRush.ts, developer 2026-11-26): every guest of the evening service served and nobody walked out. Badge only.
+    key: "dinner-rush",
+    group: "Kitchen",
+    icon: "🔥",
+    unit: "Dinner Rush cleared",
+    title: () => "Rush Hour Hero",
+    description: () =>
+      "Clear a Dinner Rush: serve every guest of the evening service and let nobody walk out.",
+    tiers: () => [{ target: 1, reward: 0, title: "Rush Hour Hero" }],
+    value: (s) => chefRecordOf(s).rushes,
+  },
 ];
 
 /** Which group an old milestone shows in. */
