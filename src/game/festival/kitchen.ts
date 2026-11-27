@@ -3,6 +3,7 @@
  * return a new state and what happened. Nothing here reads a clock or rolls dice.
  *
  *  - A tray starts something: the bun takes a free plate, raw food takes a free cooker spot, a topping goes onto a plate.
+ *  - A drink machine makes its own drink (the cola tap, the lemonade tap, the shake blender).
  *  - A cooker spot: cooking -> ready (best) -> overcooked -> burnt (a drink never spoils). Tapping an empty spot starts its first food.
  *  - Where a patty or topping lands: the chosen plate when that still leads to something a waiting customer wants, else the most finished plate for
  *    which it does, else the chosen plate, else any plate that takes it.
@@ -271,19 +272,9 @@ function actTray(round: RoundConfig, state: RoundState, item: FoodId): Step {
   return at < 0 ? hint(state, "Put a bun on a plate first") : placeOnPlate(state, at, item, "good");
 }
 
-/** Tapping an empty tap pours what is still wanted, the longest waiting first (else the first drink). */
-function emptySpotItem(round: RoundConfig, state: RoundState, def: CookerDef): FoodId | undefined {
-  const makes = Object.keys(def.cookMs) as FoodId[];
-  if (def.id !== "drink") return makes[0];
-  const pouring = state.cookers.drink!.flatMap((s) => (s ? [s.item] : []));
-  for (const w of stillWanted(state)) {
-    if (w.item.kind !== "side" || !makes.includes(w.item.item)) continue;
-    const at = pouring.indexOf(w.item.item);
-    if (at >= 0) pouring.splice(at, 1);
-    else return w.item.item;
-  }
-  return makes[0];
-}
+/** What tapping an empty spot starts: a drink machine's own drink, else the cooker's first food. */
+const emptySpotItem = (def: CookerDef, at: number): FoodId | undefined =>
+  def.perSlot ? def.perSlot[at] : (Object.keys(def.cookMs) as FoodId[])[0];
 
 function actCooker(round: RoundConfig, state: RoundState, cooker: CookerId, at: number): Step {
   const def = cookerOf(round.kitchen, cooker);
@@ -291,7 +282,7 @@ function actCooker(round: RoundConfig, state: RoundState, cooker: CookerId, at: 
   if (!def || !slots || at < 0 || at >= slots.length) return { state, events: [] };
   const slot = slots[at];
   if (!slot) {
-    const item = emptySpotItem(round, state, def);
+    const item = emptySpotItem(def, at);
     return item ? startCooking(round, state, cooker, item, at) : { state, events: [] };
   }
   const phase = slotPhase(def, slot);

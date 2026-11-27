@@ -1,5 +1,7 @@
 # Festival competition: Codex prompt for the fixes and the Burger kit (2026-11-27)
 
+**DELIVERED AND INTEGRATED 2026-11-27.** One miss: `station_fry_basket_golden.png` came without the handle (the game makes the golden basket from the raw one instead).
+
 Paste everything in the block into Codex. It asks only for what the Burger Festival needs, plus 16 broken files. The other festivals' kits come after the Burger round has been played.
 
 The 26 wrongly named dishes are **not** in this prompt: they only need renaming, which Claude does. Do not ask Codex to rename them.

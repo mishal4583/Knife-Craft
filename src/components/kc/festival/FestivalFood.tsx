@@ -1,288 +1,202 @@
 /**
- * The food as the festival draws it: a burger stacked layer by layer (so the plate and the order bubble show exactly the same thing, whatever is on it),
- * the raw and cooking food on the stations, and the drinks. Plain shapes on purpose (developer 2026-11-27, Phase 2a); the Codex Burger kit replaces
- * them. Colours say the state: pink raw, brown ready, dark overcooked, black burnt.
+ * The food as the festival shows it (the developer's Codex Burger kit): a burger stacked layer by layer, so the plate and the order bubble show
+ * exactly the same thing whatever is on it; meat and fries that change as they cook (one picture fading into the next, on one crop, so nothing
+ * moves); the drink machines; and the little pictures in an order.
  */
 import type { FoodId, SlotPhase } from "@/game/festival/types";
-import { FOOD_PICTURES, festivalUrl } from "./festivalArt";
+import {
+  BASKET_ART,
+  CHIP_ART,
+  CUP_EMPTY,
+  LAYERS,
+  SIDE_ART,
+  STATION_ART,
+  TAP_ART,
+  festivalUrl,
+  layerArt,
+  meatArt,
+  type LayerId,
+  type MeatState,
+} from "./festivalArt";
 
-const LAYER_HEIGHT: Partial<Record<FoodId, number>> = {
-  bun: 12,
-  patty: 12,
-  chicken: 13,
-  cheese: 6,
-  pickles: 6,
-  onion: 6,
-  tomato: 7,
-  lettuce: 8,
-};
+const MEAT_LAYERS = new Set<LayerId>(["patty", "chicken", "veggie"]);
 
-/** One layer of a burger, in a 100-wide box whose top is `y`. */
-function Layer({ item, y, over }: { item: FoodId; y: number; over?: boolean }) {
-  switch (item) {
-    case "bun":
-      return (
-        <g>
-          <rect x="8" y={y} width="84" height="12" rx="6" fill="#d8913f" />
-          <rect x="10" y={y} width="80" height="4" rx="2" fill="#f4c374" />
-        </g>
-      );
-    case "patty":
-      return (
-        <g>
-          <rect x="6" y={y} width="88" height="12" rx="6" fill={over ? "#3b2010" : "#7a3f1c"} />
-          {[24, 42, 60, 76].map((x) => (
-            <rect key={x} x={x} y={y + 2} width="4" height="8" rx="2" fill="#46220f" />
-          ))}
-        </g>
-      );
-    case "chicken":
-      return (
-        <path
-          d={`M8 ${y + 11} Q4 ${y + 4} 14 ${y + 3} Q20 ${y - 2} 30 ${y + 2} Q40 ${y - 3} 50 ${y + 2} Q62 ${y - 2} 72 ${y + 3} Q84 ${y - 1} 90 ${y + 4} Q97 ${y + 8} 90 ${y + 12} Q50 ${y + 16} 8 ${y + 11} Z`}
-          fill={over ? "#8a4d12" : "#e8982c"}
-        />
-      );
-    case "cheese":
-      return (
-        <path
-          d={`M7 ${y} H93 V${y + 5} L82 ${y + 5} L77 ${y + 13} L72 ${y + 5} L36 ${y + 5} L31 ${y + 11} L26 ${y + 5} H7 Z`}
-          fill="#f9c52e"
-        />
-      );
-    case "pickles":
-      return (
-        <g fill="#8fa326" stroke="#5f7016" strokeWidth="1">
-          {[22, 44, 66, 82].map((x) => (
-            <ellipse key={x} cx={x} cy={y + 3} rx="11" ry="3.5" />
-          ))}
-        </g>
-      );
-    case "onion":
-      return (
-        <g fill="none" stroke="#a43f92" strokeWidth="2.6">
-          {[24, 50, 76].map((x) => (
-            <ellipse key={x} cx={x} cy={y + 3} rx="13" ry="3.4" />
-          ))}
-        </g>
-      );
-    case "tomato":
-      return (
-        <g>
-          <rect x="9" y={y} width="39" height="7" rx="3.5" fill="#e0402c" />
-          <rect x="52" y={y} width="39" height="7" rx="3.5" fill="#e0402c" />
-        </g>
-      );
-    case "lettuce":
-      return (
-        <path
-          d={`M3 ${y + 4} Q10 ${y - 3} 18 ${y + 3} Q26 ${y - 3} 35 ${y + 3} Q44 ${y - 3} 52 ${y + 3} Q61 ${y - 3} 70 ${y + 3} Q79 ${y - 3} 87 ${y + 3} Q93 ${y - 2} 97 ${y + 4} Q86 ${y + 12} 50 ${y + 9} Q14 ${y + 12} 3 ${y + 4} Z`}
-          fill="#7cc23e"
-          stroke="#4f8f1f"
-          strokeWidth="1"
-        />
-      );
-    default:
-      return null;
-  }
-}
+/** How far apart a burger still being built holds its layers, so every part on the plate can be seen. */
+export const OPEN_SPREAD = 1.7;
 
 /**
  * A burger drawn bottom to top from its parts (the bun first). `lid` puts the top bun on: an order shows it, and a plate shows it once somebody
- * wants it exactly so, which is the sign to serve.
+ * wants it exactly so, which is the sign to serve. `spread` holds the layers apart. It keeps one width; a tall one is shrunk to fit its box,
+ * standing on its bottom edge.
  */
 export function BurgerStack({
   parts,
   lid = false,
   over = false,
+  spread = 1,
   className,
 }: {
   parts: readonly FoodId[];
   lid?: boolean;
   over?: boolean;
-  className?: string;
+  spread?: number;
+  className?: string | undefined;
 }) {
-  let y = 66;
-  const layers = parts.map((item, i) => {
-    y -= (LAYER_HEIGHT[item] ?? 8) - (i === 0 ? 0 : 1);
-    return <Layer key={`${item}-${i}`} item={item} y={y} over={over} />;
-  });
-  const top = lid ? y - 24 : y;
+  const ids = [...parts, ...(lid && parts.length ? ["lid"] : [])] as LayerId[];
+  if (!ids.length) return null;
+  const centres = ids.reduce<number[]>(
+    (done, id, i) =>
+      done.concat(
+        i === 0 ? 0 : done[i - 1]! + ((LAYERS[ids[i - 1]!].thick + LAYERS[id].thick) / 2) * spread,
+      ),
+    [],
+  );
+  const top = Math.max(...ids.map((id, i) => centres[i]! + LAYERS[id].height / 2));
+  const bottom = Math.max(...ids.map((id, i) => LAYERS[id].height / 2 - centres[i]!));
   return (
     <svg
-      viewBox={`0 ${Math.min(top, 20) - 2} 100 ${68 - Math.min(top, 20) + 2}`}
+      viewBox={`0 ${-top} 400 ${top + bottom}`}
+      preserveAspectRatio="xMidYMax meet"
       className={className}
       aria-hidden="true"
       focusable="false"
     >
-      {layers}
-      {lid && parts.length > 0 ? (
-        <g>
-          <path
-            d={`M8 ${y + 1} Q8 ${y - 23} 50 ${y - 23} Q92 ${y - 23} 92 ${y + 1} Z`}
-            fill="#e59a3c"
-          />
-          <path
-            d={`M14 ${y - 8} Q22 ${y - 20} 46 ${y - 20}`}
-            stroke="#f8c67a"
-            strokeWidth="4"
-            fill="none"
-            strokeLinecap="round"
-          />
-          {[
-            [34, 14],
-            [50, 18],
-            [66, 13],
-            [43, 8],
-            [60, 7],
-            [76, 6],
-          ].map(([x, dy]) => (
-            <ellipse key={`${x}-${dy}`} cx={x} cy={y - dy!} rx="2.6" ry="1.7" fill="#fff0cf" />
-          ))}
-        </g>
-      ) : null}
-    </svg>
-  );
-}
-
-const meatColour = (item: FoodId, phase: SlotPhase, progress: number): string => {
-  const raw = item === "chicken" ? [240, 190, 170] : [229, 122, 122];
-  const done = item === "chicken" ? [224, 143, 38] : [122, 63, 28];
-  if (phase === "burnt") return "#1b110c";
-  if (phase === "over") return item === "chicken" ? "#8a4d12" : "#43230f";
-  const t = phase === "cooking" ? Math.max(0, Math.min(1, progress)) : 1;
-  return `rgb(${raw.map((c, i) => Math.round(c + (done[i]! - c) * t)).join(",")})`;
-};
-
-/** A patty or a chicken fillet lying on the grill (or raw in its tray). */
-export function Meat({
-  item,
-  phase,
-  progress = 0,
-  className,
-}: {
-  item: FoodId;
-  phase: SlotPhase | "raw";
-  progress?: number;
-  className?: string;
-}) {
-  const colour =
-    phase === "raw" ? meatColour(item, "cooking", 0) : meatColour(item, phase, progress);
-  const marks = phase !== "raw" && (phase !== "cooking" || progress > 0.55);
-  return (
-    <svg viewBox="0 0 100 70" className={className} aria-hidden="true" focusable="false">
-      <ellipse cx="50" cy="42" rx="42" ry="22" fill="rgba(0,0,0,.28)" />
-      <ellipse cx="50" cy="38" rx="42" ry="24" fill={colour} />
-      <ellipse cx="50" cy="33" rx="36" ry="17" fill="rgba(255,255,255,.12)" />
-      {marks ? (
-        <g stroke="rgba(25,8,0,.55)" strokeWidth="4" strokeLinecap="round">
-          <path d="M26 34 L46 20" />
-          <path d="M36 50 L68 26" />
-          <path d="M58 54 L78 40" />
-        </g>
-      ) : (
-        <g fill="rgba(255,255,255,.35)">
-          <circle cx="34" cy="34" r="3" />
-          <circle cx="58" cy="30" r="2.4" />
-          <circle cx="66" cy="44" r="3" />
-          <circle cx="44" cy="48" r="2" />
-        </g>
-      )}
-    </svg>
-  );
-}
-
-/** Fries in the basket, from pale to golden to burnt. */
-export function FryerFries({
-  phase,
-  progress = 0,
-  className,
-}: {
-  phase: SlotPhase | "raw";
-  progress?: number;
-  className?: string;
-}) {
-  const colour =
-    phase === "burnt"
-      ? "#241408"
-      : phase === "over"
-        ? "#8a4a0c"
-        : phase === "ready"
-          ? "#f4b822"
-          : `rgb(${Math.round(244 - 0 * progress)},${Math.round(226 - 40 * progress)},${Math.round(165 - 130 * progress)})`;
-  const sticks = [
-    [14, 16, -18],
-    [26, 8, -8],
-    [38, 14, 5],
-    [50, 6, -4],
-    [62, 12, 9],
-    [74, 8, 16],
-    [32, 22, 14],
-    [58, 22, -12],
-  ];
-  return (
-    <svg viewBox="0 0 100 70" className={className} aria-hidden="true" focusable="false">
-      {sticks.map(([x, y, turn]) => (
-        <rect
-          key={`${x}-${y}`}
-          x={x}
-          y={y}
-          width="9"
-          height="44"
-          rx="3"
-          fill={colour}
-          stroke="rgba(120,70,10,.5)"
-          strokeWidth="1"
-          transform={`rotate(${turn} ${x! + 4} ${y! + 22})`}
+      {ids.map((id, i) => (
+        <image
+          key={`${id}-${i}`}
+          href={festivalUrl(layerArt(id))}
+          x="0"
+          y={-centres[i]! - 200}
+          width="400"
+          height="400"
+          className={over && MEAT_LAYERS.has(id) ? "fest-darker" : undefined}
         />
       ))}
     </svg>
   );
 }
 
-/** A cup filling at the tap (level 0-1). */
-export function Cup({
-  drink,
-  level = 1,
+/** How far a picture has faded in, from `from` to `to` of the cooking. */
+const fade = (progress: number, from: number, to: number) =>
+  Math.max(0, Math.min(1, (progress - from) / (to - from)));
+
+/** Pictures laid exactly on one another, each as see-through as it should be. */
+function Layers({
+  pictures,
   className,
 }: {
-  drink: FoodId;
-  level?: number;
-  className?: string | undefined;
+  pictures: readonly (readonly [name: string, opacity: number])[];
+  className: string;
 }) {
-  const liquid = drink === "milkshake" ? "#f2849f" : "#6b2e12";
-  const full = Math.max(0, Math.min(1, level));
-  const top = 76 - 54 * full;
   return (
-    <svg viewBox="0 0 64 84" className={className} aria-hidden="true" focusable="false">
-      <rect x="35" y="2" width="6" height="34" rx="2" fill="#d8392f" transform="rotate(14 38 20)" />
-      <path d="M12 20 H52 L47 78 H17 Z" fill="rgba(255,255,255,.55)" />
-      {full > 0 ? (
-        <path
-          d={`M${12 + (5 * (top - 20)) / 58} ${top} H${52 - (5 * (top - 20)) / 58} L47 78 H17 Z`}
-          fill={liquid}
-        />
-      ) : null}
-      {full >= 1 ? (
-        <ellipse
-          cx="32"
-          cy="22"
-          rx="19"
-          ry={drink === "milkshake" ? 8 : 3}
-          fill={drink === "milkshake" ? "#fff3ee" : "#b8662c"}
-        />
-      ) : null}
-      <path d="M12 20 H52 L47 78 H17 Z" fill="none" stroke="#8a5a34" strokeWidth="2.5" />
-    </svg>
+    <span aria-hidden="true" className={`fest-art ${className}`}>
+      {pictures.map(([name, opacity]) => (
+        <img key={name} src={festivalUrl(name)} alt="" draggable={false} style={{ opacity }} />
+      ))}
+    </span>
   );
 }
 
-/** A thing as it appears in an order bubble or on a tray: its painted picture, or the drawn cup. */
-export function FoodPicture({ item, className }: { item: FoodId; className?: string }) {
-  const picture = FOOD_PICTURES[item];
-  return picture ? (
-    <img src={festivalUrl(picture)} alt="" draggable={false} className={className} />
-  ) : (
-    <Cup drink={item} className={className} />
+/** A piece of meat on the grill: raw, browning, cooked, darker once overcooked, charred once burnt. */
+export function Meat({
+  item,
+  phase,
+  progress = 0,
+  className = "",
+}: {
+  item: FoodId;
+  phase: SlotPhase;
+  progress?: number;
+  className?: string;
+}) {
+  const show = (state: MeatState, opacity = 1) => [meatArt(item, state), opacity] as const;
+  const pictures =
+    phase === "burnt"
+      ? [show("burnt")]
+      : phase !== "cooking"
+        ? [show("cooked")]
+        : progress < 0.5
+          ? [show("raw"), show("cooking", fade(progress, 0.15, 0.5))]
+          : [show("cooking"), show("cooked", fade(progress, 0.6, 1))];
+  return (
+    <Layers pictures={pictures} className={`${className} ${phase === "over" ? "fest-over" : ""}`} />
   );
+}
+
+/** Fries in their basket, from pale to golden to burnt. */
+export function Basket({
+  phase,
+  progress = 0,
+  className = "",
+}: {
+  phase: SlotPhase;
+  progress?: number;
+  className?: string;
+}) {
+  const pictures: (readonly [string, number])[] =
+    phase === "burnt"
+      ? [[BASKET_ART.burnt, 1]]
+      : phase === "cooking"
+        ? [
+            [BASKET_ART.raw, 1],
+            [BASKET_ART.golden, fade(progress, 0.3, 1)],
+          ]
+        : [[BASKET_ART.golden, 1]];
+  return (
+    <Layers pictures={pictures} className={`${className} ${phase === "over" ? "fest-over" : ""}`} />
+  );
+}
+
+/** A drink machine: the tap with its cup filling under it, or the blender, which shakes while it blends and then shows the finished shake. */
+export function DrinkMachine({
+  drink,
+  pouring,
+  phase,
+  progress = 0,
+}: {
+  drink: FoodId;
+  /** Something is in it. */
+  pouring: boolean;
+  phase: SlotPhase | null;
+  progress?: number;
+}) {
+  const tap = TAP_ART[drink];
+  const full = SIDE_ART[drink]!;
+  if (!tap) {
+    const done = pouring && phase !== "cooking";
+    return (
+      <img
+        src={festivalUrl(done ? full : STATION_ART.blender)}
+        alt=""
+        draggable={false}
+        className={`fest-blender ${pouring && !done ? "fest-blending" : ""}`}
+      />
+    );
+  }
+  const level = !pouring ? 0 : phase === "cooking" ? progress : 1;
+  return (
+    <>
+      <img src={festivalUrl(tap)} alt="" draggable={false} className="fest-tap" />
+      <span aria-hidden="true" className={`fest-art fest-cup ${pouring ? "" : "fest-cup-waiting"}`}>
+        <img src={festivalUrl(CUP_EMPTY)} alt="" draggable={false} />
+        {pouring ? (
+          // the full cup shows from the bottom up as it fills
+          <img
+            src={festivalUrl(full)}
+            alt=""
+            draggable={false}
+            style={{ clipPath: `inset(${(1 - level) * 100}% 0 0 0)` }}
+          />
+        ) : null}
+      </span>
+    </>
+  );
+}
+
+/** A part or a side as it appears in an order. */
+export function FoodPicture({ item, className }: { item: FoodId; className?: string }) {
+  const name = SIDE_ART[item] ?? CHIP_ART[item];
+  return name ? (
+    <img src={festivalUrl(name)} alt="" draggable={false} className={className} />
+  ) : null;
 }

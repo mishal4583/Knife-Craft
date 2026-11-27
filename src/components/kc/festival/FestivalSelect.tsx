@@ -6,7 +6,7 @@ import { FESTIVAL_EVENTS, type FestivalEvent } from "@/game/festival/events";
 import { festivalStatus, type FestivalStatus } from "@/game/festival/schedule";
 import { festivalsOf } from "@/game/festival/state";
 import { useUnlockText } from "@/components/kc/navLevel";
-import { festivalUrl, gameUrl } from "./festivalArt";
+import { UI_ART, festivalUrl, gameUrl } from "./festivalArt";
 
 /**
  * THE FIFTEEN FESTIVALS (developer 2026-11-27): which are open, which come next and what opens them (a locked one in the game's own words: the
@@ -47,7 +47,11 @@ export function FestivalSelect({
         >
           ←
         </button>
-        <img src={festivalUrl("ui/trophy")} alt="" className="h-11 w-11 shrink-0 object-contain" />
+        <img
+          src={festivalUrl(UI_ART.trophy)}
+          alt=""
+          className="h-11 w-11 shrink-0 object-contain"
+        />
         <div className="min-w-0">
           <h1 className="font-display text-[19px] font-black leading-tight text-[#3d1c06]">
             Festival Competition
@@ -132,9 +136,18 @@ export function FestivalSelect({
                   data-testid={`festival-lock-${event.id}`}
                   className="max-w-[104px] shrink-0 text-center font-ui text-[11.5px] font-extrabold leading-tight text-[#7a4a24]"
                 >
-                  <span aria-hidden="true" className="block text-[18px]">
-                    {open ? "🛠️" : "🔒"}
-                  </span>
+                  {open ? (
+                    <span aria-hidden="true" className="block text-[18px]">
+                      🛠️
+                    </span>
+                  ) : (
+                    <img
+                      src={festivalUrl(UI_ART.lock)}
+                      alt=""
+                      loading="lazy"
+                      className="mx-auto mb-0.5 h-7 w-7 object-contain"
+                    />
+                  )}
                   {open ? "Coming soon" : lockLine(status)}
                 </span>
               )}

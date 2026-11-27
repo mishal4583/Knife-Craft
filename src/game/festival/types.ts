@@ -8,13 +8,17 @@ export type FoodId =
   | "bun"
   | "patty"
   | "chicken"
+  | "veggie"
   | "cheese"
   | "lettuce"
   | "tomato"
   | "onion"
   | "pickles"
+  | "ketchup"
+  | "mustard"
   | "fries"
   | "cola"
+  | "lemonade"
   | "milkshake";
 
 export type CookerId = "grill" | "fryer" | "drink";
@@ -24,6 +28,8 @@ export type CookerDef = {
   /** What it makes, and how long each thing takes. */
   cookMs: Partial<Record<FoodId, number>>;
   slots: number;
+  /** A machine for one thing each (the drink taps and the shake blender): spot i only ever makes perSlot[i]. */
+  perSlot?: readonly FoodId[];
   /** After cooking: how long the food is at its best, then how long it is overcooked before it is burnt. `Infinity`: it never spoils (a poured drink). */
   readyMs: number;
   overMs: number;

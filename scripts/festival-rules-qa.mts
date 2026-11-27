@@ -140,7 +140,11 @@ console.log("B. The Burger kitchen and its customers");
           }
           const counts = new Map<FoodId, number>();
           for (const p of item.parts) counts.set(p, (counts.get(p) ?? 0) + 1);
-          if (counts.get("bun") !== 1 || !(counts.has("patty") || counts.has("chicken")))
+          // RULE CHANGE (developer 2026-11-27, "add the assets and everything"): the Codex kit's veggie patty is a third meat
+          if (
+            counts.get("bun") !== 1 ||
+            !(["patty", "chicken", "veggie"] as const).some((m) => counts.has(m))
+          )
             bad.push(`t${pace.tier}: not a burger ${item.parts.join("+")}`);
           for (const [p, n] of counts) {
             if (p !== "bun" && n > (kitchen.limits[p] ?? 0)) bad.push(`t${pace.tier}: ${n} x ${p}`);
@@ -150,7 +154,7 @@ console.log("B. The Burger kitchen and its customers");
               bad.push(`t${pace.tier}: ${p} too early`);
           }
           const toppings = item.parts.filter(
-            (p) => !["bun", "patty", "chicken"].includes(p),
+            (p) => !["bun", "patty", "chicken", "veggie"].includes(p),
           ).length;
           if (toppings > MAX_TOPPINGS) bad.push(`t${pace.tier}: ${toppings} toppings`);
         }
@@ -174,6 +178,31 @@ console.log("B. The Burger kitchen and its customers");
       festivalRound(FESTIVAL_EVENTS[1]!, 1) === null,
     "B4: an event plays at its own pace (or the preview's); an unbuilt one has no round",
   );
+  const joins = (item: FoodId) =>
+    PACES.findIndex(
+      (p) =>
+        burgerKitchen(p).trays.some((t) => t.item === item) ||
+        burgerKitchen(p).cookers.some((c) => c.cookMs[item] !== undefined),
+    ) + 1;
+  assert(
+    joins("patty") === 1 &&
+      joins("cola") === 1 &&
+      joins("fries") === 1 &&
+      joins("ketchup") === 3 &&
+      joins("lemonade") === 4 &&
+      joins("milkshake") === 6 &&
+      joins("veggie") === 9 &&
+      joins("mustard") === 10 &&
+      burgerKitchen(paceFor(15)).trays.length === 12,
+    "B5: the whole kit is on the menu as the pace rises (ketchup 3, lemonade 4, shake 6, veggie 9, mustard 10): 12 trays at most",
+    { trays: burgerKitchen(paceFor(15)).trays.map((t) => t.item) },
+  );
+  const asked = new Set<FoodId>();
+  for (let seed = 1; seed <= 60; seed++)
+    for (const o of burgerOrders(paceFor(15), seed))
+      for (const i of o.items)
+        for (const part of i.kind === "dish" ? i.parts : [i.item]) asked.add(part);
+  assert(asked.size === 15, "B6: and customers ask for every one of the 15 foods", [...asked]);
 }
 
 /* a small counter to try the rules on */
@@ -322,25 +351,37 @@ console.log("C. The counter");
   );
 }
 {
-  // drinks never spoil; an empty tap pours what is wanted; the longest waiting is served first
+  // RULE CHANGE (developer 2026-11-27, the Codex drink machine): each drink has its own machine (cola tap, lemonade tap, shake blender)
+  const first = cookerOf(burgerKitchen(pace1), "drink")!;
+  const full = cookerOf(burgerKitchen(paceFor(6)), "drink")!;
+  assert(
+    first.slots === 1 &&
+      first.perSlot!.join() === "cola" &&
+      full.slots === 3 &&
+      full.perSlot!.join() === "cola,lemonade,milkshake",
+    "C18: a machine a drink, left to right, as each drink joins the menu",
+  );
+  const shakes = new Sim(withOrders([{ items: [side("milkshake")] }], paceFor(6)));
+  shakes.wait(500).do({ kind: "cooker", cooker: "drink", slot: 1 });
+  shakes.do({ kind: "cooker", cooker: "drink", slot: 2 });
+  assert(
+    shakes.state.cookers.drink![1]?.item === "lemonade" &&
+      shakes.state.cookers.drink![2]?.item === "milkshake",
+    "C19: tapping a machine makes its own drink",
+  );
   const sim = new Sim(withOrders([{ items: [side("cola")] }, { items: [side("cola")] }]));
   sim.wait(500).wait(pace1.arriveMs);
-  assert(sim.state.customers.length === 2, "C18: two customers wait");
-  sim.do({ kind: "cooker", cooker: "drink", slot: 1 });
+  sim.do({ kind: "cooker", cooker: "drink", slot: 0 }).wait(30_000 > 0 ? 3000 : 0);
   assert(
-    sim.state.cookers.drink![1]?.item === "cola",
-    "C19: tapping an empty tap pours what is wanted",
-  );
-  sim.wait(60_000 > 0 ? 3000 : 0);
-  assert(
-    slotPhase(cookerOf(sim.round.kitchen, "drink")!, sim.state.cookers.drink![1]!) === "ready",
+    sim.state.customers.length === 2 &&
+      slotPhase(cookerOf(sim.round.kitchen, "drink")!, sim.state.cookers.drink![0]!) === "ready",
     "C20: a drink never spoils",
   );
-  const first = Math.min(...sim.state.customers.map((c) => c.id));
-  sim.do({ kind: "cooker", cooker: "drink", slot: 1 });
+  const longest = Math.min(...sim.state.customers.map((c) => c.id));
+  sim.do({ kind: "cooker", cooker: "drink", slot: 0 });
   assert(
     sim.state.served === 1 &&
-      !sim.state.customers.some((c) => c.id === first) &&
+      !sim.state.customers.some((c) => c.id === longest) &&
       sim.state.cooked === 0,
     "C21: a finished item goes to whoever has waited longest (drinks do not count for accuracy)",
   );

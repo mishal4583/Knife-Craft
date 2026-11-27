@@ -119,7 +119,10 @@ export function nextAction(round: RoundConfig, state: RoundState): Action | null
   for (const def of kitchen.cookers) {
     for (const item of Object.keys(def.cookMs) as FoodId[]) {
       if (countOf(needed, item) <= countOf(making, item)) continue;
-      const free = state.cookers[def.id]!.indexOf(null);
+      // (a drink machine makes only its own drink)
+      const free = def.perSlot
+        ? state.cookers[def.id]!.findIndex((slot, i) => slot === null && def.perSlot![i] === item)
+        : state.cookers[def.id]!.indexOf(null);
       if (free < 0) continue;
       return kitchen.trays.some((t) => t.item === item && t.to === def.id)
         ? { kind: "tray", item }

@@ -18,8 +18,10 @@ import type {
 export const BURGER_COOK_MS: Partial<Record<FoodId, number>> = {
   patty: 3600,
   chicken: 4200,
+  veggie: 3800,
   fries: 3800,
   cola: 1400,
+  lemonade: 1500,
   milkshake: 2000,
 };
 
@@ -31,11 +33,17 @@ export const BURGER_JOINS: Partial<Record<FoodId, number>> = {
   cola: 1,
   fries: 1,
   tomato: 2,
+  ketchup: 3,
   onion: 4,
+  lemonade: 4,
   chicken: 5,
   milkshake: 6,
   pickles: 8,
+  veggie: 9,
+  mustard: 10,
 };
+/** The drink machines, left to right: a tap for each, the shake blender last. */
+export const DRINKS: readonly FoodId[] = ["cola", "lemonade", "milkshake"];
 export const MAX_TOPPINGS = 3;
 /** From this tier a burger may carry two patties. */
 export const DOUBLE_FROM_TIER = 7;
@@ -44,27 +52,42 @@ export const BURGER_POINTS: Partial<Record<FoodId, number>> = {
   bun: 40,
   patty: 60,
   chicken: 70,
+  veggie: 60,
   cheese: 15,
   lettuce: 10,
   tomato: 10,
   onion: 10,
   pickles: 10,
+  ketchup: 5,
+  mustard: 5,
   fries: 40,
   cola: 30,
+  lemonade: 30,
   milkshake: 40,
 };
 
-const TOPPINGS: readonly FoodId[] = ["cheese", "lettuce", "tomato", "onion", "pickles"];
+const TOPPINGS: readonly FoodId[] = [
+  "cheese",
+  "lettuce",
+  "tomato",
+  "onion",
+  "pickles",
+  "ketchup",
+  "mustard",
+];
 /** The order the parts are listed and stacked in, bottom to top. */
 export const STACK_ORDER: readonly FoodId[] = [
   "bun",
   "patty",
   "chicken",
+  "veggie",
   "cheese",
   "pickles",
   "onion",
   "tomato",
   "lettuce",
+  "ketchup",
+  "mustard",
 ];
 
 export const sortParts = (parts: readonly FoodId[]): FoodId[] =>
@@ -76,11 +99,13 @@ export function burgerKitchen(pace: Pace): KitchenConfig {
   const speed = (item: FoodId) => Math.round((BURGER_COOK_MS[item] ?? 0) * pace.cookSpeed);
   const times = (items: FoodId[]) =>
     Object.fromEntries(items.filter((i) => on(i, pace.tier)).map((i) => [i, speed(i)]));
+  const drinks = DRINKS.filter((d) => on(d, pace.tier));
   const cookers: CookerDef[] = [
     {
       id: "drink",
-      cookMs: times(["cola", "milkshake"]),
-      slots: 2,
+      cookMs: times([...drinks]),
+      slots: drinks.length,
+      perSlot: drinks,
       readyMs: Infinity,
       overMs: Infinity,
       serves: true,
@@ -95,7 +120,7 @@ export function burgerKitchen(pace: Pace): KitchenConfig {
     },
     {
       id: "grill",
-      cookMs: times(["patty", "chicken"]),
+      cookMs: times(["patty", "chicken", "veggie"]),
       slots: pace.grillSlots,
       readyMs: pace.readyMs,
       overMs: pace.overMs,
@@ -105,13 +130,16 @@ export function burgerKitchen(pace: Pace): KitchenConfig {
   const trays: TrayDef[] = [
     { item: "bun", to: "plate" },
     { item: "patty", to: "grill" },
-    ...(on("chicken", pace.tier) ? [{ item: "chicken", to: "grill" } as TrayDef] : []),
+    ...(["chicken", "veggie"] as const)
+      .filter((m) => on(m, pace.tier))
+      .map((m) => ({ item: m, to: "grill" }) as TrayDef),
     ...TOPPINGS.filter((t) => on(t, pace.tier)).map((t) => ({ item: t, to: "plate" }) as TrayDef),
     { item: "fries", to: "fryer" },
   ];
   const limits: KitchenConfig["limits"] = {
     patty: pace.tier >= DOUBLE_FROM_TIER ? 2 : 1,
     chicken: 1,
+    veggie: 1,
     ...Object.fromEntries(TOPPINGS.map((t) => [t, 1])),
   };
   return { cookers, plates: pace.plates, trays, base: "bun", limits, points: BURGER_POINTS };
@@ -137,15 +165,16 @@ export function burgerOrders(pace: Pace, seed: number): OrderSpec[] {
   const rand = makeSeededRand(seed ^ 0x62757267);
   const pick = <T>(list: readonly T[]) => list[Math.floor(rand() * list.length)]!;
   const toppings = TOPPINGS.filter((t) => on(t, pace.tier));
-  const drinks = (["cola", "milkshake"] as const).filter((d) => on(d, pace.tier));
+  const drinks = DRINKS.filter((d) => on(d, pace.tier));
   // at most three toppings: later events get harder through more customers and shorter times, not through endless tapping
   const mostToppings = Math.min(toppings.length, MAX_TOPPINGS, 1 + Math.floor((pace.tier - 1) / 4));
   return Array.from({ length: pace.orders }, (_, i) => {
     // the round warms up: the first customers want less than the last ones
     const along = pace.orders > 1 ? i / (pace.orders - 1) : 1;
     const chicken = on("chicken", pace.tier) && rand() < 0.3;
-    const parts: FoodId[] = [chicken ? "chicken" : "patty"];
-    if (!chicken && pace.tier >= DOUBLE_FROM_TIER && rand() < 0.15 + 0.15 * along)
+    const veggie = !chicken && on("veggie", pace.tier) && rand() < 0.2;
+    const parts: FoodId[] = [chicken ? "chicken" : veggie ? "veggie" : "patty"];
+    if (!chicken && !veggie && pace.tier >= DOUBLE_FROM_TIER && rand() < 0.15 + 0.15 * along)
       parts.push("patty");
     const wanted = Math.min(
       mostToppings,

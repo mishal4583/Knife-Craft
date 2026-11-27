@@ -31,11 +31,17 @@ import type {
   PowerId,
   RoundState,
 } from "@/game/festival/types";
-import { BurgerStack, Cup, FoodPicture, FryerFries, Meat } from "./FestivalFood";
+import { sortParts } from "@/game/festival/burger";
+import { Basket, BurgerStack, DrinkMachine, FoodPicture, Meat, OPEN_SPREAD } from "./FestivalFood";
 import {
+  BACKDROP_ART,
   FOOD_NAMES,
   PEOPLE,
-  ROUND_PICTURES,
+  ROUND_ART,
+  STATION_ART,
+  TALL_COUNTER_EDGE,
+  TRAY_ART,
+  UI_ART,
   festivalUrl,
   gameUrl,
   moodFor,
@@ -64,24 +70,33 @@ const at = ([x, y, w, h]: Rect): CSSProperties => ({
 });
 
 const POWERS: { id: PowerId; name: string; picture: string }[] = [
-  { id: "patience", name: "Patience", picture: "ui/power-patience" },
-  { id: "instant", name: "Cook now", picture: "ui/power-instant" },
-  { id: "freeze", name: "Freeze", picture: "ui/power-freeze" },
+  { id: "patience", name: "Patience", picture: UI_ART.patience },
+  { id: "instant", name: "Cook now", picture: UI_ART.instant },
+  { id: "freeze", name: "Freeze", picture: UI_ART.freeze },
 ];
+
+/** The upright painting is wider than it must be, so its counter's edge can always meet the stage's, with no gap above or below. */
+const TALL_MIN_SCALE = 1.11;
+function tallBackdrop(counter: number): CSSProperties {
+  const k = Math.max(TALL_MIN_SCALE, counter / (960 * TALL_COUNTER_EDGE));
+  const width = 540 * k;
+  const height = 960 * k;
+  return { left: (540 - width) / 2, top: counter - TALL_COUNTER_EDGE * height, width, height };
+}
 
 /** What the coach says about the tap the simulated player would make (the first play only). */
 function coachText(action: Action, state: RoundState): string {
   if (action.kind === "tray")
     return action.item === "bun"
       ? "Tap the bun"
-      : action.item === "patty" || action.item === "chicken"
+      : action.item === "patty" || action.item === "chicken" || action.item === "veggie"
         ? `Tap ${FOOD_NAMES[action.item].toLowerCase()} to grill it`
         : action.item === "fries"
           ? "Tap fries to fry them"
           : `Add ${FOOD_NAMES[action.item].toLowerCase()}`;
   if (action.kind === "cooker") {
     const slot = state.cookers[action.cooker]?.[action.slot];
-    if (!slot) return action.cooker === "drink" ? "Tap the tap to pour" : "Tap to start cooking";
+    if (!slot) return action.cooker === "drink" ? "Tap to pour the drink" : "Tap to start cooking";
     if (action.cooker === "grill") return "Ready! Tap it onto the bun";
     return `Ready! Tap to serve the ${FOOD_NAMES[slot.item].toLowerCase()}`;
   }
@@ -132,6 +147,7 @@ export function FestivalGame({
     grill: cookerOf(round.kitchen, "grill")!.slots,
     plates: round.kitchen.plates,
     trays: round.kitchen.trays.length,
+    drinks: cookerOf(round.kitchen, "drink")!.slots,
   };
   const layout = wide ? wideLayout(counts) : portraitLayout(counts, portraitHeight(box.w, box.h));
   const scale = box.w > 0 ? Math.min(box.w / layout.w, box.h / layout.h) : 0;
@@ -175,10 +191,7 @@ export function FestivalGame({
   }, [paused, held, phase]);
   useEffect(() => {
     // the pictures come before the first customer
-    for (const name of ROUND_PICTURES) new Image().src = festivalUrl(name);
-    for (const who of PEOPLE)
-      for (const mood of ["happy", "neutral", "impatient", "excited"])
-        new Image().src = festivalUrl(`people/${who}-${mood}`);
+    for (const name of ROUND_ART) new Image().src = festivalUrl(name);
   }, []);
 
   const say = useCallback(
@@ -338,22 +351,67 @@ export function FestivalGame({
         coachAction.kind === "cooker" &&
         coachAction.cooker === a.cooker &&
         coachAction.slot === a.slot));
+  /** The coach's ring and pointing hand, over the box the next tap should go to. */
   const ring = (a: Action) =>
-    coached(a) ? <span aria-hidden="true" className="fest-coach" data-testid="fest-coach" /> : null;
+    coached(a) ? (
+      <>
+        <span aria-hidden="true" className="fest-coach" data-testid="fest-coach" />
+        <img src={festivalUrl(UI_ART.hand)} alt="" className="fest-hand" />
+      </>
+    ) : null;
 
   const stopped = paused || held;
   const accuracy = Math.round(accuracyOf(view) * 100);
   const best = Math.max(1, view.score, rival.final);
 
-  const spot = (cooker: CookerId, i: number, rect: Rect) => {
+  /** One place on a cooker: what is in it, how far it is, and the badge that says what to do. */
+  const spot = (cooker: CookerId, i: number, rect: Rect, food?: Rect) => {
     const def = cookerOf(round.kitchen, cooker)!;
     const slot = view.cookers[cooker]?.[i] ?? null;
     const phaseNow = slot ? slotPhase(def, slot) : null;
     const progress = slot ? slotProgress(def, slot) : 0;
-    const name = cooker === "drink" ? "Drink tap" : cooker === "fryer" ? "Fryer" : "Grill";
+    const machine = cooker === "drink" ? def.perSlot![i]! : null;
+    const name = machine
+      ? `${FOOD_NAMES[machine]} machine`
+      : cooker === "fryer"
+        ? `Fryer ${i + 1}`
+        : `Grill ${i + 1}`;
     const stateText = !slot
       ? "empty"
       : `${FOOD_NAMES[slot.item]} ${phaseNow === "over" ? "overcooked" : phaseNow}`;
+    const press = () => tap({ kind: "cooker", cooker, slot: i });
+    const marks = (
+      <>
+        {slot && phaseNow === "cooking" ? (
+          <span aria-hidden="true" className="fest-meter">
+            <span style={{ transform: `scaleX(${progress})` }} />
+          </span>
+        ) : null}
+        {slot && phaseNow === "ready" && Number.isFinite(def.readyMs) ? (
+          <span aria-hidden="true" className="fest-meter fest-meter-ready">
+            <span style={{ transform: `scaleX(${progress})` }} />
+          </span>
+        ) : null}
+        {slot && phaseNow === "over" ? (
+          <span aria-hidden="true" className="fest-meter fest-meter-over">
+            <span style={{ transform: `scaleX(${progress})` }} />
+          </span>
+        ) : null}
+        {slot && phaseNow === "ready" ? (
+          <img src={festivalUrl(UI_ART.ready)} alt="" className="fest-badge fest-badge-ready" />
+        ) : null}
+        {slot && phaseNow === "over" ? (
+          <img src={festivalUrl(UI_ART.warning)} alt="" className="fest-badge fest-badge-over" />
+        ) : null}
+        {slot && phaseNow === "burnt" ? (
+          <>
+            <img src={festivalUrl(UI_ART.smoke)} alt="" className="fest-smoke" />
+            <img src={festivalUrl(UI_ART.trash)} alt="" className="fest-badge fest-badge-burnt" />
+          </>
+        ) : null}
+        {ring({ kind: "cooker", cooker, slot: i })}
+      </>
+    );
     return (
       <button
         key={`${cooker}-${i}`}
@@ -361,73 +419,41 @@ export function FestivalGame({
         data-testid={`fest-${cooker}-${i}`}
         data-phase={phaseNow ?? "empty"}
         data-item={slot?.item}
-        aria-label={`${name} ${i + 1}: ${stateText}`}
+        aria-label={`${name}: ${stateText}`}
         onPointerDown={(e) => {
           e.preventDefault();
-          tap({ kind: "cooker", cooker, slot: i });
+          press();
         }}
-        onClick={(e) => e.detail === 0 && tap({ kind: "cooker", cooker, slot: i })}
+        onClick={(e) => e.detail === 0 && press()}
         className={`fest-station fest-${cooker}`}
         style={at(rect)}
       >
-        {cooker === "drink" ? (
-          <>
-            <span aria-hidden="true" className="fest-nozzle" />
-            {slot ? (
-              <Cup
-                drink={slot.item}
-                level={phaseNow === "cooking" ? progress : 1}
-                className="fest-in"
-              />
-            ) : (
-              <span className="fest-empty-label">Pour</span>
-            )}
-          </>
-        ) : cooker === "fryer" ? (
-          slot ? (
-            <FryerFries phase={phaseNow!} progress={progress} className="fest-in" />
-          ) : (
-            <span className="fest-empty-label">Fryer</span>
-          )
-        ) : slot ? (
-          <Meat item={slot.item} phase={phaseNow!} progress={progress} className="fest-in" />
-        ) : null}
-        {slot && phaseNow === "cooking" ? (
-          <span aria-hidden="true" className="fest-meter">
-            <span style={{ transform: `scaleX(${progress})` }} />
+        {food ? (
+          // the grill: the box is a quarter of the grill's picture, the meat lies on its painted ring
+          <span
+            className="fest-onring"
+            style={at([food[0] - rect[0], food[1] - rect[1], food[2], food[3]])}
+          >
+            {slot ? <Meat item={slot.item} phase={phaseNow!} progress={progress} /> : null}
+            {marks}
           </span>
-        ) : null}
-        {slot && phaseNow === "ready" ? (
+        ) : machine ? (
           <>
-            <span aria-hidden="true" className="fest-badge fest-badge-ready">
-              ✓
-            </span>
-            {Number.isFinite(def.readyMs) ? (
-              <span aria-hidden="true" className="fest-meter fest-meter-ready">
-                <span style={{ transform: `scaleX(${progress})` }} />
-              </span>
-            ) : null}
+            <DrinkMachine drink={machine} pouring={!!slot} phase={phaseNow} progress={progress} />
+            <span className="fest-tray-name">{FOOD_NAMES[machine]}</span>
+            {marks}
           </>
-        ) : null}
-        {slot && phaseNow === "over" ? (
+        ) : (
           <>
-            <span aria-hidden="true" className="fest-badge fest-badge-over">
-              !
-            </span>
-            <span aria-hidden="true" className="fest-meter fest-meter-over">
-              <span style={{ transform: `scaleX(${progress})` }} />
-            </span>
+            <img src={festivalUrl(STATION_ART.fryer)} alt="" className="fest-fryer-pic" />
+            {slot ? (
+              <Basket phase={phaseNow!} progress={progress} className="fest-basket" />
+            ) : (
+              <span className="fest-tray-name">Fryer</span>
+            )}
+            {marks}
           </>
-        ) : null}
-        {slot && phaseNow === "burnt" ? (
-          <>
-            <img src={festivalUrl("ui/smoke")} alt="" className="fest-smoke" />
-            <span aria-hidden="true" className="fest-badge fest-badge-burnt">
-              ✕
-            </span>
-          </>
-        ) : null}
-        {ring({ kind: "cooker", cooker, slot: i })}
+        )}
       </button>
     );
   };
@@ -446,7 +472,11 @@ export function FestivalGame({
       data-score={view.score}
       data-rival={rivalNow.score}
     >
-      <img src={festivalUrl("burger/backdrop")} alt="" className="fest-backdrop" />
+      <img
+        src={festivalUrl(layout.wide ? BACKDROP_ART.wide : BACKDROP_ART.tall)}
+        alt=""
+        className="fest-backdrop"
+      />
       {scale > 0 ? (
         <div
           className={`fest-stage ${layout.wide ? "fest-wide" : "fest-tall"}`}
@@ -457,17 +487,22 @@ export function FestivalGame({
             transform: `translate(-50%, -50%) scale(${scale})`,
           }}
         >
-          {/* the wooden counter, from its edge to the foot of the stage (and a little past it, so no seam shows) */}
-          <div
-            aria-hidden="true"
-            className="fest-counter"
-            style={{
-              left: layout.wide ? -600 : -80,
-              right: layout.wide ? -600 : -80,
-              top: layout.counter,
-              bottom: -300,
-            }}
-          />
+          {layout.wide ? (
+            // the wide painting has no counter: a wooden one is drawn from its edge past the foot of the stage
+            <div
+              aria-hidden="true"
+              className="fest-counter"
+              style={{ left: -600, right: -600, top: layout.counter, bottom: -300 }}
+            />
+          ) : (
+            <img
+              src={festivalUrl(BACKDROP_ART.tall)}
+              alt=""
+              className="fest-scene"
+              style={tallBackdrop(layout.counter)}
+              data-testid="fest-scene"
+            />
+          )}
 
           {/* the customers */}
           {layout.seats.map((seat, i) => {
@@ -543,12 +578,7 @@ export function FestivalGame({
                           ),
                         )}
                       </div>
-                      <span aria-hidden="true" className="fest-patience">
-                        <span
-                          className={left > 0.6 ? "good" : left > 0.3 ? "mid" : "low"}
-                          style={{ transform: `scaleX(${Math.max(0, left)})` }}
-                        />
-                      </span>
+                      <Hearts left={left} />
                       {view.frozenMs > 0 ? (
                         <span aria-hidden="true" className="fest-frozen">
                           ❄
@@ -579,7 +609,6 @@ export function FestivalGame({
           })}
 
           {/* the kitchen */}
-          <div aria-hidden="true" className="fest-grillplate" style={at(layout.grillPlate)} />
           {layout.drink.map((rect, i) => spot("drink", i, rect))}
           {layout.fryer.map((rect, i) => spot("fryer", i, rect))}
           <button
@@ -594,13 +623,34 @@ export function FestivalGame({
             className="fest-station fest-binbtn"
             style={at(layout.bin)}
           >
-            <span aria-hidden="true" className="fest-bin-icon">
-              🗑️
-            </span>
+            <img src={festivalUrl(STATION_ART.bin)} alt="" className="fest-bin-pic" />
             <span className="fest-tray-name">Bin</span>
             {ring({ kind: "bin" })}
           </button>
-          {layout.grill.map((rect, i) => spot("grill", i, rect))}
+          <img
+            src={festivalUrl(STATION_ART.grill)}
+            alt=""
+            className="fest-base"
+            style={at(layout.grillArt)}
+          />
+          {layout.locked.map(([x, y, w, h], i) => (
+            // a ring this event does not use yet
+            <img
+              key={`locked-${i}`}
+              src={festivalUrl(UI_ART.lock)}
+              alt=""
+              className="fest-locked"
+              style={at([x + w / 2 - 15, y + h / 2 - 15, 30, 30])}
+              data-testid="fest-ring-locked"
+            />
+          ))}
+          {layout.grill.map((place, i) => spot("grill", i, place.tap, place.food))}
+          <img
+            src={festivalUrl(STATION_ART.board)}
+            alt=""
+            className="fest-base"
+            style={at(layout.board)}
+          />
           {layout.plates.map((rect, i) => {
             const plate = view.plates[i] ?? [];
             const wanted = !!plateTaker(view, i);
@@ -624,13 +674,16 @@ export function FestivalGame({
                 className="fest-station fest-plate"
                 style={at(rect)}
               >
-                <span aria-hidden="true" className="fest-dish" />
+                <span aria-hidden="true" className="fest-halo" />
+                <img src={festivalUrl(STATION_ART.plate)} alt="" className="fest-dish" />
                 {parts.length ? (
+                  // drawn in a burger's order however they were tapped, so nothing is hidden under the meat; held apart until it is right
                   <BurgerStack
-                    parts={parts}
+                    parts={sortParts(parts)}
+                    spread={wanted ? 1 : OPEN_SPREAD}
                     lid={wanted}
                     over={plate.some((p) => p.quality === "over")}
-                    className="fest-in fest-onplate"
+                    className="fest-onplate"
                   />
                 ) : null}
                 {wanted ? <span className="fest-serve">Serve</span> : null}
@@ -654,7 +707,7 @@ export function FestivalGame({
                 className="fest-station fest-tray"
                 style={at(rect)}
               >
-                <TrayFood item={tray.item} toCooker={tray.to !== "plate"} />
+                <img src={festivalUrl(TRAY_ART[tray.item]!)} alt="" className="fest-tray-food" />
                 <span className="fest-tray-name">{FOOD_NAMES[tray.item]}</span>
                 {ring({ kind: "tray", item: tray.item })}
               </button>
@@ -785,11 +838,11 @@ export function FestivalGame({
             <p className="fest-line">
               👥 {round.orders.length} customers
               <InfoTip label="How to play">
-                Tap the bun, then the raw patty. When the patty shows a green tick, tap it onto the
-                bun, add what the customer's bubble shows, and tap the burger to serve it. Fries go
-                in the fryer and drinks pour at the tap; tap them when they are ready. Food left too
-                long burns: tap it away. The bin empties the chosen plate. Each power-up works once
-                a round.
+                Tap the bun, then the raw patty. When the bell shows, tap the patty onto the bun,
+                add what the customer's bubble shows, and tap the burger to serve it. Fries go in
+                the fryer and each drink has its own machine; tap them when they are ready. Food
+                left too long burns: tap it to throw it away. The bin empties the chosen plate. Each
+                power-up works once a round.
               </InfoTip>
             </p>
             <button type="button" className="fest-primary" onClick={start} data-testid="fest-start">
@@ -840,11 +893,11 @@ export function FestivalGame({
       {phase === "result" && result ? (
         <div className="fest-veil" data-testid="fest-result" data-won={result.won}>
           {result.won ? (
-            <img src={festivalUrl("ui/confetti")} alt="" className="fest-confetti" />
+            <img src={festivalUrl(UI_ART.confetti)} alt="" className="fest-confetti" />
           ) : null}
           <section className="fest-card">
             {result.won ? (
-              <img src={festivalUrl("ui/first-trophy")} alt="" className="fest-trophy" />
+              <img src={festivalUrl(UI_ART.firstTrophy)} alt="" className="fest-trophy" />
             ) : null}
             <h2 className="fest-title">{result.won ? "You win the festival!" : "So close!"}</h2>
             <p className="fest-quote">
@@ -863,7 +916,7 @@ export function FestivalGame({
               {[1, 2, 3].map((n) => (
                 <img
                   key={n}
-                  src={festivalUrl("ui/star")}
+                  src={festivalUrl(UI_ART.star)}
                   alt=""
                   className={n <= result.stars ? "" : "off"}
                 />
@@ -937,10 +990,27 @@ const countParts = (parts: readonly FoodId[]): [FoodId, number][] => [
   ...parts.reduce((seen, p) => seen.set(p, (seen.get(p) ?? 0) + 1), new Map<FoodId, number>()),
 ];
 
-/** What a tray holds: the painted picture, or the drawn raw food. */
-function TrayFood({ item, toCooker }: { item: FoodId; toCooker: boolean }) {
-  if (item === "patty" || item === "chicken")
-    return <Meat item={item} phase="raw" className="fest-tray-food" />;
-  if (item === "fries" && toCooker) return <FryerFries phase="raw" className="fest-tray-food" />;
-  return <FoodPicture item={item} className="fest-tray-food" />;
+/** A customer's patience as five hearts, emptying from the right. */
+function Hearts({ left }: { left: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`fest-hearts ${left <= 0.3 ? "low" : ""}`}
+      data-testid="fest-hearts"
+      data-left={Math.max(0, left).toFixed(4)}
+    >
+      {[0, 1, 2, 3, 4].map((i) => (
+        <span key={i} className="fest-heart">
+          <img src={festivalUrl(UI_ART.heartEmpty)} alt="" />
+          <img
+            src={festivalUrl(UI_ART.heartFull)}
+            alt=""
+            style={{
+              clipPath: `inset(0 ${(1 - Math.max(0, Math.min(1, left * 5 - i))) * 100}% 0 0)`,
+            }}
+          />
+        </span>
+      ))}
+    </span>
+  );
 }

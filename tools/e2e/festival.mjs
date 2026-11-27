@@ -7,8 +7,10 @@
 //      the stars; the save records it (business.festivals) and the money and ledger do not move
 //   F5 pause: the clock and the food wait; Resume; the platform's pause stops it too
 //   F6 doing nothing: the rival wins; a constructive tip; Try again starts a fresh round
-//   F7 phone sizes and phones on their side, the first event and the pace of Event 15 (4 customers, 9 trays): every tap target at least 48 px,
+//   F7 phone sizes and phones on their side, the first event and the pace of Event 15 (4 customers, 12 trays): every tap target at least 48 px,
 //      nothing outside the window, no tap target on another, no sideways scroll
+//   F9 the developer's art (2026-11-27), a round with the whole menu: no broken picture; on upright windows the painted counter covers the stage
+//      with its edge on the counter line; the coach's hand points inside its target; the first event's two unused grill rings show a lock
 //   F8 no console errors
 // Screenshots: out/festival-*.png. Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -347,7 +349,8 @@ const frozenLook = () =>
   page.evaluate(() => ({
     meter: document.querySelector('[data-testid="fest-grill-0"] .fest-meter > span')?.style
       .transform,
-    patience: document.querySelector(".fest-patience > span")?.style.transform,
+    // (patience is five hearts since the developer's art)
+    patience: document.querySelector('[data-testid="fest-hearts"]')?.dataset.left,
     rival: document.querySelector('[data-testid="festival-game"]').dataset.rival,
   }));
 await page.click(q("fest-pause"));
@@ -433,6 +436,9 @@ const layoutCheck = () =>
         return Math.round(Math.max(0, ...over) * 100);
       },
     );
+    const clipped = [...document.querySelectorAll('[data-testid="fest-stage"] .fest-tray-name')]
+      .filter((n) => n.scrollWidth > n.clientWidth + 1)
+      .map((n) => n.textContent);
     const wantsOut = [...document.querySelectorAll('[data-testid="fest-bubble"]')].filter((b) => {
       const box = b.getBoundingClientRect();
       return [...b.querySelectorAll(".fest-want, .fest-chip")].some((w) => {
@@ -448,6 +454,7 @@ const layoutCheck = () =>
     return {
       faceCovered: Math.max(0, ...faces),
       wantsOut,
+      clipped,
       buttons: buttons.length,
       small: buttons.filter((b) => b.r.width < 47.5 || b.r.height < 47.5).map((b) => b.id),
       outside: buttons
@@ -507,12 +514,95 @@ for (const [w, h] of [
         m.bubbles === paceFor(pace).atOnce &&
         m.bubbleOutside === 0 &&
         m.wantsOut === 0 &&
+        m.clipped.length === 0 &&
         m.faceCovered <= 25 &&
         !m.sideways,
       m,
     );
   }
 }
+
+// F9: the art
+const brokenArt = () =>
+  page.evaluate(async () => {
+    const imgs = [...document.querySelectorAll('[data-testid="festival-game"] img')];
+    await Promise.all(imgs.map((i) => i.decode().catch(() => {})));
+    const layers = [...document.querySelectorAll('[data-testid="festival-game"] svg image')].map(
+      (i) => i.getAttribute("href"),
+    );
+    const bad = [];
+    for (const src of new Set(layers)) {
+      const probe = new Image();
+      probe.src = src;
+      await probe.decode().catch(() => bad.push(src));
+    }
+    return {
+      images: imgs.length,
+      layers: new Set(layers).size,
+      broken: [...imgs.filter((i) => !i.naturalWidth).map((i) => i.getAttribute("src")), ...bad],
+    };
+  });
+for (const [w, h] of [
+  [390, 844],
+  [360, 640],
+  [1280, 720],
+]) {
+  await open("?festival=1&pace=15", 12, w, h);
+  await page.waitForSelector(q("fest-start"), { timeout: 15000 });
+  await page.click(q("fest-start"));
+  await playRound(burgerRound(paceFor(15), 5), { limitMs: 8000 });
+  await sleep(400);
+  const art = await brokenArt();
+  const counter = await page.evaluate(() => {
+    const scene = document.querySelector('[data-testid="fest-scene"]');
+    if (!scene) return null;
+    const s = scene.getBoundingClientRect();
+    const r = document.querySelector('[data-testid="fest-stage"]').getBoundingClientRect();
+    const k = r.width / 540;
+    return {
+      covers:
+        s.left <= r.left + 1 &&
+        s.right >= r.right - 1 &&
+        s.top <= r.top + 1 &&
+        s.bottom >= r.bottom - 1,
+      edge: Math.round((s.top + 0.445 * s.height - r.top) / k),
+      layout: Math.round(370 + r.height / k - 960),
+    };
+  });
+  await shot(page, `festival-art-${w}x${h}`);
+  check(
+    `F9 ${w} x ${h}, the whole menu: no broken picture${w < h ? "; the painted counter covers the stage, its edge on the counter line" : ""}`,
+    art.broken.length === 0 &&
+      art.images > 30 &&
+      (w > h ? counter === null : counter.covers && Math.abs(counter.edge - counter.layout) <= 2),
+    { ...art, counter },
+  );
+}
+await open("?festival=1", 12);
+await page.waitForSelector(q("fest-start"), { timeout: 15000 });
+await page.click(q("fest-start"));
+await page.waitForSelector(".fest-hand", { timeout: 8000 });
+await sleep(700);
+const hand = await page.evaluate(() => {
+  const h = document.querySelector(".fest-hand").getBoundingClientRect();
+  const target = document
+    .querySelector('[data-testid="fest-coach"]')
+    .parentElement.getBoundingClientRect();
+  // the fingertip is near the picture's top left
+  const x = h.left + h.width * 0.2;
+  const y = h.top + h.height * 0.15;
+  return {
+    tipInside:
+      x >= target.left && x <= target.right && y >= target.top - 4 && y <= target.bottom + 4,
+  };
+});
+const locks = await page.$$eval('[data-testid="fest-ring-locked"]', (l) => l.length);
+await shot(page, "festival-coach-art");
+check(
+  "F9 the coach's hand points inside its target; the first event's two unused grill rings show a lock",
+  hand.tipInside && locks === 2,
+  { hand, locks },
+);
 
 check(
   "F8 no console errors",

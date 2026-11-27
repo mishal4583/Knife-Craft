@@ -21,6 +21,8 @@ import {
 } from "../src/game/festival/state.ts";
 import { festivalStatus, waitingFestival } from "../src/game/festival/schedule.ts";
 import { burgerKitchen } from "../src/game/festival/burger.ts";
+import { cookerOf } from "../src/game/festival/kitchen.ts";
+import { ALL_ART, LAYERS } from "../src/components/kc/festival/festivalArt.ts";
 import { PACES } from "../src/game/festival/tiers.ts";
 import {
   PORTRAIT,
@@ -220,6 +222,7 @@ console.log("C. The boxes on the screen");
 {
   const bad: string[] = [];
   const heights = [960, portraitHeight(390, 844), portraitHeight(320, 568), 1200];
+  // (festivalLayout's smallest windows: 320 x 568 upright, 740 x 360 on its side)
   for (const pace of PACES) {
     const kitchen = burgerKitchen(pace);
     const counts = {
@@ -227,6 +230,7 @@ console.log("C. The boxes on the screen");
       grill: pace.grillSlots,
       plates: pace.plates,
       trays: kitchen.trays.length,
+      drinks: cookerOf(kitchen, "drink")!.slots,
     };
     const layouts: { name: string; layout: FestivalLayout; scale: number }[] = [
       ...heights.map((h) => ({
@@ -238,6 +242,24 @@ console.log("C. The boxes on the screen");
     ];
     for (const { name, layout, scale } of layouts) {
       const targets = tapTargets(layout);
+      const [gx, gy, gw, gh] = layout.grillArt;
+      const onGrill = layout.grill.every(
+        ({ tap, food }) =>
+          [tap, food].every(
+            ([x, y, w, h]) =>
+              x >= gx - 1 && y >= gy - 1 && x + w <= gx + gw + 1 && y + h <= gy + gh + 1,
+          ) &&
+          food[0] >= tap[0] - 1 &&
+          food[0] + food[2] <= tap[0] + tap[2] + 1 &&
+          food[1] + food[3] / 2 >= tap[1] &&
+          food[1] + food[3] / 2 <= tap[1] + tap[3],
+      );
+      if (
+        !onGrill ||
+        layout.locked.length !== 4 - counts.grill ||
+        layout.drink.length !== counts.drinks
+      )
+        bad.push(`t${pace.tier} ${name}: grill rings or drink machines`);
       if (
         layout.trays.length !== counts.trays ||
         layout.grill.length !== counts.grill ||
@@ -284,42 +306,56 @@ console.log("C. The boxes on the screen");
 
 console.log("D. The art");
 {
-  const art = read("src/components/kc/festival/festivalArt.ts");
-  const names = new Set<string>([...art.matchAll(/"((?:burger|ui)\/[a-z-]+)"/g)].map((m) => m[1]!));
-  for (const f of readdirSync("src/components/kc/festival"))
-    for (const m of read(`src/components/kc/festival/${f}`).matchAll(
-      /festivalUrl\("([a-z/-]+)"\)/g,
-    ))
-      names.add(m[1]!);
-  for (const who of ["elderly-woman", "office-man", "student-woman", "tourist-man"])
-    for (const mood of ["happy", "neutral", "impatient", "excited"])
-      names.add(`people/${who}-${mood}`);
-  const missing = [...names].filter((n) => !existsSync(`public/festival/${n}.webp`));
-  assert(
-    names.size >= 30 && missing.length === 0,
-    "D1: every picture the festival names exists",
-    missing,
-  );
+  const files: string[] = [];
   let total = 0;
   const walk = (dir: string) => {
     for (const f of readdirSync(dir)) {
       const p = `${dir}/${f}`;
       if (statSync(p).isDirectory()) walk(p);
-      else total += statSync(p).size;
+      else {
+        files.push(p.replace(/^public\/festival\//, "").replace(/\.webp$/, ""));
+        total += statSync(p).size;
+      }
     }
   };
   walk("public/festival");
+  const missing = ALL_ART.filter((n) => !existsSync(`public/festival/${n}.webp`));
+  const unused = files.filter((f) => !ALL_ART.includes(f));
   assert(
-    total > 0 && total < 1200 * 1024,
-    `D2: together they weigh ${Math.round(total / 1024)} KB (limit 1200 KB; fetched only when the festival opens)`,
+    ALL_ART.length >= 100 && missing.length === 0,
+    `D1: every one of the ${ALL_ART.length} pictures the festival names exists`,
+    missing,
+  );
+  assert(unused.length === 0, "D2: and nothing is shipped that the festival does not name", unused);
+  // RULE CHANGE (developer 2026-11-27, "add the assets and everything integrate it properly"): the whole Burger kit is in (the plan's estimate was
+  // 1.5-2 MB; the limit was 1200 KB while only the first 37 pictures existed). Still fetched only when the festival opens.
+  assert(
+    total > 0 && total < 2048 * 1024,
+    `D3: together they weigh ${Math.round(total / 1024)} KB (limit 2048 KB)`,
   );
   assert(
     /^Festival competition assets\/$/m.test(read(".gitignore")),
-    "D3: the 270 MB art folder is kept out of git",
+    "D4: the art folder is kept out of git",
+  );
+  const cutter = read("scripts/make-festival-assets.py");
+  const cut = [...cutter.matchAll(/^LAYERS = \[(.*)\]$/gm)][0]?.[1]?.split(",").length ?? 0;
+  assert(
+    /SINGLES: dict/.test(cutter) && cut === Object.keys(LAYERS).length,
+    "D5: the pictures are cut by scripts/make-festival-assets.py, one burger layer for each the game draws",
+  );
+  const strays = readdirSync("src/components/kc/festival").filter((f) =>
+    /festivalUrl\("/.test(read(`src/components/kc/festival/${f}`)),
   );
   assert(
-    /^ASSETS|ASSETS: dict/m.test(read("scripts/make-festival-assets.py")),
-    "D4: the pictures are cut by scripts/make-festival-assets.py",
+    strays.length === 0,
+    "D6: no screen names a picture outside the one list (festivalArt.ts)",
+    strays,
+  );
+  const screen = read("src/components/kc/festival/FestivalGame.tsx");
+  assert(
+    /parts=\{sortParts\(parts\)\}/.test(screen) &&
+      /spread=\{wanted \? 1 : OPEN_SPREAD\}/.test(screen),
+    "D7: a plate draws its parts in a burger's order (a topping tapped before the meat is not hidden under it), held apart until someone wants it",
   );
 }
 
