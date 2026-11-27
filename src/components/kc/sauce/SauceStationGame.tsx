@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { AudioManager } from "@/game/AudioManager";
+import { PauseManager } from "@/game/PauseManager";
 import { InfoTip } from "@/components/kc/common/InfoTip";
 import type { SaveData } from "@/game/SaveManager";
 import {
@@ -297,6 +298,8 @@ function Round({
   // ── the clock, the blending, the bottle filling ──
   useEffect(() => {
     const t = window.setInterval(() => {
+      // the platform's pause too (an ad, the player switching away): Playgama asks gameplay and timers to stop (deep check 2026-11-27)
+      if (PauseManager.isPaused()) return;
       const ph = phaseRef.current;
       if (ph === "mix") {
         msRef.current = Math.max(0, msRef.current - TICK_MS);

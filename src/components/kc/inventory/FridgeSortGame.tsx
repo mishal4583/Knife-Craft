@@ -34,6 +34,7 @@ import {
   type TargetId,
 } from "@/game/business/fridgeSort";
 import { useLandscape } from "@/components/kc/game/layoutMode";
+import { usePaused } from "@/components/kc/story/usePausableTimeout";
 import { landscapeGameArt } from "@/game/landscapeArt";
 
 /**
@@ -282,10 +283,13 @@ export function FridgeSortGame({
     [onAction, playerLevel, practice, round, doublePieces],
   );
 
+  // the platform's pause too (an ad, the player switching away): Playgama asks gameplay and timers to stop (deep check 2026-11-27)
+  const away = usePaused();
+
   // The clock: runs only while playing (it starts with the first touch, and pausing freezes it).
   useEffect(() => {
     // the how-to card freezes the clock too (the effect restarts when it closes, so the time it was open is never counted)
-    if (phase !== "playing" || !round || guide) return;
+    if (phase !== "playing" || !round || guide || away) return;
     let last = performance.now();
     const id = window.setInterval(() => {
       const now = performance.now();
@@ -306,7 +310,7 @@ export function FridgeSortGame({
       }
     }, 100);
     return () => window.clearInterval(id);
-  }, [phase, round, finish, guide]);
+  }, [phase, round, finish, guide, away]);
 
   const start = () => {
     if (phaseRef.current !== "ready") return;

@@ -37,6 +37,7 @@ import { FcArt, FoodPicture, InspectionCard, SHELF_LIFE_GUIDE, fcUrl } from "./F
 import { FridgeCheckHowTo } from "./FridgeCheckHowTo";
 import { clock, fsUrl } from "../inventory/sort/sortUtils";
 import { useLandscape } from "@/components/kc/game/layoutMode";
+import { usePaused } from "@/components/kc/story/usePausableTimeout";
 import { landscapeGameArt } from "@/game/landscapeArt";
 
 /**
@@ -226,9 +227,10 @@ function Round({
     ) => {
       if (finishedRef.current) return;
       finishedRef.current = true;
+      // (a stopped clock still holds the time left; it is the full time only before the first answer)
       const left =
         deadlineRef.current === null
-          ? timeMs
+          ? remainingRef.current
           : Math.max(0, deadlineRef.current - performance.now());
       const done = !timedOut;
       let stars: 0 | 1 | 2 | 3;
@@ -265,7 +267,7 @@ function Round({
       setPhase("done");
       AudioManager.playSfx(stars > 0 ? "sortCombo" : "tap");
     },
-    [cards, hasClock, isSort, level, onFinish, practice, stage, timeMs, total],
+    [cards, hasClock, isSort, level, onFinish, practice, stage, total],
   );
 
   // The latest numbers for a timeout that fires from the interval.
@@ -318,8 +320,11 @@ function Round({
     }
   };
   // The how-to card freezes the clock too, and gives it back when it closes.
+  // the platform's pause too (an ad, the player switching away): Playgama asks gameplay and timers to stop (deep check 2026-11-27)
+  const away = usePaused();
+  const frozen = guide || away;
   useEffect(() => {
-    if (guide) {
+    if (frozen) {
       if (deadlineRef.current !== null) {
         remainingRef.current = Math.max(0, deadlineRef.current - performance.now());
         deadlineRef.current = null;
@@ -329,7 +334,7 @@ function Round({
       heldRunningRef.current = false;
       deadlineRef.current = performance.now() + remainingRef.current;
     }
-  }, [guide, phase, hasClock]);
+  }, [frozen, phase, hasClock]);
 
   // ── stage 1: answering a card ──
   const answer = useCallback(

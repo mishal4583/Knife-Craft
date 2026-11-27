@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { SaveData } from "@/game/SaveManager";
 import { AudioManager } from "@/game/AudioManager";
+import { usePaused } from "@/components/kc/story/usePausableTimeout";
 import { InfoTip } from "@/components/kc/common/InfoTip";
 import { StageSides } from "@/components/kc/common/StageSides";
 import { TurnUprightCard } from "@/components/kc/common/TurnUprightCard";
@@ -96,10 +97,12 @@ export function DessertRunGame({
   const artRef = useRef<RunArt | null>(null);
   const speedRef = useRef<number>(speed);
   const pausedRef = useRef(false);
+  // the platform's pause too (an ad, the player switching away): Playgama asks gameplay and timers to stop (deep check 2026-11-27)
+  const away = usePaused();
   useEffect(() => {
     speedRef.current = speed;
-    pausedRef.current = paused || held || picking;
-  }, [speed, paused, held, picking]);
+    pausedRef.current = paused || held || picking || away;
+  }, [speed, paused, held, picking, away]);
 
   useEffect(() => {
     const state = makeRun(pick.dessertId, pick.seed, pick.tier);

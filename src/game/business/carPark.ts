@@ -131,6 +131,17 @@ export const canPrepCookClearCarPark = (save: SaveData, level: number) =>
   save.business.staff?.hiredRoles?.includes("prep-cook") === true;
 export const carParkTowAdAvailable = (save: SaveData) =>
   carParkStateOf(save).towAdDay !== playDayOf(save);
+/**
+ * Today's tow ad was watched. The day is the one `carParkTowAdAvailable` reads (deep check 2026-11-27: the app wrote `calendar.businessDay`, which
+ * runs 4 days behind `playDayOf` from Level 10 on, so the ad was offered again at once, and a second watch gave nothing).
+ */
+export const withCarParkTowAd = (save: SaveData): SaveData => ({
+  ...save,
+  business: {
+    ...save.business,
+    carPark: { ...(save.business.carPark ?? {}), towAdDay: playDayOf(save) },
+  },
+});
 
 function rngFor(seed: number) {
   let a = seed >>> 0;
@@ -411,7 +422,8 @@ export function finishCarPark(
   void level;
   void honks;
   const updated = { ...save, business: { ...save.business, carPark: next } };
-  return stars ? addHype(updated, HYPE_BY_STARS[stars]) : updated;
+  // the Hype is once a business day (the Mini-games shelf rests until tomorrow; a second finish the same day pays none)
+  return stars && state.doneDay !== day ? addHype(updated, HYPE_BY_STARS[stars]) : updated;
 }
 export function autoCarPark(save: SaveData): SaveData {
   const state = carParkStateOf(save);

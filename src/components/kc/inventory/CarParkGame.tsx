@@ -219,7 +219,8 @@ export function CarParkGame({
     setHonks(0);
     setTowMode(false);
     setFreeTowUsed(false);
-    setBonusTowAvailable(false);
+    // the ad's tow is not lost by starting over while it is still unused
+    if (bonusTowUsed) setBonusTowAvailable(false);
     setBonusTowUsed(false);
     setPhase("playing");
     setHintId(null);
@@ -260,6 +261,7 @@ export function CarParkGame({
         </div>
         <button
           onClick={() => setPhase(phase === "paused" ? "playing" : "paused")}
+          disabled={phase !== "playing" && phase !== "paused"}
           aria-label="Pause"
           className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-[#e7c379] bg-[#fff3d8] text-xl shadow-lg"
         >
@@ -392,6 +394,7 @@ export function CarParkGame({
               if (towAdAvailable && carParkTowAdAvailable(save) && onTowAd) {
                 const result = await onTowAd();
                 if (result === "ok") {
+                  setBonusTowUsed(false);
                   setBonusTowAvailable(true);
                   setTowMode(true);
                 }

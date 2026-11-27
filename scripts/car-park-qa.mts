@@ -26,6 +26,8 @@ import {
   canLeave,
   canPrepCookClearCarPark,
   carParkDue,
+  carParkTowAdAvailable,
+  withCarParkTowAd,
   finishCarPark,
   generateLot,
   carParkTierAt,
@@ -37,6 +39,7 @@ import {
   towVehicle,
   type CarParkLot,
 } from "../src/game/business/carPark.ts";
+import { secondFloorOf } from "../src/game/restaurant/secondFloor.ts";
 
 let failures = 0;
 function assert(cond: unknown, msg: string, detail?: unknown) {
@@ -288,6 +291,64 @@ console.log("D. The routine and the save");
     lotFor(save(3), 22).vehicles.length > 0 &&
       JSON.stringify(lotFor(save(3), 22)) === JSON.stringify(lotFor(save(3), 22)),
     "D10: today's lot is the same every time it is asked for",
+  );
+}
+
+console.log("E. The tow ad, the once-a-day Hype and an unused tow (deep check 2026-11-27)");
+{
+  // a real player's counters: the four days closed before Level 10 leave calendar.businessDay behind restaurantDay.day for good
+  const drifted = (calendarDay: number, restaurantDay: number) =>
+    ({
+      ...DEFAULT_SAVE,
+      business: {
+        ...DEFAULT_SAVE.business,
+        calendar: { ...DEFAULT_SAVE.business.calendar, businessDay: calendarDay },
+        restaurantDay: { ...DEFAULT_SAVE.business.restaurantDay, day: restaurantDay },
+      },
+    }) as typeof DEFAULT_SAVE;
+  const today = drifted(3, 7);
+  const watched = withCarParkTowAd(today);
+  assert(
+    carParkTowAdAvailable(today) && !carParkTowAdAvailable(watched),
+    "E1: once the tow ad is watched it is not offered again that day, however far the two day counters are apart",
+    { towAdDay: watched.business.carPark },
+  );
+  const tomorrow = {
+    ...watched,
+    business: {
+      ...watched.business,
+      calendar: { ...watched.business.calendar, businessDay: 4 },
+      restaurantDay: { ...watched.business.restaurantDay!, day: 8 },
+    },
+  };
+  assert(carParkTowAdAvailable(tomorrow), "E2: and it is offered again the next day");
+  const app = fs.readFileSync(path.resolve(import.meta.dirname, "../src/App.tsx"), "utf8");
+  assert(
+    /persist\(withCarParkTowAd\(latest\)\)/.test(app) && !/towAdDay:/.test(app),
+    "E3: the app stamps the ad only through the rules (never with calendar.businessDay)",
+  );
+  const once = finishCarPark(today, 22, 0, false, 3);
+  const twice = finishCarPark(once, 22, 0, false, 3);
+  assert(
+    secondFloorOf(once).hype! > (secondFloorOf(today).hype ?? 0) &&
+      secondFloorOf(twice).hype === secondFloorOf(once).hype &&
+      twice.business.carPark!.rounds === 2,
+    "E4: a second finish the same day counts the round but pays no second Hype",
+    [secondFloorOf(today).hype, secondFloorOf(once).hype, secondFloorOf(twice).hype],
+  );
+  const game = fs.readFileSync(
+    path.resolve(import.meta.dirname, "../src/components/kc/inventory/CarParkGame.tsx"),
+    "utf8",
+  );
+  const retry = game.slice(game.indexOf("function retry()"), game.indexOf("function closeHowto()"));
+  assert(
+    /if \(bonusTowUsed\) setBonusTowAvailable\(false\);/.test(retry) &&
+      /setBonusTowUsed\(false\);\s+setBonusTowAvailable\(true\);/.test(game),
+    "E5: an unused ad tow stays after Restart; a granted one can always be used",
+  );
+  assert(
+    /disabled=\{phase !== "playing" && phase !== "paused"\}/.test(game),
+    "E6: Pause does nothing on the end cards (it could restart a cleared lot)",
   );
 }
 

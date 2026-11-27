@@ -9,6 +9,7 @@ import {
   type TrayItem,
 } from "@/game/cooking/ovenStep";
 import { AudioManager } from "@/game/AudioManager";
+import { PauseManager } from "@/game/PauseManager";
 import { KButton } from "../common/primitives";
 import { useLandscape } from "./layoutMode";
 import ovenWebm from "@/assets/video/oven-bread.webm";
@@ -65,7 +66,6 @@ export function OvenStep({
   // A landscape window (developer 2026-11-23, replacing the 2026-11-20 portrait film in the middle of a painted oven picture): the 16:9 oven film IS the picture,
   // covering the window, with the title top left and the meter and "Take it out" in a panel at the bottom right (the loaf sits in the middle of the frame).
   const wide = useLandscape();
-  const bakeStart = useRef<number | null>(null);
   const finished = useRef(false);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
@@ -91,14 +91,28 @@ export function OvenStep({
     const placed = window.setTimeout(
       () => {
         setState((s) => (s === "placing" ? "baking" : s));
-        bakeStart.current = performance.now();
+        // Only unpaused time bakes (deep check 2026-11-27: Playgama asks gameplay to stop during its pause: an ad, the player switching away),
+        // and the film waits with it.
+        let baked = 0;
+        let filmHeld = false;
+        let last = performance.now();
         const tick = (now: number) => {
           if (finished.current) return;
-          const d = donenessAt(now - (bakeStart.current ?? now));
+          const away = PauseManager.isPaused();
+          if (!away) baked += Math.max(0, now - last);
+          last = now;
+          const d = donenessAt(baked);
           setDoneness(d);
           // The film's own time for this doneness: the way in, then the bake.
           const film = filmRef.current;
           if (film && !film.error) {
+            if (away && !film.paused) {
+              film.pause();
+              filmHeld = true;
+            } else if (!away && filmHeld) {
+              filmHeld = false;
+              void film.play().catch(() => {});
+            }
             const want = (OVEN.PLACE_MS + d * OVEN.BAKE_MS) / 1000;
             if (Math.abs(film.currentTime - want) > FILM_DRIFT_S) film.currentTime = want;
           }

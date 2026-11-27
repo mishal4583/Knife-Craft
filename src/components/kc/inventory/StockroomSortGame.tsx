@@ -30,6 +30,7 @@ import {
 import { Art, Plaque, SortButton, StarBar } from "./sort/SortParts";
 import { clock, fsUrl } from "./sort/sortUtils";
 import { useLandscape } from "@/components/kc/game/layoutMode";
+import { usePaused } from "@/components/kc/story/usePausableTimeout";
 import { useWindowSize } from "@/components/kc/game/useWindowSize";
 import { landscapeGameArt } from "@/game/landscapeArt";
 
@@ -237,10 +238,13 @@ export function StockroomSortGame({
     [onAction, practice, round],
   );
 
+  // the platform's pause too (an ad, the player switching away): Playgama asks gameplay and timers to stop (deep check 2026-11-27)
+  const away = usePaused();
+
   // The clock: runs only while playing (it starts with the first move, and pausing freezes it).
   useEffect(() => {
     // the how-to card freezes the clock too (the effect restarts when it closes, so the time it was open is never counted)
-    if (phase !== "playing" || !round || guide) return;
+    if (phase !== "playing" || !round || guide || away) return;
     let last = performance.now();
     const id = window.setInterval(() => {
       const now = performance.now();
@@ -262,7 +266,7 @@ export function StockroomSortGame({
       }
     }, 100);
     return () => window.clearInterval(id);
-  }, [phase, round, finish, guide]);
+  }, [phase, round, finish, guide, away]);
 
   /** "After a miss" hints (Level 31-43): the Hint button wakes up after a quiet spell. */
   const poke = useCallback(() => {

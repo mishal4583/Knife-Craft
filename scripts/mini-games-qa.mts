@@ -320,5 +320,60 @@ console.log("F. The painted art (developer 2026-11-18)");
   );
 }
 
+console.log("G. Every clock waits for the platform's pause (deep check 2026-11-27)");
+{
+  // Playgama: "pause gameplay, timers and audio while isPaused" (an ad, the player switching away). Each of these clocks ignored it.
+  const clocks: [string, RegExp[]][] = [
+    [
+      "inventory/FridgeSortGame.tsx",
+      [
+        /const away = usePaused\(\);/,
+        /if \(phase !== "playing" \|\| !round \|\| guide \|\| away\) return;/,
+      ],
+    ],
+    [
+      "inventory/StockroomSortGame.tsx",
+      [
+        /const away = usePaused\(\);/,
+        /if \(phase !== "playing" \|\| !round \|\| guide \|\| away\) return;/,
+      ],
+    ],
+    [
+      // (its "?" how-to can open in the middle of a round: it stops the clock too)
+      "inventory/DeliveryInspectionGame.tsx",
+      [
+        /if \(phase !== "playing" \|\| guide \|\| away\) return;/,
+        /\[phase, lensOn, hint, found, guide, away\]/,
+      ],
+    ],
+    [
+      "restaurant/FridgeCheckGame.tsx",
+      [/const frozen = guide \|\| away;/, /\[frozen, phase, hasClock\]/],
+    ],
+    [
+      "sauce/SauceStationGame.tsx",
+      [/if \(PauseManager\.isPaused\(\)\) return;\s+const ph = phaseRef\.current;/],
+    ],
+    [
+      "inventory/KitchenDispatchGame.tsx",
+      [/pausedRef\.current = paused \|\| held \|\| picking \|\| slipOpen \|\| away;/],
+    ],
+    [
+      "inventory/DessertRunGame.tsx",
+      [/pausedRef\.current = paused \|\| held \|\| picking \|\| away;/],
+    ],
+    ["game/OvenStep.tsx", [/if \(!away\) baked \+= /, /const d = donenessAt\(baked\);/]],
+  ];
+  for (const [file, rules] of clocks) {
+    const src = read(`src/components/kc/${file}`);
+    const missing = rules.filter((r) => !r.test(src)).map(String);
+    assert(
+      missing.length === 0,
+      `G1: ${file.split("/")[1]} waits while the platform pauses`,
+      missing,
+    );
+  }
+}
+
 console.log(failures ? `\n${failures} FAILED` : "\nMINI-GAMES SHELF: ALL PASS");
 process.exit(failures ? 1 : 0);

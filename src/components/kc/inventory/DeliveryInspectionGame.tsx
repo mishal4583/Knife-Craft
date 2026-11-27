@@ -46,6 +46,7 @@ import { clock } from "./sort/sortUtils";
 import { BlendedMark, MarkArt, MarkerArt, PinArt } from "./inspection/InspectionParts";
 import { inspUrl, useArt, useMarkers } from "./inspection/inspectionArt";
 import { useLandscape } from "@/components/kc/game/layoutMode";
+import { usePaused } from "@/components/kc/story/usePausableTimeout";
 import { landscapeGameArt } from "@/game/landscapeArt";
 
 /**
@@ -201,8 +202,11 @@ function Round({
   const wrongsRef = useRef(0);
 
   // ── the clock ──
+  // the platform's pause too (an ad, the player switching away): Playgama asks gameplay and timers to stop (deep check 2026-11-27)
+  const away = usePaused();
   useEffect(() => {
-    if (phase !== "playing") return;
+    // (the how-to, opened by "?" in the middle of a round, stops it as in the other games: the effect restarts when it closes)
+    if (phase !== "playing" || guide || away) return;
     let last = performance.now();
     const t = window.setInterval(() => {
       const now = performance.now();
@@ -220,7 +224,7 @@ function Round({
     }, 100);
     return () => window.clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, lensOn, hint, found]);
+  }, [phase, lensOn, hint, found, guide, away]);
   useEffect(() => {
     if (lensMs <= 0 && lensOn) setLensOn(false);
   }, [lensMs, lensOn]);

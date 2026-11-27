@@ -554,6 +554,7 @@ import {
   autoCarPark,
   canPrepCookClearCarPark,
   finishCarPark,
+  withCarParkTowAd,
   carParkTowAdAvailable,
   type CarParkAction,
   type CarParkActionResult,
@@ -1690,16 +1691,7 @@ export function App() {
       if (ad.status !== "rewarded") return "no";
       const latest = saveRef.current;
       if (!latest || !carParkTowAdAvailable(latest)) return "no";
-      persist({
-        ...latest,
-        business: {
-          ...latest.business,
-          carPark: {
-            ...(latest.business.carPark ?? {}),
-            towAdDay: latest.business.calendar.businessDay,
-          },
-        },
-      });
+      persist(withCarParkTowAd(latest));
       return "ok";
     } finally {
       carParkAdBusyRef.current = false;

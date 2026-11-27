@@ -9,6 +9,8 @@ import {
 } from "react";
 import type { SaveData } from "@/game/SaveManager";
 import { AudioManager } from "@/game/AudioManager";
+import { PauseManager } from "@/game/PauseManager";
+import { usePaused } from "@/components/kc/story/usePausableTimeout";
 import { InfoTip } from "@/components/kc/common/InfoTip";
 import { StageSides } from "@/components/kc/common/StageSides";
 import { TurnUprightCard } from "@/components/kc/common/TurnUprightCard";
@@ -229,7 +231,7 @@ export function KitchenDispatchGame({
     setFrozen(false);
     armedRef.current = null;
     setArmedState(null);
-    pausedRef.current = heldRef.current;
+    pausedRef.current = heldRef.current || PauseManager.isPaused();
     timeRef.current = initial.seconds;
     setRoundBoth(initial);
     setSecondsLeft(initial.seconds);
@@ -244,10 +246,12 @@ export function KitchenDispatchGame({
     },
     [],
   );
+  // the platform's pause too (an ad, the player switching away): Playgama asks gameplay and timers to stop (deep check 2026-11-27)
+  const away = usePaused();
   useEffect(() => {
     heldRef.current = held;
-    pausedRef.current = paused || held || picking || slipOpen;
-  }, [paused, held, picking, slipOpen]);
+    pausedRef.current = paused || held || picking || slipOpen || away;
+  }, [paused, held, picking, slipOpen, away]);
 
   // the draw loop and the clock
   useEffect(() => {
