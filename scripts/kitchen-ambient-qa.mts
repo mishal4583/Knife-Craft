@@ -2,6 +2,8 @@
  * KITCHEN AMBIENT QA (developer 2026-11-26: "add some animations like in this video to all the 6 kitchen home screens").
  *
  *  A  the anchor data: every stage, tall and wide, has its pots, glints, window and origin inside the picture; lamps appear from Stage 4
+ *     and (developer 2026-11-27: "the steam is not coming from side of the lid or on top") each pot is a measured LID, and every wisp starts on it: on its top, and at both ends of
+ *     the line where it sits on the pot, leaning away from it
  *  B  `coverRect` follows `object-fit: cover` exactly (so a point of the picture stays on the same pixel of the painting in any window)
  *  C  the animation is light: only transform and opacity move, no filter / blur / shadow animated, no picture, no network
  *  D  the wiring: only the Kitchen home turns it on; Reduced motion (the page class and the system setting) switches it off
@@ -12,9 +14,15 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import {
   KITCHEN_AMBIENT_SKINS,
   KITCHEN_STEAM_SPRITES,
+  SHORT_WIDE_BOX,
+  STEAM_PICTURE_RATIO,
+  STEAM_SHAPES,
+  ambientAlignX,
+  ambientAlignY,
   ambientPictureSize,
   coverRect,
   kitchenAmbientFor,
+  steamSources,
   type AmbientLayout,
 } from "../src/game/kitchen/kitchenAmbient.ts";
 
@@ -74,6 +82,73 @@ console.log("A. The anchor data");
       ambientPictureSize("tall").h === 1920,
     "A4: the pictures are 1920 x 1080 (wide) and 1080 x 1920 (tall)",
   );
+  const pots = KITCHEN_AMBIENT_SKINS.flatMap((skin) =>
+    LAYOUTS.flatMap((layout) =>
+      kitchenAmbientFor(skin, layout).pots.map((pot, i) => ({
+        pot,
+        i,
+        at: `${skin} ${layout} ${i}`,
+      })),
+    ),
+  );
+  // a measured lid: its top above the line where it sits on the pot, the pot's foot below that; as wide as a pot is in that painting
+  const odd = pots.filter(
+    ({ pot }) =>
+      !(
+        (pot.open ? pot.top === pot.y : pot.top < pot.y && pot.y - pot.top <= 1.5) &&
+        pot.base - pot.y >= 1.5 &&
+        pot.base - pot.y <= 9 &&
+        pot.w >= 3.5 &&
+        pot.w <= 15
+      ),
+  );
+  assert(
+    odd.length === 0,
+    "A5: every pot is a measured lid (top, the line it sits on, width) over the pot's foot",
+    odd.map((o) => o.at),
+  );
+  const wrong: string[] = [];
+  for (const { pot, i, at } of pots) {
+    const wisps = steamSources(pot, i);
+    const from = (side: string) => wisps.filter((w) => w.from === side);
+    const half = pot.w / 2;
+    const onTop = from("top").every((w) => w.y === pot.top && Math.abs(w.x - pot.x) <= pot.w * 0.2);
+    const atSides = (["left", "right"] as const).every((side) => {
+      const sign = side === "left" ? -1 : 1;
+      return from(side).every(
+        (w) =>
+          w.y === pot.y &&
+          (w.x - pot.x) * sign >= half * 0.8 &&
+          (w.x - pot.x) * sign <= half + 1e-9 &&
+          w.lean * sign >= 25,
+      );
+    });
+    const counts = pot.open
+      ? from("top").length >= 3 && wisps.length === from("top").length
+      : from("top").length >= 3 && from("left").length >= 2 && from("right").length >= 2;
+    // sized by the lid, already rising when the screen opens, and each picture one that exists and is measured
+    const sized = wisps.every((w) => {
+      const seen = w.width * STEAM_PICTURE_RATIO * (STEAM_SHAPES[w.sprite]?.seen ?? 0);
+      return (
+        seen >= pot.w * 0.4 &&
+        seen <= pot.w * 1.6 &&
+        w.delay <= 0 &&
+        w.sprite >= 1 &&
+        w.sprite <= KITCHEN_STEAM_SPRITES
+      );
+    });
+    if (!(onTop && atSides && counts && sized)) wrong.push(at);
+  }
+  assert(
+    wrong.length === 0,
+    "A6: steam leaves every lid at its top and at both sides of the line it sits on, leaning outward, sized by the lid (an open pan: from its top only)",
+    wrong,
+  );
+  assert(
+    pots.filter((p) => p.pot.open).length === 1 &&
+      kitchenAmbientFor("skin-05", "wide").pots[1]?.open === true,
+    "A7: the one open pan is the Flourishing Café's, in its wide painting",
+  );
 }
 
 console.log("B. The cover rectangle");
@@ -126,6 +201,28 @@ console.log("B. The cover rectangle");
   assert(
     covered,
     "B4: in every window shape the rectangle covers the box and keeps the picture's shape",
+  );
+}
+
+{
+  const right = coverRect({ w: 390, h: 844 }, { w: 1080, h: 1920 }, 1);
+  const low = coverRect({ w: 768, h: 390 }, { w: 1920, h: 1080 }, 0.5, 1);
+  assert(
+    Math.abs(right.left + right.width - 390) < 1e-9 &&
+      right.left < 0 &&
+      Math.abs(low.top + low.height - 390) < 1e-9 &&
+      low.top < 0,
+    "B5: aligned to the right or the bottom, the rectangle still covers the box, the two edges together",
+    { right, low },
+  );
+  assert(
+    ambientAlignX("tall") === 1 &&
+      ambientAlignX("wide") === 0.5 &&
+      ambientAlignY("wide", 390) === 1 &&
+      ambientAlignY("wide", SHORT_WIDE_BOX) === 0.5 &&
+      ambientAlignY("wide", 867) === 0.5 &&
+      ambientAlignY("tall", 400) === 0.5,
+    "B6: an upright phone keeps the painting to the right (the stove clear of the buttons), a phone on its side to the bottom (the lids above the day strip); larger wide windows stay centred",
   );
 }
 
@@ -227,6 +324,20 @@ console.log("D. The wiring");
       /\.kc-reduced-motion \.ka-stage\s*\{\s*animation:\s*none/.test(css) &&
       /@media \(prefers-reduced-motion: reduce\)/.test(css),
     "D4: Settings -> Reduced motion and the system's setting hide the layer and stop the push-in",
+  );
+  const layer = read("src/components/kc/KitchenAmbient.tsx");
+  assert(
+    /steamSources\(p, pi\)/.test(layer) &&
+      /"--ntx": pct\(-shape\.tailX \* 100\)/.test(layer) &&
+      /"--nty": pct\(-shape\.tailY \* 100\)/.test(layer) &&
+      /transform-origin: var\(--tail/.test(css),
+    "D6: each wisp is hung by its tail on its lid point and turns, grows and sways about it",
+  );
+  assert(
+    /const alignX = ambientAlignX\(layout\);/.test(bg) &&
+      /const alignY = ambientAlignY\(layout, vp\.h\);/.test(bg) &&
+      /coverRect\(vp, ambientPictureSize\(layout\), alignX, alignY\)/.test(bg),
+    "D7: the live kitchen's stage uses both alignments",
   );
   assert(
     /classList\.toggle\("kc-reduced-motion"/.test(read("src/App.tsx")),

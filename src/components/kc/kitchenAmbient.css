@@ -109,21 +109,27 @@
 }
 
 /*
- * STEAM off the pots. Each plume is two layers: the outer span rises, drifts and fades; the inner body (or, when the Codex wisps exist, their picture) sways and widens on its own
- * beat, so the shape curls. A tall, tapered ellipse with a bright core and a faint cool shadow rim keeps its shape against the painting's light walls. Plus a low haze at the rim and
- * the burner's warm light under the pot.
+ * STEAM out of the lids. A wisp's TAIL (`--tail` inside its picture; `--ntx` / `--nty` pull that point onto `left` / `top`) sits on the lid, and everything turns, grows and sways about
+ * it. Two kinds: `-top` rises off the lid, grows and only lifts away as it fades; `-jet` shoots out sideways from under the lid's edge, then turns upward. Each is two layers: the outer
+ * span rises and fades, the picture inside sways on its own beat, so the shape curls.
  */
 .ka-steam {
   position: absolute;
-  aspect-ratio: 1 / 1.85;
-  opacity: 0;
-  transform: translate(-50%, -100%) scale(0.5);
-  transform-origin: 50% 100%;
-  animation: ka-steam-rise 8s ease-out infinite;
-  animation-delay: var(--d, 0s);
-}
-.ka-steam[data-sprite] {
   aspect-ratio: 2 / 3;
+  opacity: 0;
+  transform-origin: var(--tail, 50% 92%);
+  transform: translate(var(--ntx, -50%), var(--nty, -92%)) rotate(var(--lean, 0deg)) scale(0.3);
+  animation-duration: var(--dur, 6.6s);
+  animation-delay: var(--d, 0s);
+  animation-iteration-count: infinite;
+}
+.ka-steam-top {
+  animation-name: ka-steam-rise;
+  animation-timing-function: ease-out;
+}
+.ka-steam-jet {
+  animation-name: ka-steam-jet;
+  animation-timing-function: ease-out;
 }
 .ka-steam-body,
 .ka-steam-img {
@@ -132,7 +138,7 @@
   display: block;
   width: 100%;
   height: 100%;
-  transform-origin: 50% 100%;
+  transform-origin: var(--tail, 50% 92%);
   animation: ka-steam-sway var(--sw, 3.4s) ease-in-out infinite alternate;
   animation-delay: var(--sd, 0s);
 }
@@ -152,33 +158,54 @@
 @keyframes ka-steam-rise {
   0% {
     opacity: 0;
-    transform: translate(-50%, -100%) scale(0.5);
+    transform: translate(var(--ntx), var(--nty)) rotate(var(--lean)) scale(0.4, 0.3);
   }
-  14% {
-    opacity: 0.9;
+  15% {
+    opacity: 0.95;
   }
-  58% {
-    opacity: 0.6;
-    transform: translate(calc(-50% + var(--dx, 0%)), -122%) scale(0.95, 1.05);
+  55% {
+    opacity: 0.7;
+    transform: translate(calc(var(--ntx) + var(--dx, 0%)), calc(var(--nty) - 3%))
+      rotate(var(--lean)) scale(0.94, 0.96);
   }
   100% {
     opacity: 0;
-    transform: translate(calc(-50% + var(--dx2, 0%)), -158%) scale(1.25, 1.3);
+    transform: translate(calc(var(--ntx) + var(--dx2, 0%)), calc(var(--nty) - 14%))
+      rotate(var(--lean)) scale(1.22, 1.18);
+  }
+}
+@keyframes ka-steam-jet {
+  0% {
+    opacity: 0;
+    transform: translate(var(--ntx), var(--nty)) rotate(var(--lean)) scale(0.25);
+  }
+  18% {
+    opacity: 0.95;
+  }
+  55% {
+    opacity: 0.68;
+    transform: translate(calc(var(--ntx) + var(--jx, 0%)), calc(var(--nty) - 2%))
+      rotate(var(--lean)) scale(0.95);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(var(--ntx) + var(--jx, 0%) + var(--jx, 0%)), calc(var(--nty) - 12%))
+      rotate(calc(var(--lean) * 0.5)) scale(1.18);
   }
 }
 @keyframes ka-steam-sway {
   from {
-    transform: rotate(calc(var(--tilt, 12deg) * -1)) scaleX(0.9);
+    transform: rotate(calc(var(--tilt, 4deg) * -1)) scaleX(0.9);
   }
   to {
-    transform: rotate(var(--tilt, 12deg)) scaleX(1.18);
+    transform: rotate(var(--tilt, 4deg)) scaleX(1.14);
   }
 }
 
-/* the low haze where the steam is born */
+/* the soft haze lying on the lid, where the steam is born */
 .ka-haze {
   position: absolute;
-  aspect-ratio: 2.3 / 1;
+  aspect-ratio: 3 / 1;
   border-radius: 50%;
   background: radial-gradient(
     closest-side,
@@ -187,18 +214,18 @@
     rgba(255, 252, 244, 0) 80%
   );
   opacity: 0.3;
-  transform: translate(-50%, -70%);
+  transform: translate(-50%, -55%);
   animation: ka-haze 5.5s ease-in-out infinite alternate;
   animation-delay: var(--d, 0s);
 }
 @keyframes ka-haze {
   from {
     opacity: 0.2;
-    transform: translate(-50%, -70%) scale(0.92);
+    transform: translate(-50%, -55%) scale(0.94);
   }
   to {
-    opacity: 0.5;
-    transform: translate(-50%, -80%) scale(1.1);
+    opacity: 0.48;
+    transform: translate(-50%, -62%) scale(1.06);
   }
 }
 

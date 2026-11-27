@@ -1,7 +1,9 @@
 import type { CSSProperties } from "react";
 import {
   KITCHEN_STEAM_SPRITES,
+  STEAM_SHAPES,
   kitchenAmbientFor,
+  steamSources,
   type AmbientLayout,
 } from "@/game/kitchen/kitchenAmbient";
 import type { KitchenSkinId } from "@/game/kitchen/kitchenUpgradeTypes";
@@ -21,8 +23,7 @@ const spread = (i: number, k: number) => ((i * 47 + k * 31) % 100) / 100;
 export function KitchenAmbient({ skin, layout }: { skin: KitchenSkinId; layout: AmbientLayout }) {
   const s = kitchenAmbientFor(skin, layout);
   const wide = layout === "wide";
-  // sizes in percent of the picture's width: the wide painting shows a pot about 5 % wide, the tall one about 11 %
-  const steamW = wide ? 6.4 : 14;
+  // sizes in percent of the picture's width (the steam and the burner's light are sized by each pot's own lid)
   const glintW = wide ? 1.7 : 4.2;
   const moteW = wide ? 0.32 : 0.8;
   const w = s.window;
@@ -106,7 +107,7 @@ export function KitchenAmbient({ skin, layout }: { skin: KitchenSkinId; layout: 
         />
       ))}
 
-      {/* the burner's warm light under each pot, and a low haze at its rim */}
+      {/* the burner's warm light under each pot, and a soft haze lying on its lid */}
       {s.pots.map((p, pi) => (
         <span
           key={`burner-${pi}`}
@@ -115,8 +116,8 @@ export function KitchenAmbient({ skin, layout }: { skin: KitchenSkinId; layout: 
           style={
             {
               left: pct(p.x),
-              top: pct(p.y + (wide ? 2.4 : 3.4)),
-              width: pct(steamW * 1.5),
+              top: pct(p.base),
+              width: pct(p.w * 1.2),
               "--d": `${(pi * 0.8).toFixed(1)}s`,
             } as CSSProperties
           }
@@ -129,57 +130,65 @@ export function KitchenAmbient({ skin, layout }: { skin: KitchenSkinId; layout: 
           style={
             {
               left: pct(p.x),
-              top: pct(p.y),
-              width: pct(steamW * 1.7),
+              top: pct(p.top),
+              width: pct(p.w * 1.05),
               "--d": `${(pi * 1.3).toFixed(1)}s`,
             } as CSSProperties
           }
         />
       ))}
 
-      {/* steam: four plumes per pot, each rising and drifting while a second layer inside it sways and widens, so it curls like smoke instead of puffing like a ball */}
+      {/* steam out of the lids (developer 2026-11-27): wisps rise off the top of each lid, and small jets slip out from both sides of the line where the lid sits on its pot. Each wisp is
+          hung by its TAIL on that very point (`steamSources`, `STEAM_SHAPES`), and leans, grows and sways about it, so it never leaves the lid while it is still thick */}
       {s.pots.flatMap((p, pi) =>
-        [0, 1, 2, 3].map((k) => (
-          <span
-            key={`steam-${pi}-${k}`}
-            className="ka-steam"
-            data-sprite={KITCHEN_STEAM_SPRITES > 0 ? "1" : undefined}
-            data-testid="ka-steam"
-            style={
-              {
-                left: pct(p.x + (k % 2 ? 0.4 : -0.4) * (wide ? 0.6 : 1.4)),
-                top: pct(p.y + (wide ? 3.4 : 4)),
-                width: pct(steamW * (0.78 + (k % 3) * 0.14)),
-                "--d": `${(k * 1.9 + pi * 1.1).toFixed(2)}s`,
-                "--dx": ["-9%", "13%", "-14%", "9%"][k],
-                "--dx2": ["14%", "-12%", "12%", "-15%"][k],
-                "--sw": `${(2.8 + k * 0.7).toFixed(1)}s`,
-                "--sd": `${(-k * 0.9).toFixed(1)}s`,
-                "--tilt":
-                  KITCHEN_STEAM_SPRITES > 0
-                    ? k % 2
-                      ? "4deg"
-                      : "-4deg"
-                    : k % 2
-                      ? "12deg"
-                      : "-12deg",
-              } as CSSProperties
-            }
-          >
-            {KITCHEN_STEAM_SPRITES > 0 ? (
-              <img
-                className="ka-steam-img"
-                src={`${import.meta.env.BASE_URL}kitchen-fx/steam-${((k + pi) % KITCHEN_STEAM_SPRITES) + 1}.webp`}
-                alt=""
-                aria-hidden="true"
-                draggable={false}
-                decoding="async"
-              />
-            ) : (
-              <i className="ka-steam-body" />
-            )}
-          </span>
-        )),
+        steamSources(p, pi).map((wisp, k) => {
+          const shape = STEAM_SHAPES[wisp.sprite]!;
+          const side = wisp.from === "left" ? -1 : wisp.from === "right" ? 1 : 0;
+          return (
+            <span
+              key={`steam-${pi}-${k}`}
+              className={`ka-steam ${side ? "ka-steam-jet" : "ka-steam-top"}`}
+              data-testid="ka-steam"
+              data-pot={pi}
+              data-from={wisp.from}
+              data-sprite={wisp.sprite}
+              data-ax={wisp.x}
+              data-ay={wisp.y}
+              style={
+                {
+                  left: pct(wisp.x),
+                  top: pct(wisp.y),
+                  width: pct(wisp.width),
+                  "--ntx": pct(-shape.tailX * 100),
+                  "--nty": pct(-shape.tailY * 100),
+                  "--tail": `${pct(shape.tailX * 100)} ${pct(shape.tailY * 100)}`,
+                  "--lean": `${wisp.lean}deg`,
+                  "--dur": `${wisp.seconds}s`,
+                  "--d": `${wisp.delay}s`,
+                  "--jx": `${side * 9}%`,
+                  "--dx": ["-7%", "9%", "-9%"][k % 3],
+                  "--dx2": ["10%", "-11%", "8%"][k % 3],
+                  "--sw": `${(2.4 + (k % 4) * 0.55).toFixed(2)}s`,
+                  "--sd": `${(-k * 0.7).toFixed(1)}s`,
+                  "--tilt": k % 2 ? "4deg" : "-4deg",
+                } as CSSProperties
+              }
+            >
+              {KITCHEN_STEAM_SPRITES > 0 ? (
+                <img
+                  className="ka-steam-img"
+                  src={`${import.meta.env.BASE_URL}kitchen-fx/steam-${wisp.sprite}.webp`}
+                  alt=""
+                  aria-hidden="true"
+                  draggable={false}
+                  decoding="async"
+                />
+              ) : (
+                <i className="ka-steam-body" />
+              )}
+            </span>
+          );
+        }),
       )}
 
       {/* the copper catches the light: a painted star glint */}

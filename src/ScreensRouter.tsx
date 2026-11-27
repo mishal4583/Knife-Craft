@@ -20,6 +20,7 @@ import { Suspense, lazy, useRef, useState } from "react";
 import { DESSERT_RUN_FIRST_LEVEL } from "@/game/business/dessertRun";
 import { CRATE_FIRST_LEVEL } from "@/game/business/crateDispatch";
 import { isMiniGameScreen } from "@/game/business/miniGames";
+import { FESTIVAL_EVENTS } from "@/game/festival/events";
 import { Kitchen, OrderBoard, BottomNav } from "@/components/kc/Kitchen";
 import { Shop } from "@/components/kc/Shop";
 import { RestaurantProgress } from "@/components/kc/RestaurantProgress";
@@ -164,6 +165,23 @@ const SauceStationGame = lazy(() =>
 );
 const SauceShelf = lazy(() => loadRestaurantScreens().then((m) => ({ default: m.SauceShelf })));
 
+const FestivalScreen = lazy(() =>
+  loadRestaurantScreens().then((m) => ({ default: m.FestivalScreen })),
+);
+
+/** The Festival Competition's preview link: ?festival=<event 1-15> opens that festival's round at once (only a built one), &pace=<1-15> at another pace. */
+function festivalPreview(): { eventId: string; tier: number } | null {
+  if (typeof location === "undefined") return null;
+  const query = new URLSearchParams(location.search);
+  const event = FESTIVAL_EVENTS.find((e) => e.number === Number(query.get("festival")));
+  if (!event?.round) return null;
+  const pace = Number(query.get("pace"));
+  return {
+    eventId: event.id,
+    tier: Number.isFinite(pace) && pace >= 1 ? Math.min(15, Math.floor(pace)) : event.number,
+  };
+}
+
 /** Shown for the moment the Restaurant chunk takes to arrive: the screen's own frame, never a blank. */
 function RestaurantLoading({ go, active }: { go: (s: ScreenId) => void; active: ScreenId }) {
   return (
@@ -252,6 +270,7 @@ export function ScreensRouter({
   carParkTowAd,
   cleanerCleans,
   collectAchievement,
+  festivalResult,
 }: {
   screen: ScreenId;
   go: (s: ScreenId) => void;
@@ -349,6 +368,8 @@ export function ScreensRouter({
   cleanerCleans: (job: TaskKind) => void;
   /** Achievements: collect one earned reward (progression/achievements.ts). */
   collectAchievement: (id: string) => CollectResult;
+  /** A finished festival round: recorded (stars, best score); it pays nothing (game/festival/state.ts). */
+  festivalResult: (result: { eventId: string; score: number; stars: number; won: boolean }) => void;
 }) {
   const [mapReturnAvailable, setMapReturnAvailable] = useState(false);
 
@@ -618,6 +639,18 @@ export function ScreensRouter({
                       save={save}
                       level={kitchenDispatchPreviewLevel(restaurantLevelOf(save.levelProgress))}
                       onExit={() => leaveTo("restaurant-map")}
+                    />
+                  </div>
+                </Suspense>
+              ) : null}
+              {screen === "festival" ? (
+                <Suspense fallback={<RestaurantLoading go={routeGo} active="restaurant-map" />}>
+                  <div className="relative h-full w-full overflow-hidden">
+                    <FestivalScreen
+                      save={save}
+                      preview={festivalPreview()}
+                      onExit={() => routeGo("kitchen")}
+                      onResult={festivalResult}
                     />
                   </div>
                 </Suspense>

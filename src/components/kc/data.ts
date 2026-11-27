@@ -56,6 +56,8 @@ export type ScreenId =
   | "car-park"
   /** Dessert Run phone-feel preview; not yet connected to the daily routine. */
   | "dessert-run"
+  /** The Festival Fast Food Competition: the fifteen festivals and their rounds (game/festival). Opens at Level 10 (FESTIVAL_FIRST_LEVEL). */
+  | "festival"
   /** Kitchen Dispatch (sliding ingredient crates) phone-feel preview; not yet connected to the daily routine. */
   | "kitchen-dispatch"
   /** Fridge Check practice: the closing-night inspection on the real stock, free play with no reward (restaurant/fridgeCheck.ts). */

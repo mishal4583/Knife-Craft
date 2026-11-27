@@ -8,6 +8,9 @@ import { frameStyle, mgUrl, useMiniGameArt } from "./minigamesArt";
 import { CLEANING_FROM_LEVEL } from "@/game/config/cleaningStart";
 import { cleanlinessOf } from "@/game/restaurant/cleanliness";
 import { PaintedPic } from "./ChoreTiles";
+import { RESTAURANT_MODE } from "@/game/config/restaurantMode";
+import { FESTIVAL_FIRST_LEVEL } from "@/game/festival/events";
+import { waitingFestival } from "@/game/festival/schedule";
 
 /**
  * The Kitchen's Mini-games sheet (developer 2026-11-17: every mini-game as a logo tile, each one open from its own level). A locked tile says which
@@ -216,6 +219,19 @@ export function MiniGamesSheet({
 
         {section === "games" ? (
           <ul className="relative -mx-4 mt-1 grid min-h-0 grid-cols-2 gap-x-2.5 gap-y-3 overflow-y-auto overscroll-contain px-4 pb-7 pt-5 [-webkit-overflow-scrolling:touch] [mask-image:linear-gradient(to_bottom,#000_calc(100%-22px),transparent)] land:mt-0 land:grid-cols-4 land:gap-x-2 land:gap-y-3 land:pt-5">
+            {RESTAURANT_MODE ? (
+              <li className="col-span-2 land:col-span-4">
+                <FestivalCard
+                  save={save}
+                  level={level}
+                  opensText={u.when(FESTIVAL_FIRST_LEVEL)}
+                  onPlay={() => {
+                    onClose();
+                    go("festival");
+                  }}
+                />
+              </li>
+            ) : null}
             {views.map((v) => (
               <li key={v.entry.id} className="flex min-w-0 flex-col">
                 <Tile
@@ -402,6 +418,80 @@ function Tile({
       >
         {locked ? `opens ${opensText}` : text}
       </span>
+    </button>
+  );
+}
+
+/**
+ * The Festival Fast Food Competition (developer 2026-11-27): a wide card of its own above the games (it is a whole mode, not one more tile). It opens
+ * at FESTIVAL_FIRST_LEVEL; a star and its name show while an open festival has never been played. It pays no money.
+ */
+function FestivalCard({
+  save,
+  level,
+  opensText,
+  onPlay,
+}: {
+  save: SaveData;
+  level: number;
+  opensText: string;
+  onPlay: () => void;
+}) {
+  const locked = level < FESTIVAL_FIRST_LEVEL;
+  const waiting = locked ? undefined : waitingFestival(save);
+  const status = locked
+    ? `opens ${opensText}`
+    : waiting
+      ? `${waiting.name} is waiting`
+      : "Play the festivals";
+  return (
+    <button
+      type="button"
+      data-testid="mg-festival"
+      data-state={locked ? "locked" : "ready"}
+      data-waiting={waiting ? "1" : undefined}
+      aria-disabled={locked || undefined}
+      aria-label={
+        locked
+          ? `Festival Competition, locked, opens ${opensText}`
+          : `Festival Competition, ${status}`
+      }
+      onClick={locked ? undefined : onPlay}
+      className={cn(
+        "relative flex min-h-[76px] w-full items-center gap-3 rounded-[20px] border-[3px] px-3 py-2 text-left shadow-soft",
+        locked
+          ? "cursor-default border-walnut/25 bg-ivory/70 text-walnut/70"
+          : "press border-[#ffd98a] bg-[linear-gradient(110deg,#a5280f,#d9591d_55%,#f0932b)] text-[#fff6df]",
+      )}
+    >
+      <img
+        src={`${import.meta.env.BASE_URL}festival/ui/trophy.webp`}
+        alt=""
+        aria-hidden
+        draggable={false}
+        loading="lazy"
+        className={cn(
+          "h-[54px] w-[54px] shrink-0 object-contain",
+          locked && "grayscale opacity-70",
+        )}
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-[15.5px] font-black leading-tight [text-shadow:0_1px_2px_rgba(60,15,0,0.35)]">
+          Festival Competition
+        </span>
+        <span
+          data-testid="mg-festival-status"
+          className="block font-ui text-[12.5px] font-extrabold leading-snug"
+        >
+          {locked ? "🔒 " : ""}
+          {status}
+        </span>
+      </span>
+      {waiting ? (
+        <span aria-hidden className="shrink-0 text-[26px] leading-none">
+          ⭐
+        </span>
+      ) : null}
     </button>
   );
 }

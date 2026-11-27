@@ -1,0 +1,525 @@
+// THE FESTIVAL FAST FOOD COMPETITION in a real browser, restaurant build (developer 2026-11-27: game/festival + components/kc/festival).
+// Run with tsx, because it plays rounds with the game's own simulated player:  npx tsx tools/e2e/festival.mjs
+//   F1 the Kitchen's Mini-games sheet: the Festival card is locked below Level 10 ("opens in N services", no level number), ready from it
+//   F2 the select screen: 15 cards; Event 1 playable; events 2-9 "Coming soon" once reached, locked ones say what opens them; no level number anywhere
+//   F3 the intro card names the rival and the goals; the round waits until Start
+//   F4 a whole first round WITH REAL TAPS (the simulated player reading the screen): coached for the first customers, every customer served, a win,
+//      the stars; the save records it (business.festivals) and the money and ledger do not move
+//   F5 pause: the clock and the food wait; Resume; the platform's pause stops it too
+//   F6 doing nothing: the rival wins; a constructive tip; Try again starts a fresh round
+//   F7 phone sizes and phones on their side, the first event and the pace of Event 15 (4 customers, 9 trays): every tap target at least 48 px,
+//      nothing outside the window, no tap target on another, no sideways scroll
+//   F8 no console errors
+// Screenshots: out/festival-*.png. Prints PASS/FAIL per check and exits 1 on any failure.
+import {
+  MOVED_IN_BUSINESS,
+  PAIGE_QUIET,
+  boot,
+  launch,
+  seedSave,
+  sleep,
+  shot,
+  SAVE_KEY,
+} from "./harness.mjs";
+import { nextAction } from "../../src/game/festival/bot.ts";
+import { burgerRound } from "../../src/game/festival/burger.ts";
+import { paceFor } from "../../src/game/festival/tiers.ts";
+import { cookerOf } from "../../src/game/festival/kitchen.ts";
+
+const results = [];
+const check = (id, ok, detail) => {
+  results.push({ id, ok });
+  console.log(`${ok ? "PASS" : "FAIL"} ${id}`, detail === undefined ? "" : JSON.stringify(detail));
+};
+const base = (process.env.KC_URL || "http://localhost:4173/").split("?")[0];
+
+const saveAt = (n, extra = {}) =>
+  seedSave({
+    credits: 50_000,
+    business: {
+      ...MOVED_IN_BUSINESS,
+      assistant: PAIGE_QUIET,
+      sectionsSeen: ["shop", "inventory", "rack", "business"],
+    },
+    levelProgress: {
+      currentLevelId: `level-${n}`,
+      highestUnlockedLevelId: `level-${n}`,
+      completedLevelIds: Array.from({ length: n - 1 }, (_, i) => `level-${i + 1}`),
+      campaignVersion: 4,
+    },
+    story: { introDone: true, milestoneMask: 0xffff, finaleSeen: true },
+    ...extra,
+  });
+
+const { browser, page, logs } = await launch();
+const GAME = '[data-testid="festival-game"]';
+const q = (id) => `[data-testid="${id}"]`;
+const has = async (id) => !!(await page.$(q(id)));
+const data = (name) => page.$eval(GAME, (e, n) => e.dataset[n], name);
+const text = (sel) => page.$eval(sel, (e) => e.textContent.replace(/\s+/g, " ").trim());
+
+async function open(query, level, w = 390, h = 844, save = saveAt(level)) {
+  await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
+  await page.goto(`${base}${query}`, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => window.bridge, { timeout: 20000 });
+  await page.evaluate(
+    async (s, key) => {
+      localStorage.clear();
+      await window.bridge.storage.set([key], [JSON.stringify(s)]);
+    },
+    save,
+    SAVE_KEY,
+  );
+  await page.reload({ waitUntil: "networkidle0" });
+  await page.waitForFunction(
+    () => document.elementFromPoint(5, 5)?.closest("#loading-overlay") === null,
+    { timeout: 20000 },
+  );
+  await sleep(500);
+}
+const stored = () =>
+  page.evaluate(async (key) => {
+    const [raw] = await window.bridge.storage.get([key]);
+    return typeof raw === "string" ? JSON.parse(raw) : raw;
+  }, SAVE_KEY);
+
+/** A real mouse tap in the middle of an element. */
+async function tapOn(sel) {
+  const el = await page.$(sel);
+  if (!el) return false;
+  const box = await el.boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  return true;
+}
+
+/** The round's state, rebuilt from what the screen shows, for the simulated player. */
+async function screenState(round) {
+  const seen = await page.evaluate(() => {
+    const game = document.querySelector('[data-testid="festival-game"]');
+    const spots = {};
+    for (const id of ["drink", "fryer", "grill"])
+      spots[id] = [...document.querySelectorAll(`[data-testid^="fest-${id}-"]`)].map((b) => ({
+        item: b.dataset.item,
+        phase: b.dataset.phase,
+      }));
+    return {
+      phase: game.dataset.phase,
+      served: Number(game.dataset.served),
+      spots,
+      plates: [...document.querySelectorAll('[data-testid^="fest-plate-"]')].map((b) => ({
+        parts: b.dataset.parts ? b.dataset.parts.split("+") : [],
+        selected: b.hasAttribute("data-selected"),
+      })),
+      customers: [...document.querySelectorAll('[data-testid="fest-bubble"]')].map((b) => ({
+        id: Number(b.dataset.id),
+        seat: Number(b.dataset.seat),
+        order: b.dataset.order.split(","),
+      })),
+    };
+  });
+  const cookers = Object.fromEntries(
+    Object.entries(seen.spots).map(([id, list]) => {
+      const def = cookerOf(round.kitchen, id);
+      return [
+        id,
+        list.map((s) => {
+          if (!s.item) return null;
+          const cook = def.cookMs[s.item];
+          const t =
+            s.phase === "cooking"
+              ? 0
+              : s.phase === "ready"
+                ? cook
+                : s.phase === "over"
+                  ? cook + def.readyMs
+                  : cook + def.readyMs + def.overMs;
+          return { item: s.item, t };
+        }),
+      ];
+    }),
+  );
+  const customers = seen.customers.map((c) => ({
+    id: c.id,
+    seat: c.seat,
+    patience: 1,
+    max: 1,
+    wants: c.order.map((w) => {
+      const done = w.startsWith("done:");
+      const what = w.replace("done:", "");
+      return {
+        done,
+        item: what.startsWith("bun")
+          ? { kind: "dish", parts: what.split("+") }
+          : { kind: "side", item: what },
+      };
+    }),
+  }));
+  return {
+    phase: seen.phase,
+    served: seen.served,
+    state: {
+      done: seen.phase !== "play",
+      cookers,
+      customers,
+      plates: seen.plates.map((p) => p.parts.map((item) => ({ item, quality: "good" }))),
+      selected: Math.max(
+        0,
+        seen.plates.findIndex((p) => p.selected),
+      ),
+    },
+  };
+}
+const selectorFor = (a) =>
+  a.kind === "tray"
+    ? q(`fest-tray-${a.item}`)
+    : a.kind === "cooker"
+      ? q(`fest-${a.cooker}-${a.slot}`)
+      : a.kind === "plate"
+        ? q(`fest-plate-${a.plate}`)
+        : q("fest-bin");
+
+/** Plays with real taps until the round ends (or `until` says stop). */
+async function playRound(round, { limitMs = 150_000, onTap } = {}) {
+  const from = Date.now();
+  let taps = 0;
+  while (Date.now() - from < limitMs) {
+    const now = await screenState(round);
+    if (now.phase !== "play") break;
+    const action = nextAction(round, now.state);
+    if (action) {
+      if (onTap) await onTap(action, now);
+      await tapOn(selectorFor(action));
+      taps++;
+      await sleep(140);
+    } else await sleep(120);
+  }
+  return taps;
+}
+
+/** Opens the Kitchen's Mini-games sheet, answering any guide card over it with "Later" first. */
+async function openSheet() {
+  await page.waitForSelector(q("minigames-shortcut"), { timeout: 15000 });
+  for (let i = 0; i < 6; i++) {
+    const clear = await page.evaluate(() => {
+      const card = document.querySelector('[data-testid="guide-card"]');
+      if (!card) return true;
+      [...card.querySelectorAll("button")].find((b) => b.textContent.includes("Later"))?.click();
+      return false;
+    });
+    if (clear) break;
+    await sleep(600);
+  }
+  await sleep(700);
+  await page.click(q("minigames-shortcut"));
+  await page.waitForSelector(q("mg-festival"), { timeout: 8000 });
+  await sleep(500);
+}
+
+// F1: the Mini-games sheet's card
+await open("", 7);
+const noStar = !(await has("minigames-shortcut-star"));
+await openSheet();
+const f1Locked = {
+  state: await page.$eval(q("mg-festival"), (e) => e.dataset.state),
+  line: await text(q("mg-festival-status")),
+};
+await open("", 12);
+await sleep(900);
+const star = await has("minigames-shortcut-star");
+await openSheet();
+const f1Open = {
+  state: await page.$eval(q("mg-festival"), (e) => e.dataset.state),
+  line: await text(q("mg-festival-status")),
+};
+await shot(page, "festival-sheet");
+check(
+  "F1 the Mini-games sheet: locked below Level 10 in services (no level number), ready from it with the Burger Festival waiting",
+  noStar &&
+    star &&
+    f1Locked.state === "locked" &&
+    /opens in \d+ services?/.test(f1Locked.line) &&
+    !/level/i.test(f1Locked.line) &&
+    f1Open.state === "ready" &&
+    /Burger Festival is waiting/.test(f1Open.line),
+  { f1Locked, f1Open },
+);
+
+// F2: the select screen, opened from the card
+await page.click(q("mg-festival"));
+await page.waitForSelector(q("festival-select"), { timeout: 15000 });
+await sleep(600);
+const f2 = await page.evaluate(() => {
+  const cards = [...document.querySelectorAll('[data-testid^="festival-card-"]')];
+  return {
+    cards: cards.length,
+    states: cards.map((c) => c.dataset.state).join(","),
+    words: document.querySelector('[data-testid="festival-select"]').textContent,
+    sideways: document.documentElement.scrollWidth > innerWidth,
+    small: [...document.querySelectorAll('[data-testid="festival-select"] button')].filter((b) => {
+      const r = b.getBoundingClientRect();
+      return r.width < 47.5 || r.height < 47.5;
+    }).length,
+  };
+});
+await shot(page, "festival-select");
+check(
+  "F2 the select screen: 15 festivals, Event 1 playable at Level 12, the others locked; no level number; 48 px buttons",
+  f2.cards === 15 &&
+    f2.states.startsWith("play,locked,locked") &&
+    !/\bLevel \d/i.test(f2.words) &&
+    /Opens in \d+ services/.test(f2.words) &&
+    /after the final service/i.test(f2.words) &&
+    !f2.sideways &&
+    f2.small === 0,
+  { states: f2.states, sideways: f2.sideways, small: f2.small },
+);
+
+// F3: the intro card
+await page.click(q("festival-play-burger"));
+await page.waitForSelector(q("fest-intro"), { timeout: 15000 });
+await sleep(900);
+const intro = await text(q("fest-intro"));
+const t0 = await page.$$eval('[data-testid="fest-bubble"]', (b) => b.length);
+await shot(page, "festival-intro");
+check(
+  "F3 the intro names the rival and the three star goals; no customer comes before Start",
+  /Chef Dolly/.test(intro) &&
+    /Sunny Side Diner/.test(intro) &&
+    /Beat \d+ points/.test(intro) &&
+    t0 === 0,
+  { intro: intro.slice(0, 160), customers: t0 },
+);
+
+// F4: a whole round with real taps
+await open("?festival=1", 12);
+await page.waitForSelector(q("fest-start"), { timeout: 15000 });
+const before = await stored();
+await page.click(q("fest-start"));
+await page.waitForSelector(q("fest-bubble"), { timeout: 8000 });
+await sleep(300);
+const coachFirst = (await has("fest-coach-text")) ? await text(q("fest-coach-text")) : "";
+await shot(page, "festival-coach");
+const round1 = burgerRound(paceFor(1), 1); // (the kitchen and the pace are the same for every seed)
+let shotMid = false;
+const taps = await playRound(round1, {
+  onTap: async (_a, now) => {
+    if (!shotMid && now.served >= 3) {
+      shotMid = true;
+      await shot(page, "festival-play");
+    }
+  },
+});
+await page.waitForSelector(q("fest-result"), { timeout: 15000 }).catch(() => {});
+await sleep(900);
+await shot(page, "festival-result");
+const won = await page.$eval(q("fest-result"), (e) => e.dataset.won).catch(() => null);
+const stars = await page
+  .$eval(q("fest-result-stars"), (e) => Number(e.dataset.stars))
+  .catch(() => -1);
+const servedLine = await text(q("fest-result")).catch(() => "");
+await sleep(600);
+const after = await stored();
+const record = after.business.festivals?.record?.burger;
+check(
+  "F4 a whole first round with real taps: coached at first, all 5 served, a win with stars, recorded in the save; money and ledger unchanged",
+  /Tap the bun/.test(coachFirst) &&
+    won === "true" &&
+    stars >= 1 &&
+    /Served5\/5|Served 5\/5/.test(servedLine) &&
+    record?.plays === 1 &&
+    record?.wins === 1 &&
+    record?.stars === stars &&
+    record?.best > 0 &&
+    after.credits === before.credits &&
+    JSON.stringify(after.economyLedger) === JSON.stringify(before.economyLedger),
+  { coachFirst, taps, won, stars, record, credits: [before.credits, after.credits] },
+);
+
+// F5: pause, and the platform's pause
+await open("?festival=1", 12);
+await page.waitForSelector(q("fest-start"), { timeout: 15000 });
+await page.click(q("fest-start"));
+await page.waitForSelector(q("fest-bubble"), { timeout: 8000 });
+await tapOn(q("fest-tray-bun"));
+await tapOn(q("fest-tray-patty"));
+await sleep(500);
+const frozenLook = () =>
+  page.evaluate(() => ({
+    meter: document.querySelector('[data-testid="fest-grill-0"] .fest-meter > span')?.style
+      .transform,
+    patience: document.querySelector(".fest-patience > span")?.style.transform,
+    rival: document.querySelector('[data-testid="festival-game"]').dataset.rival,
+  }));
+await page.click(q("fest-pause"));
+await sleep(300);
+const p1 = await frozenLook();
+await sleep(2500);
+const p2 = await frozenLook();
+await page.click(q("fest-resume"));
+await sleep(1200);
+const p3 = await frozenLook();
+await page.evaluate(() => window.bridge.platform.emit?.("pause_state_changed", true));
+const emitted = await page.evaluate(() => {
+  const b = window.bridge;
+  const name = b.EVENT_NAME?.PAUSE_STATE_CHANGED;
+  if (typeof b.platform.emit === "function") {
+    b.platform.emit(name, true);
+    return true;
+  }
+  return false;
+});
+await sleep(500);
+const platformPaused = await has("fest-paused");
+check(
+  "F5 pause: the food, the customers and the rival wait; Resume goes on" +
+    (emitted
+      ? "; the platform's pause shows it too"
+      : " (the mock Bridge cannot send a platform pause: PauseManager's wiring is checked by festival-save-qa)"),
+  p1.meter === p2.meter &&
+    p1.patience === p2.patience &&
+    p1.rival === p2.rival &&
+    p3.patience !== p2.patience &&
+    (!emitted || platformPaused),
+  { p1, p2, p3, emitted, platformPaused },
+);
+
+// F6: doing nothing loses; the tip; Try again
+await open("?festival=1", 12);
+await page.waitForSelector(q("fest-start"), { timeout: 15000 });
+await page.click(q("fest-start"));
+await page.waitForSelector(q("fest-result"), { timeout: 120_000 }).catch(() => {});
+await sleep(900);
+await shot(page, "festival-lost");
+const lostWon = await page.$eval(q("fest-result"), (e) => e.dataset.won).catch(() => null);
+const tip = (await has("fest-tip")) ? await text(q("fest-tip")) : "";
+await page.click(q("fest-again"));
+await page.waitForSelector(q("fest-intro"), { timeout: 8000 }).catch(() => {});
+check(
+  "F6 doing nothing: the rival wins, a tip says what to do next time, Try again starts a fresh round",
+  lostWon === "false" &&
+    tip.length > 10 &&
+    (await has("fest-intro")) &&
+    (await data("score")) === "0",
+  { lostWon, tip },
+);
+
+// F7: every size, the first event and Event 15's pace
+const layoutCheck = () =>
+  page.evaluate(() => {
+    const buttons = [...document.querySelectorAll('[data-testid="fest-stage"] button')]
+      .map((b) => ({ id: b.dataset.testid, r: b.getBoundingClientRect() }))
+      .filter((b) => b.r.width > 0);
+    const overlaps = [];
+    for (let i = 0; i < buttons.length; i++)
+      for (let j = i + 1; j < buttons.length; j++) {
+        const a = buttons[i].r;
+        const c = buttons[j].r;
+        const x = Math.min(a.right, c.right) - Math.max(a.left, c.left);
+        const y = Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top);
+        if (x > 1 && y > 1) overlaps.push(`${buttons[i].id}/${buttons[j].id}`);
+      }
+    // (a bubble still popping in is measured once it has finished)
+    document.getAnimations().forEach((a) => a.animationName === "fest-pop" && a.finish());
+    const bubbles = [...document.querySelectorAll('[data-testid="fest-bubble"]')].map((b) =>
+      b.getBoundingClientRect(),
+    );
+    // how much of each customer's picture (from its top, where the face is) their own bubble covers
+    const faces = [...document.querySelectorAll('[data-testid="fest-stage"] .fest-person')].map(
+      (p) => {
+        const r = p.getBoundingClientRect();
+        const over = bubbles
+          .filter((b) => b.left < r.right && b.right > r.left)
+          .map((b) => Math.max(0, b.bottom - r.top) / r.height);
+        return Math.round(Math.max(0, ...over) * 100);
+      },
+    );
+    const wantsOut = [...document.querySelectorAll('[data-testid="fest-bubble"]')].filter((b) => {
+      const box = b.getBoundingClientRect();
+      return [...b.querySelectorAll(".fest-want, .fest-chip")].some((w) => {
+        const r = w.getBoundingClientRect();
+        return (
+          r.left < box.left - 1 ||
+          r.right > box.right + 1 ||
+          r.top < box.top - 1 ||
+          r.bottom > box.bottom + 1
+        );
+      });
+    }).length;
+    return {
+      faceCovered: Math.max(0, ...faces),
+      wantsOut,
+      buttons: buttons.length,
+      small: buttons.filter((b) => b.r.width < 47.5 || b.r.height < 47.5).map((b) => b.id),
+      outside: buttons
+        .filter(
+          (b) =>
+            b.r.left < -1 ||
+            b.r.top < -1 ||
+            b.r.right > innerWidth + 1 ||
+            b.r.bottom > innerHeight + 1,
+        )
+        .map((b) => b.id),
+      overlaps,
+      bubbles: bubbles.length,
+      bubbleOutside: bubbles.filter((r) => r.left < -1 || r.right > innerWidth + 1 || r.top < -1)
+        .length,
+      sideways: document.documentElement.scrollWidth > innerWidth,
+    };
+  });
+for (const [w, h] of [
+  [320, 568],
+  [360, 640],
+  [390, 844],
+  [430, 932],
+  [768, 1024],
+  [740, 360],
+  [844, 390],
+  [1280, 720],
+]) {
+  for (const pace of [1, 15]) {
+    await open(`?festival=1&pace=${pace}`, 12, w, h);
+    await page.waitForSelector(q("fest-start"), { timeout: 15000 });
+    const introFits = await page.evaluate(() => {
+      const r = document.querySelector('[data-testid="fest-start"]').getBoundingClientRect();
+      return r.height >= 47.5 && r.right <= innerWidth + 1;
+    });
+    await page.click(q("fest-start"));
+    const round = burgerRound(paceFor(pace), 5);
+    // some real taps, so food and plates are on the screen, then a wait until the counter is full
+    await playRound(round, { limitMs: 4000 });
+    await page.waitForFunction(
+      (n) => document.querySelectorAll('[data-testid="fest-bubble"]').length >= n,
+      { timeout: 20000 },
+      paceFor(pace).atOnce,
+    );
+    await tapOn(q("fest-tray-bun"));
+    await tapOn(q("fest-tray-patty"));
+    await tapOn(q("fest-tray-fries"));
+    await sleep(500);
+    const m = await layoutCheck();
+    await shot(page, `festival-${w}x${h}-pace${pace}`);
+    check(
+      `F7 ${w} x ${h}, pace ${pace}: 48 px tap targets, all inside the window, none on another, the bubbles inside, no sideways scroll`,
+      introFits &&
+        m.small.length === 0 &&
+        m.outside.length === 0 &&
+        m.overlaps.length === 0 &&
+        m.bubbles === paceFor(pace).atOnce &&
+        m.bubbleOutside === 0 &&
+        m.wantsOut === 0 &&
+        m.faceCovered <= 25 &&
+        !m.sideways,
+      m,
+    );
+  }
+}
+
+check(
+  "F8 no console errors",
+  logs.filter((l) => !/favicon|ERR_FAILED|net::/.test(l)).length === 0,
+  logs.slice(0, 5),
+);
+await browser.close();
+const failed = results.filter((r) => !r.ok);
+console.log(failed.length ? `\n${failed.length} FAILED` : "\nFESTIVAL E2E: ALL PASS");
+process.exit(failed.length ? 1 : 0);

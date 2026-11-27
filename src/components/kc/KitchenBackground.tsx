@@ -12,7 +12,13 @@ import thumb05 from "@/assets/kitchen/thumbs/skin-05.webp";
 import thumb06 from "@/assets/kitchen/thumbs/skin-06.webp";
 import { useRef, type CSSProperties } from "react";
 import type { KitchenSkinId } from "@/game/kitchen/kitchenUpgradeTypes";
-import { ambientPictureSize, coverRect, kitchenAmbientFor } from "@/game/kitchen/kitchenAmbient";
+import {
+  ambientAlignX,
+  ambientAlignY,
+  ambientPictureSize,
+  coverRect,
+  kitchenAmbientFor,
+} from "@/game/kitchen/kitchenAmbient";
 import { useBoxSize } from "@/components/kc/restaurantMap/restaurantMapWide";
 import { KitchenAmbient } from "@/components/kc/KitchenAmbient";
 import { landscapeKitchenArt } from "@/game/landscapeArt";
@@ -84,12 +90,16 @@ export function KitchenBackground({
       loading={thumb ? "lazy" : "eager"}
       decoding="async"
       fetchPriority={thumb ? "low" : "high"}
-      className="absolute inset-0 h-full w-full object-cover"
+      // the live kitchen keeps its tall painting to the right (the stove clear of the buttons: ambientAlignX), also before it has been measured
+      className={`absolute inset-0 h-full w-full object-cover ${live && !wide ? "object-right" : ""}`}
     />
   );
   if (!live) return picture;
   // The picture and its life share ONE stage the size of the painting's own `object-cover` box, so a point in percent of the picture stays on the same pixel of the painting in any window.
-  const rect = vp.w > 0 && vp.h > 0 ? coverRect(vp, ambientPictureSize(layout)) : null;
+  const alignX = ambientAlignX(layout);
+  const alignY = ambientAlignY(layout, vp.h);
+  const rect =
+    vp.w > 0 && vp.h > 0 ? coverRect(vp, ambientPictureSize(layout), alignX, alignY) : null;
   const origin = kitchenAmbientFor(skin, layout).origin;
   return (
     <div ref={boxRef} className="absolute inset-0 overflow-hidden" data-testid="kitchen-bg-box">

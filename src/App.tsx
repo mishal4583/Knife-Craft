@@ -236,6 +236,8 @@ import { newStepSkipRewardId } from "@/game/ads/stepSkipAd";
 import { ServiceGateSheet } from "@/components/kc/business/DeliveryRoutine";
 import { PREP_COOK_STEPS } from "@/game/business/deliveryFlow";
 import { freePlayFirstLevel } from "@/game/business/miniGames";
+import { FESTIVAL_FIRST_LEVEL } from "@/game/festival/events";
+import { lifetimeOrdersOf, recordFestivalRound, withFestivalBaseline } from "@/game/festival/state";
 import { staffHireFrom } from "@/game/restaurant/staffRequirements";
 import { dailyPayroll } from "@/game/business/businessStaff";
 import { featuresOpeningAt } from "@/game/config/featureUnlocks";
@@ -1025,6 +1027,10 @@ export function App() {
         const kitchenDispatchPreview =
           typeof location !== "undefined" && /[?&]kitchenDispatch(?:=|&|$)/.test(location.search);
         if (kitchenDispatchPreview) setScreen("kitchen-dispatch");
+        // The Festival Competition's preview link, the same kind: ?festival=1 (and &pace=1-15 for another event's pace).
+        const festivalPreviewAsked =
+          typeof location !== "undefined" && /[?&]festival(?:=|&|$)/.test(location.search);
+        if (festivalPreviewAsked) setScreen("festival");
         // Economy V2.5 — kitchen tiers are bought (Restaurant Development);
         // this only keeps the kitchen on the highest tier owned. Saves from
         // before V2.5 already got their level-earned tiers in
@@ -1042,7 +1048,8 @@ export function App() {
         // completion) surface their real accumulated progress instead —
         // that catch-up IS the source's own documented forward-only
         // behavior, not a special case invented here.
-        if (!dessertRunPreview && !kitchenDispatchPreview && shouldRunIntro(synced)) {
+        const previewing = dessertRunPreview || kitchenDispatchPreview || festivalPreviewAsked;
+        if (!previewing && shouldRunIntro(synced)) {
           if (isFreshSave) setShowIntro(true);
           else synced = markIntroDone(synced);
         }
@@ -1193,6 +1200,18 @@ export function App() {
       // (the restaurant build never names a level: "in N services", navLevel.ts)
       setLockNotice(
         `🔒 ${s === "dessert-run" ? "Dessert Run" : "Unload the Van"} opens ${unlockText(restaurantLevelOf(saveRef.current.levelProgress)).when(freePlayFrom)}`,
+      );
+      return;
+    }
+    // The Festival Competition opens at its level, from the Kitchen's Mini-games sheet (developer 2026-11-27).
+    if (
+      s === "festival" &&
+      RESTAURANT_MODE &&
+      saveRef.current &&
+      restaurantLevelOf(saveRef.current.levelProgress) < FESTIVAL_FIRST_LEVEL
+    ) {
+      setLockNotice(
+        `🔒 Festival Competition opens ${unlockText(restaurantLevelOf(saveRef.current.levelProgress)).when(FESTIVAL_FIRST_LEVEL)}`,
       );
       return;
     }
@@ -1602,6 +1621,13 @@ export function App() {
       hype: out.effects.hype,
     });
     return { ok: true, effects: out.effects };
+  }
+
+  /** A finished festival round: counted, with its best score and stars (game/festival/state.ts). It pays no money, uses no stock and writes no ledger entry. */
+  function festivalResult(result: { eventId: string; score: number; stars: number; won: boolean }) {
+    const current = saveRef.current;
+    if (!current) return;
+    persist(recordFestivalRound(current, result.eventId, result));
   }
 
   /** Car Park is a daily routine game only: its result awards stars/Hype, never money or stock. */
@@ -3122,7 +3148,9 @@ export function App() {
     if (!result) return null;
     setBusinessServiceSession(result.session);
     // serveBusinessOrder already left the payment on the table (pendingCash) in result.save.
-    persist(withTodaysSpecialServed(result.save, result.dish.id));
+    const served = withTodaysSpecialServed(result.save, result.dish.id);
+    // The after-campaign festivals count Endless Restaurant orders from the first one (game/festival/state.ts; no money).
+    persist(RESTAURANT_MODE ? withFestivalBaseline(served, lifetimeOrdersOf(save)) : served);
     return {
       coinsAwarded: result.amountCharged,
       reaction: result.reaction,
@@ -5501,6 +5529,7 @@ export function App() {
                   rushRestock={rushRestockCurrentOrder}
                   buildKitchenUpgrade={buildKitchenUpgrade}
                   collectAchievement={collectAchievementReward}
+                  festivalResult={festivalResult}
                   secondFloorAction={secondFloorAction}
                   fridgeSortAction={fridgeSortAction}
                   deliveryInspectionAction={deliveryInspectionAction}

@@ -46,6 +46,7 @@ import { pendingCashTotal } from "@/game/economy/pendingCash";
 import { DailyGiftCard } from "./DailyGiftCard";
 import { useToday } from "./useToday";
 import { KitchenBackground } from "./KitchenBackground";
+import { waitingFestival } from "@/game/festival/schedule";
 import type { ScreenId } from "./data";
 import { getLevels, isUnlocked, isCompleted, type LevelProgress } from "@/game/levels/LevelManager";
 import { CHAPTER_TITLES } from "@/game/levels/levelDefinitions";
@@ -461,6 +462,10 @@ export function Kitchen({
           "absolute right-3 top-[16%] z-20 flex flex-col items-end gap-2 [--pill:56px] [@media(max-height:620px)]:[--pill:48px] [@media(max-height:700px)]:top-[13%] [@media(max-height:700px)]:gap-1.5 land:!top-[68px]",
           // Settings and Paige join the column, which then starts right under the wallet
           !stacked && "!top-[58px] [@media(max-height:760px)]:[--pill:48px]",
+          // A tall upright phone (developer 2026-11-27, the steam: "not coming from side of the lid or on top"): the painted pots stand under this column, so its buttons are 52 px,
+          // 4 px apart, and it ends above their lids (kitchenambient.mjs K7)
+          !stacked &&
+            "[@media(min-height:761px)_and_(max-height:960px)_and_(max-width:500px)]:!gap-1 [@media(min-height:761px)_and_(max-height:960px)_and_(max-width:500px)]:[--pill:52px]",
           // Five round buttons now (Cleaning sits under Mini-games, developer 2026-11-22): on a short upright phone they must end above the day strip,
           // so the column uses 48 px buttons from 700 px of height (it was 56) and, under 620 px, starts higher with a 2 px gap (the strip gives way below).
           stacked &&
@@ -629,7 +634,7 @@ export function Kitchen({
           <button
             type="button"
             data-testid="minigames-shortcut"
-            aria-label="Mini-games"
+            aria-label={waitingFestival(save) ? "Mini-games, a festival is waiting" : "Mini-games"}
             aria-haspopup="dialog"
             onClick={() => setMiniGamesOpen(true)}
             className="press group relative inline-flex h-[var(--pill)] w-[var(--pill)] shrink-0 items-center justify-start overflow-visible rounded-full border-[3px] border-[#e0a63a] bg-[linear-gradient(145deg,#fff7dc_0%,#f5d998_100%)] px-[calc((var(--pill)-40px)/2-3px)] font-ui text-[13px] font-extrabold text-walnut-dark shadow-[0_4px_0_rgba(111,66,28,0.48),0_7px_14px_rgba(35,18,8,0.35),inset_0_1px_0_rgba(255,255,255,0.95)] transition-[width,transform,box-shadow] duration-300 ease-out motion-reduce:transition-none hover:w-[166px] focus-visible:w-[166px] active:translate-y-0.5 active:shadow-[0_2px_0_rgba(111,66,28,0.48),0_4px_8px_rgba(35,18,8,0.3)]"
@@ -656,6 +661,15 @@ export function Kitchen({
             >
               Mini-games
             </span>
+            {waitingFestival(save) ? (
+              <span
+                aria-hidden
+                data-testid="minigames-shortcut-star"
+                className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full border-2 border-[#fff3db] bg-[#e5821a] text-[11px] leading-none shadow-md"
+              >
+                ⭐
+              </span>
+            ) : null}
           </button>
         ) : null}
 

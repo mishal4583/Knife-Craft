@@ -231,6 +231,8 @@ export type BusinessState = {
   sauceStation?: SauceStationState;
   /** Car Park's daily patience-puzzle progress (business/carPark.ts). */
   carPark?: CarParkState;
+  /** The Festival Fast Food Competition (developer 2026-11-27): each festival's record and the after-campaign counts (game/festival/state.ts). Optional; absent = none played. No money. */
+  festivals?: import("../festival/state").FestivalsState;
   /**
    * The health inspector's visits during the campaign (restaurant/healthInspector.ts): the level of his next visit, the Grade A streak and
    * the last visit's result. Absent = he has not come yet. Never holds money or stock.

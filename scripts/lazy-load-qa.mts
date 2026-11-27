@@ -44,10 +44,11 @@ assert(
     // Seven with Stockroom Sort (developer 2026-11-06, 204360c): the same lazy chunk. Eight with Delivery Inspection (developer 2026-11-08): the same chunk again.
     // Ten with the Sauce Station and the Sauce Shelf (developer 2026-11-09): both in the same lazy chunk.
     // Eleven with the Car Park (developer 2026-11-15): the same lazy chunk, so the campaign never carries it.
-    (router.match(/lazy\(\(\) =>\s*loadRestaurantScreens\(\)/g) ?? []).length === 13 &&
-    (router.match(/<Suspense fallback=\{<RestaurantLoading/g) ?? []).length === 13 &&
+    // RULE CHANGE (developer 2026-11-27): fourteen with the Festival Fast Food Competition, in the same lazy chunk.
+    (router.match(/lazy\(\(\) =>\s*loadRestaurantScreens\(\)/g) ?? []).length === 14 &&
+    (router.match(/<Suspense fallback=\{<RestaurantLoading/g) ?? []).length === 14 &&
     /Opening the restaurant…/.test(router),
-  "L1: the thirteen Restaurant screens (both map floors, Fridge Sort, Stockroom Sort, Delivery Inspection, Sauce Station, Sauce Shelf, the Car Park, Dessert Run and Kitchen Dispatch included) are lazy from one module, each in Suspense with a loading state",
+  "L1: the fourteen Restaurant screens (both map floors, Fridge Sort, Stockroom Sort, Delivery Inspection, Sauce Station, Sauce Shelf, the Car Park, Dessert Run, Kitchen Dispatch and the Festival Competition included) are lazy from one module, each in Suspense with a loading state",
 );
 
 function walk(dir: string, out: string[] = []): string[] {

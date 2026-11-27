@@ -19,3 +19,4 @@ export { KitchenDispatchGame } from "./inventory/KitchenDispatchGame";
 export { DeliveryInspectionGame } from "./inventory/DeliveryInspectionGame";
 export { SauceStationGame } from "./sauce/SauceStationGame";
 export { SauceShelf } from "./sauce/SauceShelf";
+export { FestivalScreen } from "./festival/FestivalScreen";

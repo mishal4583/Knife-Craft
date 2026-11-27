@@ -2,6 +2,10 @@
 //   K1 every stage draws its layer (steam, the beam, the stage's own lamps and glints) and it MOVES (a steam puff's opacity changes over a second and a half)
 //   K2 the layer sits on the painting: the stage box is the picture's own `object-cover` rectangle (the pot's pixel is where the painting has its pot, whatever the window)
 //   K3 Settings -> Reduced motion hides it (the page's `kc-reduced-motion` class)
+//   K5 (developer 2026-11-27: "the steam is not coming from side of the lid or on top") every wisp's TAIL, as the browser draws it at the start of its rise, is on its lid point
+//   K6 the tails the layer hangs the wisps by are where the real pictures' tails are
+//   K7 on upright phones the main pot's lid (its top and both sides) is not under a button, and the column's buttons stay at least 48 px; on a phone on its side every lid is clear of
+//      the buttons and the day strip
 //   K4 no sideways scroll, no console errors
 // Screenshots: out/kitchenambient-<stage>-<layout>.png. Prints PASS/FAIL per check and exits 1 on any failure.
 import { MOVED_IN_BUSINESS, boot, launch, seedSave, sleep, shot } from "./harness.mjs";
@@ -128,6 +132,160 @@ try {
       );
       check(`K4 ${skin} ${layout}: no sideways scroll`, a.overflow <= 0, a.overflow);
     }
+  }
+  // K5 and K6: where the browser really puts each wisp's tail
+  const measured = new Map();
+  for (const [id, skin] of STAGES) {
+    for (const [layout, w, h] of layouts) {
+      await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
+      await boot(page, save(id));
+      await sleep(1800);
+      const tails = await page.evaluate(() => {
+        const layer = document.querySelector('[data-testid="kitchen-ambient"]');
+        return [...layer.querySelectorAll('[data-testid="ka-steam"]')].map((el) => {
+          const rise = el
+            .getAnimations()
+            .find((a) => /^ka-steam-(rise|jet)$/.test(a.animationName));
+          const { duration, delay } = rise.effect.getComputedTiming();
+          rise.pause();
+          rise.currentTime = delay + Math.ceil(-delay / duration) * duration;
+          const css = getComputedStyle(el);
+          const [ox, oy] = css.transformOrigin.split(" ").map(parseFloat);
+          const m = new DOMMatrix(css.transform);
+          // the origin is the tail: it moves only by the matrix's own shift
+          const x = el.offsetLeft + ox + m.e;
+          const y = el.offsetTop + oy + m.f;
+          return {
+            from: el.dataset.from,
+            off: Math.hypot(
+              x - (Number(el.dataset.ax) / 100) * layer.offsetWidth,
+              y - (Number(el.dataset.ay) / 100) * layer.offsetHeight,
+            ),
+            sprite: el.dataset.sprite,
+            tailX: -parseFloat(el.style.getPropertyValue("--ntx")) / 100,
+            tailY: -parseFloat(el.style.getPropertyValue("--nty")) / 100,
+          };
+        });
+      });
+      for (const t of tails) measured.set(t.sprite, [t.tailX, t.tailY]);
+      const worst = Math.max(...tails.map((t) => t.off));
+      const sides = new Set(tails.map((t) => t.from));
+      check(
+        `K5 ${skin} ${layout}: every wisp's tail is on its lid point (top, left side, right side)`,
+        worst <= 2 && ["top", "left", "right"].every((s) => sides.has(s)),
+        { wisps: tails.length, worstPx: +worst.toFixed(2) },
+      );
+    }
+  }
+  const pictures = await page.evaluate(
+    async (used) => {
+      const out = {};
+      for (const n of used) {
+        const img = new Image();
+        img.src = `${location.pathname.replace(/[^/]*$/, "")}kitchen-fx/steam-${n}.webp`;
+        await img.decode();
+        const c = document.createElement("canvas");
+        c.width = img.width;
+        c.height = img.height;
+        const g = c.getContext("2d");
+        g.drawImage(img, 0, 0);
+        const a = g.getImageData(0, 0, c.width, c.height).data;
+        const solid = (x, y) => a[(y * c.width + x) * 4 + 3] > 40;
+        let bottom = 0;
+        for (let y = 0; y < c.height; y++)
+          for (let x = 0; x < c.width; x++) if (solid(x, y)) bottom = y;
+        let sum = 0;
+        let count = 0;
+        for (let y = Math.floor(bottom - c.height * 0.03); y <= bottom; y++)
+          for (let x = 0; x < c.width; x++)
+            if (solid(x, y)) {
+              sum += x;
+              count++;
+            }
+        out[n] = [sum / count / c.width, bottom / c.height];
+      }
+      return out;
+    },
+    [...measured.keys()],
+  );
+  const astray = [...measured].filter(
+    ([n, [x, y]]) => Math.abs(x - pictures[n][0]) > 0.04 || Math.abs(y - pictures[n][1]) > 0.03,
+  );
+  check(
+    "K6 the tails the layer hangs the wisps by are the real pictures' tails",
+    measured.size >= 3 && astray.length === 0,
+    { used: [...measured.keys()], astray },
+  );
+  // K7: the lids are seen
+  for (const [w, h] of [
+    [390, 844],
+    [360, 800],
+    [412, 915],
+    [844, 390],
+  ]) {
+    const covered = [];
+    for (const [id, skin] of STAGES) {
+      await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
+      await boot(page, save(id));
+      await sleep(1800);
+      await page.evaluate(() =>
+        [...document.querySelectorAll("button")]
+          .find((b) => b.textContent.trim() === "Later")
+          ?.click(),
+      );
+      await sleep(500);
+      const under = await page.evaluate((upright) => {
+        const stage = document.querySelector(".ka-stage").getBoundingClientRect();
+        const wisps = [...document.querySelectorAll('[data-testid="ka-steam"]')].filter(
+          (el) => !upright || el.dataset.pot === "0",
+        );
+        return wisps
+          .filter((el) => {
+            const x = stage.left + (Number(el.dataset.ax) / 100) * stage.width;
+            const y = stage.top + (Number(el.dataset.ay) / 100) * stage.height;
+            const hit = document.elementFromPoint(x, y);
+            if (!hit || hit.closest("button")) return true;
+            // anything that PAINTS there hides the lid (a card, the day strip). A bare layout box does not (the button column's own empty box), nor does a wash over the whole
+            // screen; the walk stops at the screen itself (the first box that also holds the painting)
+            const painting = document.querySelector('[data-testid="kitchen-bg-box"]');
+            for (
+              let e = hit;
+              e && !e.contains(painting) && !painting.contains(e);
+              e = e.parentElement
+            ) {
+              const css = getComputedStyle(e);
+              const paints =
+                css.backgroundColor !== "rgba(0, 0, 0, 0)" ||
+                css.backgroundImage !== "none" ||
+                parseFloat(css.borderTopWidth) > 0;
+              const r = e.getBoundingClientRect();
+              if (paints && !(r.width >= innerWidth * 0.8 && r.height >= innerHeight * 0.8))
+                return true;
+            }
+            return false;
+          })
+          .map((el) => `pot ${el.dataset.pot} ${el.dataset.from}`);
+      }, h > w);
+      if (under.length) covered.push({ skin, under: [...new Set(under)] });
+    }
+    const smallest = await page.evaluate(() =>
+      Math.min(
+        ...[...document.querySelectorAll("button")]
+          .map((b) => b.getBoundingClientRect())
+          .filter((r) => r.width > 0 && r.left > innerWidth - 90)
+          .flatMap((r) => [r.width, r.height]),
+      ),
+    );
+    check(
+      `K7 at ${w} x ${h}: the buttons on the right are at least 48 px`,
+      smallest >= 47.5,
+      smallest,
+    );
+    check(
+      `K7 at ${w} x ${h}: ${h > w ? "the main pot's lid, top and sides, is clear of the buttons" : "every lid is clear of the buttons and the day strip"}`,
+      covered.length === 0,
+      covered,
+    );
   }
   // K3: reduced motion
   await page.setViewport({ width: 1815, height: 867, deviceScaleFactor: 1 });
