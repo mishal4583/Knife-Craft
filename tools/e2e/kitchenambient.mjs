@@ -1,9 +1,10 @@
 // The Kitchen's life (developer 2026-11-26, from his Gemini clip), restaurant build, all six kitchen stages in a phone and a wide window:
-//   K1 every stage draws its layer (steam, the beam, the stage's own lamps and glints) and it MOVES (a steam puff's opacity changes over a second and a half)
+//   K1 every stage draws its layer (steam, the beam, the stage's own lamps and glints) and it MOVES (the steam film shows other frames a second and a half later)
 //   K2 the layer sits on the painting: the stage box is the picture's own `object-cover` rectangle (the pot's pixel is where the painting has its pot, whatever the window)
 //   K3 Settings -> Reduced motion hides it (the page's `kc-reduced-motion` class)
-//   K5 (developer 2026-11-27: "the steam is not coming from side of the lid or on top") every wisp's TAIL, as the browser draws it at the start of its rise, is on its lid point
-//   K6 the tails the layer hangs the wisps by are where the real pictures' tails are
+//   K5 RULE CHANGE (developer 2026-11-27, a reference picture: "make it exactly like this"; the wisps became a steam film): every pot has its film, and the browser draws
+//      the film's lid line on the pot's rim
+//   K6 the film picture itself: nothing hangs below the lid line, steam lies along the whole lid, it fades out before the top, every frame moves on and the loop has no jump
 //   K7 on upright phones the main pot's lid (its top and both sides) is not under a button, and the column's buttons stay at least 48 px; on a phone on its side every lid is clear of
 //      the buttons and the day strip
 //   K4 no sideways scroll, no console errors
@@ -82,7 +83,10 @@ try {
             lamps: document.querySelectorAll('[data-testid="ka-lamp"]').length,
             glints: document.querySelectorAll('[data-testid="ka-glint"]').length,
             beam: !!document.querySelector('[data-testid="ka-beam"]'),
-            opacities: steam.map((s) => Number(getComputedStyle(s).opacity)),
+            frames: steam.map((s) => {
+              const css = getComputedStyle(s.querySelector(".ka-film"));
+              return `${css.backgroundPositionX} ${css.backgroundPositionY}`;
+            }),
             stage: r
               ? {
                   l: Math.round(r.left),
@@ -102,12 +106,13 @@ try {
       await sleep(1500);
       const b = await read();
       await shot(page, `kitchenambient-${skin}-${layout}`);
-      const moved = a.opacities.some((o, i) => Math.abs(o - (b.opacities[i] ?? o)) > 0.02);
+      const moved = a.frames.length > 0 && a.frames.every((f, i) => f !== b.frames[i]);
       check(
         `K1 ${skin} ${layout}: steam, beam, ${lamps} lamps, glints, and it moves`,
         a.skin === skin &&
           a.layout === layout &&
-          a.steam >= 3 &&
+          // (one film a pot, counted by K5; a painting may have a single pot)
+          a.steam >= 1 &&
           a.beam &&
           a.lamps === (layout === "tall" ? Math.min(lamps, 3) : lamps) &&
           a.glints >= 2 &&
@@ -133,88 +138,95 @@ try {
       check(`K4 ${skin} ${layout}: no sideways scroll`, a.overflow <= 0, a.overflow);
     }
   }
-  // K5 and K6: where the browser really puts each wisp's tail
-  const measured = new Map();
+  // K5: where the browser really puts each film's lid line
   for (const [id, skin] of STAGES) {
     for (const [layout, w, h] of layouts) {
       await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
       await boot(page, save(id));
       await sleep(1800);
-      const tails = await page.evaluate(() => {
+      const films = await page.evaluate(() => {
         const layer = document.querySelector('[data-testid="kitchen-ambient"]');
-        return [...layer.querySelectorAll('[data-testid="ka-steam"]')].map((el) => {
-          const rise = el
-            .getAnimations()
-            .find((a) => /^ka-steam-(rise|jet)$/.test(a.animationName));
-          const { duration, delay } = rise.effect.getComputedTiming();
-          rise.pause();
-          rise.currentTime = delay + Math.ceil(-delay / duration) * duration;
-          const css = getComputedStyle(el);
-          const [ox, oy] = css.transformOrigin.split(" ").map(parseFloat);
-          const m = new DOMMatrix(css.transform);
-          // the origin is the tail: it moves only by the matrix's own shift
-          const x = el.offsetLeft + ox + m.e;
-          const y = el.offsetTop + oy + m.f;
+        const burners = layer.querySelectorAll('[data-testid="ka-burner"]').length;
+        const list = [...layer.querySelectorAll('[data-testid="ka-steam"]')].map((el) => {
+          const m = new DOMMatrix(getComputedStyle(el).transform);
+          // the film's lid line: 0.5 across, 0.91 down (STEAM_PLUME)
+          const x = el.offsetLeft + m.e + 0.5 * el.offsetWidth;
+          const y = el.offsetTop + m.f + 0.91 * el.offsetHeight;
           return {
-            from: el.dataset.from,
             off: Math.hypot(
               x - (Number(el.dataset.ax) / 100) * layer.offsetWidth,
               y - (Number(el.dataset.ay) / 100) * layer.offsetHeight,
             ),
-            sprite: el.dataset.sprite,
-            tailX: -parseFloat(el.style.getPropertyValue("--ntx")) / 100,
-            tailY: -parseFloat(el.style.getPropertyValue("--nty")) / 100,
+            lid: (0.56 * el.offsetWidth) / ((Number(el.dataset.lid) / 100) * layer.offsetWidth),
+            playing: [...el.querySelectorAll(".ka-film")].map((f) => f.getAnimations().length),
           };
         });
+        return { burners, list };
       });
-      for (const t of tails) measured.set(t.sprite, [t.tailX, t.tailY]);
-      const worst = Math.max(...tails.map((t) => t.off));
-      const sides = new Set(tails.map((t) => t.from));
+      const worst = Math.max(...films.list.map((f) => f.off));
       check(
-        `K5 ${skin} ${layout}: every wisp's tail is on its lid point (top, left side, right side)`,
-        worst <= 2 && ["top", "left", "right"].every((s) => sides.has(s)),
-        { wisps: tails.length, worstPx: +worst.toFixed(2) },
+        `K5 ${skin} ${layout}: every pot has its steam film, its lid line on the pot's rim and as wide as the lid`,
+        films.list.length === films.burners &&
+          worst <= 2 &&
+          films.list.every((f) => Math.abs(f.lid - 1) < 0.03 && f.playing.join() === "3,3"),
+        { pots: films.list.length, worstPx: +worst.toFixed(2) },
       );
     }
   }
-  const pictures = await page.evaluate(
-    async (used) => {
-      const out = {};
-      for (const n of used) {
-        const img = new Image();
-        img.src = `${location.pathname.replace(/[^/]*$/, "")}kitchen-fx/steam-${n}.webp`;
-        await img.decode();
-        const c = document.createElement("canvas");
-        c.width = img.width;
-        c.height = img.height;
-        const g = c.getContext("2d");
-        g.drawImage(img, 0, 0);
-        const a = g.getImageData(0, 0, c.width, c.height).data;
-        const solid = (x, y) => a[(y * c.width + x) * 4 + 3] > 40;
-        let bottom = 0;
-        for (let y = 0; y < c.height; y++)
-          for (let x = 0; x < c.width; x++) if (solid(x, y)) bottom = y;
-        let sum = 0;
-        let count = 0;
-        for (let y = Math.floor(bottom - c.height * 0.03); y <= bottom; y++)
-          for (let x = 0; x < c.width; x++)
-            if (solid(x, y)) {
-              sum += x;
-              count++;
-            }
-        out[n] = [sum / count / c.width, bottom / c.height];
-      }
-      return out;
-    },
-    [...measured.keys()],
-  );
-  const astray = [...measured].filter(
-    ([n, [x, y]]) => Math.abs(x - pictures[n][0]) > 0.04 || Math.abs(y - pictures[n][1]) > 0.03,
-  );
+  // K6: the film picture (10 x 6 frames, the lid line at 0.91, the lid 0.56 of a frame wide)
+  const film = await page.evaluate(async () => {
+    const img = new Image();
+    img.src = `${location.pathname.replace(/[^/]*$/, "")}kitchen-fx/plume.webp`;
+    await img.decode();
+    const [cols, rows] = [10, 6];
+    const w = img.width / cols;
+    const h = img.height / rows;
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    const g = c.getContext("2d", { willReadFrequently: true });
+    const frames = [];
+    for (let i = 0; i < cols * rows; i++) {
+      g.clearRect(0, 0, w, h);
+      g.drawImage(img, (i % cols) * w, Math.floor(i / cols) * h, w, h, 0, 0, w, h);
+      const d = g.getImageData(0, 0, w, h).data;
+      frames.push(Uint8Array.from({ length: w * h }, (_, p) => d[p * 4 + 3]));
+    }
+    const rowMax = (f, from, to, x0 = 0, x1 = w) => {
+      let m = 0;
+      for (let y = Math.floor(from * h); y < Math.ceil(to * h); y++)
+        for (let x = Math.floor(x0); x < Math.ceil(x1); x++) m = Math.max(m, f[y * w + x]);
+      return m;
+    };
+    const lidLeft = (0.5 - 0.28) * w;
+    const third = (0.56 * w) / 3;
+    const change = (a, b) => a.reduce((sum, v, p) => sum + Math.abs(v - b[p]), 0) / a.length;
+    const steps = frames.map((f, i) => change(f, frames[(i + 1) % frames.length]));
+    const mean = steps.reduce((a, b) => a + b) / steps.length;
+    return {
+      below: Math.max(...frames.map((f) => rowMax(f, 0.975, 1))),
+      top: Math.max(...frames.map((f) => rowMax(f, 0, 0.012))),
+      // steam over each third of the lid, just above its line, in every frame
+      thinnest: Math.min(
+        ...frames.flatMap((f) =>
+          [0, 1, 2].map((k) =>
+            rowMax(f, 0.8, 0.91, lidLeft + k * third, lidLeft + (k + 1) * third),
+          ),
+        ),
+      ),
+      still: Math.min(...steps),
+      mean,
+      seam: steps[steps.length - 1],
+    };
+  });
   check(
-    "K6 the tails the layer hangs the wisps by are the real pictures' tails",
-    measured.size >= 3 && astray.length === 0,
-    { used: [...measured.keys()], astray },
+    "K6 the steam film: nothing below the lid line, steam along the whole lid, gone before the top, every frame moves on, and the loop has no jump",
+    film.below <= 12 &&
+      film.top <= 12 &&
+      film.thinnest >= 60 &&
+      film.still > film.mean * 0.2 &&
+      film.seam < film.mean * 1.8,
+    film,
   );
   // K7: the lids are seen
   for (const [w, h] of [
@@ -239,10 +251,26 @@ try {
         const wisps = [...document.querySelectorAll('[data-testid="ka-steam"]')].filter(
           (el) => !upright || el.dataset.pot === "0",
         );
-        return wisps
-          .filter((el) => {
-            const x = stage.left + (Number(el.dataset.ax) / 100) * stage.width;
-            const y = stage.top + (Number(el.dataset.ay) / 100) * stage.height;
+        const points = wisps.flatMap((el) => {
+          const { ax, ay, lid, top } = el.dataset;
+          const sides =
+            el.dataset.open === undefined
+              ? [
+                  [Number(ax) - 0.47 * Number(lid), ay, "left"],
+                  [Number(ax) + 0.47 * Number(lid), ay, "right"],
+                ]
+              : [];
+          return [[ax, top, "top"], ...sides].map(([px, py, from]) => ({
+            pot: el.dataset.pot,
+            px: Number(px),
+            py: Number(py),
+            from,
+          }));
+        });
+        return points
+          .filter((point) => {
+            const x = stage.left + (point.px / 100) * stage.width;
+            const y = stage.top + (point.py / 100) * stage.height;
             const hit = document.elementFromPoint(x, y);
             if (!hit || hit.closest("button")) return true;
             // anything that PAINTS there hides the lid (a card, the day strip). A bare layout box does not (the button column's own empty box), nor does a wash over the whole
@@ -264,7 +292,7 @@ try {
             }
             return false;
           })
-          .map((el) => `pot ${el.dataset.pot} ${el.dataset.from}`);
+          .map((point) => `pot ${point.pot} ${point.from}`);
       }, h > w);
       if (under.length) covered.push({ skin, under: [...new Set(under)] });
     }

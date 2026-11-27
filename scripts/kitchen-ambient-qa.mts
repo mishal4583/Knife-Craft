@@ -2,8 +2,9 @@
  * KITCHEN AMBIENT QA (developer 2026-11-26: "add some animations like in this video to all the 6 kitchen home screens").
  *
  *  A  the anchor data: every stage, tall and wide, has its pots, glints, window and origin inside the picture; lamps appear from Stage 4
- *     and (developer 2026-11-27: "the steam is not coming from side of the lid or on top") each pot is a measured LID, and every wisp starts on it: on its top, and at both ends of
- *     the line where it sits on the pot, leaning away from it
+ *     and (developer 2026-11-27: "the steam is not coming from side of the lid or on top") each pot is a measured LID, and its steam starts on it. RULE CHANGE (developer
+ *     2026-11-27, a reference picture of soft billowing steam: "make it exactly like this"): the ribbon wisps gave way to a simulated, looping steam film per pot, poured off
+ *     the whole lid, rim to rim
  *  B  `coverRect` follows `object-fit: cover` exactly (so a point of the picture stays on the same pixel of the painting in any window)
  *  C  the animation is light: only transform and opacity move, no filter / blur / shadow animated, no picture, no network
  *  D  the wiring: only the Kitchen home turns it on; Reduced motion (the page class and the system setting) switches it off
@@ -13,16 +14,14 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import {
   KITCHEN_AMBIENT_SKINS,
-  KITCHEN_STEAM_SPRITES,
   SHORT_WIDE_BOX,
-  STEAM_PICTURE_RATIO,
-  STEAM_SHAPES,
+  STEAM_PLUME,
   ambientAlignX,
   ambientAlignY,
   ambientPictureSize,
   coverRect,
   kitchenAmbientFor,
-  steamSources,
+  steamPlume,
   type AmbientLayout,
 } from "../src/game/kitchen/kitchenAmbient.ts";
 
@@ -108,42 +107,29 @@ console.log("A. The anchor data");
     odd.map((o) => o.at),
   );
   const wrong: string[] = [];
+  const frame = STEAM_PLUME.seconds / (STEAM_PLUME.cols * STEAM_PLUME.rows);
   for (const { pot, i, at } of pots) {
-    const wisps = steamSources(pot, i);
-    const from = (side: string) => wisps.filter((w) => w.from === side);
-    const half = pot.w / 2;
-    const onTop = from("top").every((w) => w.y === pot.top && Math.abs(w.x - pot.x) <= pot.w * 0.2);
-    const atSides = (["left", "right"] as const).every((side) => {
-      const sign = side === "left" ? -1 : 1;
-      return from(side).every(
-        (w) =>
-          w.y === pot.y &&
-          (w.x - pot.x) * sign >= half * 0.8 &&
-          (w.x - pot.x) * sign <= half + 1e-9 &&
-          w.lean * sign >= 25,
-      );
-    });
-    const counts = pot.open
-      ? from("top").length >= 3 && wisps.length === from("top").length
-      : from("top").length >= 3 && from("left").length >= 2 && from("right").length >= 2;
-    // sized by the lid, already rising when the screen opens, and each picture one that exists and is measured
-    const sized = wisps.every((w) => {
-      const seen = w.width * STEAM_PICTURE_RATIO * (STEAM_SHAPES[w.sprite]?.seen ?? 0);
-      return (
-        seen >= pot.w * 0.4 &&
-        seen <= pot.w * 1.6 &&
-        w.delay <= 0 &&
-        w.sprite >= 1 &&
-        w.sprite <= KITCHEN_STEAM_SPRITES
-      );
-    });
-    if (!(onTop && atSides && counts && sized)) wrong.push(at);
+    const plume = steamPlume(pot, i);
+    // the film's lid line on the pot's rim, the film's lid as wide as the pot's own lid
+    const onRim = plume.x === pot.x && plume.y === pot.y;
+    const sized = Math.abs(plume.width * STEAM_PLUME.lidW - pot.w) < 0.01;
+    // never hidden, never solid; each starts a whole number of frames into the loop
+    const frames = plume.offset / frame;
+    const calm = plume.strength >= 0.6 && plume.strength <= 1 && plume.offset >= 0;
+    if (!(onRim && sized && calm && Math.abs(frames - Math.round(frames)) < 1e-9)) wrong.push(at);
   }
   assert(
     wrong.length === 0,
-    "A6: steam leaves every lid at its top and at both sides of the line it sits on, leaning outward, sized by the lid (an open pan: from its top only)",
+    "A6: every lid has its steam: the film's lid line on the pot's rim, sized by the lid",
     wrong,
   );
+  const together = KITCHEN_AMBIENT_SKINS.flatMap((skin) =>
+    (["tall", "wide"] as const).filter((layout) => {
+      const offsets = kitchenAmbientFor(skin, layout).pots.map((p, i) => steamPlume(p, i).offset);
+      return new Set(offsets).size !== offsets.length;
+    }),
+  );
+  assert(together.length === 0, "A6b: no two pots of one stove puff together", together);
   assert(
     pots.filter((p) => p.pot.open).length === 1 &&
       kitchenAmbientFor("skin-05", "wide").pots[1]?.open === true,
@@ -235,12 +221,19 @@ console.log("C. The animation is light");
     "C1: the layer has its keyframes (push-in, beam, mote, lamp, steam, glint)",
     keyframes.map((k) => k[1]),
   );
+  // RULE CHANGE (developer 2026-11-27, "make it exactly like this"): the steam film also steps its picture's position, frame by frame (8 times a second;
+  // moving a huge picture by transform instead could flash blank on a phone)
+  const film = new Map([
+    ["ka-film-x", "background-position-x"],
+    ["ka-film-y", "background-position-y"],
+  ]);
   const props = new Set<string>();
   for (const k of keyframes)
-    for (const m of k[2]!.matchAll(/^\s*([a-z-]+)\s*:/gm)) props.add(m[1]!);
+    for (const m of k[2]!.matchAll(/^\s*([a-z-]+)\s*:/gm))
+      if (film.get(k[1]!) !== m[1]) props.add(m[1]!);
   assert(
     [...props].every((p) => p === "opacity" || p === "transform"),
-    "C2: only `transform` and `opacity` are animated",
+    "C2: only `transform` and `opacity` are animated (and the steam film's frame position)",
     [...props],
   );
   assert(
@@ -251,15 +244,14 @@ console.log("C. The animation is light");
   const comp = read("src/components/kc/KitchenAmbient.tsx");
   // RULE CHANGE (developer 2026-11-26, "where are other animations?"): the layer now also uses the small painted FX sprites (public/fx: glint, petals and leaves), besides the painted steam wisp. (A painted burner flame and lamp glow were tried and removed the same day: pasted over the painting they read as burning pots and discs.) Still no canvas, video, request or randomness; every picture is a small local file, and each name it builds must exist (checked below).
   assert(
-    /kitchen-fx\/steam-/.test(comp) &&
-      /KITCHEN_STEAM_SPRITES > 0/.test(comp) &&
+    /STEAM_PLUME\.file/.test(comp) &&
       /const fx = \(name: string\) => `\$\{import\.meta\.env\.BASE_URL\}fx\/\$\{name\}\.webp`/.test(
         comp,
       ) &&
       (comp.match(/\.(png|jpg|svg|mp4|webm)/g) ?? []).length === 0 &&
       !/fetch\(|new Image|<canvas|<video/.test(comp) &&
       !/Math\.random/.test(comp),
-    "C5: the layer draws no canvas or video, makes no request, never re-rolls (no Math.random), and its pictures are only the painted steam wisps and the small painted FX sprites",
+    "C5: the layer draws no canvas or video, makes no request, never re-rolls (no Math.random), and its pictures are only the steam film and the small painted FX sprites",
   );
   const fxNames = [
     "glint-1",
@@ -281,17 +273,21 @@ console.log("C. The animation is light");
     "C5c: every painted FX sprite the layer names exists and is under 60 KB",
     fxMissing,
   );
-  // when the painted wisps exist (the count is raised), every counted file must be there and small
-  const sprites = KITCHEN_STEAM_SPRITES;
-  const missing: string[] = [];
-  for (let i = 1; i <= sprites; i++) {
-    const f = new URL(`../public/kitchen-fx/steam-${i}.webp`, import.meta.url);
-    if (!existsSync(f) || statSync(f).size > 60_000) missing.push(`steam-${i}.webp`);
-  }
+  // the steam film: one small see-through picture of cols x rows frames
+  const plumeUrl = new URL(`../public/${STEAM_PLUME.file}`, import.meta.url);
+  const bytes = existsSync(plumeUrl) ? readFileSync(plumeUrl) : Buffer.alloc(30);
+  const vp8x = bytes.toString("ascii", 12, 16) === "VP8X";
+  const size = vp8x ? [1 + bytes.readUIntLE(24, 3), 1 + bytes.readUIntLE(27, 3)] : [0, 0];
   assert(
-    Number.isInteger(sprites) && sprites >= 0 && sprites <= 12 && missing.length === 0,
-    `C5b: ${sprites} painted steam wisps are counted and every one exists and is under 60 KB`,
-    missing,
+    vp8x &&
+      (bytes[20]! & 0x10) !== 0 &&
+      size[0] === STEAM_PLUME.cols * STEAM_PLUME.frameW &&
+      size[1] === STEAM_PLUME.rows * STEAM_PLUME.frameH &&
+      size[0]! <= 2048 &&
+      size[1]! <= 2048 &&
+      bytes.length <= 460 * 1024,
+    `C5b: the steam film is a see-through WebP of ${STEAM_PLUME.cols} x ${STEAM_PLUME.rows} frames, at most 2048 px a side and 460 KB`,
+    { size, kb: Math.round(bytes.length / 1024) },
   );
   const spans = (comp.match(/className="ka-/g) ?? []).length;
   assert(spans >= 5, "C6: it is made of a handful of small elements", spans);
@@ -327,17 +323,48 @@ console.log("D. The wiring");
   );
   const layer = read("src/components/kc/KitchenAmbient.tsx");
   assert(
-    /steamSources\(p, pi\)/.test(layer) &&
-      /"--ntx": pct\(-shape\.tailX \* 100\)/.test(layer) &&
-      /"--nty": pct\(-shape\.tailY \* 100\)/.test(layer) &&
-      /transform-origin: var\(--tail/.test(css),
-    "D6: each wisp is hung by its tail on its lid point and turns, grows and sways about it",
+    /steamPlume\(p, pi\)/.test(layer) &&
+      /"--tx": pct\(-STEAM_PLUME\.rimX \* 100\)/.test(layer) &&
+      /"--ty": pct\(-STEAM_PLUME\.rimY \* 100\)/.test(layer) &&
+      /transform: translate\(var\(--tx/.test(css),
+    "D6: each pot's film is laid with its lid line on the pot's rim",
   );
   assert(
     /const alignX = ambientAlignX\(layout\);/.test(bg) &&
       /const alignY = ambientAlignY\(layout, vp\.h\);/.test(bg) &&
       /coverRect\(vp, ambientPictureSize\(layout\), alignX, alignY\)/.test(bg),
     "D7: the live kitchen's stage uses both alignments",
+  );
+  // the film, the CSS that plays it and the script that makes it agree
+  const maker = read("scripts/make-steam-plume.py");
+  const pair = (name: string) =>
+    maker
+      .match(new RegExp(`^${name} = ([\\d.]+), ([\\d.]+)$`, "m"))
+      ?.slice(1)
+      .map(Number) ?? [];
+  const per = STEAM_PLUME.seconds / (STEAM_PLUME.cols * STEAM_PLUME.rows);
+  const row = STEAM_PLUME.seconds / STEAM_PLUME.rows;
+  assert(
+    pair("COLS, ROWS").join() === `${STEAM_PLUME.cols},${STEAM_PLUME.rows}` &&
+      pair("FRAME_W, FRAME_H").join() === `${STEAM_PLUME.frameW},${STEAM_PLUME.frameH}` &&
+      new RegExp(
+        `^RIM_X, RIM_Y, LID_W = ${STEAM_PLUME.rimX}, ${STEAM_PLUME.rimY}, ${STEAM_PLUME.lidW}$`,
+        "m",
+      ).test(maker),
+    "D8: the game reads the film as the script makes it (frames, their size, where the lid is)",
+    [pair("COLS, ROWS"), pair("FRAME_W, FRAME_H")],
+  );
+  assert(
+    css.includes(`ka-film-x ${row}s steps(${STEAM_PLUME.cols}) infinite`) &&
+      css.includes(`ka-film-y ${STEAM_PLUME.seconds}s steps(${STEAM_PLUME.rows}) infinite`) &&
+      css.includes(`ka-film-out ${per}s linear infinite`) &&
+      css.includes(`calc(var(--start, 0s) - ${per}s)`) &&
+      css.includes(`background-size: ${STEAM_PLUME.cols * 100}% ${STEAM_PLUME.rows * 100}%`) &&
+      css.includes(`aspect-ratio: ${STEAM_PLUME.frameW} / ${STEAM_PLUME.frameH}`) &&
+      /mix-blend-mode: plus-lighter/.test(css) &&
+      /isolation: isolate/.test(css),
+    "D9: it plays a frame every 125 ms, the second layer one frame ahead, fading into each other",
+    { row, per },
   );
   assert(
     /classList\.toggle\("kc-reduced-motion"/.test(read("src/App.tsx")),

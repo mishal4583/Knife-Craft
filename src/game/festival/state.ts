@@ -10,9 +10,13 @@ export type FestivalRecord = {
   wins: number;
   best: number;
   stars: number;
+  /** The highest stage won (0: none yet): the next one is open. */
+  cleared: number;
   /** The lifetime Endless Restaurant order count when it was first played: the next after-campaign festival counts from here. */
   playedAtOrder?: number;
 };
+
+const MOST_STAGES = 15;
 
 export type FestivalsState = {
   v: 1;
@@ -39,6 +43,7 @@ export function festivalsOf(save: SaveData): FestivalsState {
         wins: whole(r.wins),
         best: whole(r.best),
         stars: whole(r.stars, 3),
+        cleared: whole(r.cleared, MOST_STAGES),
         ...(playedAtOrder === undefined ? {} : { playedAtOrder }),
       };
     }
@@ -55,11 +60,15 @@ const withFestivals = (save: SaveData, festivals: FestivalsState): SaveData => (
   business: { ...save.business, festivals },
 });
 
-/** A finished round (never a round that was left): counted, with the best score and stars kept. */
+/** The stage the player is on: the one after the highest won, up to the event's last. */
+export const stageToPlay = (save: SaveData, eventId: string, stages: number): number =>
+  Math.min(stages, (festivalsOf(save).record[eventId]?.cleared ?? 0) + 1);
+
+/** A finished round (never a round that was left): counted, with the best score and stars kept, and its stage cleared when it was won. */
 export function recordFestivalRound(
   save: SaveData,
   eventId: string,
-  round: { score: number; stars: number; won: boolean },
+  round: { score: number; stars: number; won: boolean; stage?: number },
 ): SaveData {
   const state = festivalsOf(save);
   const before = state.record[eventId];
@@ -73,6 +82,10 @@ export function recordFestivalRound(
         wins: (before?.wins ?? 0) + (round.won ? 1 : 0),
         best: Math.max(before?.best ?? 0, whole(round.score)),
         stars: Math.max(before?.stars ?? 0, whole(round.stars, 3)),
+        cleared: Math.max(
+          before?.cleared ?? 0,
+          round.won ? whole(round.stage ?? 1, MOST_STAGES) : 0,
+        ),
         playedAtOrder,
       },
     },

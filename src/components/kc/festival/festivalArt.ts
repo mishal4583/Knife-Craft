@@ -135,6 +135,23 @@ export const BACKDROP_ART = { wide: "burger/backdrop-wide", tall: "burger/backdr
 /** Where the wooden counter's front edge is painted on the upright backdrop, as a part of its height. */
 export const TALL_COUNTER_EDGE = 0.445;
 
+/** The stall around the kitchen (the concept image of 2026-11-27): props that stand on the counter or hang from the roof, and its wood. */
+export const STALL_ART = {
+  ketchup: "stall/ketchup",
+  mustard: "stall/mustard",
+  mayo: "stall/mayo",
+  napkins: "stall/napkins",
+  "salt-pepper": "stall/salt-pepper",
+  spatula: "stall/spatula",
+  tongs: "stall/tongs",
+  cup: "stall/cup",
+  box: "stall/box",
+  planter: "stall/planter",
+  garland: "stall/garland",
+  lights: "stall/lights",
+  wood: "stall/wood",
+} as const;
+
 export const UI_ART = {
   trophy: "ui/trophy",
   firstTrophy: "ui/first-trophy",
@@ -170,6 +187,7 @@ const kitchenArt: readonly string[] = [
 export const ALL_ART: readonly string[] = [
   ...kitchenArt,
   ...Object.values(BACKDROP_ART),
+  ...Object.values(STALL_ART),
   ...Object.values(UI_ART),
   ...peopleArt,
 ];
@@ -177,6 +195,7 @@ export const ALL_ART: readonly string[] = [
 /** What a round shows, fetched before its first customer. */
 export const ROUND_ART: readonly string[] = [
   ...kitchenArt,
+  ...Object.values(STALL_ART),
   ...peopleArt,
   UI_ART.star,
   UI_ART.hand,

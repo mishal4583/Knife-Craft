@@ -1,9 +1,8 @@
 import type { CSSProperties } from "react";
 import {
-  KITCHEN_STEAM_SPRITES,
-  STEAM_SHAPES,
+  STEAM_PLUME,
   kitchenAmbientFor,
-  steamSources,
+  steamPlume,
   type AmbientLayout,
 } from "@/game/kitchen/kitchenAmbient";
 import type { KitchenSkinId } from "@/game/kitchen/kitchenUpgradeTypes";
@@ -12,7 +11,8 @@ import "./kitchenAmbient.css";
 /**
  * THE KITCHEN'S LIFE (developer 2026-11-26, from his Gemini clip): steam off the pots, warm lamps that breathe, a slow beam of sun with a few dust motes through the arched window, a
  * glint on the copper. Laid over the painted kitchen INSIDE its stage (`KitchenBackground`), at the points of `game/kitchen/kitchenAmbient.ts` (percent of the picture, so they stay on
- * the painting in any window). Only CSS `transform` and `opacity` move (no filter, no blur, no canvas, no picture, no network); Settings → Reduced motion (and the system's) hides it.
+ * the painting in any window). Only CSS `transform` and `opacity` move, and the steam film steps its picture frame by frame (no filter, no blur, no canvas, no video, no network);
+ * Settings → Reduced motion (and the system's) hides it.
  */
 const pct = (n: number) => `${n}%`;
 /** A painted effect sprite (public/fx, cut from the Codex FX sheets by scripts/make-fx-assets.py). */
@@ -107,7 +107,7 @@ export function KitchenAmbient({ skin, layout }: { skin: KitchenSkinId; layout: 
         />
       ))}
 
-      {/* the burner's warm light under each pot, and a soft haze lying on its lid */}
+      {/* the burner's warm light under each pot */}
       {s.pots.map((p, pi) => (
         <span
           key={`burner-${pi}`}
@@ -123,73 +123,41 @@ export function KitchenAmbient({ skin, layout }: { skin: KitchenSkinId; layout: 
           }
         />
       ))}
-      {s.pots.map((p, pi) => (
-        <span
-          key={`haze-${pi}`}
-          className="ka-haze"
-          style={
-            {
-              left: pct(p.x),
-              top: pct(p.top),
-              width: pct(p.w * 1.05),
-              "--d": `${(pi * 1.3).toFixed(1)}s`,
-            } as CSSProperties
-          }
-        />
-      ))}
 
-      {/* steam out of the lids (developer 2026-11-27): wisps rise off the top of each lid, and small jets slip out from both sides of the line where the lid sits on its pot. Each wisp is
-          hung by its TAIL on that very point (`steamSources`, `STEAM_SHAPES`), and leans, grows and sways about it, so it never leaves the lid while it is still thick */}
-      {s.pots.flatMap((p, pi) =>
-        steamSources(p, pi).map((wisp, k) => {
-          const shape = STEAM_SHAPES[wisp.sprite]!;
-          const side = wisp.from === "left" ? -1 : wisp.from === "right" ? 1 : 0;
-          return (
-            <span
-              key={`steam-${pi}-${k}`}
-              className={`ka-steam ${side ? "ka-steam-jet" : "ka-steam-top"}`}
-              data-testid="ka-steam"
-              data-pot={pi}
-              data-from={wisp.from}
-              data-sprite={wisp.sprite}
-              data-ax={wisp.x}
-              data-ay={wisp.y}
-              style={
-                {
-                  left: pct(wisp.x),
-                  top: pct(wisp.y),
-                  width: pct(wisp.width),
-                  "--ntx": pct(-shape.tailX * 100),
-                  "--nty": pct(-shape.tailY * 100),
-                  "--tail": `${pct(shape.tailX * 100)} ${pct(shape.tailY * 100)}`,
-                  "--lean": `${wisp.lean}deg`,
-                  "--dur": `${wisp.seconds}s`,
-                  "--d": `${wisp.delay}s`,
-                  "--jx": `${side * 9}%`,
-                  "--dx": ["-7%", "9%", "-9%"][k % 3],
-                  "--dx2": ["10%", "-11%", "8%"][k % 3],
-                  "--sw": `${(2.4 + (k % 4) * 0.55).toFixed(2)}s`,
-                  "--sd": `${(-k * 0.7).toFixed(1)}s`,
-                  "--tilt": k % 2 ? "4deg" : "-4deg",
-                } as CSSProperties
-              }
-            >
-              {KITCHEN_STEAM_SPRITES > 0 ? (
-                <img
-                  className="ka-steam-img"
-                  src={`${import.meta.env.BASE_URL}kitchen-fx/steam-${wisp.sprite}.webp`}
-                  alt=""
-                  aria-hidden="true"
-                  draggable={false}
-                  decoding="async"
-                />
-              ) : (
-                <i className="ka-steam-body" />
-              )}
-            </span>
-          );
-        }),
-      )}
+      {/* the steam pouring off each lid (developer 2026-11-27, "make it exactly like this"): a looping film of soft billowing steam, its lid line laid on the pot's rim. Two layers show
+          a frame and the next one and fade from one into the other, so it moves smoothly */}
+      {s.pots.map((p, pi) => {
+        const plume = steamPlume(p, pi);
+        const film = `url(${import.meta.env.BASE_URL}${STEAM_PLUME.file})`;
+        return (
+          <span
+            key={`steam-${pi}`}
+            className="ka-plume"
+            data-testid="ka-steam"
+            data-pot={pi}
+            data-ax={plume.x}
+            data-ay={plume.y}
+            // (the lid itself, for the browser test that no button covers it)
+            data-lid={p.w}
+            data-top={p.top}
+            data-open={p.open ? "" : undefined}
+            style={
+              {
+                left: pct(plume.x),
+                top: pct(plume.y),
+                width: pct(plume.width),
+                opacity: plume.strength,
+                "--tx": pct(-STEAM_PLUME.rimX * 100),
+                "--ty": pct(-STEAM_PLUME.rimY * 100),
+                "--start": `${-plume.offset}s`,
+              } as CSSProperties
+            }
+          >
+            <i className="ka-film" style={{ backgroundImage: film }} />
+            <i className="ka-film ka-film-next" style={{ backgroundImage: film }} />
+          </span>
+        );
+      })}
 
       {/* the copper catches the light: a painted star glint */}
       {s.glints.map((g, i) => (

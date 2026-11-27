@@ -5,12 +5,16 @@
 //   F3 the intro card names the rival and the goals; the round waits until Start
 //   F4 a whole first round WITH REAL TAPS (the simulated player reading the screen): coached for the first customers, every customer served, a win,
 //      the stars; the save records it (business.festivals) and the money and ledger do not move
+//   F10 the stages (developer 2026-11-27, the concept stall): a win names what the next stage adds and "Next stage" opens it; the arrows go back to an
+//      earlier stage and never past the open one; the festival list shows the stages won
 //   F5 pause: the clock and the food wait; Resume; the platform's pause stops it too
 //   F6 doing nothing: the rival wins; a constructive tip; Try again starts a fresh round
 //   F7 phone sizes and phones on their side, the first event and the pace of Event 15 (4 customers, 12 trays): every tap target at least 48 px,
 //      nothing outside the window, no tap target on another, no sideways scroll
 //   F9 the developer's art (2026-11-27), a round with the whole menu: no broken picture; on upright windows the painted counter covers the stage
-//      with its edge on the counter line; the coach's hand points inside its target; the first event's two unused grill rings show a lock
+//      with its edge on the counter line; the coach's hand points inside its target; the first event's two unused grill rings show a lock and the
+//      stage that opens them
+//   F11 the stall reaches the window's edges: an upright tablet's counter, a wide phone's cloth
 //   F8 no console errors
 // Screenshots: out/festival-*.png. Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -26,6 +30,7 @@ import {
 import { nextAction } from "../../src/game/festival/bot.ts";
 import { burgerRound } from "../../src/game/festival/burger.ts";
 import { paceFor } from "../../src/game/festival/tiers.ts";
+import { portraitLayout } from "../../src/components/kc/festival/festivalLayout.ts";
 import { cookerOf } from "../../src/game/festival/kitchen.ts";
 
 const results = [];
@@ -63,7 +68,7 @@ const text = (sel) => page.$eval(sel, (e) => e.textContent.replace(/\s+/g, " ").
 async function open(query, level, w = 390, h = 844, save = saveAt(level)) {
   await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
   await page.goto(`${base}${query}`, { waitUntil: "domcontentloaded" });
-  await page.waitForFunction(() => window.bridge, { timeout: 20000 });
+  await page.waitForFunction(() => window.bridge?.storage, { timeout: 20000 });
   await page.evaluate(
     async (s, key) => {
       localStorage.clear();
@@ -337,6 +342,50 @@ check(
   { coachFirst, taps, won, stars, record, credits: [before.credits, after.credits] },
 );
 
+// F10: the stage just won opens the next
+const unlocked = (await has("fest-unlocked")) ? await text(q("fest-unlocked")) : "";
+await page.click(q("fest-next"));
+await page.waitForSelector(q("fest-intro"), { timeout: 8000 });
+await sleep(600);
+const stageNow = () => text(q("fest-stage-number"));
+const two = {
+  number: await stageNow(),
+  news: (await has("fest-new")) ? await text(q("fest-new")) : "",
+  upDisabled: await page.$eval(q("fest-stage-up"), (e) => e.disabled),
+  tomato: await has("fest-tray-tomato"),
+};
+await shot(page, "festival-stage2");
+await page.click(q("fest-stage-down"));
+await sleep(600);
+const back = {
+  number: await stageNow(),
+  downDisabled: await page.$eval(q("fest-stage-down"), (e) => e.disabled),
+  tomato: await has("fest-tray-tomato"),
+  coach: await has("fest-coach-text"),
+};
+await page.click(q("fest-stage-up"));
+await sleep(600);
+const again = await stageNow();
+await page.click(`${q("fest-intro")} .fest-secondary`);
+await page.waitForSelector(q("festival-select"), { timeout: 8000 });
+const listLine = await text(q("festival-record-burger"));
+check(
+  "F10 stages: the win says what Stage 2 adds and opens it; the arrows reach Stage 1 again and stop at the open one; the list shows 1/10",
+  record?.cleared === 1 &&
+    /Stage 2 adds: Tomato/.test(unlocked) &&
+    /Stage 2 of 10/.test(two.number) &&
+    /New: Tomato/.test(two.news) &&
+    two.upDisabled &&
+    two.tomato &&
+    /Stage 1 of 10/.test(back.number) &&
+    back.downDisabled &&
+    !back.tomato &&
+    !back.coach &&
+    /Stage 2 of 10/.test(again) &&
+    /stages 1\/10/.test(listLine),
+  { cleared: record?.cleared, unlocked, two, back, again, listLine },
+);
+
 // F5: pause, and the platform's pause
 await open("?festival=1", 12);
 await page.waitForSelector(q("fest-start"), { timeout: 15000 });
@@ -553,7 +602,7 @@ for (const [w, h] of [
   await playRound(burgerRound(paceFor(15), 5), { limitMs: 8000 });
   await sleep(400);
   const art = await brokenArt();
-  const counter = await page.evaluate(() => {
+  const seen = await page.evaluate(() => {
     const scene = document.querySelector('[data-testid="fest-scene"]');
     if (!scene) return null;
     const s = scene.getBoundingClientRect();
@@ -566,9 +615,16 @@ for (const [w, h] of [
         s.top <= r.top + 1 &&
         s.bottom >= r.bottom - 1,
       edge: Math.round((s.top + 0.445 * s.height - r.top) / k),
-      layout: Math.round(370 + r.height / k - 960),
+      height: Math.round(r.height / k),
     };
   });
+  // RULE CHANGE (developer 2026-11-27, the concept stall): a tall phone now shares its extra height with the workstation, so the counter line is
+  // read from the layout itself instead of the old "370 + all the extra height"
+  const counter = seen && {
+    ...seen,
+    layout: portraitLayout({ atOnce: 4, grill: 4, plates: 4, trays: 12, drinks: 3 }, seen.height)
+      .counter,
+  };
   await shot(page, `festival-art-${w}x${h}`);
   check(
     `F9 ${w} x ${h}, the whole menu: no broken picture${w < h ? "; the painted counter covers the stage, its edge on the counter line" : ""}`,
@@ -596,13 +652,37 @@ const hand = await page.evaluate(() => {
       x >= target.left && x <= target.right && y >= target.top - 4 && y <= target.bottom + 4,
   };
 });
-const locks = await page.$$eval('[data-testid="fest-ring-locked"]', (l) => l.length);
+const locks = await page.$$eval('[data-testid="fest-ring-locked"]', (l) =>
+  l.map((e) => e.textContent.trim()),
+);
 await shot(page, "festival-coach-art");
 check(
-  "F9 the coach's hand points inside its target; the first event's two unused grill rings show a lock",
-  hand.tipInside && locks === 2,
+  "F9 the coach's hand points inside its target; the first event's two unused grill rings show a lock and the stage that opens them",
+  hand.tipInside && locks.join() === "Stage 3,Stage 7",
   { hand, locks },
 );
+
+// F11: the stall reaches the window's edges
+for (const [w, h, part] of [
+  [768, 1024, "fest-wood"],
+  [912, 432, "fest-wood"],
+  [912, 432, "fest-cloth"],
+]) {
+  await open("?festival=1", 12, w, h);
+  await page.waitForSelector(q("fest-start"), { timeout: 15000 });
+  await sleep(400);
+  const box = await page
+    .$eval(q(part), (e) => {
+      const r = e.getBoundingClientRect();
+      return { left: Math.round(r.left), right: Math.round(r.right), window: innerWidth };
+    })
+    .catch(() => null);
+  check(
+    `F11 ${w} x ${h}: ${part === "fest-wood" ? "the counter runs from one window edge to the other" : "the cloth hangs at the window's left edge"}`,
+    !!box && box.left <= 1 && (part === "fest-wood" ? box.right >= box.window - 1 : box.right > 20),
+    box,
+  );
+}
 
 check(
   "F8 no console errors",

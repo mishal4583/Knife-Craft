@@ -1,9 +1,11 @@
 /**
  * FESTIVAL SAVE, UNLOCK, ART AND WIRING QA (developer 2026-11-27; the one new save field `business.festivals` approved: "do whatever necessary").
  *
- *  A  the save: absent or damaged reads as nothing; a finished round counts once, keeps the best; old saves need nothing; no money, no ledger
+ *  A  the save: absent or damaged reads as nothing; a finished round counts once, keeps the best; a won stage opens the next; old saves need nothing;
+ *     no money, no ledger
  *  B  the unlocks: Levels 10-90; after the campaign the 25-order schedule, each gap counted only after the festival before was first played
- *  C  the screen's boxes: every tap target 48 px at the smallest window, inside the stage, none on another, for every pace, upright and wide
+ *  C  the screen's boxes: every tap target 48 px at the smallest window, inside the stage, none on another, for every pace, upright and wide; the
+ *     stall's sign, chalkboard and props never cover a station or an order
  *  D  the art: every picture the festival names exists, small; the 270 MB source folder is kept out of git
  *  E  wiring: the screen, the preview link, the level lock, the result, the after-campaign count, the Mini-games card, pause; Dessert Run untouched
  *
@@ -17,6 +19,7 @@ import {
   festivalsOf,
   lifetimeOrdersOf,
   recordFestivalRound,
+  stageToPlay,
   withFestivalBaseline,
 } from "../src/game/festival/state.ts";
 import { festivalStatus, waitingFestival } from "../src/game/festival/schedule.ts";
@@ -94,9 +97,13 @@ console.log("A. The save");
       } as never,
     },
   };
+  // RULE CHANGE (developer 2026-11-27, the concept stall): the record also keeps `cleared`, the highest stage won, so the locked burners can open
   assert(
     JSON.stringify(festivalsOf(junk)) ===
-      JSON.stringify({ v: 1, record: { burger: { plays: 0, wins: 0, best: 0, stars: 3 } } }),
+      JSON.stringify({
+        v: 1,
+        record: { burger: { plays: 0, wins: 0, best: 0, stars: 3, cleared: 0 } },
+      }),
     "A3: damaged values are clamped, never thrown on",
     festivalsOf(junk),
   );
@@ -109,8 +116,9 @@ console.log("A. The save");
   });
   assert(JSON.stringify(fresh) === before, "A4: recording never changes the save it was given");
   assert(
+    // RULE CHANGE (developer 2026-11-27): a round without a stage number counts as stage 1; the lost round clears nothing
     JSON.stringify(festivalsOf(twice).record.burger) ===
-      JSON.stringify({ plays: 2, wins: 1, best: 900, stars: 2, playedAtOrder: 7 }),
+      JSON.stringify({ plays: 2, wins: 1, best: 900, stars: 2, cleared: 1, playedAtOrder: 7 }),
     "A5: rounds are counted; the best score and stars stay; the first play's order count is kept",
     festivalsOf(twice).record.burger,
   );
@@ -141,6 +149,38 @@ console.log("A. The save");
     lifetimeOrdersOf(orders(fresh, 12)) === 12,
     "A11: the count is the restaurant's own lifetime orders",
   );
+  const play = (s: SaveData, stage: number, won: boolean) =>
+    recordFestivalRound(s, "burger", { score: 100, stars: won ? 1 : 0, won, stage });
+  const cleared = (s: SaveData) => festivalsOf(s).record.burger?.cleared ?? 0;
+  let run = fresh;
+  assert(stageToPlay(run, "burger", 10) === 1, "A12: a new player starts at stage 1");
+  run = play(run, 1, false);
+  assert(
+    cleared(run) === 0 && stageToPlay(run, "burger", 10) === 1,
+    "A13: a lost stage opens nothing, and it is simply played again",
+  );
+  run = play(run, 1, true);
+  run = play(run, 2, true);
+  assert(
+    cleared(run) === 2 && stageToPlay(run, "burger", 10) === 3,
+    "A14: a won stage opens the next",
+  );
+  run = play(run, 1, true);
+  run = play(run, 0, true);
+  assert(cleared(run) === 2, "A15: replaying an earlier stage (or a preview) never takes one back");
+  for (let stage = 3; stage <= 10; stage++) run = play(run, stage, true);
+  assert(
+    cleared(run) === 10 && stageToPlay(run, "burger", 10) === 10,
+    "A16: after the last stage, the last one stays to be replayed",
+  );
+  const wild = {
+    ...fresh,
+    business: {
+      ...fresh.business,
+      festivals: { v: 1, record: { burger: { cleared: 99 } } } as never,
+    },
+  };
+  assert(cleared(wild) === 15, "A17: a damaged stage number is clamped");
 }
 
 console.log("B. The unlocks");
@@ -295,6 +335,49 @@ console.log("C. The boxes on the screen");
     "C1: every pace, upright and wide: tap targets 48 px at the smallest window, inside the stage, none overlapping",
     bad.slice(0, 8),
   );
+  // the stall (the concept image): its boards, props and coach line never cover a station, an order or the top bar
+  const overlap = (a: readonly number[], b: readonly number[]) =>
+    Math.min(a[0]! + a[2]!, b[0]! + b[2]!) - Math.max(a[0]!, b[0]!) > 0.5 &&
+    Math.min(a[1]! + a[3]!, b[1]! + b[3]!) - Math.max(a[1]!, b[1]!) > 0.5;
+  const covered: string[] = [];
+  for (const pace of PACES) {
+    const kitchen = burgerKitchen(pace);
+    const counts = {
+      atOnce: pace.atOnce,
+      grill: pace.grillSlots,
+      plates: pace.plates,
+      trays: kitchen.trays.length,
+      drinks: cookerOf(kitchen, "drink")!.slots,
+    };
+    for (const [name, layout] of [
+      ...heights.map((h) => [`upright ${h}`, portraitLayout(counts, h)] as const),
+      ["wide", wideLayout(counts)] as const,
+    ]) {
+      const bar = [layout.back, layout.pause, layout.scores, layout.status];
+      const boards = [layout.sign, layout.special].filter((b) => b !== null);
+      const bubbles = layout.seats.map((s) => s.bubble);
+      for (const board of boards)
+        if ([...bar, ...bubbles].some((b) => overlap(board, b)))
+          covered.push(`t${pace.tier} ${name}: a board covers the bar or an order`);
+      if (bubbles.some((b) => bar.some((x) => overlap(b, x))))
+        covered.push(`t${pace.tier} ${name}: an order under the top bar`);
+      for (const piece of [layout.hint, ...layout.props.map((p) => p.box)])
+        if ([...tapTargets(layout), ...bubbles].some((x) => overlap(piece, x)))
+          covered.push(
+            `t${pace.tier} ${name}: a prop or the coach line covers ${piece[0]},${piece[1]}`,
+          );
+      const [rx, ry, rw, rh] = layout.rack;
+      if (
+        layout.powers.some(([x, y, w, h]) => x < rx || y < ry || x + w > rx + rw || y + h > ry + rh)
+      )
+        covered.push(`t${pace.tier} ${name}: a power-up outside its rack`);
+    }
+  }
+  assert(
+    covered.length === 0,
+    "C3: the stall's sign, chalkboard, props and coach line cover no station, order or button, and the power-ups sit in their rack",
+    covered.slice(0, 8),
+  );
   assert(
     portraitHeight(390, 844) === 1169 &&
       portraitHeight(320, 568) === 960 &&
@@ -413,6 +496,13 @@ console.log("E. Wiring");
       game + read("src/components/kc/festival/FestivalScreen.tsx"),
     ),
     "E8: no Page Visibility API or browser storage",
+  );
+  const host = read("src/components/kc/festival/FestivalScreen.tsx");
+  assert(
+    /playing\.stage !== null && playing\.stage <= openStage\(playing\.event\) \? playing\.stage : 0/.test(
+      host,
+    ),
+    "E11: only an open stage counts as cleared (the preview link never skips ahead)",
   );
   const select = read("src/components/kc/festival/FestivalSelect.tsx");
   assert(

@@ -3,7 +3,7 @@
  * nine open at campaign levels 10 to 90; the last six open after the campaign, counted in Endless Restaurant orders, each gap starting only once the
  * festival before has been played (schedule.ts). `built` events can be played; the rest show "Coming soon".
  */
-import type { Pace, RoundConfig } from "./types";
+import type { FoodId, Pace, RoundConfig } from "./types";
 import { burgerRound } from "./burger";
 import { paceFor } from "./tiers";
 
@@ -34,8 +34,16 @@ export type FestivalEvent = {
   rivalId: string;
   /** Set when the festival can be played. */
   round?: (pace: Pace, seed: number) => RoundConfig;
+  /**
+   * How many STAGES a playable festival has (developer 2026-11-27, with the concept stall: the locked burners must become real as the player goes).
+   * Winning a stage opens the next: a little quicker, with more on the counter. Stage s of event e plays at pace e + s - 1.
+   */
+  stages?: number;
   lines?: RivalLines;
 };
+
+/** The Burger Festival's stages: by the last one every food of the kit is on the counter (burger.ts BURGER_JOINS). */
+export const BURGER_STAGES = 10;
 
 const level = (n: number): FestivalUnlock => ({ kind: "level", level: n });
 const orders = (gap: number): FestivalUnlock => ({ kind: "orders", gap });
@@ -59,6 +67,7 @@ export const FESTIVAL_EVENTS: readonly FestivalEvent[] = [
     unlock: level(10),
     rivalId: "sunny-side",
     round: burgerRound,
+    stages: BURGER_STAGES,
     lines: DOLLY,
   },
   {
@@ -179,6 +188,46 @@ export const festivalEvent = (id: string): FestivalEvent | undefined =>
   FESTIVAL_EVENTS.find((e) => e.id === id);
 
 export const FESTIVAL_FIRST_LEVEL = 10;
+
+/** The pace a stage of an event plays at. */
+export const stageTier = (event: FestivalEvent, stage: number): number =>
+  Math.min(15, event.number + Math.max(1, stage) - 1);
+
+/** What a stage adds to the one before it. */
+export type StageNews = {
+  foods: readonly FoodId[];
+  /** One more burner, one more plate, one more customer at once. */
+  grill: boolean;
+  plate: boolean;
+  atOnce: boolean;
+};
+
+export function stageNews(event: FestivalEvent, stage: number): StageNews {
+  const nothing = { foods: [], grill: false, plate: false, atOnce: false };
+  if (!event.round || stage <= 1) return nothing;
+  const before = event.round(paceFor(stageTier(event, stage - 1)), 1);
+  const now = event.round(paceFor(stageTier(event, stage)), 1);
+  const foodsOf = (r: RoundConfig) =>
+    new Set<FoodId>([
+      ...r.kitchen.trays.map((t) => t.item),
+      ...r.kitchen.cookers.flatMap((c) => Object.keys(c.cookMs) as FoodId[]),
+    ]);
+  const had = foodsOf(before);
+  const slots = (r: RoundConfig) => r.kitchen.cookers.find((c) => c.id === "grill")?.slots ?? 0;
+  return {
+    foods: [...foodsOf(now)].filter((f) => !had.has(f)),
+    grill: slots(now) > slots(before),
+    plate: now.kitchen.plates > before.kitchen.plates,
+    atOnce: now.pace.atOnce > before.pace.atOnce,
+  };
+}
+
+/** The first stage whose grill has `slots` burners (0 when no stage of this event has that many). */
+export function stageWithBurners(event: FestivalEvent, slots: number): number {
+  for (let stage = 1; stage <= (event.stages ?? 0); stage++)
+    if (paceFor(stageTier(event, stage)).grillSlots >= slots) return stage;
+  return 0;
+}
 
 /** An event's round at its own pace (or at another, for the developer's preview link), for a seed. */
 export function festivalRound(

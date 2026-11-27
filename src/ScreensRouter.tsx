@@ -369,7 +369,13 @@ export function ScreensRouter({
   /** Achievements: collect one earned reward (progression/achievements.ts). */
   collectAchievement: (id: string) => CollectResult;
   /** A finished festival round: recorded (stars, best score); it pays nothing (game/festival/state.ts). */
-  festivalResult: (result: { eventId: string; score: number; stars: number; won: boolean }) => void;
+  festivalResult: (result: {
+    eventId: string;
+    score: number;
+    stars: number;
+    won: boolean;
+    stage: number;
+  }) => void;
 }) {
   const [mapReturnAvailable, setMapReturnAvailable] = useState(false);
 

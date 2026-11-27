@@ -1624,7 +1624,13 @@ export function App() {
   }
 
   /** A finished festival round: counted, with its best score and stars (game/festival/state.ts). It pays no money, uses no stock and writes no ledger entry. */
-  function festivalResult(result: { eventId: string; score: number; stars: number; won: boolean }) {
+  function festivalResult(result: {
+    eventId: string;
+    score: number;
+    stars: number;
+    won: boolean;
+    stage: number;
+  }) {
     const current = saveRef.current;
     if (!current) return;
     persist(recordFestivalRound(current, result.eventId, result));

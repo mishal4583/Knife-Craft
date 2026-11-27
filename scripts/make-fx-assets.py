@@ -1,6 +1,7 @@
 """Cut the Codex FX sheets (FX Assets/FX-1..5.png) into small WebPs (developer 2026-11-26).
 
-  FX-1 -> public/kitchen-fx/steam-1..6.webp, mist-1..2.webp   (whole cell, bottom-centre anchored, 160x240)
+  FX-1 -> public/kitchen-fx/mist-1..2.webp   (whole cell, bottom-centre anchored, 160x240; the kitchen's steam is now a film made by
+          scripts/make-steam-plume.py, developer 2026-11-27)
   FX-2 -> public/fx/flame-fire-1..6, flame-burner-1..6, flame-candle-1..6   (rows found by content; one shared crop per row so the base never jumps)
   FX-3 -> public/fx/glint-1..4, glow-1..4
   FX-4 -> public/fx/petal-1..6, leaf-1..6, bit-1..6
@@ -53,21 +54,12 @@ def cells(im, cols, rows):
 
 total = 0
 
-# FX-1 steam and mist: keep the whole cell (the wisp's foot sits near the bottom-centre), scaled to 160x240
+# FX-1 mist: keep the whole cell, scaled to 160x240 (the sheet's first six cells were the old steam ribbons)
 sheet = load(1)
-names = [f"steam-{i}" for i in range(1, 7)] + ["mist-1", "mist-2"]
-def whiten(im, k):
-    """Push the colour toward white (alpha untouched): the painted steam is grey-cream, which reads as dirty smoke over a warm painting."""
-    a = np.array(im).astype(np.float32)
-    a[:, :, :3] = a[:, :, :3] * (1 - k) + 255 * k
-    return Image.fromarray(a.astype(np.uint8), "RGBA")
-
-
+names = [None] * 6 + ["mist-1", "mist-2"]
 for (j, i, c), name in zip(cells(sheet, 4, 2), names):
-    c = c.resize((160, 240), Image.LANCZOS)
-    if name.startswith("steam"):
-        c = whiten(c, 0.6)
-    total += save(c, KFX / f"{name}.webp", 78)
+    if name:
+        total += save(c.resize((160, 240), Image.LANCZOS), KFX / f"{name}.webp", 78)
 
 # FX-2 flames: split the sheet into row bands by empty alpha rows, one shared crop per band
 sheet = load(2)

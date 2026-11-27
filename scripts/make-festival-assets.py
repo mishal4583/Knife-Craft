@@ -25,6 +25,7 @@ SOURCE = ROOT / "Festival competition assets"
 OUTPUT = ROOT / "public" / "festival"
 
 SHARED = "00_shared"
+SUPPLIES = ROOT / "public" / "business" / "supplies"  # the game's own supply pictures, reused as stall props
 BURGER = "01_burger_festival"
 EQUIPMENT = f"{BURGER}/equipment"
 
@@ -79,6 +80,18 @@ SINGLES: dict[str, tuple[str, int]] = {
     "ui/smoke": (f"{SHARED}/effects/cooking_smoke.png", 128),
     "ui/first-trophy": (f"{SHARED}/celebration/first_place_trophy.png", 200),
     "ui/confetti": (f"{SHARED}/effects/effect_victory_confetti.png", 320),
+    # the stall around the kitchen (the concept image of 2026-11-27): things that stand on the counter and hang from the roof
+    "stall/ketchup": (f"{BURGER}/trays/bottle_ketchup.png", 130),
+    "stall/mustard": (f"{BURGER}/trays/bottle_mustard.png", 130),
+    "stall/napkins": ("supplies:napkin-holders", 130),
+    "stall/salt-pepper": ("supplies:salt-pepper", 120),
+    "stall/spatula": ("supplies:spatulas", 130),
+    "stall/tongs": ("supplies:tongs", 130),
+    "stall/box": (f"{SHARED}/trays_containers/burger_clamshell_box.png", 200),
+    "stall/cup": (f"{SHARED}/trays_containers/clear_drink_cup.png", 150),
+    "stall/planter": (f"{SHARED}/environment_props/leafy_flower_planter.png", 220),
+    "stall/garland": (f"{SHARED}/environment_props/flower_garland.png", 340),
+    "stall/lights": (f"{SHARED}/environment_props/string_lights.png", 340),
 }
 
 # groups drawn on top of one another: one shared crop (the union of their drawings), so a change of state never moves or resizes them
@@ -129,6 +142,8 @@ BACKDROPS = {
 
 
 def load(rel: str) -> Image.Image:
+    if rel.startswith("supplies:"):
+        return Image.open(SUPPLIES / f"{rel.split(':', 1)[1]}.webp").convert("RGBA")
     return Image.open(SOURCE / rel).convert("RGBA")
 
 
@@ -169,6 +184,20 @@ def save(image: Image.Image, name: str, quality: int = 86) -> int:
     return target.stat().st_size
 
 
+BOTTLES = ("burger/tray-ketchup", "burger/tray-mustard")
+PAN_SHAPE = 1.5  # width over height: the pans came from 0.93 (cheese) to 2.35 (buns)
+PAN_STRETCH = 1.35  # no pan is stretched more than this
+
+
+def one_shape(pan: Image.Image) -> Image.Image:
+    """Bring an ingredient pan toward the one shape they all stand in on the shelf, stretching it no more than PAN_STRETCH."""
+    shape = pan.width / pan.height
+    target = min(max(PAN_SHAPE, shape / PAN_STRETCH), shape * PAN_STRETCH)
+    if target < shape:  # too flat: taller
+        return pan.resize((pan.width, round(pan.width / target)), Image.LANCZOS)
+    return pan.resize((round(pan.height * target), pan.height), Image.LANCZOS)  # too tall: wider
+
+
 def golden_from_raw(raw: Image.Image) -> Image.Image:
     """The golden basket: the raw basket with its pale fries turned golden, so the basket itself never changes between the two.
     (The delivered golden picture is a differently drawn basket without the handle, so it would jump when the fries are done.)"""
@@ -200,7 +229,10 @@ def main() -> int:
 
     for name, (src, size) in SINGLES.items():
         picture = clean(load(src))
-        put(shrink(picture.crop(drawn_box(picture)), size), name)
+        picture = picture.crop(drawn_box(picture))
+        if name.startswith("burger/tray-") and name not in BOTTLES:
+            picture = one_shape(picture)
+        put(shrink(picture, size), name)
 
     for group, size in GROUPS:
         pictures = {name: clean(load(src)) for name, src in group.items()}
@@ -241,6 +273,19 @@ def main() -> int:
                 picture = picture.resize((PERSON_BOX, PERSON_BOX), Image.LANCZOS)
             # the four moods keep one canvas and one scale, so the face never jumps when the mood changes
             put(shrink(picture, PERSON_BOX), f"people/{person}-{mood}", 84)
+
+    # a bottle of mayonnaise for the counter: the mustard bottle in cream
+    mustard = np.array(clean(load(f"{BURGER}/trays/bottle_mustard.png"))).astype(np.float32)
+    light = mustard[..., :3] @ np.array([0.35, 0.55, 0.10], dtype=np.float32)
+    cream = np.array([252, 241, 210], dtype=np.float32)
+    mustard[..., :3] = np.clip(cream[None, None, :] * (0.45 + 0.62 * light[..., None] / 190.0), 0, 255)
+    mayo = Image.fromarray(mustard.astype(np.uint8), "RGBA")
+    put(shrink(mayo.crop(drawn_box(mayo)), 130), "stall/mayo")
+
+    # the wood of the counter: the planks of the upright painting, below its counter's edge
+    painting = Image.open(SOURCE / f"{BURGER}/background/background_burger_festival_portrait.png").convert("RGB")
+    w, h = painting.size
+    put(painting.crop((0, int(h * 0.5), w, int(h * 0.97))).resize((540, 452), Image.LANCZOS), "stall/wood", 80)
 
     for name, (src, size) in BACKDROPS.items():
         put(Image.open(SOURCE / src).convert("RGB").resize(size, Image.LANCZOS), name, 78)

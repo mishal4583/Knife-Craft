@@ -6,14 +6,19 @@
  *  C  the counter: trays, cooking, ready, overcooked, burnt, where a topping lands, serving the longest waiting, nothing to the wrong one, the bin
  *  D  patience, customers walking up, combos, score, accuracy, stars (a tie is the player's), the three power-ups
  *  E  pure: no random, clock, money, ledger, stock or save in the rules
+ *  F  the Burger Festival's ten stages (developer 2026-11-27, the concept stall): each one adds something, and the burners open as the player goes
  *
  * Run: npx tsx scripts/festival-rules-qa.mts
  */
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import {
+  BURGER_STAGES,
   FESTIVAL_EVENTS,
   FESTIVAL_FIRST_LEVEL,
   festivalRound,
+  stageNews,
+  stageTier,
+  stageWithBurners,
 } from "../src/game/festival/events.ts";
 import {
   BURGER_JOINS,
@@ -548,6 +553,53 @@ console.log("E. Pure");
   );
   const bad = files.filter((f) => /from "react"|from "@\/components/.test(readFileSync(f, "utf8")));
   assert(bad.length === 0, "E2: and no screen code", bad);
+}
+
+console.log("F. The Burger Festival's stages");
+{
+  const burger = FESTIVAL_EVENTS[0]!;
+  const stages = Array.from({ length: BURGER_STAGES }, (_, i) => i + 1);
+  assert(
+    burger.stages === BURGER_STAGES &&
+      BURGER_STAGES === 10 &&
+      FESTIVAL_EVENTS.slice(1).every((e) => !e.stages),
+    "F1: the Burger Festival has ten stages; events without a round have none yet",
+  );
+  assert(
+    stages.every((s) => stageTier(burger, s) === s) &&
+      stageTier({ ...burger, number: 9 }, 10) === 15,
+    "F2: stage s of event e plays at pace e + s - 1, never past 15",
+  );
+  const quiet = stages.slice(1).filter((s) => {
+    const n = stageNews(burger, s);
+    return !(n.foods.length || n.grill || n.plate || n.atOnce);
+  });
+  assert(
+    quiet.length === 0 && !stageNews(burger, 1).foods.length,
+    "F3: every stage after the first adds a food, a burner, a plate or a longer queue",
+    quiet,
+  );
+  const counter = (s: number) => festivalRound(burger, 1, stageTier(burger, s))!.kitchen;
+  const last = new Set<string>([
+    ...counter(BURGER_STAGES).trays.map((t) => t.item),
+    ...counter(BURGER_STAGES).cookers.flatMap((c) => Object.keys(c.cookMs)),
+  ]);
+  const left = Object.keys(BURGER_JOINS).filter((f) => !last.has(f));
+  assert(left.length === 0, "F4: by the last stage every food of the kit is on the counter", left);
+  const burners = stages.map((s) => cookerOf(counter(s), "grill")!.slots);
+  assert(
+    burners[0] === 2 &&
+      burners.at(-1) === 4 &&
+      burners.every((n, i) => i === 0 || n >= burners[i - 1]!),
+    "F5: two burners at first, all four in the end, and one is never taken back",
+    burners,
+  );
+  assert(
+    stageWithBurners(burger, 3) === 3 &&
+      stageWithBurners(burger, 4) === 7 &&
+      stageWithBurners(burger, 5) === 0,
+    "F6: a locked burner's tag names the stage that opens it (Stage 3, Stage 7)",
+  );
 }
 
 console.log(failures ? `\nFESTIVAL RULES QA: ${failures} FAILED` : "\nFESTIVAL RULES QA: ALL PASS");

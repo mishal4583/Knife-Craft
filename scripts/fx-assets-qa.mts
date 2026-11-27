@@ -15,8 +15,9 @@ function assert(cond: unknown, label: string, detail?: unknown) {
 }
 const url = (p: string) => new URL(`../${p}`, import.meta.url);
 const range = (n: number, p: string) => Array.from({ length: n }, (_, i) => `${p}-${i + 1}`);
+// RULE CHANGE (developer 2026-11-27, "make it exactly like this"): the six steam ribbons are replaced by the kitchen's steam film
+// (`kitchen-fx/plume.webp`, checked by kitchen-ambient-qa C5b)
 const expected = [
-  ...range(6, "kitchen-fx/steam"),
   ...range(2, "kitchen-fx/mist"),
   ...range(6, "fx/flame-fire"),
   ...range(6, "fx/flame-burner"),

@@ -118,7 +118,8 @@ export function FestivalSelect({
                       {"★".repeat(record.stars)}
                       <span className="opacity-30">{"★".repeat(3 - record.stars)}</span>
                     </span>{" "}
-                    · best {record.best}
+                    {event.stages ? `· stages ${record.cleared}/${event.stages} ` : ""}· best{" "}
+                    {record.best}
                   </span>
                 ) : null}
               </span>

@@ -3,24 +3,19 @@
  * copper, a slow push-in). Pure data: where each painted kitchen (the six stages, tall and wide) has its pots, lamps, window and copper, in percent of the PICTURE. The screen
  * (`components/kc/KitchenAmbient.tsx`) lays CSS transform / opacity animation over those points; nothing here touches money or state.
  *
- * A point is `{ x, y }` in percent of the picture's width and height. Steam comes out of the LIDS of the `pots` (developer 2026-11-27: "the steam is not coming from side of the lid or on
- * top"): from both sides of the line where a lid sits on its pot, and from the top of the lid (`steamSources`). `lamps` glow and breathe (`r` is the glow's width in
+ * A point is `{ x, y }` in percent of the picture's width and height. Steam pours off the LIDS of the `pots` (developer 2026-11-27: "the steam is not coming from side of the lid or on
+ * top", then, with a reference picture of soft billowing steam, "make it exactly like this"): a simulated film of steam rising off the whole lid, rim to rim (`steamPlume`,
+ * `STEAM_PLUME`). `lamps` glow and breathe (`r` is the glow's width in
  * percent of the picture's width), the `window` throws a slow beam with a few dust motes, `glints` are the copper pans and the pans' rims that catch the light. `origin` is where
  * the slow push-in grows from (the stove).
  */
 import type { KitchenSkinId } from "./kitchenUpgradeTypes";
 
-/**
- * How many painted steam wisps (`public/kitchen-fx/steam-1..N.webp`, the Codex sheet FX-1) exist. 0 = none yet: the steam is drawn with CSS plumes. When the sheet is cut, set this
- * to the number of files and the plumes become the painted wisps (same motion); `kitchen-ambient-qa` fails if a counted file is missing.
- */
-export const KITCHEN_STEAM_SPRITES = 6;
-
 export type AmbientPoint = { x: number; y: number };
 /**
- * A pot on the stove, measured on its painting. `x` is the middle of the lid and `y` the line where the lid sits on the pot (the gap the side steam escapes from); `top` is the lid's own
+ * A pot on the stove, measured on its painting. `x` is the middle of the lid and `y` the line where the lid sits on the pot (the rim the steam pours from); `top` is the lid's own
  * top surface (under its knob); `w` the lid's width; `base` the pot's foot on the burner. x and w are percent of the picture's WIDTH; y, top and base percent of its HEIGHT.
- * `open` is a pan with no lid: steam only rises off it.
+ * `open` is a pan with no lid: the steam rises off the food in it.
  */
 export type AmbientPot = AmbientPoint & { top: number; w: number; base: number; open?: boolean };
 export type AmbientLamp = AmbientPoint & { r: number };
@@ -233,89 +228,49 @@ const TALL: Record<KitchenSkinId, KitchenAmbientSpec> = {
 };
 
 /**
- * Where each painted wisp's TAIL is inside its picture (`public/kitchen-fx/steam-<n>.webp`, 160 x 240), as fractions of the picture's width and height, and how much of the height the wisp
- * covers. The pictures have empty room around the wisp (up to 29 % under the tail), so a wisp is hung by its tail, not by its box: the tail sits exactly where the steam leaves the lid.
- * `kitchenambient.mjs` K6 reads the real pictures and checks these.
+ * THE STEAM IS A FILM (developer 2026-11-27, a reference picture: "make it exactly like this"): `public/kitchen-fx/plume.webp`, `cols` x `rows` frames of soft billowing steam that loop
+ * seamlessly, made by a fluid simulation (`scripts/make-steam-plume.py`). In every frame the middle of the lid's rim line is at (`rimX`, `rimY`) and the lid is `lidW` of the frame wide
+ * (fractions of the frame); nothing hangs below it. `kitchen-ambient-qa` checks these numbers against the script; `kitchenambient.mjs` K6 checks the picture.
  */
-export const STEAM_SHAPES: Record<number, { tailX: number; tailY: number; seen: number }> = {
-  1: { tailX: 0.49, tailY: 0.93, seen: 0.86 },
-  2: { tailX: 0.51, tailY: 0.93, seen: 0.85 },
-  3: { tailX: 0.49, tailY: 0.91, seen: 0.84 },
-  4: { tailX: 0.45, tailY: 0.9, seen: 0.8 },
-  5: { tailX: 0.5, tailY: 0.73, seen: 0.56 },
-  6: { tailX: 0.5, tailY: 0.71, seen: 0.46 },
-};
-/** The pictures' shape: height = width x this. */
-export const STEAM_PICTURE_RATIO = 1.5;
+export const STEAM_PLUME = {
+  file: "kitchen-fx/plume.webp",
+  cols: 10,
+  rows: 6,
+  frameW: 160,
+  frameH: 260,
+  rimX: 0.5,
+  rimY: 0.91,
+  lidW: 0.56,
+  /** One loop, in seconds: 125 ms a frame, exact in the browser's clock, so the picture's columns and rows never slip apart. */
+  seconds: 7.5,
+} as const;
 
-export type SteamWisp = {
-  from: "top" | "left" | "right";
-  /** The point of the painting the wisp's tail sits on (percent of the width, percent of the height). */
+export type SteamPlume = {
+  /** The point of the painting the middle of the lid's rim sits on (percent of the width, percent of the height). */
   x: number;
   y: number;
-  /** The wisp picture's width, in percent of the painting's width. */
+  /** The film frame's width, in percent of the painting's width: sized by the pot's own lid. */
   width: number;
-  sprite: number;
-  /** How far it leans, in degrees: left of the lid negative, right positive. */
-  lean: number;
-  /** One rise, in seconds, and where in it the wisp starts (negative: already on its way when the screen opens). */
-  seconds: number;
-  delay: number;
+  /** How full it is: the pots further along the stove steam a little less, as in the reference. */
+  strength: number;
+  /** How far into the loop it starts, in seconds (whole frames), so two pots never puff together. */
+  offset: number;
 };
 
-/** The wisps over the lid: how tall each is against the lid's width, which picture, how far off the lid's middle (in lid widths), and how far it leans. */
-const TOP_WISPS = [
-  { tall: 1.2, sprite: 1, off: -0.1, lean: -5 },
-  { tall: 1.45, sprite: 2, off: 0.06, lean: 4 },
-  { tall: 1.0, sprite: 4, off: 0.16, lean: 9 },
-] as const;
-/** The jets from each side of the lid: how tall against the lid's width, which picture, and how far they lean out. */
-const SIDE_JETS = [
-  { tall: 0.74, sprite: 4, lean: 50 },
-  { tall: 0.58, sprite: 1, lean: 33 },
-] as const;
-/** The side jets leave a little inside the lid's very edge, so their tails start under its lip. */
-const JET_AT = 0.47;
-const TOP_SECONDS = 6.6;
-const JET_SECONDS = 3;
-const round = (n: number) => Math.round(n * 1000) / 1000;
+const STRENGTH = [1, 0.86, 0.74] as const;
+/** Frames between one pot's loop and the next one's. */
+const APART = 21;
 
-/** Every wisp of one pot (the `index`-th on its stove, so two pots never puff together). */
-export function steamSources(pot: AmbientPot, index: number): SteamWisp[] {
-  /** The width of a wisp picture whose seen part is `tall` lid widths high. */
-  const widthFor = (tall: number, sprite: number) =>
-    round((pot.w * tall) / (STEAM_SHAPES[sprite]!.seen * STEAM_PICTURE_RATIO));
-  const wisps: SteamWisp[] = TOP_WISPS.map((wisp, k) => ({
-    from: "top",
-    x: round(pot.x + pot.w * wisp.off),
-    y: pot.top,
-    width: widthFor(wisp.tall, wisp.sprite),
-    sprite: wisp.sprite,
-    lean: wisp.lean,
-    seconds: TOP_SECONDS,
-    delay: -round(((k * TOP_SECONDS) / TOP_WISPS.length + index * 1.1) % TOP_SECONDS),
-  }));
-  if (pot.open) return wisps;
-  for (const [side, from] of [
-    [-1, "left"],
-    [1, "right"],
-  ] as const)
-    SIDE_JETS.forEach((jet, k) =>
-      wisps.push({
-        from,
-        x: round(pot.x + side * pot.w * JET_AT),
-        y: pot.y,
-        width: widthFor(jet.tall, jet.sprite),
-        sprite: jet.sprite,
-        lean: side * jet.lean,
-        seconds: JET_SECONDS,
-        delay: -round(
-          ((k * JET_SECONDS) / SIDE_JETS.length + (side > 0 ? 0.8 : 0) + index * 0.55) %
-            JET_SECONDS,
-        ),
-      }),
-    );
-  return wisps;
+/** The steam of one pot (the `index`-th on its stove). */
+export function steamPlume(pot: AmbientPot, index: number): SteamPlume {
+  const frame = STEAM_PLUME.seconds / (STEAM_PLUME.cols * STEAM_PLUME.rows);
+  return {
+    x: pot.x,
+    y: pot.y,
+    width: Math.round((pot.w / STEAM_PLUME.lidW) * 1000) / 1000,
+    strength: STRENGTH[index] ?? STRENGTH[STRENGTH.length - 1]!,
+    offset: ((index * APART) % (STEAM_PLUME.cols * STEAM_PLUME.rows)) * frame,
+  };
 }
 
 /**
