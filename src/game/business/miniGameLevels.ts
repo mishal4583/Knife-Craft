@@ -27,5 +27,6 @@ export const VAN_LEVELS: readonly number[] = Array.from(
 export function vanLevelLine(level: number): string {
   const tier = crateTierAt(level);
   const [least, most] = tier.bricks;
-  return `${tier.cols}×${tier.rows} · ${least === most ? least : `${least}-${most}`} crates`;
+  const blocked = tier.trapped ? ` · ${tier.trapped} blocked` : "";
+  return `${tier.cols}×${tier.rows} · ${least === most ? least : `${least}-${most}`} crates${blocked}`;
 }

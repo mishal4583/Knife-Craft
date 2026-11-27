@@ -13,10 +13,13 @@
 //   K9 five phone sizes x Levels 18, 46 and 91 (5x5, 7x7, 8x8): no sideways scroll, every button 48 px, the stage inside the screen
 //   K10 Back leaves the game
 //   K11 no console errors
+//   K14 a TRAPPED board (Level 45, developer 2026-11-27) is won with real mouse drags: the builder's shuffles dragged back, then every crate sent out (van-proof.mts)
+//   K15 the delivery slip: opens from the truck card, the clock waits, a line a door; something bought today is on the van, marked "Today"; closes
 //   K12 a WIDE window (developer 2026-11-20: 1280 x 720, 1917 x 912, a phone on its side 844 x 390) gets the LANDSCAPE board: a 16:9 stage that fills the window with the Codex
 //       room behind it (no portrait stage in the middle, no side copies, no "turn your phone" card), 48 px buttons, no sideways scroll; a real drag moves a crate there, and
 //       dragging every crate to its gate wins
 // Screenshots: out/kitchendispatch-*.png. Prints PASS/FAIL per check and exits 1 on any failure.
+import { execSync } from "node:child_process";
 import {
   MOVED_IN_BUSINESS,
   PAIGE_QUIET,
@@ -49,7 +52,7 @@ const saveAt = (n) =>
 const { browser, page, logs } = await launch();
 const GAME = '[data-testid="kitchen-dispatch-game"]';
 
-async function open(level, w = 390, h = 844) {
+async function open(level, w = 390, h = 844, save = saveAt(level)) {
   await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
   const base = (process.env.KC_URL || "http://localhost:4173/").split("?")[0];
   await page.goto(`${base}?kitchenDispatch=${level}`, { waitUntil: "domcontentloaded" });
@@ -59,7 +62,7 @@ async function open(level, w = 390, h = 844) {
       localStorage.clear();
       await window.bridge.storage.set([key], [JSON.stringify(s)]);
     },
-    saveAt(level),
+    save,
     SAVE_KEY,
   );
   await page.reload({ waitUntil: "networkidle0" });
@@ -616,6 +619,184 @@ for (const [w, h] of [
     fit,
   );
   if (w === 320) await shot(page, "kitchendispatch-picker-320");
+}
+
+// K14: a trapped board, won with real drags
+{
+  await open(45);
+  const day = saveAt(45).business.calendar?.businessDay ?? 1;
+  const proof = JSON.parse(
+    execSync(`npx tsx tools/e2e/van-proof.mts 45 ${45 * 1000003 + day * 9176}`, {
+      encoding: "utf8",
+    })
+      .trim()
+      .split("\n")
+      .pop(),
+  );
+  const notice = (await text("kd-notice")).trim();
+  const start = await board();
+  // no crate order can clear a trapped board without moving one aside: sending out whatever can leave stops short
+  let probe = { ...start, bricks: [...start.bricks] };
+  for (let again = true; again;) {
+    again = false;
+    for (const brick of probe.bricks)
+      if (pathOut(probe, brick)) {
+        probe = { ...probe, bricks: probe.bricks.filter((k) => k.id !== brick.id) };
+        again = true;
+        break;
+      }
+  }
+  const stuckAtStart = probe.bricks.length;
+  for (const move of [...proof.moves].reverse()) {
+    const way = [...move.way].reverse();
+    const b = await board();
+    const brick = b.bricks.find((k) => k.id === move.id);
+    if (!brick) continue;
+    // one finger drag, cell by cell along the way back
+    await dragAlong(b, brick, way.slice(1));
+    await sleep(200);
+  }
+  for (const id of proof.order) {
+    const b = await board();
+    const brick = b.bricks.find((k) => k.id === id);
+    if (!brick) continue;
+    const path = pathOut(b, brick);
+    if (!path) break;
+    await dragAlong(b, brick, path.slice(1));
+    await sleep(250);
+  }
+  await sleep(1200);
+  check(
+    "K14 a trapped board at Level 45 is won with real drags (blocked crates first, then every crate out)",
+    proof.trapped >= 2 &&
+      stuckAtStart === proof.trapped &&
+      /Blocked crate/.test(notice) &&
+      (await data("phase")) === "won",
+    {
+      trapped: proof.trapped,
+      stuckAtStart,
+      notice,
+      phase: await data("phase"),
+      left: await crates(),
+    },
+  );
+}
+/** The save at `n` with two kiwis bought today, so something on the van is marked "delivered today". */
+const boughtAt = (n) => {
+  const s = saveAt(n);
+  s.business = {
+    ...s.business,
+    inventory: {
+      ...(s.business.inventory ?? {}),
+      kiwi: {
+        ingredientId: "kiwi",
+        quantity: 2,
+        purchaseDay: s.business.calendar?.businessDay ?? 1,
+      },
+    },
+  };
+  return s;
+};
+// K15: the delivery slip, with something bought today
+{
+  await open(66, 390, 844, boughtAt(66));
+  await sleep(400);
+  await shot(page, "kitchendispatch-cargo-66");
+  await page.click('[data-testid="kd-slip-open"]');
+  await sleep(300);
+  const rows = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid="kd-slip-row"]')].map((r) => ({
+      item: r.dataset.item,
+      tag: r.dataset.tag ?? "",
+    })),
+  );
+  const t0 = await seconds();
+  await sleep(1500);
+  const held = (await seconds()) === t0;
+  await shot(page, "kitchendispatch-slip");
+  const doors = (await board()).gates.length;
+  await page.click('[data-testid="kd-slip-close"]');
+  await sleep(300);
+  check(
+    "K15 the delivery slip: a line a door, the clock waits, today's kiwis first marked Today; closes",
+    rows.length === doors &&
+      rows[0]?.item === "kiwi" &&
+      rows[0]?.tag === "delivered" &&
+      held &&
+      !(await page.$('[data-testid="kd-slip"]')),
+    { rows, doors, held },
+  );
+}
+// K16: the painted cargo art (the developer's Van Cargo Assets): the crate skins, the door badges and the clipboard slip, an 8-door slip whole on its paper at every shape of window
+for (const [w, h] of [
+  [320, 568],
+  [390, 844],
+  [768, 1024],
+  [844, 390],
+  [1280, 720],
+]) {
+  await open(91, w, h, boughtAt(91));
+  await sleep(700);
+  const art = await page.evaluate(() =>
+    performance
+      .getEntriesByType("resource")
+      .map((e) => /cratedispatch\/((?:skin|tag)-[a-z]+)\.webp/.exec(e.name))
+      .filter(Boolean)
+      .map((m) => m[1])
+      .sort(),
+  );
+  await shot(page, `kitchendispatch-skins-91-${w}x${h}`);
+  await page.click('[data-testid="kd-slip-open"]');
+  await page.waitForFunction(
+    () => {
+      const imgs = [...document.querySelectorAll('[data-testid="kd-slip"] img')];
+      return imgs.length > 0 && imgs.every((i) => i.complete && i.naturalWidth > 0);
+    },
+    { timeout: 10000 },
+  );
+  await sleep(300);
+  const fit = await page.evaluate(() => {
+    const rect = (id) => document.querySelector(`[data-testid="${id}"]`).getBoundingClientRect();
+    const clipboard = rect("kd-slip-art");
+    const paper = rect("kd-slip-paper");
+    const close = rect("kd-slip-close");
+    const rows = [...document.querySelectorAll('[data-testid="kd-slip-row"]')];
+    const list = rows[0].parentElement;
+    return {
+      doors: rows.length,
+      onScreen:
+        clipboard.top >= -1 &&
+        clipboard.left >= -1 &&
+        clipboard.right <= innerWidth + 1 &&
+        clipboard.bottom <= innerHeight + 1,
+      scrolls: list.scrollHeight > list.clientHeight + 1,
+      outside: rows.filter((r) => {
+        const b = r.getBoundingClientRect();
+        return b.top < paper.top - 1 || b.bottom > paper.bottom + 1 || b.right > paper.right + 1;
+      }).length,
+      cut: rows.filter((r) =>
+        [...r.querySelectorAll("span")].some(
+          (s) => !s.classList.contains("sr-only") && s.scrollWidth > s.clientWidth + 1,
+        ),
+      ).length,
+      close: [Math.round(close.width), Math.round(close.height)],
+      sideways: document.documentElement.scrollWidth > innerWidth,
+    };
+  });
+  await shot(page, `kitchendispatch-slip-91-${w}x${h}`);
+  check(
+    `K16 Level 91 at ${w} x ${h}: the six crate skins and both badges load; the clipboard fits the window; all 8 doors on its paper, no scrolling, nothing cut off, a 48 px close`,
+    art.length === 8 &&
+      fit.doors === 8 &&
+      fit.onScreen &&
+      !fit.scrolls &&
+      fit.outside === 0 &&
+      fit.cut === 0 &&
+      fit.close[0] >= 47 &&
+      fit.close[1] >= 47 &&
+      !fit.sideways,
+    { art: art.length, ...fit },
+  );
 }
 
 // K10

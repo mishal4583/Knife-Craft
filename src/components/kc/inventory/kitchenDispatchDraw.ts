@@ -1,5 +1,6 @@
+import { crateSkinOf, type CrateSkin } from "@/game/business/crateCargo";
 import {
-  CRATE_COLORS,
+  doorColor,
   type Brick,
   type CrateBoard,
   foodOf,
@@ -7,7 +8,7 @@ import {
   type Side,
   type Wall,
 } from "@/game/business/crateDispatch";
-import type { KdArt } from "./kitchenDispatchArt";
+import { SKIN_SIZE, SKIN_SLICE, itemPicture, type KdArt } from "./kitchenDispatchArt";
 
 /** Kitchen Dispatch is drawn on a 540 x 960 stage, like every other screen. */
 export const KD_STAGE = { w: 540, h: 960 } as const;
@@ -329,7 +330,92 @@ function drawWall(
   glow(ctx, x, y, wd, ht, rad, pulse);
 }
 
-/** A crate: a painted wooden box in its food's colour, with the food it carries shown on every cell. */
+/** A skin's corner square on the board, as a part of one cell: two of them fit across the narrowest crate. */
+const SKIN_CORNER = 0.44;
+
+/** The skin cut in nine and put together for a box of `w` x `h`: the corners keep their shape, the edges stretch, the middle stays empty. */
+function nineSlice(
+  ctx: CanvasRenderingContext2D,
+  skin: CanvasImageSource,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  corner: number,
+) {
+  const from = [0, SKIN_SLICE, SKIN_SIZE - SKIN_SLICE, SKIN_SIZE];
+  const cx = Math.min(corner, Math.floor(w / 2));
+  const cy = Math.min(corner, Math.floor(h / 2));
+  const toX = [x, x + cx, x + w - cx, x + w];
+  const toY = [y, y + cy, y + h - cy, y + h];
+  for (let j = 0; j < 3; j++)
+    for (let i = 0; i < 3; i++) {
+      const dw = toX[i + 1]! - toX[i]!;
+      const dh = toY[j + 1]! - toY[j]!;
+      if ((i === 1 && j === 1) || dw <= 0 || dh <= 0) continue;
+      ctx.drawImage(
+        skin,
+        from[i]!,
+        from[j]!,
+        from[i + 1]! - from[i]!,
+        from[j + 1]! - from[j]!,
+        toX[i]!,
+        toY[j]!,
+        dw,
+        dh,
+      );
+    }
+}
+
+/** Skins already put together, by kind and size in device pixels (a board has a handful of crate shapes). */
+const skinned = new Map<string, HTMLCanvasElement>();
+const SKINNED_LIMIT = 48;
+
+/**
+ * Lays a crate's skin over its painted colour with "hard-light": the skin is grey shading, so its darker parts deepen the colour and its lighter parts brighten it, and the colour the player
+ * matches to a door stays that colour. It is put together first, in whole device pixels, so no seam shows between its nine pieces.
+ */
+function drawSkin(
+  ctx: CanvasRenderingContext2D,
+  kind: CrateSkin,
+  skin: CanvasImageSource,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  corner: number,
+) {
+  ctx.save();
+  ctx.globalCompositeOperation = "hard-light";
+  if (typeof document === "undefined") {
+    nineSlice(ctx, skin, x, y, w, h, corner);
+    ctx.restore();
+    return;
+  }
+  const scale = ctx.getTransform().a || 1;
+  const pw = Math.max(1, Math.round(w * scale));
+  const ph = Math.max(1, Math.round(h * scale));
+  const pc = Math.max(1, Math.round(corner * scale));
+  const key = `${kind}|${pw}x${ph}|${pc}`;
+  let made = skinned.get(key);
+  if (!made) {
+    made = document.createElement("canvas");
+    made.width = pw;
+    made.height = ph;
+    const c = made.getContext("2d");
+    if (c) {
+      c.imageSmoothingQuality = "high";
+      nineSlice(c, skin, 0, 0, pw, ph, pc);
+      // a full shelf is emptied: another screen size makes new ones
+      if (skinned.size >= SKINNED_LIMIT) skinned.clear();
+      skinned.set(key, made);
+    }
+  }
+  ctx.drawImage(made, x, y, w, h);
+  ctx.restore();
+}
+
+/** A crate: a painted box in its cargo's colour, in the kind of crate the cargo travels in, with the cargo shown on every cell. */
 function drawBrick(
   ctx: CanvasRenderingContext2D,
   art: KdArt | null,
@@ -343,7 +429,7 @@ function drawBrick(
 ) {
   const { cw, ch } = cellsOf(board, L);
   const cell = Math.min(cw, ch);
-  const base = CRATE_COLORS[b.color];
+  const base = doorColor(board, b.color);
   const pad = cell * 0.04;
   const lift = lifted ? cell * 0.05 : 0;
   const x = L.grid.x + gx * cw + pad;
@@ -361,24 +447,34 @@ function drawBrick(
   ctx.fillStyle = g;
   rr(ctx, x, y, wd, ht, rad);
   ctx.fill();
-  ctx.lineWidth = 2.4;
-  ctx.strokeStyle = mix(base, "#000000", 0.52);
-  ctx.stroke();
+  const item = foodOf(board, b.color);
+  const kind = crateSkinOf(item);
+  const skin = art?.images[`skin-${kind}`] ?? null;
   ctx.save();
   rr(ctx, x, y, wd, ht, rad);
   ctx.clip();
-  // the plank edge: a light rim inside the outline and a darker line under it
-  const inset = cell * 0.075;
-  ctx.strokeStyle = "rgba(255,255,255,.42)";
-  ctx.lineWidth = 2.6;
-  rr(ctx, x + inset, y + inset, wd - inset * 2, ht - inset * 2, rad * 0.7);
-  ctx.stroke();
-  ctx.strokeStyle = mix(base, "#000000", 0.28);
-  ctx.globalAlpha = 0.55;
-  ctx.lineWidth = 1.6;
-  rr(ctx, x + inset + 2.6, y + inset + 2.6, wd - inset * 2 - 5.2, ht - inset * 2 - 5.2, rad * 0.55);
-  ctx.stroke();
-  ctx.globalAlpha = 1;
+  if (skin) drawSkin(ctx, kind, skin, x, y, wd, ht, cell * SKIN_CORNER);
+  else {
+    // (until the skin has loaded) the plank edge: a light rim inside the outline and a darker line under it
+    const inset = cell * 0.075;
+    ctx.strokeStyle = "rgba(255,255,255,.42)";
+    ctx.lineWidth = 2.6;
+    rr(ctx, x + inset, y + inset, wd - inset * 2, ht - inset * 2, rad * 0.7);
+    ctx.stroke();
+    ctx.strokeStyle = mix(base, "#000000", 0.28);
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 1.6;
+    rr(
+      ctx,
+      x + inset + 2.6,
+      y + inset + 2.6,
+      wd - inset * 2 - 5.2,
+      ht - inset * 2 - 5.2,
+      rad * 0.55,
+    );
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
   // a soft sheen across the top
   const sheen = ctx.createLinearGradient(0, y, 0, y + ht * 0.5);
   sheen.addColorStop(0, "rgba(255,255,255,.22)");
@@ -386,10 +482,21 @@ function drawBrick(
   ctx.fillStyle = sheen;
   ctx.fillRect(x, y, wd, ht * 0.5);
   ctx.restore();
-  // the ingredient on every cell
-  const pic = art?.images[`item-${foodOf(board, b.color)}`];
+  ctx.lineWidth = 2.4;
+  ctx.strokeStyle = mix(base, "#000000", 0.52);
+  rr(ctx, x, y, wd, ht, rad);
+  ctx.stroke();
+  // a parcel's tape, across the middle of the crate (its painted skin has its own)
+  if (!skin && kind === "parcel") {
+    const band = cell * 0.2;
+    ctx.fillStyle = "rgba(150,98,45,.62)";
+    if (wd >= ht) ctx.fillRect(x + 2, y + ht / 2 - band / 2, wd - 4, band);
+    else ctx.fillRect(x + wd / 2 - band / 2, y + 2, band, ht - 4);
+  }
+  // the cargo on every cell (a little smaller inside a painted rim)
+  const pic = itemPicture(art, item);
   if (pic) {
-    const s = cell * 0.8;
+    const s = cell * (skin ? 0.76 : 0.8);
     ctx.save();
     ctx.shadowColor = "rgba(0,0,0,.38)";
     ctx.shadowBlur = 5;
@@ -429,7 +536,7 @@ function drawGate(
         : g.side === "left"
           ? { x: L.grid.x - mid, y: L.grid.y + along }
           : { x: L.grid.x + L.grid.w + mid, y: L.grid.y + along };
-  const base = CRATE_COLORS[g.color];
+  const base = doorColor(board, g.color);
   ctx.save();
   ctx.translate(pos.x, pos.y);
   ctx.rotate(ANGLE[g.side]); // local +x points out of the board
@@ -468,8 +575,8 @@ function drawGate(
     ctx.stroke();
   }
   ctx.restore();
-  // the ingredient in the middle, upright, in a white ring
-  const pic = art?.images[`item-${foodOf(board, g.color)}`];
+  // the cargo in the middle, upright, in a white ring
+  const pic = itemPicture(art, foodOf(board, g.color));
   const r = thick * 0.62;
   ctx.fillStyle = "#fffaf0";
   ctx.beginPath();
@@ -479,6 +586,31 @@ function drawGate(
   ctx.strokeStyle = mix(base, "#000000", 0.4);
   ctx.stroke();
   if (pic) ctx.drawImage(pic, pos.x - r * 0.86, pos.y - r * 0.86, r * 1.72, r * 1.72);
+  // a door whose cargo the restaurant is waiting for: a small badge on its ring (a green tick: delivered today; a gold star: needed next)
+  const tag = board.cargo?.[g.color]?.tag;
+  const badge = tag ? (art?.images[`tag-${tag}`] ?? null) : null;
+  if (tag && badge) {
+    const side = r * 1.3;
+    ctx.drawImage(badge, pos.x + r * 0.72 - side / 2, pos.y - r * 0.72 - side / 2, side, side);
+  } else if (tag) {
+    // (until the badge has loaded) the same mark, drawn
+    const bx = pos.x + r * 0.72;
+    const by = pos.y - r * 0.72;
+    const br = r * 0.5;
+    ctx.fillStyle = tag === "delivered" ? "#3f9a3a" : "#e9a517";
+    ctx.beginPath();
+    ctx.arc(bx, by, br, 0, 7);
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#fffaf0";
+    ctx.stroke();
+    ctx.fillStyle = "#fffaf0";
+    ctx.font = `900 ${br * 1.35}px Nunito, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(tag === "delivered" ? "✓" : "★", bx, by + br * 0.06);
+    ctx.textBaseline = "alphabetic";
+  }
 }
 
 export function drawKitchenDispatch(

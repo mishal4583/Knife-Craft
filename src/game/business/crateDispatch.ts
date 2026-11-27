@@ -16,11 +16,18 @@
  */
 
 import { rampBetween } from "./difficultyRamp";
+import {
+  FAMILY_COLORS,
+  NO_WISHES,
+  dressDoors,
+  type CargoDoor,
+  type CargoWishes,
+} from "./crateCargo";
 
 export const CRATE_FIRST_LEVEL = 18;
 /**
- * The colour keys of the crates and their doors. (The names are the game's first, when a colour WAS one ingredient. Since 2026-11-18 a board
- * gives each key it uses ONE food, so a key is again one ingredient's door: see `CRATE_FOODS`.)
+ * The board's eight colour SLOTS: the builder, the solver and the drags match crates to doors by slot. What a slot LOOKS like (its item and its door colour) is the board's CARGO, laid on
+ * afterwards (crateCargo.ts), so what is on the van can never change a board's shape. (The slot names are the game's first eight foods.)
  */
 export const CRATE_INGREDIENTS = [
   "tomato",
@@ -33,7 +40,7 @@ export const CRATE_INGREDIENTS = [
   "broccoli",
 ] as const;
 export type CrateIngredient = (typeof CRATE_INGREDIENTS)[number];
-/** The colour of a zone's crates and door. */
+/** A slot's colour on a board with no cargo (a hand-made test board). */
 export const CRATE_COLORS: Record<CrateIngredient, string> = {
   tomato: "#E5483E",
   carrot: "#F59A28",
@@ -44,68 +51,29 @@ export const CRATE_COLORS: Record<CrateIngredient, string> = {
   mushroom: "#B98A5A",
   broccoli: "#2FB5A0",
 };
-
-/**
- * THE VAN. A crate carries ONE food and goes out of the ONE door that shows that same food (developer 2026-11-18: "if there is mushrooms let
- * mushrooms only pass out through the mushroom door, if there is a spinach crate only through the spinach door: unique for each and every
- * ingredient"). Before this, a door was a colour shared by three foods (green: lettuce, basil, parsley; teal: broccoli, corn, mushroom), so a
- * basil crate left by the lettuce door and a mushroom crate by the broccoli door.
- *
- * How it works: the match key stays a colour key (the solver, the builder and the drag code compare keys), but a board gives every key it
- * uses exactly ONE food (`CrateBoard.foods`), so each food has its own door and its own crates, and no two foods on a board share a key.
- * The foods that share a colour here (`CRATE_FOODS`) never appear on one board together; which of them a board uses comes from the level and
- * the seed (`foodsFor`, no dice), so the player meets all 24 foods over the levels. Foods are grouped by their real colour (a mushroom is brown).
- */
-export const CRATE_FOODS: Record<
-  CrateIngredient,
-  { colour: string; items: readonly [string, string, string] }
-> = {
-  tomato: { colour: "red", items: ["tomato", "chilli", "paprika"] },
-  carrot: { colour: "orange", items: ["carrot", "mango", "turmeric"] },
-  lettuce: { colour: "green", items: ["lettuce", "basil", "parsley"] },
-  broccoli: { colour: "teal", items: ["broccoli", "avocado", "olive-oil"] },
-  onion: { colour: "purple", items: ["onion", "garlic", "ginger"] },
-  cheddar: { colour: "yellow", items: ["cheddar", "corn", "lemon"] },
-  salmon: { colour: "blue", items: ["salmon", "yogurt", "milk"] },
-  mushroom: { colour: "brown", items: ["mushroom", "potato", "cumin"] },
-};
-/** The name a food is called on screen. */
-export const CRATE_ITEM_NAMES: Record<string, string> = {
-  tomato: "Tomatoes",
-  avocado: "Avocados",
-  mango: "Mangoes",
-  carrot: "Carrots",
-  potato: "Potatoes",
-  ginger: "Ginger",
-  lettuce: "Lettuce",
-  basil: "Basil",
-  parsley: "Parsley",
-  broccoli: "Broccoli",
-  corn: "Sweetcorn",
-  mushroom: "Mushrooms",
-  onion: "Onions",
-  garlic: "Garlic",
-  chilli: "Chillies",
-  "olive-oil": "Olive oil",
-  lemon: "Lemons",
-  milk: "Milk",
-  salmon: "Salmon",
-  cheddar: "Cheddar",
-  yogurt: "Yogurt",
-  paprika: "Paprika",
-  cumin: "Cumin",
-  turmeric: "Turmeric",
-};
-/** The foods of a board: one per colour key, the same for a level and a seed. */
-export function foodsFor(level: number, seed: number): Record<CrateIngredient, string> {
-  const rand = rngFor(seed * 131 + level * 17 + 9);
-  const out = {} as Record<CrateIngredient, string>;
-  for (const key of CRATE_INGREDIENTS) out[key] = CRATE_FOODS[key].items[Math.floor(rand() * 3)]!;
-  return out;
+/** The item of a slot's crates and door on this board (a hand-made board without cargo reads the slot's own food). */
+export function foodOf(board: Pick<CrateBoard, "cargo">, key: CrateIngredient): string {
+  return board.cargo?.[key]?.item ?? key;
 }
-/** The food of a crate or a door of this colour key on this board (a hand-made board without foods reads the first of the colour). */
-export function foodOf(board: Pick<CrateBoard, "foods">, key: CrateIngredient): string {
-  return board.foods?.[key] ?? CRATE_FOODS[key].items[0];
+/** The colour of a slot's crates and door on this board. */
+export function doorColor(board: Pick<CrateBoard, "cargo">, key: CrateIngredient): string {
+  const door = board.cargo?.[key];
+  return door ? FAMILY_COLORS[door.family] : CRATE_COLORS[key];
+}
+/** Lays the van's cargo on a board: one item for every door. The shape is untouched. */
+export function dressBoard(
+  board: CrateBoard,
+  wishes: CargoWishes,
+  ctx: { level: number; seed: number; trip: number },
+): CrateBoard {
+  return {
+    ...board,
+    cargo: dressDoors(
+      board.gates.map((g) => g.color),
+      wishes,
+      ctx,
+    ),
+  };
 }
 
 export type Side = "top" | "bottom" | "left" | "right";
@@ -128,8 +96,10 @@ export type CrateBoard = {
   bricks: Brick[];
   walls: Wall[];
   gates: Gate[];
-  /** The one food of every colour key this board uses (see `foodsFor`); a door and its crates show the same food. */
-  foods?: Record<CrateIngredient, string>;
+  /** What every door (and its crates) carries: the van's cargo (crateCargo.ts). */
+  cargo?: Partial<Record<CrateIngredient, CargoDoor>>;
+  /** Crates that cannot leave until another crate is moved out of their way. */
+  trapped?: number;
 };
 
 export type DispatchTier = {
@@ -150,6 +120,12 @@ export type DispatchTier = {
   minWaves: number;
   /** At most this many crates can leave at the very start. */
   maxFree: number;
+  /**
+   * Crates that cannot leave until the player first moves another crate out of their way (developer 2026-11-27; plan UNLOAD-THE-VAN-CARGO-PLAN: before, every board could be won without ever
+   * moving a crate aside, so the levels felt alike). 0 until Level 23, never 1: a crate waits only for crates that wait too (once all others had left, it could drag back the way it came and go), so
+   * trapped crates come at least two at a time.
+   */
+  trapped?: number;
 };
 
 /* Crate sizes [w, h]; a size listed twice is dealt twice as often, so the small crates outnumber the big ones. */
@@ -174,6 +150,7 @@ const S12345 = [...S1234, [3, 3]] as const;
 export const CRATE_TIERS: readonly DispatchTier[] = [
   {
     from: 18,
+    trapped: 0,
     cols: 5,
     rows: 5,
     bricks: [5, 6],
@@ -186,6 +163,7 @@ export const CRATE_TIERS: readonly DispatchTier[] = [
   },
   {
     from: 23,
+    trapped: 2,
     cols: 5,
     rows: 5,
     bricks: [6, 7],
@@ -198,6 +176,7 @@ export const CRATE_TIERS: readonly DispatchTier[] = [
   },
   {
     from: 28,
+    trapped: 2,
     cols: 6,
     rows: 6,
     bricks: [7, 8],
@@ -210,6 +189,7 @@ export const CRATE_TIERS: readonly DispatchTier[] = [
   },
   {
     from: 34,
+    trapped: 2,
     cols: 6,
     rows: 6,
     bricks: [8, 9],
@@ -222,6 +202,7 @@ export const CRATE_TIERS: readonly DispatchTier[] = [
   },
   {
     from: 40,
+    trapped: 3,
     cols: 6,
     rows: 6,
     bricks: [9, 10],
@@ -234,6 +215,7 @@ export const CRATE_TIERS: readonly DispatchTier[] = [
   },
   {
     from: 46,
+    trapped: 3,
     cols: 7,
     rows: 7,
     bricks: [10, 10],
@@ -246,6 +228,7 @@ export const CRATE_TIERS: readonly DispatchTier[] = [
   },
   {
     from: 52,
+    trapped: 4,
     cols: 7,
     rows: 7,
     bricks: [11, 11],
@@ -258,6 +241,7 @@ export const CRATE_TIERS: readonly DispatchTier[] = [
   },
   {
     from: 58,
+    trapped: 4,
     cols: 7,
     rows: 7,
     bricks: [12, 12],
@@ -270,6 +254,7 @@ export const CRATE_TIERS: readonly DispatchTier[] = [
   },
   {
     from: 66,
+    trapped: 5,
     cols: 8,
     rows: 8,
     bricks: [12, 12],
@@ -282,6 +267,7 @@ export const CRATE_TIERS: readonly DispatchTier[] = [
   },
   {
     from: 72,
+    trapped: 6,
     cols: 8,
     rows: 8,
     bricks: [13, 13],
@@ -294,6 +280,7 @@ export const CRATE_TIERS: readonly DispatchTier[] = [
   },
   {
     from: 78,
+    trapped: 6,
     cols: 8,
     rows: 8,
     bricks: [14, 14],
@@ -306,6 +293,7 @@ export const CRATE_TIERS: readonly DispatchTier[] = [
   },
   {
     from: 84,
+    trapped: 7,
     cols: 8,
     rows: 8,
     bricks: [15, 15],
@@ -318,6 +306,7 @@ export const CRATE_TIERS: readonly DispatchTier[] = [
   },
   {
     from: 91,
+    trapped: 9,
     cols: 8,
     rows: 8,
     bricks: [15, 16],
@@ -363,6 +352,8 @@ export function crateTierAt(level: number): DispatchTier {
     wallCells: [at((t) => t.wallCells[0]), at((t) => t.wallCells[1])],
     minWaves: at((t) => t.minWaves),
     maxFree: at((t) => t.maxFree),
+    // none until the first trapped level, then a steady climb
+    trapped: level < CRATE_TIERS[1]!.from ? 0 : at((t) => t.trapped ?? 0),
   };
 }
 export const crateTierIndex = (level: number) => CRATE_TIERS.indexOf(crateTierFor(level)) + 1;
@@ -626,49 +617,236 @@ function buildOnce(tier: DispatchTier, rand: () => number): CrateBoard | null {
   return board.bricks.length >= tier.bricks[0] ? board : null;
 }
 
+/** How far a board is from its tier's numbers (0 = meets them). */
+const missOf = (tier: DispatchTier, sol: Solution) =>
+  Math.max(0, tier.minWaves - sol.waves.length) +
+  Math.max(0, sol.free - tier.maxFree) +
+  (sol.free < 1 ? 1 : 0);
+
+/**
+ * Every door has a crate (developer 2026-11-27: a door no crate matched looked as if something was missing; when a colour's crates would not fit, another colour's took their place). For each
+ * unused door, a crate of a colour that has two or more is repainted for it: the layout stays, and the repaint is kept only where the board can still be won (the one nearest the tier's
+ * numbers). Null if no crate can be repainted: the builder then tries another board.
+ */
+function fillEveryDoor(tier: DispatchTier, board: CrateBoard): CrateBoard | null {
+  let current = board;
+  for (const gate of board.gates) {
+    if (current.bricks.some((b) => b.color === gate.color)) continue;
+    let best: { board: CrateBoard; miss: number } | null = null;
+    for (const brick of current.bricks) {
+      if (current.bricks.filter((b) => b.color === brick.color).length < 2) continue;
+      // never a crate that would already sit at its new door
+      if (gateTouched(current, gate.color, brick.x, brick.y, brick.w, brick.h)) continue;
+      const repainted: CrateBoard = {
+        ...current,
+        bricks: current.bricks.map((b) => (b.id === brick.id ? { ...b, color: gate.color } : b)),
+      };
+      const sol = solveBoard(repainted);
+      if (!sol.solvable) continue;
+      const miss = missOf(tier, sol);
+      if (!best || miss < best.miss) best = { board: repainted, miss };
+      if (miss === 0) break;
+    }
+    if (!best) return null;
+    current = best.board;
+  }
+  return current;
+}
+
+/* ---------- trapping crates: shuffling a winnable board with ordinary drags ---------- */
+
+/** The crates still waiting when every crate that can leave has left, again and again: they need another crate moved out of their way first. */
+export function trappedCount(board: CrateBoard): number {
+  const sol = solveBoard(board);
+  return sol.solvable ? 0 : board.bricks.length - sol.waves.reduce((n, w) => n + w.length, 0);
+}
+
+export type Cell = readonly [number, number];
+/**
+ * The cells a crate can be dragged to, one cell at a time, without ever touching its own door, each with the way there (a map from a cell to the cell before it). `toGate` instead stops at
+ * the first cell that does touch the door.
+ */
+function reachOf(board: CrateBoard, brick: Brick, toGate: boolean) {
+  const grid = takenGrid(board, brick.id);
+  const { cols, rows } = board;
+  const from = new Int16Array(cols * rows).fill(-1);
+  const start = brick.y * cols + brick.x;
+  from[start] = start;
+  const queue = [start];
+  const cells: number[] = [];
+  for (let head = 0; head < queue.length; head++) {
+    const c = queue[head]!;
+    const x = c % cols;
+    const y = (c / cols) | 0;
+    for (const [sx, sy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ] as const) {
+      const nx = x + sx;
+      const ny = y + sy;
+      if (nx < 0 || ny < 0 || nx >= cols || ny >= rows || from[ny * cols + nx] !== -1) continue;
+      if (!fitsGrid(grid, cols, rows, brick.w, brick.h, nx, ny)) continue;
+      const gate = gateTouched(board, brick.color, nx, ny, brick.w, brick.h);
+      if (gate && !toGate) continue;
+      from[ny * cols + nx] = c;
+      if (gate) return { from, cells: [ny * cols + nx] };
+      queue.push(ny * cols + nx);
+      cells.push(ny * cols + nx);
+    }
+  }
+  return { from, cells: toGate ? [] : cells };
+}
+function wayTo(board: CrateBoard, from: Int16Array, cell: number): Cell[] {
+  const way: Cell[] = [];
+  for (let c = cell; ; c = from[c]!) {
+    way.push([c % board.cols, (c / board.cols) | 0]);
+    if (from[c] === c) break;
+  }
+  return way.reverse();
+}
+/** The way (cell by cell, from where it stands) that sends a crate out of its door with everything else still, or null. */
+export function pathToGate(board: CrateBoard, brick: Brick): Cell[] | null {
+  const { from, cells } = reachOf(board, brick, true);
+  return cells.length ? wayTo(board, from, cells[0]!) : null;
+}
+
+/** One shuffle of the builder: crate `id` dragged along `way` (its first cell is where it stood). Dragged back, it undoes the shuffle. */
+export type ShuffleMove = { id: string; way: Cell[] };
+
+/**
+ * Shuffles a winnable board until `target` crates are trapped (and 1 to `maxFree` can leave at the start). Every shuffle is an ordinary drag that never reaches the crate's own door, so
+ * dragging them all back, last first, gives the winnable board again: the shuffled board can always be won. Of 24 random drags it keeps the one nearest the target.
+ */
+function trapCrates(board: CrateBoard, target: number, maxFree: number, rand: () => number) {
+  let current = board;
+  const moves: ShuffleMove[] = [];
+  const scoreOf = (b: CrateBoard) => {
+    const sol = solveBoard(b);
+    const trapped = sol.solvable
+      ? 0
+      : b.bricks.length - sol.waves.reduce((n, w) => n + w.length, 0);
+    const free = sol.waves[0]?.length ?? 0;
+    return {
+      trapped,
+      free,
+      // nearer the target is better; more than the target counts against; too many (or no) free crates count against
+      score:
+        (trapped <= target ? trapped : 2 * target - trapped) * 10 -
+        Math.max(0, free - maxFree) * 4 -
+        (free < 1 ? 15 : 0),
+    };
+  };
+  let now = scoreOf(current);
+  const done = () => now.trapped === target && now.free >= 1 && now.free <= maxFree;
+  for (let step = 0; step < 48 && !done(); step++) {
+    let best: {
+      board: CrateBoard;
+      move: ShuffleMove;
+      value: ReturnType<typeof scoreOf>;
+      pick: number;
+    } | null = null;
+    for (let tries = 0; tries < 24; tries++) {
+      const brick = current.bricks[Math.floor(rand() * current.bricks.length)]!;
+      const { from, cells } = reachOf(current, brick, false);
+      if (!cells.length) continue;
+      const cell = cells[Math.floor(rand() * cells.length)]!;
+      const x = cell % current.cols;
+      const y = (cell / current.cols) | 0;
+      const next = {
+        ...current,
+        bricks: current.bricks.map((b) => (b.id === brick.id ? { ...b, x, y } : b)),
+      };
+      const value = scoreOf(next);
+      const pick = value.score + rand();
+      if (!best || pick > best.pick)
+        best = {
+          board: next,
+          move: { id: brick.id, way: wayTo(current, from, cell) },
+          value,
+          pick,
+        };
+      if (value.trapped === target && value.free >= 1 && value.free <= maxFree) {
+        best = {
+          board: next,
+          move: { id: brick.id, way: wayTo(current, from, cell) },
+          value,
+          pick: Infinity,
+        };
+        break;
+      }
+    }
+    if (!best || best.value.score < now.score) continue;
+    current = best.board;
+    moves.push(best.move);
+    now = best.value;
+  }
+  const off =
+    Math.abs(now.trapped - target) + Math.max(0, now.free - maxFree) + (now.free < 1 ? 3 : 0);
+  return { board: { ...current, trapped: now.trapped }, moves, off };
+}
+
+/** A level's board with the proof that it can be won: drag the `moves` back, last first, to get `base`, then send its crates out in `solveBoard(base)`'s order. */
+export type BoardProof = { board: CrateBoard; base: CrateBoard; moves: ShuffleMove[] };
+
 /** A board that can be won, for a level and a seed. Same level and seed, same board. */
 export function crateBoardFor(level: number, seed: number): CrateBoard {
   return crateBoardForTier(crateTierAt(level), level, seed);
 }
 /** The same, for an explicit tier (the ramped tier of a level; the QA also builds boards for hand-made tiers). */
 export function crateBoardForTier(tier: DispatchTier, level: number, seed: number): CrateBoard {
-  let fallback: CrateBoard | null = null;
-  let fallbackMiss = Infinity;
+  return crateProofForTier(tier, level, seed).board;
+}
+/** A level's board and the proof it can be won (crate-dispatch-qa replays it with the real drags). */
+export function crateProofFor(level: number, seed: number): BoardProof {
+  return crateProofForTier(crateTierAt(level), level, seed);
+}
+function crateProofForTier(tier: DispatchTier, level: number, seed: number): BoardProof {
+  const target = tier.trapped ?? 0;
+  const dress = (p: BoardProof): BoardProof => ({
+    ...p,
+    board: dressBoard(p.board, NO_WISHES, { level, seed, trip: 0 }),
+  });
+  let fallback: (BoardProof & { off: number }) | null = null;
   // a bigger, fuller grid is harder to build to the tier's numbers, so it gets more tries (about 1 board in 60 needs more than 240 on 8 x 8)
   const attempts = tier.cols >= 8 ? 600 : tier.cols >= 7 ? 400 : 240;
   for (let attempt = 0; attempt < attempts; attempt++) {
     const rand = rngFor(seed * 31 + attempt * 7919 + 17);
-    const board = buildOnce(tier, rand);
-    if (!board) continue;
-    const sol = solveBoard(board);
+    const built = buildOnce(tier, rand);
+    const base = built && fillEveryDoor(tier, built);
+    if (!base) continue;
+    const sol = solveBoard(base);
     if (!sol.solvable) continue;
     // how far this board is from the tier's numbers (0 = meets them); the closest one is kept if none meets them
-    const miss =
-      Math.max(0, tier.minWaves - sol.waves.length) +
-      Math.max(0, sol.free - tier.maxFree) +
-      (sol.free < 1 ? 1 : 0);
-    if (miss < fallbackMiss) {
-      fallback = board;
-      fallbackMiss = miss;
-    }
-    if (miss === 0) return { ...board, foods: foodsFor(level, seed) };
+    const miss = missOf(tier, sol);
+    if (miss > 0 && fallback && miss * 100 >= fallback.off) continue;
+    const trap =
+      target > 0
+        ? trapCrates(base, target, tier.maxFree, rand)
+        : { board: { ...base, trapped: 0 }, moves: [], off: 0 };
+    const off = miss * 100 + trap.off;
+    if (off === 0) return dress({ board: trap.board, base, moves: trap.moves });
+    if (!fallback || off < fallback.off)
+      fallback = { board: trap.board, base, moves: trap.moves, off };
   }
-  if (fallback) return { ...fallback, foods: foodsFor(level, seed) };
+  if (fallback) return dress(fallback);
   // cannot happen with these tiers (the QA builds hundreds of boards); a tiny sure board keeps the screen alive
-  return {
+  const tiny: CrateBoard = {
     cols: tier.cols,
     rows: tier.rows,
     walls: [],
     gates: [{ id: "g1", side: "right", at: 0, span: tier.span, color: "tomato" }],
     bricks: [{ id: "b1", x: 0, y: 0, w: 1, h: 2, color: "tomato" }],
-    foods: foodsFor(level, seed),
+    trapped: 0,
   };
+  return dress({ board: tiny, base: tiny, moves: [] });
 }
 
 /* ---------- the round: the clock, the boosters, the moves ---------- */
 
-/** Seconds on the clock for a board: a little time for every crate. */
-export const crateSeconds = (crates: number) => 40 + crates * 9;
+/** Seconds on the clock for a board: a little time for every crate, and more for every trapped one (it needs a move of another crate first). */
+export const crateSeconds = (crates: number, trapped = 0) => 40 + crates * 9 + trapped * 6;
 export const FREEZE_SECONDS = 10;
 export const START_BOOSTERS = { freeze: 2, rocket: 2, hammer: 2, undo: 3 } as const;
 
@@ -691,7 +869,7 @@ export type CrateRound = {
 
 export function startRound(level: number, seed: number): CrateRound {
   const board = crateBoardFor(level, seed);
-  const seconds = crateSeconds(board.bricks.length);
+  const seconds = crateSeconds(board.bricks.length, board.trapped ?? 0);
   return {
     board,
     history: [],

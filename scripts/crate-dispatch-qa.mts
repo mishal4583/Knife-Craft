@@ -49,9 +49,10 @@ try {
     roundCleared,
     cratesLeft,
     brickAtCell,
-    CRATE_FOODS,
-    CRATE_ITEM_NAMES,
-    foodsFor,
+    crateProofFor,
+    pathToGate,
+    trappedCount,
+    dressBoard,
     foodOf,
   } = rules;
 
@@ -64,6 +65,30 @@ try {
     bricks: [{ id: "b1", x: 0, y: 0, w: 2, h: 1, color: "tomato" }],
     ...over,
   });
+  // RULE CHANGE (developer 2026-11-27, trapped crates): from Level 23 a board cannot be cleared just by sending free crates out, so "winnable" is proved by replaying the builder's own
+  // shuffles backwards with the game's real drag (one cell at a time), then sending the first winnable board's crates out in order.
+  const proven = (proof: any, what: string) => {
+    let round: any = roundOf(proof.board);
+    const step = (id: string, x: number, y: number) => {
+      if (!round.board.bricks.some((b: any) => b.id === id)) return;
+      const res = dragBrick(round, id, x, y);
+      assert.ok(
+        res.moved && (res.out || (res.brick.x === x && res.brick.y === y)),
+        `${what}: the drag of ${id} to ${x},${y} failed`,
+      );
+      round = res.round;
+    };
+    for (const move of [...proof.moves].reverse())
+      for (const [x, y] of [...move.way].reverse().slice(1)) step(move.id, x, y);
+    for (const id of solveBoard(proof.base).waves.flat()) {
+      const brick = round.board.bricks.find((b: any) => b.id === id);
+      if (!brick) continue;
+      const way = pathToGate(round.board, brick);
+      assert.ok(way, `${what}: ${id} has no way out`);
+      for (const [x, y] of way.slice(1)) step(id, x, y);
+    }
+    assert.equal(round.board.bricks.length, 0, `${what}: the proof does not clear the board`);
+  };
   const roundOf = (board: any) => ({
     board,
     history: [],
@@ -105,12 +130,17 @@ try {
       `A${index + 2}: tier ${index + 1} (${tier.cols}x${tier.rows}): ${SEEDS} boards, all winnable, well formed, and as hard as the tier says`,
       () => {
         for (let seed = 1; seed <= SEEDS; seed++) {
-          const board = crateBoardFor(tier.from, seed);
+          const proof = crateProofFor(tier.from, seed);
+          const board = proof.board;
           const at = `seed ${seed}`;
           assert.equal(board.cols, tier.cols);
           assert.equal(board.rows, tier.rows);
-          const sol = solveBoard(board);
-          assert.ok(sol.solvable, `${at}: cannot be won`);
+          proven(proof, at);
+          // RULE CHANGE (developer 2026-11-27): the tier's waves are those of the winnable board before its crates are shuffled; its free crates and trapped crates are the shuffled board's
+          const sol = solveBoard(proof.base);
+          const free = solveBoard(board).waves[0]?.length ?? 0;
+          assert.equal(trappedCount(board), tier.trapped, `${at}: trapped crates`);
+          assert.equal(board.trapped, tier.trapped, `${at}: the board says how many are trapped`);
           const n = board.bricks.length;
           assert.ok(
             n >= tier.bricks[0] && n <= tier.bricks[1],
@@ -118,8 +148,8 @@ try {
           );
           assert.ok(sol.waves.length >= tier.minWaves, `${at}: only ${sol.waves.length} waves`);
           assert.ok(
-            sol.free >= 1 && sol.free <= tier.maxFree,
-            `${at}: ${sol.free} crates free at the start (1-${tier.maxFree})`,
+            free >= 1 && free <= tier.maxFree,
+            `${at}: ${free} crates free at the start (1-${tier.maxFree})`,
           );
           // nothing overlaps, nothing is off the counter
           const taken = new Set<string>();
@@ -150,6 +180,12 @@ try {
           // the gates: one per ingredient, inside the frame's sides, not overlapping, every crate fits its gate, no dark block in a gate's mouth
           assert.equal(board.gates.length, tier.colors, `${at}: one gate for each ingredient`);
           assert.equal(new Set(board.gates.map((g: any) => g.color)).size, board.gates.length);
+          // RULE CHANGE (developer 2026-11-27, "fix the doors that have no matching crate"): every door has at least one crate
+          for (const g of board.gates)
+            assert.ok(
+              board.bricks.some((b: any) => b.color === g.color),
+              `${at}: no crate goes to the ${g.color} door`,
+            );
           for (const g of board.gates) {
             const length = g.side === "left" || g.side === "right" ? board.rows : board.cols;
             assert.ok(g.at >= 0 && g.at + g.span <= length, `${at}: gate off its side`);
@@ -226,20 +262,25 @@ try {
               t.colors >= prev.colors &&
               t.wallCells[1] >= prev.wallCells[1] &&
               t.minWaves >= prev.minWaves &&
-              t.maxFree <= prev.maxFree,
+              t.maxFree <= prev.maxFree &&
+              t.trapped >= prev.trapped,
             `level ${level} is not easier than level ${level - 1}`,
           );
         prev = t;
         for (let seed = 1; seed <= 25; seed++) {
-          const board = crateBoardFor(level, seed);
-          const sol = solveBoard(board);
+          const proof = crateProofFor(level, seed);
+          const board = proof.board;
+          proven(proof, `level ${level} seed ${seed}`);
+          const waves = solveBoard(proof.base).waves.length;
+          const free = solveBoard(board).waves[0]?.length ?? 0;
           assert.ok(
-            sol.solvable &&
-              board.bricks.length >= t.bricks[0] &&
+            board.bricks.length >= t.bricks[0] &&
               board.bricks.length <= t.bricks[1] &&
-              sol.waves.length >= t.minWaves &&
-              sol.free <= t.maxFree,
-            `level ${level} seed ${seed}: ${board.bricks.length} crates, ${sol.waves.length} waves, ${sol.free} free`,
+              waves >= t.minWaves &&
+              free >= 1 &&
+              free <= t.maxFree &&
+              trappedCount(board) === t.trapped,
+            `level ${level} seed ${seed}: ${board.bricks.length} crates, ${waves} waves, ${free} free, ${trappedCount(board)} trapped (${t.trapped})`,
           );
         }
       }
@@ -247,6 +288,35 @@ try {
         new Set([18, 20, 22, 24, 26].map((l) => crateTierAt(l).bricks[1])).size >= 3,
         "Levels 18-26 really climb",
       );
+      // trapped crates: none while learning, from Level 23 at least two (a lone trapped crate cannot exist), 9 at the last level
+      assert.deepEqual(
+        [18, 22, 23, 91].map((l) => crateTierAt(l).trapped),
+        [0, 0, 2, 9],
+      );
+    },
+  );
+  check(
+    "A10: every door has a crate, on the very boards a player gets: every level, five business days (developer 2026-11-27: 42 % of boards had a door no crate matched)",
+    () => {
+      for (let level = 18; level <= 91; level++)
+        for (let day = 1; day <= 5; day++) {
+          const board = startRound(level, level * 1000003 + day * 9176).board;
+          const t = crateTierAt(level);
+          const idle = board.gates.filter(
+            (g: any) => !board.bricks.some((b: any) => b.color === g.color),
+          );
+          assert.equal(
+            idle.length,
+            0,
+            `level ${level} day ${day}: no crate for the ${idle.map((g: any) => g.color).join(", ")} door`,
+          );
+          assert.equal(
+            board.gates.length,
+            t.colors,
+            `level ${level} day ${day}: as many doors as the level shows`,
+          );
+          proven(crateProofFor(level, level * 1000003 + day * 9176), `level ${level} day ${day}`);
+        }
     },
   );
   check("A8: a board is built in under 800 ms (a phone), and tiers get harder, not easier", () => {
@@ -260,7 +330,7 @@ try {
     }
     const mean = (level: number) => {
       let w = 0;
-      for (let s = 1; s <= 40; s++) w += solveBoard(crateBoardFor(level, s)).waves.length;
+      for (let s = 1; s <= 40; s++) w += solveBoard(crateProofFor(level, s).base).waves.length;
       return w / 40;
     };
     const m = [18, 28, 46, 66, 91].map(mean);
@@ -387,36 +457,11 @@ try {
     return null;
   };
   check(
-    "C1: following each crate's own path with dragBrick clears every board of every tier (20 each)",
+    "C1: the builder's proof, dragged with dragBrick, clears every board of every tier (20 each)",
     () => {
       for (const level of [18, 28, 46, 66, 91])
-        for (let seed = 1; seed <= 20; seed++) {
-          let round = startRound(level, seed);
-          for (let guard = 0; guard < 60 && !roundCleared(round); guard++) {
-            const ready = round.board.bricks.find((b: any) => exitSteps(round.board, b) >= 0);
-            assert.ok(ready, `level ${level} seed ${seed}: nothing can leave`);
-            const path = pathOut(round.board, ready);
-            assert.ok(path, `level ${level} seed ${seed}: no path for ${ready.id}`);
-            const from = round.board.bricks.find((b: any) => b.id === ready.id);
-            let out = false;
-            for (const [x, y] of path.slice(1)) {
-              const res = dragBrick(round, ready.id, x, y);
-              assert.ok(
-                res.moved,
-                `level ${level} seed ${seed}: the drag to ${x},${y} did not move`,
-              );
-              round = res.round;
-              if (res.out) {
-                round = finishDrag(round, from, { moved: true, out: true });
-                out = true;
-                break;
-              }
-            }
-            assert.ok(out, `level ${level} seed ${seed}: ${ready.id} never left`);
-          }
-          assert.ok(roundCleared(round), `level ${level} seed ${seed}`);
-          assert.equal(cratesLeft(round), 0);
-        }
+        for (let seed = 1; seed <= 20; seed++)
+          proven(crateProofFor(level, seed), `level ${level} seed ${seed}`);
     },
   );
   check(
@@ -455,7 +500,6 @@ try {
             [...start.board.bricks].sort((a: any, b: any) => a.id.localeCompare(b.id)),
             `level ${level} seed ${seed}: not back to the start`,
           );
-          assert.ok(solveBoard(round.board).solvable, `level ${level} seed ${seed}`);
         }
     },
   );
@@ -523,7 +567,9 @@ try {
   check("E1: the clock gives time for every crate", () => {
     assert.equal(crateSeconds(10), 130);
     const round = startRound(28, 1);
-    assert.equal(round.seconds, crateSeconds(round.board.bricks.length));
+    assert.equal(round.seconds, crateSeconds(round.board.bricks.length, round.board.trapped));
+    // RULE CHANGE (developer 2026-11-27): six more seconds for every trapped crate
+    assert.equal(crateSeconds(10, 3), 148);
     assert.equal(round.total, round.board.bricks.length);
   });
   check(
@@ -542,7 +588,7 @@ try {
     assert.equal(out.board.bricks.length, round.board.bricks.length - 1);
     assert.equal(out.rockets, START_BOOSTERS.rocket - 1);
     assert.equal(out.history.length, 1);
-    assert.ok(solveBoard(out.board).solvable);
+    assert.ok(trappedCount(out.board) <= trappedCount(round.board), "a crate gone traps no more");
     assert.deepEqual(
       undoRound(out).board.bricks.find((b: any) => b.id === id),
       round.board.bricks[0],
@@ -558,9 +604,10 @@ try {
       const out = hammerWall(round, w.id);
       assert.equal(out.board.walls.length, round.board.walls.length - 1);
       assert.equal(out.hammers, START_BOOSTERS.hammer - 1);
-      const before = solveBoard(round.board);
-      const after = solveBoard(out.board);
-      assert.ok(after.solvable && after.waves.length <= before.waves.length);
+      assert.ok(
+        trappedCount(out.board) <= trappedCount(round.board),
+        `seed ${seed}: a smashed block traps no more`,
+      );
     }
     const round = startRound(18, 1);
     assert.deepEqual(hammerWall({ ...round, hammers: 0 }, round.board.walls[0].id), {
@@ -601,102 +648,371 @@ try {
       assert.ok(!art.includes("crate-2") && !art.includes("kdSheet"));
     },
   );
-  // THE VAN. RULE CHANGE (developer 2026-11-18: "if there is mushrooms let mushrooms only pass out through the mushroom door ... unique for each
-  // and every ingredient"): a door is no longer a colour shared by three foods; a board gives every colour key it uses ONE food, and the door and
-  // the crates of that key show that food. Z1-Z4 replace the old zone tests (three foods to a zone, a crate's food by its number).
+  // THE VAN'S CARGO. RULE CHANGE (developer 2026-11-27: "instead of repeated ingredients add our 50+ ingredients ... culinary and cutlery items, parcel items", matched to what the restaurant
+  // orders without ever making a level easier): the 24 foods are now 140 items in 11 door colours, laid on the board after it is built. Z1-Z5 replace the old Z1-Z3 food checks; one door per
+  // thing (developer 2026-11-18) stays.
+  const cargo = await vite.ssrLoadModule("/src/game/business/crateCargo.ts");
+  const { INGREDIENTS } = await vite.ssrLoadModule("/src/game/definitions.ts");
+  const { SUPPLY_CATALOG } = await vite.ssrLoadModule("/src/game/business/businessSupplies.ts");
+  const ownPictures = new Set([
+    "tomato",
+    "carrot",
+    "lettuce",
+    "onion",
+    "cheddar",
+    "salmon",
+    "mushroom",
+    "broccoli",
+  ]);
+  const doorsOf = (board: any) => board.gates.map((g: any) => board.cargo[g.color]);
+  const shapeOf = (board: any) =>
+    JSON.stringify([board.cols, board.bricks, board.walls, board.gates, board.trapped]);
   check(
-    "Z1: every colour holds three different foods in the foods' real colour; no food is in two colours; every food has a name",
+    "Z1: 140 items, each with a picture the game already has and a short name; every one of the 57 ingredients is on the van",
+    () => {
+      const items = cargo.CARGO_ITEMS as any[];
+      assert.equal(items.length, 140);
+      assert.equal(new Set(items.map((c) => c.id)).size, 140);
+      for (const family of cargo.CARGO_FAMILIES)
+        assert.ok(cargo.CARGO_BY_FAMILY[family].length >= 3, family);
+      assert.equal(
+        new Set(Object.values(cargo.FAMILY_COLORS)).size,
+        cargo.CARGO_FAMILIES.length,
+        "every family its own colour",
+      );
+      // no two door colours that can share a board look alike (Lab distance; brown and cardboard never share one)
+      const lab = (hex: string) => {
+        const [r, g, b] = [1, 3, 5].map((k) => {
+          const c = parseInt(hex.slice(k, k + 2), 16) / 255;
+          return c > 0.04045 ? ((c + 0.055) / 1.055) ** 2.4 : c / 12.92;
+        }) as [number, number, number];
+        const f = (v: number) => (v > 0.008856 ? Math.cbrt(v) : 7.787 * v + 16 / 116);
+        const x = f((0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / 0.95047);
+        const y = f(0.2126729 * r + 0.715152 * g + 0.072175 * b);
+        const z = f((0.0193339 * r + 0.119192 * g + 0.9503041 * b) / 1.08883);
+        return [116 * y - 16, 500 * (x - y), 200 * (y - z)] as const;
+      };
+      const names = cargo.CARGO_FAMILIES as string[];
+      for (let i = 0; i < names.length; i++)
+        for (let j = i + 1; j < names.length; j++) {
+          if (`${names[i]} ${names[j]}` === "brown cardboard") continue;
+          const p_ = lab(cargo.FAMILY_COLORS[names[i]!]);
+          const q = lab(cargo.FAMILY_COLORS[names[j]!]);
+          const gap = Math.hypot(p_[0] - q[0], p_[1] - q[1], p_[2] - q[2]);
+          assert.ok(gap >= 23, `${names[i]} and ${names[j]} look alike (${gap.toFixed(0)})`);
+        }
+      for (const id of Object.keys(INGREDIENTS))
+        assert.ok(
+          items.some((c) => c.id === id && c.source === "ingredient"),
+          `${id} is cargo`,
+        );
+      for (const c of items) {
+        const folder =
+          c.source === "ingredient"
+            ? "ingredients"
+            : c.source === "pantry"
+              ? "sauce/products"
+              : "supplies";
+        const file = ownPictures.has(c.id)
+          ? `public/business/cratedispatch/ingredient-${c.id}.webp`
+          : `public/business/${folder}/${c.id}.webp`;
+        assert.ok(existsSync(file), file);
+        assert.ok(
+          c.name.length >= 3 && c.name.length <= 18,
+          `${c.name}: short enough for the slip`,
+        );
+      }
+      // every supply the restaurant buys is on the van, as itself or as its near-twin
+      for (const supply of SUPPLY_CATALOG)
+        assert.ok(cargo.cargoIdOf(supply.id), `${supply.id} has a van item`);
+    },
+  );
+  check(
+    "Z2: one door per thing and per colour, never brown beside cardboard; all 140 items turn up across the levels and two weeks",
     () => {
       const seen = new Set<string>();
-      for (const key of CRATE_INGREDIENTS) {
-        const z = CRATE_FOODS[key];
-        assert.ok(z && z.colour.length > 2, key);
-        assert.equal(new Set(z.items).size, 3, `${key}: three foods`);
-        for (const item of z.items) {
-          assert.ok(!seen.has(item), `${item} is in two colours`);
-          seen.add(item);
-          assert.ok(CRATE_ITEM_NAMES[item], `${item} has a name`);
+      for (let level = 18; level <= 91; level++)
+        for (let day = 1; day <= 14; day++) {
+          const seed = level * 1000003 + day * 9176;
+          const slots = Array.from(
+            { length: crateTierAt(level).colors },
+            (_, i) => CRATE_INGREDIENTS[i],
+          );
+          const doors = Object.values(
+            cargo.dressDoors(slots, cargo.NO_WISHES, { level, seed, trip: 0 }),
+          ) as any[];
+          assert.equal(doors.length, slots.length);
+          assert.equal(
+            new Set(doors.map((d) => d.item)).size,
+            doors.length,
+            `level ${level}: two doors show the same thing`,
+          );
+          assert.equal(
+            new Set(doors.map((d) => d.family)).size,
+            doors.length,
+            `level ${level}: two doors share a colour`,
+          );
+          assert.ok(
+            !(
+              doors.some((d) => d.family === "brown") && doors.some((d) => d.family === "cardboard")
+            ),
+            `level ${level}: brown beside cardboard`,
+          );
+          for (const d of doors) {
+            assert.equal(cargo.cargoItem(d.item).family, d.family);
+            assert.ok(!d.tag, "nothing is waited for on an empty restaurant");
+            seen.add(d.item);
+          }
         }
+      assert.equal(seen.size, 140, `only ${seen.size} of the 140 turn up`);
+    },
+  );
+  check(
+    "Z3: the board's shape NEVER depends on the orders: with nothing ordered or everything ordered it is the same board, only its cargo differs",
+    () => {
+      const busy = {
+        delivered: Object.keys(INGREDIENTS),
+        needed: SUPPLY_CATALOG.map((c: any) => c.id),
+        menu: ["milk", "salmon"],
+        yours: ["tomato"],
+      };
+      for (let level = 18; level <= 91; level += 3) {
+        const seed = level * 1000003 + 9176;
+        const plain = startRound(level, seed).board;
+        const full = dressBoard(plain, busy, { level, seed, trip: 0 });
+        assert.equal(shapeOf(full), shapeOf(plain), `level ${level}: orders changed the board`);
+        assert.equal(doorsOf(full).length, crateTierAt(level).colors);
       }
-      assert.equal(seen.size, 24);
+    },
+  );
+  check(
+    "Z4: what the restaurant waits for comes first, several of one colour take turns over the van's trips, and the rest of the catalogue keeps a door",
+    () => {
+      const slots = (n: number) => CRATE_INGREDIENTS.slice(0, n);
+      const wishes = {
+        delivered: ["tomato", "kraft-boxes"],
+        needed: ["salmon", "teaspoons"],
+        menu: ["milk"],
+        yours: ["basil"],
+      };
+      for (let seed = 1; seed <= 40; seed++) {
+        const doors = Object.values(
+          cargo.dressDoors(slots(8), wishes, { level: 80, seed, trip: 0 }),
+        ) as any[];
+        const by = Object.fromEntries(doors.map((d) => [d.item, d.tag]));
+        assert.deepEqual(
+          [by.tomato, by["kraft-boxes"], by.salmon, by["soup-spoons"]],
+          ["delivered", "delivered", "needed", "needed"],
+          `seed ${seed}: teaspoons come as soup spoons`,
+        );
+        const wished = new Set(["tomato", "kraft-boxes", "salmon", "soup-spoons", "milk", "basil"]);
+        assert.ok(
+          doors.some((d) => !wished.has(d.item)),
+          "at least one door from the rest of the catalogue",
+        );
+      }
+      // a long shopping list (an empty fridge) takes at most half the doors, so the catalogue keeps turning up: on 8 doors, with 8 things listed, 3.5 or more doors on average carry something else
+      const list = [
+        "apple",
+        "carrot",
+        "lemon",
+        "lettuce",
+        "eggplant",
+        "potato",
+        "garlic",
+        "chicken",
+      ];
+      let other = 0;
+      for (let seed = 1; seed <= 40; seed++)
+        other += (
+          Object.values(
+            cargo.dressDoors(
+              slots(8),
+              { delivered: [], needed: list, menu: [], yours: [] },
+              { level: 80, seed, trip: 0 },
+            ),
+          ) as any[]
+        ).filter((d) => !list.includes(d.item)).length;
       assert.ok(
-        CRATE_FOODS.mushroom.items.includes("mushroom") && CRATE_FOODS.mushroom.colour === "brown",
+        other / 40 >= 3.5,
+        `only ${(other / 40).toFixed(1)} doors of 8 carry something else`,
+      );
+      // three green things on order: one a trip, all three within three trips
+      const greens = {
+        delivered: [],
+        needed: ["lettuce", "basil", "spinach"],
+        menu: [],
+        yours: [],
+      };
+      const brought = new Set(
+        [0, 1, 2].map(
+          (trip) =>
+            (
+              Object.values(
+                cargo.dressDoors(slots(5), greens, { level: 50, seed: 7 + trip, trip }),
+              ) as any[]
+            ).find((d) => d.family === "green")!.item,
+        ),
+      );
+      assert.deepEqual([...brought].sort(), ["basil", "lettuce", "spinach"]);
+      // a long order on a small board: every wanted colour comes within a few trips
+      const many = {
+        delivered: [],
+        needed: ["apple", "carrot", "lemon", "lettuce", "eggplant", "potato", "garlic", "chicken"],
+        menu: [],
+        yours: [],
+      };
+      const got = new Set<string>();
+      for (let trip = 0; trip < 8; trip++)
+        for (const d of Object.values(
+          cargo.dressDoors(slots(3), many, { level: 20, seed: 11 + trip, trip }),
+        ) as any[])
+          if (d.tag) got.add(d.item);
+      assert.equal(got.size, 8, `only ${[...got].join(" ")} came`);
+    },
+  );
+  const { DEFAULT_SAVE } = await vite.ssrLoadModule("/src/game/SaveManager.ts");
+  const { cargoWishes } = await vite.ssrLoadModule("/src/game/restaurant/vanWishes.ts");
+  const { serviceStockCheck } = await vite.ssrLoadModule("/src/game/restaurant/campaignStock.ts");
+  const { ticketsFor } = await vite.ssrLoadModule("/src/game/restaurant/serviceTickets.ts");
+  const { getLevel } = await vite.ssrLoadModule("/src/game/levels/LevelManager.ts");
+  check(
+    "Z5: from a real save the van carries today's purchases and what the next service is short of, and changes nothing in the save",
+    () => {
+      const save = structuredClone(DEFAULT_SAVE);
+      save.levelProgress = {
+        ...save.levelProgress,
+        currentLevelId: "level-40",
+        highestUnlockedLevelId: "level-40",
+        completedLevelIds: Array.from({ length: 39 }, (_, i) => `level-${i + 1}`),
+      };
+      save.business.calendar.businessDay = 12;
+      save.business.inventory = {
+        kiwi: { ingredientId: "kiwi", quantity: 3, purchaseDay: 12 },
+        onion: { ingredientId: "onion", quantity: 2, purchaseDay: 5 },
+      } as any;
+      const before = JSON.stringify(save);
+      const wishes = cargoWishes(save);
+      assert.equal(JSON.stringify(save), before, "reading the wishes changed the save");
+      assert.ok(wishes.delivered.includes("kiwi"), "bought today");
+      assert.ok(!wishes.delivered.includes("onion"), "bought last week is not today's delivery");
+      const level = getLevel("level-40")!;
+      const stock = serviceStockCheck(save, 40, ticketsFor(save.levelProgress, level).tickets);
+      assert.ok(
+        stock.applies && stock.missingRows.length > 0,
+        "the sample save is short of something",
+      );
+      for (const row of stock.applies ? stock.missingRows : [])
+        assert.ok(wishes.needed.includes(row.ingredientId), `needed: ${row.ingredientId}`);
+      assert.ok(wishes.yours.length > 0, "the player's dishes");
+      const seed = 40 * 1000003 + 12 * 9176;
+      const board = dressBoard(startRound(40, seed).board, wishes, { level: 40, seed, trip: 0 });
+      assert.ok(
+        doorsOf(board).some((d: any) => d.tag === "delivered" && d.item === "kiwi"),
+        "today's kiwis take a door",
+      );
+      assert.ok(
+        doorsOf(board).some((d: any) => d.tag === "needed"),
+        "something needed takes a door",
       );
     },
   );
   check(
-    "Z2: a board gives each colour key ONE food of that colour, the same for a level and a seed, and the foods vary over the seeds",
+    "Z6: the screen says where a crate goes, shows the delivery slip, and the cargo never touches money, stock or the save",
     () => {
-      const used = new Map<string, Set<string>>();
-      for (let seed = 1; seed <= 60; seed++)
-        for (const level of [18, 28, 46, 66, 91]) {
-          const board = crateBoardFor(level, seed);
-          assert.deepEqual(board.foods, foodsFor(level, seed), "same level and seed, same foods");
-          for (const key of CRATE_INGREDIENTS) {
-            const food = foodOf(board, key);
-            assert.ok(CRATE_FOODS[key].items.includes(food), `${key} -> ${food}`);
-            (used.get(key) ?? used.set(key, new Set()).get(key)!).add(food);
-          }
-        }
-      for (const key of CRATE_INGREDIENTS)
-        assert.equal(
-          used.get(key)?.size,
-          3,
-          `${key}: all three of its foods turn up over the seeds`,
-        );
-    },
-  );
-  check(
-    "Z2b: ONE door per food on a board: every door shows a different food, every crate shows the food of its own door, and no two foods share a door",
-    () => {
-      for (let seed = 1; seed <= 60; seed++)
-        for (const level of [18, 28, 46, 66, 91]) {
-          const board = crateBoardFor(level, seed);
-          const doorFoods = board.gates.map((g: { color: string }) => foodOf(board, g.color));
-          assert.equal(new Set(doorFoods).size, board.gates.length, "two doors show the same food");
-          const keys = new Set(board.gates.map((g: { color: string }) => g.color));
-          for (const b of board.bricks) {
-            assert.ok(keys.has(b.color), `${b.id} has a door`);
-            assert.equal(
-              board.gates.filter(
-                (g: { color: string }) => foodOf(board, g.color) === foodOf(board, b.color),
-              ).length,
-              1,
-              `${b.id}: exactly one door takes ${foodOf(board, b.color)}`,
-            );
-          }
-        }
-    },
-  );
-  check(
-    "Z3: every food has a picture file (the crates' own, or the Sauce Station's product), and the screen says where a crate goes",
-    () => {
-      const own = new Set([
-        "tomato",
-        "carrot",
-        "lettuce",
-        "onion",
-        "cheddar",
-        "salmon",
-        "mushroom",
-        "broccoli",
-      ]);
-      for (const key of CRATE_INGREDIENTS)
-        for (const item of CRATE_FOODS[key].items) {
-          const file = own.has(item)
-            ? `public/business/cratedispatch/ingredient-${item}.webp`
-            : `public/business/sauce/products/${item}.webp`;
-          assert.ok(existsSync(file), file);
-        }
       const game = readFileSync("src/components/kc/inventory/KitchenDispatchGame.tsx", "utf8");
       assert.ok(game.includes("Unload the Van") && !game.includes(">Kitchen Dispatch<"));
       assert.ok(
-        /\$\{food\} → the \$\{food\} door/.test(game) && /door with the same food/.test(game),
+        /\$\{thing\} → the \$\{thing\} door/.test(game) && /door with the same picture/.test(game),
         "the hint on a touched crate and the line that tells what to do",
       );
+      assert.ok(/✓ \$\{cargoName\(foodOf\(next\.board, brick\.color\)\)\} sent out/.test(game));
       assert.ok(
-        /✓ \$\{CRATE_ITEM_NAMES\[foodOf\(next\.board, brick\.color\)\]\} sent out/.test(game),
+        game.includes('data-testid="kd-slip-open"') && game.includes("<DeliverySlip"),
+        "the slip",
       );
+      for (const file of [
+        "src/game/business/crateCargo.ts",
+        "src/game/restaurant/vanWishes.ts",
+        "src/components/kc/inventory/DeliverySlip.tsx",
+      ]) {
+        const text = readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+        assert.ok(
+          !/Math\.random|Date\.now|persist|writeSave|updateSave|appendLedger|credits|purchaseIngredient|purchaseSupply/.test(
+            text,
+          ),
+          `${file}: reads only`,
+        );
+      }
+    },
+  );
+  const art = await vite.ssrLoadModule("/src/components/kc/inventory/kitchenDispatchArt.ts");
+  check(
+    "Z7: the developer's cargo art (2026-11-27): every item travels in one of six crates by what it is; each skin, both badges and the slip are in the game, small and the size the drawing expects",
+    () => {
+      const chilled = [
+        "chicken",
+        "steak",
+        "salmon",
+        "milk",
+        "yogurt",
+        "cream",
+        "butter",
+        "cheddar",
+        "mozzarella",
+      ];
+      const used = new Set<string>();
+      for (const c of cargo.CARGO_ITEMS as any[]) {
+        const skin = cargo.crateSkinOf(c.id) as string;
+        const expected = chilled.includes(c.id)
+          ? "cold"
+          : c.family === "cardboard"
+            ? "parcel"
+            : c.family === "teal"
+              ? "tableware"
+              : c.family === "blue"
+                ? "cleaning"
+                : c.source === "pantry"
+                  ? "pantry"
+                  : "produce";
+        assert.equal(skin, expected, `${c.id} travels in the ${expected} crate`);
+        used.add(skin);
+      }
+      for (const id of chilled) assert.ok(cargo.cargoItem(id), `${id} is cargo`);
+      assert.deepEqual([...used].sort(), [...(cargo.CRATE_SKINS as string[])].sort());
+      /** A WebP file's width and height, from its header. */
+      const size = (file: string) => {
+        const b = readFileSync(file);
+        const kind = b.toString("latin1", 12, 16);
+        if (kind === "VP8X") return [1 + b.readUIntLE(24, 3), 1 + b.readUIntLE(27, 3)];
+        if (kind === "VP8L") {
+          const bits = b.readUInt32LE(21);
+          return [1 + (bits & 0x3fff), 1 + ((bits >> 14) & 0x3fff)];
+        }
+        return [b.readUInt16LE(26) & 0x3fff, b.readUInt16LE(28) & 0x3fff];
+      };
+      const expect = [
+        ...(cargo.CRATE_SKINS as string[]).map(
+          (k) => [`skin-${k}`, art.SKIN_SIZE, art.SKIN_SIZE, 20] as const,
+        ),
+        ["tag-delivered", 96, 96, 12] as const,
+        ["tag-needed", 96, 96, 12] as const,
+        ["slip", art.SLIP_SIZE.w, art.SLIP_SIZE.h, 60] as const,
+      ];
+      for (const [name, w, h, mostKB] of expect) {
+        const file = `public/business/cratedispatch/${name}.webp`;
+        assert.ok(existsSync(file), file);
+        assert.deepEqual(size(file), [w, h], `${name}: ${size(file).join("x")}`);
+        assert.ok(readFileSync(file).length <= mostKB * 1024, `${name} is small`);
+      }
+      // the cutter and the drawing agree on the nine-slice
+      const cutter = readFileSync("scripts/make-van-cargo-assets.py", "utf8");
+      assert.ok(new RegExp(`^SKIN_SIZE = ${art.SKIN_SIZE}\\b`, "m").test(cutter));
+      assert.ok(new RegExp(`^SKIN_SLICE = ${art.SKIN_SLICE}\\b`, "m").test(cutter));
+      // the colour a player matches to a door stays the crate's own: the skin is laid over it with hard-light, and the plain crate is still drawn without it
+      const draw = readFileSync("src/components/kc/inventory/kitchenDispatchDraw.ts", "utf8");
+      assert.ok(/globalCompositeOperation = "hard-light"/.test(draw));
+      assert.ok(/if \(skin\) drawSkin\(/.test(draw), "a crate without its skin yet is drawn plain");
     },
   );
   const levels = await vite.ssrLoadModule("/src/game/business/miniGameLevels.ts");
@@ -709,7 +1025,11 @@ try {
         Array.from({ length: 74 }, (_, i) => 18 + i),
       );
       for (const level of list) {
-        assert.match(levels.vanLevelLine(level) as string, /^\d×\d · \d+(-\d+)? crates$/);
+        // RULE CHANGE (developer 2026-11-27): the picker's line also says how many crates are blocked
+        assert.match(
+          levels.vanLevelLine(level) as string,
+          /^\d×\d · \d+(-\d+)? crates( · \d+ blocked)?$/,
+        );
         const round = startRound(level, level * 1000003 + 9176);
         assert.ok(round.board.bricks.length > 0);
       }

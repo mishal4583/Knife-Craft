@@ -22,11 +22,11 @@ import {
   dragBrick,
   finishDrag,
   freezeRound,
-  CRATE_ITEM_NAMES,
   foodOf,
   hammerWall,
   roundCleared,
   rocketBrick,
+  dressBoard,
   startRound,
   undoRound,
   wallAtCell,
@@ -35,6 +35,9 @@ import {
 } from "@/game/business/crateDispatch";
 import { VAN_LEVELS, vanLevelLine } from "@/game/business/miniGameLevels";
 import { LevelPicker } from "./LevelPicker";
+import { DeliverySlip } from "./DeliverySlip";
+import { cargoName } from "@/game/business/crateCargo";
+import { cargoWishes } from "@/game/restaurant/vanWishes";
 import { useUnlockText } from "@/components/kc/navLevel";
 import {
   KD_PORTRAIT,
@@ -106,7 +109,7 @@ const WIDE_UI: Hud = {
   left: [46, 311, 144, 46],
   stars: [56, 362, 124, 34],
   card: [82, 414, 74, 86],
-  tip: [122, 458, 44, 44],
+  tip: [168, 436, 44, 44],
 };
 /** The landscape board's boosters, one column: the centre x and the four tops (a name plate overlaps the foot of the button, as in the mock-up). */
 const WIDE_BOOSTER = { x: 852, y: [96, 189, 282, 375] } as const;
@@ -148,7 +151,20 @@ export function KitchenDispatchGame({
   /** What opens a locked tile, in the game's own words (services in the restaurant game, developer 2026-10-30). */
   const unlock = useUnlockText();
   const seed = playLevel * 1000003 + day * 9176 + boardNo;
-  const initial = useMemo(() => startRound(playLevel, seed), [playLevel, seed]);
+  /**
+   * What the restaurant is waiting for, read once when the game opens (restaurant/vanWishes.ts): it only chooses what the crates carry, never the board's shape, and it moves nothing. "Next dispatch"
+   * (the van's next trip) brings the next of several wanted things.
+   */
+  const [wishes] = useState(() => cargoWishes(save));
+  const initial = useMemo(() => {
+    const round = startRound(playLevel, seed);
+    return {
+      ...round,
+      board: dressBoard(round.board, wishes, { level: playLevel, seed, trip: boardNo }),
+    };
+  }, [playLevel, seed, boardNo, wishes]);
+  /** The delivery slip: what is on this van. The clock waits while it is open. */
+  const [slipOpen, setSlipOpen] = useState(false);
   const [round, setRound] = useState<CrateRound>(initial);
   const [phase, setPhase] = useState<Phase>("play");
   const [paused, setPaused] = useState(false);
@@ -230,8 +246,8 @@ export function KitchenDispatchGame({
   );
   useEffect(() => {
     heldRef.current = held;
-    pausedRef.current = paused || held || picking;
-  }, [paused, held, picking]);
+    pausedRef.current = paused || held || picking || slipOpen;
+  }, [paused, held, picking, slipOpen]);
 
   // the draw loop and the clock
   useEffect(() => {
@@ -357,7 +373,7 @@ export function KitchenDispatchGame({
   /** A crate has gone out of its gate: it slides away, and the board may be clear. */
   const sendOut = (brick: Brick, gate: Leaving["gate"], next: CrateRound, sound = true) => {
     if (sound) AudioManager.playSfx("crateOut");
-    say(`✓ ${CRATE_ITEM_NAMES[foodOf(next.board, brick.color)]} sent out`);
+    say(`✓ ${cargoName(foodOf(next.board, brick.color))} sent out`);
     leavingRef.current = [...leavingRef.current, { brick, gate, start: performance.now() }];
     visRef.current.delete(brick.id);
     setRoundBoth(next);
@@ -392,8 +408,8 @@ export function KitchenDispatchGame({
     const brick = brickAtCell(round.board, cx, cy);
     if (!brick) return;
     // the sorting hint (developer 2026-11-17): what the crate holds and which door it belongs to
-    const food = CRATE_ITEM_NAMES[foodOf(round.board, brick.color)];
-    say(`${food} → the ${food} door`);
+    const thing = cargoName(foodOf(round.board, brick.color));
+    say(`${thing} → the ${thing} door`);
     dragRef.current = {
       id: brick.id,
       pointerId: e.pointerId,
@@ -479,9 +495,10 @@ export function KitchenDispatchGame({
         left: [252, 206, 140, 54],
         stars: [398, 213, 128, 40],
         mascot: [0, 90, 146, 124],
-        tip: [470, 146, 50, 50],
+        // (the tip sits beside the Slip card, not on it: on it, a tap on the card opened the help)
+        tip: [390, 122, 48, 48],
         pause: [468, 8, 64, 64],
-        notice: [112, 104, 330, 90],
+        notice: [110, 104, 280, 90],
         panel: [0, 0, 0, 0],
         card: [444, 104, 78, 88],
       };
@@ -580,7 +597,7 @@ export function KitchenDispatchGame({
         <canvas
           ref={canvasRef}
           data-testid="kd-canvas"
-          aria-label="Unload the Van: drag each crate across the loading bay to the door that shows the same food"
+          aria-label="Unload the Van: drag each crate across the loading bay to the door that shows the same picture"
           className="block h-full w-full touch-none"
           onPointerDown={onDown}
           onPointerMove={onMove}
@@ -671,35 +688,51 @@ export function KitchenDispatchGame({
           }}
         >
           <span role="status" data-testid="kd-notice">
-            {notice || "The van is here! Slide each crate to the door with the same food."}
+            {notice ||
+              ((round.board.trapped ?? 0) > 0
+                ? "Blocked crate? Slide the one in its way aside first."
+                : "The van is here! Slide each crate to the door with the same picture.")}
           </span>
         </div>
-        <div
-          aria-hidden="true"
-          className="rounded-md border-2 border-[#d8b373] bg-[#fff3d6] shadow-[0_4px_8px_rgba(0,0,0,.35)]"
+        <button
+          type="button"
+          onClick={() => setSlipOpen(true)}
+          aria-label="Delivery slip: what is on this van"
+          data-testid="kd-slip-open"
+          className="pointer-events-auto rounded-md border-2 border-[#d8b373] bg-[#fff3d6] shadow-[0_4px_8px_rgba(0,0,0,.35)] active:scale-95"
           style={{
             ...box(...ui.card),
+            ...TOUCH,
             transform: wide ? "rotate(-3deg)" : "rotate(4deg)",
           }}
         >
           <span
-            className="absolute inset-0 grid place-items-center pt-[14%] leading-none"
-            style={fs(40)}
+            aria-hidden="true"
+            className="absolute inset-0 grid place-items-center leading-none"
+            style={fs(36)}
           >
             🚚
           </span>
+          <span
+            aria-hidden="true"
+            className="absolute inset-x-0 bottom-[5%] text-center font-black text-[#5a3419]"
+            style={fs(15)}
+          >
+            Slip
+          </span>
           <span className="absolute left-1/2 top-[-6%] h-[13%] w-[17%] -translate-x-1/2 rounded-full bg-[#d6402a] shadow-[0_2px_3px_rgba(0,0,0,.4)]" />
-        </div>
+        </button>
         <span className="grid place-items-center" style={box(...ui.tip)}>
           <InfoTip label="How to play">
             The delivery van has dropped its crates on the loading bay. Drag a crate across it; it
             cannot pass through other crates or the dark blocks. Push it against the door that shows
-            the same food, with its width inside the door, and it goes out: a mushroom crate only
-            leaves by the mushroom door, a lettuce crate only by the lettuce door, and so on for
-            every food. Unload every crate before the timer ends. Freeze stops the clock for 10
-            seconds, Rocket sends one crate out, Hammer smashes one dark block and Undo takes back
-            your last move. More time left earns more stars. Tap the level badge to replay an
-            earlier level.
+            the same picture, with its width inside the door, and it goes out: a mushroom crate only
+            leaves by the mushroom door, a crate of forks only by the fork door, and so on. From
+            Level 23 some crates are blocked in: slide the crate in their way aside first (you can
+            move it again later). Unload every crate before the timer ends. Freeze stops the clock
+            for 10 seconds, Rocket sends one crate out, Hammer smashes one dark block and Undo takes
+            back your last move. More time left earns more stars. The Slip card lists what is on
+            this van; tap the level badge to replay an earlier level.
           </InfoTip>
         </span>
 
@@ -939,6 +972,15 @@ export function KitchenDispatchGame({
           </div>
         ) : null}
       </div>
+      {slipOpen ? (
+        <DeliverySlip
+          doors={round.board.gates.flatMap((g) => {
+            const door = initial.board.cargo?.[g.color];
+            return door ? [door] : [];
+          })}
+          onClose={() => setSlipOpen(false)}
+        />
+      ) : null}
       {picking ? (
         <LevelPicker
           testId="kd-picker"
