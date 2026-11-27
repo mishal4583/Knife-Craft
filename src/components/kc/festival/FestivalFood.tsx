@@ -175,7 +175,8 @@ export function DrinkMachine({
   }
   const level = !pouring ? 0 : phase === "cooking" ? progress : 1;
   return (
-    <>
+    // the whole machine, in the picture's own shape, so the cup stands in its tray under the tap in every box
+    <span className="fest-machine">
       <img src={festivalUrl(tap)} alt="" draggable={false} className="fest-tap" />
       <span aria-hidden="true" className={`fest-art fest-cup ${pouring ? "" : "fest-cup-waiting"}`}>
         <img src={festivalUrl(CUP_EMPTY)} alt="" draggable={false} />
@@ -189,7 +190,7 @@ export function DrinkMachine({
           />
         ) : null}
       </span>
-    </>
+    </span>
   );
 }
 

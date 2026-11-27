@@ -8,7 +8,9 @@ import { rivalPortraitPath } from "@/game/chefArt";
 import { rivalChefOf } from "@/game/restaurant/rivalChefs";
 import { RIVALS } from "@/game/restaurant/cityRanking";
 import {
+  FESTIVAL_STAGES,
   festivalRound,
+  stageIndex,
   stageNews,
   stageWithBurners,
   type FestivalEvent,
@@ -33,6 +35,7 @@ import type {
   Customer,
   FoodId,
   GameEvent,
+  Pace,
   PowerId,
   RoundState,
 } from "@/game/festival/types";
@@ -54,15 +57,23 @@ import {
   type Mood,
 } from "./festivalArt";
 import { portraitHeight, portraitLayout, wideLayout, type Rect } from "./festivalLayout";
-import { StallBack, StallCounter } from "./FestivalStall";
+import { StallBack, StallCounter, StallSides } from "./FestivalStall";
 import "./festival.css";
 
 type Phase = "intro" | "play" | "result";
 /** A customer who has just left, drawn for a moment: happily served, or walking off. */
-type Ghost = { key: number; seat: number; look: number; mood: Mood; text: string; sad: boolean };
+type Ghost = {
+  key: number;
+  seat: number;
+  id: number;
+  look: number;
+  mood: Mood;
+  text: string;
+  sad: boolean;
+};
 
 const PAINT_MS = 80;
-const GHOST_MS = 1100;
+const GHOST_MS = 1500;
 const HINT_MS = 1600;
 const SAY_MS = 3200;
 const COACH_ORDERS = 2;
@@ -96,16 +107,29 @@ function tallBackdrop(counter: number, stage: number): CSSProperties {
 }
 
 /** What a stage adds to the one before, in a few words. */
-function newsLine(event: FestivalEvent, stage: number): string {
+function newsLine(event: FestivalEvent, stage: number, count = true): string {
   const news = stageNews(event, stage);
-  const parts = [
-    ...news.foods.map((f) => FOOD_NAMES[f]),
+  const room = [
     ...(news.grill ? ["another burner"] : []),
     ...(news.plate ? ["another plate"] : []),
     ...(news.atOnce ? ["a longer queue"] : []),
   ];
-  return parts.length ? parts.join(" · ") : "more customers, quicker cooking";
+  return [
+    ...(count ? [`${news.customers} customers`] : []),
+    ...(news.foods.length ? [news.foods.map((f) => FOOD_NAMES[f]).join(", ")] : []),
+    ...(room.length ? [room.join(", ")] : []),
+  ].join(" · ");
 }
+
+/** A stage's rival: the chef's first name, the restaurant, the portrait. */
+const rivalOf = (id: string) => {
+  const chef = rivalChefOf(id);
+  return {
+    chefName: chef ? `Chef ${chef.chef.split(" ")[0]}` : "The rival",
+    stallName: RIVALS.find((r) => r.id === id)?.name ?? "Rival stall",
+    portrait: rivalPortraitPath(id),
+  };
+};
 
 /** A drawn arrow for the stage picker (a text arrow turns into an emoji on some phones). */
 function Chevron({ right = false }: { right?: boolean }) {
@@ -154,9 +178,10 @@ function coachText(action: Action, state: RoundState): string {
  */
 export function FestivalGame({
   event,
-  tier,
+  pace,
   stage,
   openStage,
+  nextNote,
   seed,
   coach,
   onResult,
@@ -167,10 +192,12 @@ export function FestivalGame({
 }: {
   event: FestivalEvent;
   /** The pace it is played at (the stage's, or the developer's preview). */
-  tier: number;
-  /** The stage being played (null: a preview at a pace past the event's stages), and the highest one the player may choose. */
+  pace: Pace;
+  /** The stage being played (null: a preview at a row of the pace table), and the highest one the player may choose. */
   stage: number | null;
   openStage: number;
+  /** Shown when the third stage is won: when the next festival opens. */
+  nextNote: string;
   /** Plays another stage (an earlier one again, or the next one just opened). */
   onStage: (stage: number) => void;
   seed: number;
@@ -181,13 +208,13 @@ export function FestivalGame({
   onList: () => void;
   onExit: () => void;
 }) {
-  const round = useMemo(() => festivalRound(event, seed, tier)!, [event, seed, tier]);
+  const round = useMemo(() => festivalRound(event, seed, pace)!, [event, seed, pace]);
   const rival = useMemo(() => rivalPlan(round, seed), [round, seed]);
-  const chef = rivalChefOf(event.rivalId);
-  const chefName = chef ? `Chef ${chef.chef.split(" ")[0]}` : "The rival";
-  const stallName = RIVALS.find((r) => r.id === event.rivalId)?.name ?? "Rival stall";
-  const portrait = rivalPortraitPath(event.rivalId);
-  const lines = event.lines!;
+  const rivalId = event.rivals[stageIndex(stage)];
+  const { chefName, stallName, portrait } = rivalOf(rivalId);
+  const lines = event.lines![stageIndex(stage)];
+  /** The stage after this one, when there is one. */
+  const after = stage !== null && stage < FESTIVAL_STAGES ? stage + 1 : null;
 
   const wide = useLandscape();
   const boxRef = useRef<HTMLDivElement>(null);
@@ -203,7 +230,6 @@ export function FestivalGame({
   const scale = box.w > 0 ? Math.min(box.w / layout.w, box.h / layout.h) : 0;
   /** How far the window reaches past each side of the stage, in stage units: the stall's edges and corner things go out there. */
   const margin = scale > 0 ? Math.max(0, (box.w / scale - layout.w) / 2) : 0;
-  const stages = event.stages ?? 1;
 
   const [phase, setPhase] = useState<Phase>("intro");
   const [view, setView] = useState<RoundState>(() => startState(round));
@@ -282,6 +308,7 @@ export function FestivalGame({
             {
               key,
               seat: e.seat,
+              id: e.id,
               look: looksRef.current.get(e.id) ?? 0,
               mood: sad ? "impatient" : "excited",
               text: e.type === "served" ? `+${e.points}` : "Too slow!",
@@ -417,6 +444,15 @@ export function FestivalGame({
   const accuracy = Math.round(accuracyOf(view) * 100);
   const best = Math.max(1, view.score, rival.final);
 
+  /** How far to the side a customer starts: past the window's nearer edge (a middle seat takes turns). Stage units. */
+  const walkFrom = ([x, , w]: Rect, id: number) => {
+    const off = x + w / 2 - layout.w / 2;
+    const left = Math.abs(off) < 1 ? id % 2 === 0 : off < 0;
+    return left ? -(x + w + margin + 8) : layout.w + margin - x + 8;
+  };
+  const walking = (style: CSSProperties, from: number) =>
+    ({ ...style, "--walk": `${Math.round(from)}px` }) as CSSProperties;
+
   /** One place on a cooker: what is in it, how far it is, and the badge that says what to do. */
   const spot = (cooker: CookerId, i: number, rect: Rect, food?: Rect) => {
     const def = cookerOf(round.kitchen, cooker)!;
@@ -517,7 +553,9 @@ export function FestivalGame({
       className="fest-root"
       data-testid="festival-game"
       data-event={event.id}
-      data-tier={tier}
+      data-tier={pace.tier}
+      data-stage={stage ?? undefined}
+      data-rival-id={rivalId}
       data-phase={phase}
       data-paused={stopped || undefined}
       data-served={view.served}
@@ -549,9 +587,9 @@ export function FestivalGame({
               data-testid="fest-scene"
             />
           )}
-          <StallBack layout={layout} margin={margin} name={event.name} />
+          <StallBack layout={layout} margin={margin} />
 
-          {/* the customers, behind the counter */}
+          {/* the customers, behind the counter: they walk in from the stall's nearer side and walk off the same way */}
           {layout.seats.map((seat, i) => {
             const customer = view.customers.find((c) => c.seat === i);
             const ghost = ghosts.find((g) => g.seat === i);
@@ -569,11 +607,11 @@ export function FestivalGame({
                       alt=""
                       draggable={false}
                       className="fest-person fest-arrive"
-                      style={at(seat.person)}
+                      style={walking(at(seat.person), walkFrom(seat.person, customer.id))}
                     />
                     <div
                       key={`bubble-${customer.id}`}
-                      className={`fest-bubble fest-pop ${customer.wants.length > 1 ? "fest-multi" : ""}`}
+                      className={`fest-bubble fest-pop fest-order ${customer.wants.length > 1 ? "fest-multi" : ""}`}
                       data-testid="fest-bubble"
                       data-seat={i}
                       data-id={customer.id}
@@ -641,13 +679,12 @@ export function FestivalGame({
                     style={at(seat.person)}
                     aria-hidden="true"
                   >
-                    {customer ? null : (
-                      <img
-                        src={personUrl(ghost.look, ghost.mood)}
-                        alt=""
-                        className="fest-person fest-leaving"
-                      />
-                    )}
+                    <img
+                      src={personUrl(ghost.look, ghost.mood)}
+                      alt=""
+                      className="fest-person fest-leaving"
+                      style={walking({}, walkFrom(seat.person, ghost.id))}
+                    />
                     <span className={`fest-float ${ghost.sad ? "sad" : ""}`}>{ghost.text}</span>
                   </div>
                 ) : null}
@@ -655,6 +692,7 @@ export function FestivalGame({
             );
           })}
 
+          <StallSides layout={layout} margin={margin} name={event.name} />
           <StallCounter layout={layout} margin={margin} />
 
           {/* the kitchen */}
@@ -882,7 +920,7 @@ export function FestivalGame({
               <h1 className="fest-title">
                 {event.emoji} {event.name}
               </h1>
-              {stage !== null && stages > 1 ? (
+              {stage !== null ? (
                 <div className="fest-stagepick" data-testid="fest-stage-pick">
                   <button
                     type="button"
@@ -894,7 +932,7 @@ export function FestivalGame({
                     <Chevron />
                   </button>
                   <span data-testid="fest-stage-number">
-                    Stage {stage} of {stages}
+                    Stage {stage} of {FESTIVAL_STAGES}
                   </span>
                   <button
                     type="button"
@@ -909,7 +947,7 @@ export function FestivalGame({
               ) : null}
               {stage !== null && stage > 1 ? (
                 <p className="fest-new" data-testid="fest-new">
-                  New: {newsLine(event, stage)}
+                  New: {newsLine(event, stage, false)}
                 </p>
               ) : null}
               <div className="fest-vs">
@@ -1005,7 +1043,7 @@ export function FestivalGame({
               <h2 className="fest-title">
                 {!result.won
                   ? "So close!"
-                  : stage !== null && stage < stages
+                  : after !== null
                     ? `Stage ${stage} won!`
                     : "You win the festival!"}
               </h2>
@@ -1063,26 +1101,30 @@ export function FestivalGame({
                       : "Serve one after another to build a combo."}
                 </p>
               )}
-              {result.won && stage !== null && stage < stages ? (
+              {result.won && after !== null ? (
                 <>
                   <p className="fest-new" data-testid="fest-unlocked">
-                    Stage {stage + 1} adds: {newsLine(event, stage + 1)}
+                    Stage {after}: {rivalOf(event.rivals[stageIndex(after)]).chefName} ·{" "}
+                    {newsLine(event, after)}
                   </p>
                   <button
                     type="button"
                     className="fest-primary"
-                    onClick={() => onStage(stage + 1)}
+                    onClick={() => onStage(after)}
                     data-testid="fest-next"
                   >
-                    Next stage
+                    Next rival
                   </button>
                 </>
               ) : null}
+              {result.won && stage === FESTIVAL_STAGES && nextNote ? (
+                <p className="fest-new" data-testid="fest-next-festival">
+                  🔓 {nextNote}
+                </p>
+              ) : null}
               <button
                 type="button"
-                className={
-                  result.won && stage !== null && stage < stages ? "fest-secondary" : "fest-primary"
-                }
+                className={result.won && after !== null ? "fest-secondary" : "fest-primary"}
                 onClick={onAgain}
                 data-testid="fest-again"
               >

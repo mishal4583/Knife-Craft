@@ -1,12 +1,13 @@
 /**
  * THE STALL (developer 2026-11-27, the concept image): the roof beam, posts, garlands and hanging lamps; the festival's lit sign and the day's
- * chalkboard; the continuous wooden workstation (ledge, shelf, power-up rack) and the things that only stand on it. Decoration: nothing here is
+ * chalkboard; the continuous wooden workstation (ledge, shelf, power-up rack, plate stand) and the things that only stand on it. The posts and
+ * the two boards are drawn in front of the customers, who walk in from the stall's sides behind them (developer 2026-11-28). Decoration: nothing here is
  * tapped, and it is all drawn beneath the stations. `margin` is how far the window reaches past each side of the stage (a wide phone), in stage
  * units; the stall's edges and corner things follow it.
  */
 import type { CSSProperties } from "react";
 import { BurgerStack } from "./FestivalFood";
-import { SIDE_ART, STALL_ART, festivalUrl } from "./festivalArt";
+import { SIDE_ART, STALL_ART, STATION_ART, festivalUrl } from "./festivalArt";
 import type { FestivalLayout, Rect } from "./festivalLayout";
 
 const at = ([x, y, w, h]: Rect): CSSProperties => ({
@@ -139,16 +140,40 @@ function Special({ box }: { box: Rect }) {
   );
 }
 
-/** Behind the customers: the roof, the posts, the lamps and the two boards. */
-export function StallBack({
-  layout,
-  margin,
-  name,
-}: {
-  layout: FestivalLayout;
-  margin: number;
-  name: string;
-}) {
+/** A gold wire stand holding a stack of clean plates (the game's own plate, five times over). */
+function PlateStand({ box }: { box: Rect }) {
+  return (
+    <div
+      aria-hidden="true"
+      className="fest-platestand"
+      style={at(box)}
+      data-testid="fest-platestand"
+    >
+      <svg viewBox="0 0 142 106" preserveAspectRatio="none">
+        <ellipse cx="71" cy="86" rx="66" ry="15" className="fest-wire" />
+        <path d="M12 84 C3 58 9 36 24 40 M130 84 C139 58 133 36 118 40" className="fest-wire" />
+      </svg>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <img
+          key={i}
+          src={festivalUrl(STATION_ART.plate)}
+          alt=""
+          draggable={false}
+          style={{ bottom: `${12 + i * 8}%` }}
+        />
+      ))}
+      <svg viewBox="0 0 142 106" preserveAspectRatio="none">
+        <path d="M5 86 C5 106 137 106 137 86" className="fest-wire" />
+        <path d="M22 95 L18 72 M71 101 L71 89 M120 95 L124 72" className="fest-wire" />
+        <circle cx="22" cy="100" r="4" className="fest-wire-foot" />
+        <circle cx="120" cy="100" r="4" className="fest-wire-foot" />
+      </svg>
+    </div>
+  );
+}
+
+/** Behind the customers: the lights, the roof beam, the garlands and the lamps. */
+export function StallBack({ layout, margin }: { layout: FestivalLayout; margin: number }) {
   const width = layout.w + 2 * margin;
   return (
     <>
@@ -166,16 +191,6 @@ export function StallBack({
       />
       <div
         aria-hidden="true"
-        className="fest-post"
-        style={{ left: -margin - 6, top: -20, height: layout.counter + 24 }}
-      />
-      <div
-        aria-hidden="true"
-        className="fest-post right"
-        style={{ left: layout.w + margin - 14, top: -20, height: layout.counter + 24 }}
-      />
-      <div
-        aria-hidden="true"
         className="fest-beam"
         style={{ left: -margin - 8, width: width + 16 }}
       />
@@ -184,6 +199,32 @@ export function StallBack({
       {layout.lamps.map(([x, y]) => (
         <Lamp key={x} x={x} y={y} />
       ))}
+    </>
+  );
+}
+
+/** In front of the customers, so they come and go behind them: the stall's two side posts and the two boards. */
+export function StallSides({
+  layout,
+  margin,
+  name,
+}: {
+  layout: FestivalLayout;
+  margin: number;
+  name: string;
+}) {
+  return (
+    <>
+      <div
+        aria-hidden="true"
+        className="fest-post"
+        style={{ left: -margin - 6, top: -20, height: layout.counter + 24 }}
+      />
+      <div
+        aria-hidden="true"
+        className="fest-post right"
+        style={{ left: layout.w + margin - 14, top: -20, height: layout.counter + 24 }}
+      />
       {layout.sign ? <Sign box={layout.sign} name={name} /> : null}
       {layout.special ? <Special box={layout.special} /> : null}
     </>
@@ -238,7 +279,12 @@ export function StallCounter({ layout, margin }: { layout: FestivalLayout; margi
         className="fest-shelf"
         style={{ ...edge, top: layout.shelf[1], height: layout.shelf[3] }}
       />
-      <div aria-hidden="true" className="fest-rack" style={at(layout.rack)} />
+      <div
+        aria-hidden="true"
+        className={`fest-rack ${layout.wide ? "fest-rack-top" : ""}`}
+        style={at(layout.rack)}
+      />
+      {layout.plateStand ? <PlateStand box={layout.plateStand} /> : null}
       {layout.props.map((p) => (
         <Prop key={`${p.art}-${p.box[0]}`} name={p.art} box={p.box} />
       ))}

@@ -7,12 +7,15 @@
  *  B  every round ends; a quick player (a tap each 0.8 s) wins every pace almost every time; an average one (1.2 s) the first eight; a slow one
  *     (1.6 s) the first five; a very slow one (2.2 s) the first three; a player who does nothing always loses
  *  C  the rival: fixed before the round from the round alone, never changed by the player, climbing to exactly its final score
+ *  E  the stages themselves (developer 2026-11-28): the Burger Festival's three, and all 45 stage paces on the Burger kitchen (a stand-in until each
+ *     festival has its own, which must then be proved again)
  *  D  nobody is left waiting: an empty counter fills at once, and a round is short (a quick player: Event 1 under a minute, Event 15 under 3 minutes)
  *
  * Run: npx tsx scripts/festival-rival-qa.mts
  */
 import { burgerRound } from "../src/game/festival/burger.ts";
-import { PACES } from "../src/game/festival/tiers.ts";
+import { PACES, stagePace } from "../src/game/festival/tiers.ts";
+import { FESTIVAL_EVENTS, paceOfStage } from "../src/game/festival/events.ts";
 import { BOT_STEP_MS, playRound } from "../src/game/festival/bot.ts";
 import { resultOf, startState, tick } from "../src/game/festival/kitchen.ts";
 import { rivalAt, rivalPlan, type RivalPlan } from "../src/game/festival/rival.ts";
@@ -185,6 +188,57 @@ console.log("D. Nobody waits");
     longestEmpty <= BOT_STEP_MS * 2,
     "D2: after the first, an empty counter is filled at once",
     longestEmpty,
+  );
+}
+
+console.log("E. The stages");
+{
+  const of = (pace: Pace, reaction: number) => {
+    let wins = 0;
+    let idle = 0;
+    let ms = 0;
+    for (let k = 1; k <= SEEDS; k++) {
+      const round = burgerRound(pace, k);
+      const plan = rivalPlan(round, k);
+      const run = playRound(round, reaction);
+      if (run.state.done && resultOf(round, run.state, plan.final).won) wins++;
+      ms += run.ms;
+      if (k <= 3) {
+        let state = startState(round);
+        while (!state.done && state.now < 30 * 60_000) state = tick(round, state, 500).state;
+        if (!state.done || resultOf(round, state, plan.final).won) idle++;
+      }
+    }
+    return { wins: wins / SEEDS, idle, seconds: ms / SEEDS / 1000 };
+  };
+  const burger = FESTIVAL_EVENTS[0]!;
+  const rows = [1, 2, 3].map((s) => {
+    const pace = paceOfStage(burger, s);
+    return { s, quick: of(pace, 800), average: of(pace, 1200), slow: of(pace, 1600) };
+  });
+  const line = (pick: (r: (typeof rows)[number]) => number) =>
+    rows.map((r) => `${Math.round(pick(r) * 100)}%`).join(" ");
+  assert(
+    rows.every((r) => r.quick.wins >= 0.95 && r.average.wins >= 0.9 && r.quick.idle === 0),
+    `E1: the Burger Festival's three stages: a tap each 0.8 s (${line((r) => r.quick.wins)}) or 1.2 s (${line((r) => r.average.wins)}) wins; doing nothing never does`,
+  );
+  assert(
+    rows[0]!.slow.wins >= 0.95 && rows[1]!.slow.wins >= 0.9 && rows[2]!.slow.wins >= 0.6,
+    `E2: a tap each 1.6 s still wins them, the third more often than not (${line((r) => r.slow.wins)})`,
+  );
+  const all = FESTIVAL_EVENTS.flatMap((e) =>
+    [1, 2, 3].map((s) => ({ at: `${e.number}.${s}`, ...of(stagePace(e.number, s), 800) })),
+  );
+  const hard = all.filter((r) => r.wins < 0.92 || r.idle > 0);
+  assert(
+    hard.length === 0,
+    `E3: all 45 stage paces are won by a tap each 0.8 s, never by doing nothing (lowest ${Math.round(Math.min(...all.map((r) => r.wins)) * 100)}%)`,
+    hard,
+  );
+  const longest = Math.max(...all.map((r) => r.seconds));
+  assert(
+    longest < 200,
+    `E4: the longest round stays under 200 s for that player (${longest.toFixed(0)} s)`,
   );
 }
 

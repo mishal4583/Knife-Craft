@@ -121,8 +121,11 @@ LAYERS = ["bun_bottom", "patty", "chicken", "veggie_patty", "cheese", "lettuce",
 LAYER_NAMES = {"bun_bottom": "bun", "veggie_patty": "veggie", "bun_top": "lid"}
 LAYER_SIZE = 200
 
-# the drink machine: each tap (its coloured tank and nozzle) cut from the dispenser's picture, as fractions of its canvas
-TAPS = {"burger/tap-cola": (0.205, 0.175, 0.497, 0.585), "burger/tap-lemonade": (0.503, 0.175, 0.795, 0.585)}
+# the drink machines (developer 2026-11-28: whole machines, not just the taps): the kit has one TWIN dispenser, so each single machine is its own
+# half, from the outer edge to the middle of its tap, mirrored. Per picture: (the tap's middle, which side is kept), in pixels of the 1024 canvas.
+TAPS = {"burger/tap-cola": (374, "left"), "burger/tap-lemonade": (651, "right")}
+MACHINE_HALF, MACHINE_TOP, MACHINE_BOTTOM = 238, 52, 968
+MACHINE_WIDEN = 1.15  # a lone half is narrow; a little wider reads as one sturdy machine
 
 # the customers drawn in four moods, each one person. The last two were drawn to the waist: cropped to head and chest, so every face is as big
 PEOPLE: dict[str, tuple[str, tuple[float, float, float, float] | None, str]] = {
@@ -214,6 +217,18 @@ def golden_from_raw(raw: Image.Image) -> Image.Image:
     return Image.fromarray(rgba.clip(0, 255).astype(np.uint8), "RGBA")
 
 
+def single_machine(dispenser: Image.Image, middle: int, side: str) -> Image.Image:
+    assert dispenser.size == (1024, 1024), "station_drink_dispenser: expected 1024 x 1024"
+    x0 = middle - MACHINE_HALF if side == "left" else middle
+    half = dispenser.crop((x0, MACHINE_TOP, x0 + MACHINE_HALF, MACHINE_BOTTOM))
+    other = half.transpose(Image.FLIP_LEFT_RIGHT)
+    whole = Image.new("RGBA", (2 * MACHINE_HALF, half.height), (0, 0, 0, 0))
+    whole.paste(half if side == "left" else other, (0, 0))
+    whole.paste(other if side == "left" else half, (MACHINE_HALF, 0))
+    whole = whole.crop(drawn_box(whole))
+    return whole.resize((round(whole.width * MACHINE_WIDEN), whole.height), Image.LANCZOS)
+
+
 def main() -> int:
     if not SOURCE.is_dir():
         print(f"Missing source folder: {SOURCE}", file=sys.stderr)
@@ -259,9 +274,8 @@ def main() -> int:
         put(shrink(picture.crop((56, 56, 456, 456)), LAYER_SIZE), f"burger/layer-{LAYER_NAMES.get(layer, layer)}", 88)
 
     dispenser = clean(load(f"{EQUIPMENT}/station_drink_dispenser.png"))
-    for name, (x0, y0, x1, y1) in TAPS.items():
-        w, h = dispenser.size
-        put(shrink(dispenser.crop((int(x0 * w), int(y0 * h), int(x1 * w), int(y1 * h))), 200), name)
+    for name, (middle, side) in TAPS.items():
+        put(shrink(single_machine(dispenser, middle, side), 260), name)
 
     for person, (source, crop, neutral) in PEOPLE.items():
         for mood in MOODS:

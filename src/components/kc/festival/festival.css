@@ -200,6 +200,51 @@
   filter: drop-shadow(0 6px 5px rgba(40, 14, 0, 0.45));
 }
 
+/* landscape: the power-ups' frame hangs in the top bar beside Pause, and what stands on the counter's left is drawn bigger */
+.fest-rack-top {
+  border-radius: 16px;
+}
+.fest-wide .fest-fryer-pic {
+  top: 0;
+  height: 90%;
+}
+.fest-wide .fest-bin-pic {
+  top: 2%;
+  height: 78%;
+}
+.fest-wide .fest-blender {
+  height: 82%;
+}
+/* the stand of clean plates */
+.fest-platestand {
+  position: absolute;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 5px rgba(40, 14, 0, 0.45));
+}
+.fest-platestand svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.fest-platestand img {
+  position: absolute;
+  left: 9%;
+  width: 82%;
+  height: 48%;
+  max-width: none;
+}
+.fest-wire {
+  fill: none;
+  stroke: #e9b341;
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.fest-wire-foot {
+  fill: #c98a22;
+}
+
 /* the customers and their orders */
 .fest-person {
   position: absolute;
@@ -342,7 +387,7 @@
   height: 100%;
 }
 .fest-leaving {
-  animation: fest-leave 1.1s ease-in forwards;
+  animation: fest-walk-out 1.5s linear forwards;
 }
 .fest-float {
   position: absolute;
@@ -499,17 +544,26 @@
 .fest-blender {
   filter: drop-shadow(0 6px 4px rgba(40, 14, 0, 0.45));
 }
+/* a whole drink machine (its picture is 155 x 260) with the cup on its tray, under the tap */
+.fest-machine {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  height: calc(100% - 6px);
+  aspect-ratio: 155 / 260;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
 .fest-tap {
   position: absolute;
-  left: 0;
-  top: -6px;
+  inset: 0;
   width: 100%;
-  height: 66%;
+  height: 100%;
   object-fit: contain;
   pointer-events: none;
 }
 .fest-drink .fest-cup {
-  inset: 36% 12% 16% 12%;
+  inset: 54% 29% 12% 29%;
 }
 .fest-cup-waiting {
   opacity: 0.6;
@@ -762,10 +816,13 @@
   object-fit: contain;
   pointer-events: none;
 }
+.fest-wide .fest-power {
+  border-radius: 15px;
+}
 .fest-wide .fest-power img {
-  top: 12px;
-  width: 52px;
-  height: 52px;
+  top: 4px;
+  width: 44px;
+  height: 44px;
 }
 .fest-power-name {
   position: absolute;
@@ -778,8 +835,8 @@
   pointer-events: none;
 }
 .fest-wide .fest-power-name {
-  bottom: 10px;
-  font-size: 13px;
+  bottom: 4px;
+  font-size: 12.5px;
 }
 .fest-power-count {
   position: absolute;
@@ -794,6 +851,14 @@
   border: 3px solid #fff;
   color: #fff;
   font: 900 17px/1 var(--font-ui, sans-serif);
+}
+/* in the top bar the count stays inside the window's top edge */
+.fest-wide .fest-power-count {
+  top: -2px;
+  right: -4px;
+  min-width: 25px;
+  height: 25px;
+  font-size: 14px;
 }
 
 /* the top bar */
@@ -1214,28 +1279,67 @@
 .fest-pop {
   animation: fest-pop 0.22s ease-out;
 }
-@keyframes fest-arrive {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
+/* a customer walks in from the side of the stall (--walk: how far to the side they start), with a step's bob */
+@keyframes fest-walk-in {
+  0% {
+    transform: translate(var(--walk), 0);
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  15% {
+    transform: translate(calc(var(--walk) * 0.82), -6px);
+  }
+  30% {
+    transform: translate(calc(var(--walk) * 0.64), 0);
+  }
+  45% {
+    transform: translate(calc(var(--walk) * 0.46), -6px);
+  }
+  60% {
+    transform: translate(calc(var(--walk) * 0.29), 0);
+  }
+  75% {
+    transform: translate(calc(var(--walk) * 0.15), -5px);
+  }
+  90% {
+    transform: translate(calc(var(--walk) * 0.04), 0);
+  }
+  100% {
+    transform: translate(0, 0);
   }
 }
 .fest-arrive {
-  animation: fest-arrive 0.3s ease-out;
+  animation: fest-walk-in 0.9s linear backwards;
 }
-@keyframes fest-leave {
+/* the order shows when its customer has all but arrived */
+.fest-bubble.fest-order {
+  animation-delay: 0.7s;
+  animation-fill-mode: backwards;
+}
+/* their face for a moment, then off to the side they came from */
+@keyframes fest-walk-out {
   0%,
-  55% {
+  28% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(0, 0);
+  }
+  40% {
+    transform: translate(calc(var(--walk) * 0.12), -6px);
+  }
+  52% {
+    transform: translate(calc(var(--walk) * 0.28), 0);
+  }
+  64% {
+    transform: translate(calc(var(--walk) * 0.46), -6px);
+  }
+  76% {
+    transform: translate(calc(var(--walk) * 0.65), 0);
+  }
+  88% {
+    opacity: 1;
+    transform: translate(calc(var(--walk) * 0.83), -5px);
   }
   100% {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translate(var(--walk), 0);
   }
 }
 @keyframes fest-float {

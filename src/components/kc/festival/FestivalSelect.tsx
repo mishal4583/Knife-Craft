@@ -2,7 +2,12 @@ import type { SaveData } from "@/game/SaveManager";
 import { rivalPortraitPath } from "@/game/chefArt";
 import { rivalChefOf } from "@/game/restaurant/rivalChefs";
 import { RIVALS } from "@/game/restaurant/cityRanking";
-import { FESTIVAL_EVENTS, type FestivalEvent } from "@/game/festival/events";
+import {
+  FESTIVAL_EVENTS,
+  FESTIVAL_STAGES,
+  stageIndex,
+  type FestivalEvent,
+} from "@/game/festival/events";
 import { festivalStatus, type FestivalStatus } from "@/game/festival/schedule";
 import { festivalsOf } from "@/game/festival/state";
 import { useUnlockText } from "@/components/kc/navLevel";
@@ -10,7 +15,7 @@ import { UI_ART, festivalUrl, gameUrl } from "./festivalArt";
 
 /**
  * THE FIFTEEN FESTIVALS (developer 2026-11-27): which are open, which come next and what opens them (a locked one in the game's own words: the
- * restaurant game never names a level), who hosts each, and the best of each one played. Upright: one column; a wide window: three.
+ * restaurant game never names a level), who hosts each, and the best of each one played. Upright: one column; on its side: two, or three when each card has room.
  */
 export function FestivalSelect({
   save,
@@ -25,16 +30,15 @@ export function FestivalSelect({
   const records = festivalsOf(save).record;
   const lockLine = (status: FestivalStatus): string => {
     if (status.state === "level") return `Opens ${unlock.when(status.level)}`;
-    if (status.state === "campaign") return `Opens ${unlock.final}`;
-    if (status.state === "previous") return `After the ${status.previous.name}`;
-    if (status.state === "orders")
-      return `Opens after ${status.left} more ${status.left === 1 ? "order" : "orders"}`;
+    if (status.state === "previous") return `Win the ${status.previous.name}`;
+    if (status.state === "services")
+      return `Opens in ${status.left} ${status.left === 1 ? "service" : "services"}`;
     return "";
   };
 
   return (
     <div
-      className="flex h-full w-full flex-col bg-[linear-gradient(180deg,#ffcf8a_0%,#f59a5c_38%,#b4521f_100%)] text-[#492b19]"
+      className="@container flex h-full w-full flex-col bg-[linear-gradient(180deg,#ffcf8a_0%,#f59a5c_38%,#b4521f_100%)] text-[#492b19]"
       data-testid="festival-select"
     >
       <header className="flex items-center gap-2 px-3 pb-2 pt-3">
@@ -61,15 +65,17 @@ export function FestivalSelect({
           </p>
         </div>
       </header>
-      <ul className="grid min-h-0 flex-1 auto-rows-min grid-cols-1 gap-2.5 overflow-y-auto overscroll-contain px-3 pb-5 pt-1 land:grid-cols-3">
+      <ul className="grid min-h-0 flex-1 auto-rows-min grid-cols-1 gap-2.5 overflow-y-auto overscroll-contain px-3 pb-5 pt-1 land:grid-cols-2 land:@min-[1000px]:grid-cols-3">
         {FESTIVAL_EVENTS.map((event) => {
           const status = festivalStatus(save, event);
           const record = records[event.id];
           const open = status.state === "open";
           const playable = open && !!event.round;
-          const chef = rivalChefOf(event.rivalId);
-          const stall = RIVALS.find((r) => r.id === event.rivalId)?.name ?? "";
-          const portrait = rivalPortraitPath(event.rivalId);
+          // the card names the rival to beat next (the third, once all are beaten)
+          const beaten = Math.min(record?.cleared ?? 0, FESTIVAL_STAGES);
+          const nextRival = event.rivals[stageIndex(beaten + 1)];
+          const chef = rivalChefOf(nextRival);
+          const stall = RIVALS.find((r) => r.id === nextRival)?.name ?? "";
           const state = playable ? "play" : open ? "soon" : "locked";
           return (
             <li
@@ -95,16 +101,41 @@ export function FestivalSelect({
                 <span className="block font-display text-[15px] font-black leading-tight">
                   {event.name}
                 </span>
-                <span className="mt-0.5 flex items-center gap-1 font-ui text-[12px] font-bold text-[#7a4a24]">
-                  {portrait ? (
-                    <img
-                      src={gameUrl(portrait)}
-                      alt=""
-                      loading="lazy"
-                      className="h-6 w-5 shrink-0 rounded-full bg-[#ffd9a8] object-cover object-top"
-                    />
-                  ) : null}
-                  <span className="truncate">
+                <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 font-ui text-[12px] font-bold text-[#7a4a24]">
+                  {/* the three rivals, in stage order: a green ring and tick on each one beaten */}
+                  <span
+                    className="flex shrink-0 gap-0.5"
+                    data-testid={`festival-rivals-${event.id}`}
+                  >
+                    {event.rivals.map((id, i) => {
+                      const face = rivalPortraitPath(id);
+                      return face ? (
+                        <span key={id} className="relative" data-beaten={i < beaten || undefined}>
+                          <img
+                            src={gameUrl(face)}
+                            alt=""
+                            loading="lazy"
+                            className={`h-6 w-5 rounded-full bg-[#ffd9a8] object-cover object-top ${
+                              i < beaten
+                                ? "ring-2 ring-[#4c9a2a]"
+                                : i === beaten
+                                  ? "ring-2 ring-[#e5a437]"
+                                  : "opacity-60"
+                            }`}
+                          />
+                          {i < beaten ? (
+                            <span
+                              aria-hidden="true"
+                              className="absolute -bottom-1 -right-1 grid h-3 w-3 place-items-center rounded-full bg-[#4c9a2a] text-[8.5px] font-black leading-none text-white"
+                            >
+                              ✓
+                            </span>
+                          ) : null}
+                        </span>
+                      ) : null;
+                    })}
+                  </span>
+                  <span className="min-w-0 flex-[1_1_120px] leading-tight">
                     {chef ? `Chef ${chef.chef.split(" ")[0]} · ` : ""}
                     {stall}
                   </span>
@@ -118,8 +149,7 @@ export function FestivalSelect({
                       {"★".repeat(record.stars)}
                       <span className="opacity-30">{"★".repeat(3 - record.stars)}</span>
                     </span>{" "}
-                    {event.stages ? `· stages ${record.cleared}/${event.stages} ` : ""}· best{" "}
-                    {record.best}
+                    · stages {beaten}/{FESTIVAL_STAGES} · best {record.best}
                   </span>
                 ) : null}
               </span>

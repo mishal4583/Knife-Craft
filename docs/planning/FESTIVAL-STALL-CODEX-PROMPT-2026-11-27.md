@@ -77,6 +77,7 @@ them reads as one shelf. The food fills the pan generously and sits slightly abo
 | `napkin_holder.png` | 360 × 360 | steel napkin holder with napkins |
 | `utensils.png` | 480 × 360 | a spatula and tongs lying on a small cloth |
 | `burger_boxes.png` | 520 × 420 | a stack of three kraft clamshell burger boxes |
+| `plate_stand.png` | 640 × 480 | a gold wire plate stand (a round base ring, small ball feet, two curved side holders) with a neat stack of five or six clean white gold-rimmed plates, matching `station-plate` in the existing kit (added 2026-11-28) |
 | `planter.png` | 520 × 480 | wooden barrel planter with bright flowers |
 
 ### D. Stall decor
@@ -101,7 +102,7 @@ Each must repeat **left to right with no visible seam**: the left and right edge
 
 ### Before delivering, check
 
-- All **39 files** exist with exactly these names and sizes.
+- All **40 files** exist with exactly these names and sizes.
 - The 12 pans line up when stacked on top of each other: same pan, same place.
 - The 4 fryers line up the same way, and so do the 3 drink machines.
 - No file has any text, a painted background or a cropped object.

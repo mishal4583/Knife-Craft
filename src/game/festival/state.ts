@@ -1,9 +1,11 @@
 /**
  * THE FESTIVALS' SAVE (developer 2026-11-27: the one new field was approved): `business.festivals`, optional, so an old save needs no migration. It keeps
- * each festival's record and the two counts the after-campaign schedule needs. No money: nothing here touches the wallet or the ledger, and playing a
- * festival again can never pay anything.
+ * each festival's record, when its last stage was won, and where the count of services after the campaign starts. No money: nothing here touches the
+ * wallet or the ledger, and playing a festival again can never pay anything.
  */
 import type { SaveData } from "../SaveManager";
+import { isEndlessUnlocked } from "../daily/EndlessServiceManager";
+import { FESTIVAL_STAGES } from "./events";
 
 export type FestivalRecord = {
   plays: number;
@@ -12,7 +14,9 @@ export type FestivalRecord = {
   stars: number;
   /** The highest stage won (0: none yet): the next one is open. */
   cleared: number;
-  /** The lifetime Endless Restaurant order count when it was first played: the next after-campaign festival counts from here. */
+  /** `servicesOf` when its third stage was first won: the next festival opens FESTIVAL_WAIT_SERVICES after it. */
+  wonAt?: number;
+  /** Written by the first build's schedule and no longer read; kept, never dropped. */
   playedAtOrder?: number;
 };
 
@@ -37,6 +41,7 @@ export function festivalsOf(save: SaveData): FestivalsState {
   if (raw?.record && typeof raw.record === "object")
     for (const [id, r] of Object.entries(raw.record)) {
       if (!r || typeof r !== "object") continue;
+      const wonAt = optional(r.wonAt);
       const playedAtOrder = optional(r.playedAtOrder);
       record[id] = {
         plays: whole(r.plays),
@@ -44,6 +49,7 @@ export function festivalsOf(save: SaveData): FestivalsState {
         best: whole(r.best),
         stars: whole(r.stars, 3),
         cleared: whole(r.cleared, MOST_STAGES),
+        ...(wonAt === undefined ? {} : { wonAt }),
         ...(playedAtOrder === undefined ? {} : { playedAtOrder }),
       };
     }
@@ -54,6 +60,18 @@ export function festivalsOf(save: SaveData): FestivalsState {
 /** The menu orders served in the restaurant's whole life (the count the Business P&L already keeps). */
 export const lifetimeOrdersOf = (save: SaveData): number =>
   whole(save.business.finance?.lifetime?.orderCount);
+
+/**
+ * The services played so far, one count that only grows: the campaign levels completed, then (after the campaign) the orders of the Endless Restaurant,
+ * counted from the first one.
+ */
+export function servicesOf(save: SaveData): number {
+  const campaign = new Set(save.levelProgress.completedLevelIds).size;
+  const from = festivalsOf(save).campaignDoneAtOrder;
+  return from === undefined || !isEndlessUnlocked(save.levelProgress)
+    ? campaign
+    : campaign + Math.max(0, lifetimeOrdersOf(save) - from);
+}
 
 const withFestivals = (save: SaveData, festivals: FestivalsState): SaveData => ({
   ...save,
@@ -72,7 +90,16 @@ export function recordFestivalRound(
 ): SaveData {
   const state = festivalsOf(save);
   const before = state.record[eventId];
-  const playedAtOrder = before?.playedAtOrder ?? lifetimeOrdersOf(save);
+  const cleared = Math.max(
+    before?.cleared ?? 0,
+    round.won ? whole(round.stage ?? 1, MOST_STAGES) : 0,
+  );
+  // the third stage, won now for the first time: the next festival's wait starts here
+  const wonAt =
+    before?.wonAt ??
+    ((before?.cleared ?? 0) < FESTIVAL_STAGES && cleared >= FESTIVAL_STAGES
+      ? servicesOf(save)
+      : undefined);
   return withFestivals(save, {
     ...state,
     record: {
@@ -82,11 +109,9 @@ export function recordFestivalRound(
         wins: (before?.wins ?? 0) + (round.won ? 1 : 0),
         best: Math.max(before?.best ?? 0, whole(round.score)),
         stars: Math.max(before?.stars ?? 0, whole(round.stars, 3)),
-        cleared: Math.max(
-          before?.cleared ?? 0,
-          round.won ? whole(round.stage ?? 1, MOST_STAGES) : 0,
-        ),
-        playedAtOrder,
+        cleared,
+        ...(wonAt === undefined ? {} : { wonAt }),
+        ...(before?.playedAtOrder === undefined ? {} : { playedAtOrder: before.playedAtOrder }),
       },
     },
   });

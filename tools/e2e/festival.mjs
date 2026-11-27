@@ -5,8 +5,9 @@
 //   F3 the intro card names the rival and the goals; the round waits until Start
 //   F4 a whole first round WITH REAL TAPS (the simulated player reading the screen): coached for the first customers, every customer served, a win,
 //      the stars; the save records it (business.festivals) and the money and ledger do not move
-//   F10 the stages (developer 2026-11-27, the concept stall): a win names what the next stage adds and "Next stage" opens it; the arrows go back to an
-//      earlier stage and never past the open one; the festival list shows the stages won
+//   F10 the stages (RULE CHANGE, developer 2026-11-28: three, each against another rival): a win names the next rival and what the stage adds, and
+//      "Next rival" opens it; the arrows go back to an earlier stage and never past the open one; the festival list shows the stages won
+//   F13 the third stage's win unlocks the next festival, 10 services later
 //   F5 pause: the clock and the food wait; Resume; the platform's pause stops it too
 //   F6 doing nothing: the rival wins; a constructive tip; Try again starts a fresh round
 //   F7 phone sizes and phones on their side, the first event and the pace of Event 15 (4 customers, 12 trays): every tap target at least 48 px,
@@ -15,6 +16,7 @@
 //      with its edge on the counter line; the coach's hand points inside its target; the first event's two unused grill rings show a lock and the
 //      stage that opens them
 //   F11 the stall reaches the window's edges: an upright tablet's counter, a wide phone's cloth
+//   F12 (developer 2026-11-28) customers walk in from the stall's sides and walk off again; landscape power-ups beside Pause; the plate stand
 //   F8 no console errors
 // Screenshots: out/festival-*.png. Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -29,6 +31,7 @@ import {
 } from "./harness.mjs";
 import { nextAction } from "../../src/game/festival/bot.ts";
 import { burgerRound } from "../../src/game/festival/burger.ts";
+import { festivalEvent, paceOfStage } from "../../src/game/festival/events.ts";
 import { paceFor } from "../../src/game/festival/tiers.ts";
 import { portraitLayout } from "../../src/components/kc/festival/festivalLayout.ts";
 import { cookerOf } from "../../src/game/festival/kitchen.ts";
@@ -269,13 +272,14 @@ const f2 = await page.evaluate(() => {
   };
 });
 await shot(page, "festival-select");
+// RULE CHANGE (developer 2026-11-28): the others are locked behind the festival before (no level or after-campaign schedule)
 check(
-  "F2 the select screen: 15 festivals, Event 1 playable at Level 12, the others locked; no level number; 48 px buttons",
+  "F2 the select screen: 15 festivals, Event 1 playable at Level 12, the others locked behind the one before; no level number; 48 px buttons",
   f2.cards === 15 &&
     f2.states.startsWith("play,locked,locked") &&
     !/\bLevel \d/i.test(f2.words) &&
-    /Opens in \d+ services/.test(f2.words) &&
-    /after the final service/i.test(f2.words) &&
+    /Win the Burger Festival/.test(f2.words) &&
+    /Win the Pizza Festival/.test(f2.words) &&
     !f2.sideways &&
     f2.small === 0,
   { states: f2.states, sideways: f2.sideways, small: f2.small },
@@ -353,6 +357,8 @@ const two = {
   news: (await has("fest-new")) ? await text(q("fest-new")) : "",
   upDisabled: await page.$eval(q("fest-stage-up"), (e) => e.disabled),
   tomato: await has("fest-tray-tomato"),
+  rival: await data("rivalId"),
+  intro: await text(q("fest-intro")),
 };
 await shot(page, "festival-stage2");
 await page.click(q("fest-stage-down"));
@@ -362,6 +368,7 @@ const back = {
   downDisabled: await page.$eval(q("fest-stage-down"), (e) => e.disabled),
   tomato: await has("fest-tray-tomato"),
   coach: await has("fest-coach-text"),
+  rival: await data("rivalId"),
 };
 await page.click(q("fest-stage-up"));
 await sleep(600);
@@ -369,21 +376,69 @@ const again = await stageNow();
 await page.click(`${q("fest-intro")} .fest-secondary`);
 await page.waitForSelector(q("festival-select"), { timeout: 8000 });
 const listLine = await text(q("festival-record-burger"));
+const listCard = await text(q("festival-card-burger"));
 check(
-  "F10 stages: the win says what Stage 2 adds and opens it; the arrows reach Stage 1 again and stop at the open one; the list shows 1/10",
+  "F10 stages: the win names Stage 2's rival and food and opens it against that rival; the arrows reach Stage 1 again and stop at the open one; the list shows 1/3 and the next rival",
   record?.cleared === 1 &&
-    /Stage 2 adds: Tomato/.test(unlocked) &&
-    /Stage 2 of 10/.test(two.number) &&
-    /New: Tomato/.test(two.news) &&
+    /Stage 2: Chef Nils · 8 customers · .*Tomato/.test(unlocked) &&
+    /Stage 2 of 3/.test(two.number) &&
+    /New: .*Tomato/.test(two.news) &&
+    /8 customers/.test(two.intro) &&
+    /Chef Nils · Harbor Grill/.test(two.intro) &&
+    two.rival === "harbor-grill" &&
     two.upDisabled &&
     two.tomato &&
-    /Stage 1 of 10/.test(back.number) &&
+    /Stage 1 of 3/.test(back.number) &&
+    back.rival === "sunny-side" &&
     back.downDisabled &&
     !back.tomato &&
     !back.coach &&
-    /Stage 2 of 10/.test(again) &&
-    /stages 1\/10/.test(listLine),
-  { cleared: record?.cleared, unlocked, two, back, again, listLine },
+    /Stage 2 of 3/.test(again) &&
+    /stages 1\/3/.test(listLine) &&
+    /Chef Nils/.test(listCard),
+  { cleared: record?.cleared, unlocked, two, back, again, listLine, listCard },
+);
+
+// F13: a whole third stage with real taps, from a save that has won the first two
+const twoWon = saveAt(12);
+twoWon.business = {
+  ...twoWon.business,
+  festivals: { v: 1, record: { burger: { plays: 2, wins: 2, best: 500, stars: 2, cleared: 2 } } },
+};
+await open("", 12, 390, 844, twoWon);
+await openSheet();
+await page.click(q("mg-festival"));
+await page.waitForSelector(q("festival-play-burger"), { timeout: 15000 });
+await page.click(q("festival-play-burger"));
+await page.waitForSelector(q("fest-start"), { timeout: 15000 });
+await sleep(700);
+const third = { number: await stageNow(), rival: await data("rivalId") };
+await shot(page, "festival-stage3");
+await page.click(q("fest-start"));
+await page.waitForSelector(q("fest-bubble"), { timeout: 8000 });
+await playRound({ ...burgerRound(paceOfStage(festivalEvent("burger"), 3), 1) });
+await page.waitForSelector(q("fest-result"), { timeout: 90_000 }).catch(() => {});
+await sleep(1200);
+const thirdWon = await page.$eval(q("fest-result"), (e) => e.dataset.won).catch(() => null);
+const opens = (await has("fest-next-festival")) ? await text(q("fest-next-festival")) : "";
+await shot(page, "festival-won-all");
+const thirdSave = (await stored()).business.festivals.record.burger;
+const noNext = !(await has("fest-next"));
+await page.click(q("fest-to-list"));
+await page.waitForSelector(q("festival-select"), { timeout: 8000 });
+const pizza = await text(q("festival-card-pizza"));
+await shot(page, "festival-select-unlocked");
+check(
+  "F13 the third stage (its own rival) wins the festival: Pizza is unlocked and opens in 10 services",
+  /Stage 3 of 3/.test(third.number) &&
+    third.rival === "the-rustic-table" &&
+    thirdWon === "true" &&
+    noNext &&
+    /Pizza Festival unlocked! Play it in 10 more services\./.test(opens) &&
+    thirdSave.cleared === 3 &&
+    thirdSave.wonAt === 11 &&
+    /Opens in 10 services/.test(pizza),
+  { third, thirdWon, opens, thirdSave, pizza },
 );
 
 // F5: pause, and the platform's pause
@@ -470,8 +525,13 @@ const layoutCheck = () =>
         const y = Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top);
         if (x > 1 && y > 1) overlaps.push(`${buttons[i].id}/${buttons[j].id}`);
       }
-    // (a bubble still popping in is measured once it has finished)
-    document.getAnimations().forEach((a) => a.animationName === "fest-pop" && a.finish());
+    // (a bubble still popping in is measured once it has finished; so is a customer still walking in, developer 2026-11-28)
+    document
+      .getAnimations()
+      .forEach(
+        (a) =>
+          ["fest-pop", "fest-walk-in", "fest-walk-out"].includes(a.animationName) && a.finish(),
+      );
     const bubbles = [...document.querySelectorAll('[data-testid="fest-bubble"]')].map((b) =>
       b.getBoundingClientRect(),
     );
@@ -658,7 +718,8 @@ const locks = await page.$$eval('[data-testid="fest-ring-locked"]', (l) =>
 await shot(page, "festival-coach-art");
 check(
   "F9 the coach's hand points inside its target; the first event's two unused grill rings show a lock and the stage that opens them",
-  hand.tipInside && locks.join() === "Stage 3,Stage 7",
+  // RULE CHANGE (developer 2026-11-28: three stages): the locked rings open at Stages 2 and 3 (were 3 and 7)
+  hand.tipInside && locks.join() === "Stage 2,Stage 3",
   { hand, locks },
 );
 
@@ -683,6 +744,129 @@ for (const [w, h, part] of [
     box,
   );
 }
+
+// F12 (developer 2026-11-28): customers walk in from the stall's sides and walk off again; the power-ups sit beside Pause
+for (const [w, h] of [
+  [1392, 640],
+  [740, 360],
+  [390, 844],
+]) {
+  await open("?festival=1", 12, w, h);
+  await page.waitForSelector(q("fest-start"), { timeout: 15000 });
+  await page.click(q("fest-start"));
+  await page.waitForSelector(".fest-person.fest-arrive", { timeout: 15000 });
+  // hold every walk at its first and its last frame, and measure
+  const walkIn = await page.evaluate(() => {
+    const walks = document.getAnimations().filter((a) => a.animationName === "fest-walk-in");
+    const people = () =>
+      [...document.querySelectorAll(".fest-person.fest-arrive")].map((e) => {
+        const r = e.getBoundingClientRect();
+        return {
+          left: r.left,
+          right: r.right,
+          top: r.top,
+          walk: parseFloat(e.style.getPropertyValue("--walk")),
+        };
+      });
+    walks.forEach((a) => {
+      a.pause();
+      a.currentTime = 0;
+    });
+    const from = people();
+    walks.forEach((a) => a.finish());
+    const to = people();
+    return { walks: walks.length, from, to, window: innerWidth };
+  });
+  const fromSides =
+    walkIn.walks > 0 &&
+    walkIn.from.length === walkIn.to.length &&
+    walkIn.from.every((p, i) => {
+      const end = walkIn.to[i];
+      const outside = p.walk < 0 ? p.right <= 1 : p.left >= walkIn.window - 1;
+      // level with where they end up (they come sideways, not up from behind the counter), starting on their nearer side
+      const nearer = (end.left + end.right) / 2 <= walkIn.window / 2 + 2 ? p.walk < 0 : p.walk > 0;
+      return (
+        outside &&
+        nearer &&
+        Math.abs(p.top - end.top) < 1 &&
+        end.left >= 0 &&
+        end.right <= walkIn.window
+      );
+    });
+  check(
+    `F12 ${w} x ${h}: a customer starts past the window's nearer edge and walks in to the seat`,
+    fromSides,
+    {
+      walks: walkIn.walks,
+      from: walkIn.from.map((p) => [Math.round(p.left), Math.round(p.right)]),
+      to: walkIn.to.map((p) => [Math.round(p.left), Math.round(p.right)]),
+    },
+  );
+  if (w > h) {
+    const bar = await page.evaluate(() => {
+      const r = (id) => document.querySelector(`[data-testid="${id}"]`).getBoundingClientRect();
+      const pause = r("fest-pause");
+      const powers = ["patience", "instant", "freeze"].map((id) =>
+        document.querySelector(`[data-testid="fest-power-${id}"]`),
+      );
+      const boxes = (
+        powers.every(Boolean)
+          ? powers
+          : [...document.querySelectorAll('[data-testid^="fest-power-"]')]
+      ).map((e) => e.getBoundingClientRect());
+      const last = boxes[boxes.length - 1];
+      const counts = [...document.querySelectorAll(".fest-power-count")].map(
+        (e) => e.getBoundingClientRect().top,
+      );
+      return {
+        n: boxes.length,
+        gap: Math.round(pause.left - last.right),
+        pauseWide: Math.round(pause.width),
+        level: boxes.every((b) => b.top < pause.bottom && b.bottom <= pause.bottom + 2),
+        smallest: Math.round(Math.min(...boxes.map((b) => Math.min(b.width, b.height)))),
+        countTop: Math.round(Math.min(...counts)),
+        stand: !!document.querySelector('[data-testid="fest-platestand"]'),
+      };
+    });
+    check(
+      `F12 ${w} x ${h}: the three power-ups are in the top bar right beside Pause, 48 px or more, counts inside the window; the plate stand is there`,
+      bar.n === 3 &&
+        bar.level &&
+        bar.gap >= 0 &&
+        bar.gap < bar.pauseWide / 2 &&
+        bar.smallest >= 48 &&
+        bar.countTop >= -1 &&
+        bar.stand,
+      bar,
+    );
+    await shot(page, `festival-bar-${w}`);
+  }
+}
+// ... and a customer who leaves walks off the same way
+await open("?festival=1", 12, 1392, 640);
+await page.waitForSelector(q("fest-start"), { timeout: 15000 });
+await page.click(q("fest-start"));
+await page
+  .waitForSelector(".fest-person.fest-leaving", { timeout: 90_000, polling: 100 })
+  .catch(() => {});
+const walkOut = await page.evaluate(() => {
+  const e = document.querySelector(".fest-person.fest-leaving");
+  const a = document.getAnimations().find((x) => x.animationName === "fest-walk-out");
+  if (!e || !a) return null;
+  a.pause();
+  a.currentTime = 0;
+  const from = e.getBoundingClientRect();
+  a.currentTime = a.effect.getComputedTiming().duration - 1;
+  const to = e.getBoundingClientRect();
+  const walk = parseFloat(e.style.getPropertyValue("--walk"));
+  return {
+    walk,
+    from: [Math.round(from.left), Math.round(from.right)],
+    to: [Math.round(to.left), Math.round(to.right)],
+    gone: walk < 0 ? to.right <= 3 : to.left >= innerWidth - 3,
+  };
+});
+check("F12 a customer who leaves walks off past the window's edge", !!walkOut?.gone, walkOut);
 
 check(
   "F8 no console errors",

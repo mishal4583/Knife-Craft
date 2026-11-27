@@ -4,8 +4,10 @@
  * 960 x 540. Every tap target is big enough for 48 px at the smallest window the game is tested at (festival-save-qa checks it from these numbers).
  *
  * THE STALL (developer 2026-11-27, the concept image): one continuous wooden workstation. The drink machines stand on a ledge at the back of the
- * counter with the fryers and the bin below them, the grill and the assembly board are in the middle, the power-ups sit in a small rack, and the
- * ingredient pans stand on the front shelf. The landscape boxes follow the concept's proportions (its 1823 x 863, centred: x = (px - 145) * 0.626).
+ * counter with the fryers and the bin below them, the grill and the assembly board are in the middle and the ingredient pans stand on the front
+ * shelf. The landscape boxes follow the concept's proportions (its 1823 x 863, centred: x = (px - 145) * 0.626).
+ * Developer 2026-11-28 (a marked-up screenshot), landscape: the power-ups moved to the top bar beside Pause; the fryers, the drink machines, the
+ * bin and the counter's small things are bigger; the grill and the board sit further right and a plate stand takes the power-ups' old place.
  */
 export type Rect = readonly [x: number, y: number, w: number, h: number];
 
@@ -43,8 +45,10 @@ export type FestivalLayout = {
   /** The back ledge's lip (the drink machines stand on it), and the front shelf the pans stand on. */
   ledge: Rect;
   shelf: Rect;
-  /** The little wooden rack the power-ups sit in. */
+  /** The little wooden rack the power-ups sit in (upright: on the front of the counter; landscape: in the top bar, beside Pause). */
   rack: Rect;
+  /** The stand of clean plates beside the board (landscape only; never tapped). */
+  plateStand: Rect | null;
   /** Things that only stand there (never tapped). */
   props: readonly StallProp[];
   hint: Rect;
@@ -229,6 +233,7 @@ export function portraitLayout(counts: Counts, height: number = PORTRAIT.h): Fes
     ledge: [0, rowY + 86, 540, 18],
     shelf: [0, trayTop - 4, 540, trayBottom - trayTop + 8],
     rack: [88, down(868), 364, 90],
+    plateStand: null,
     props: [],
     // (above the counter's edge, clear of every station)
     hint: [60, up(336), 420, 34],
@@ -245,15 +250,15 @@ export function portraitLayout(counts: Counts, height: number = PORTRAIT.h): Fes
 }
 
 export function wideLayout(counts: Counts): FestivalLayout {
-  // the drink machines stand at the left on the back ledge; the customers take the room to their right
-  const drinkW = 76;
+  // the drink machines stand at the left on the back ledge, bigger while there are fewer of them; the customers take the room to their right
+  const drinkW = counts.drinks <= 1 ? 104 : counts.drinks === 2 ? 96 : 86;
   const drink: Rect[] = Array.from({ length: counts.drinks }, (_, i) => [
-    6 + i * (drinkW + 3),
-    212,
+    3 + i * (drinkW + 2),
+    186,
     drinkW,
-    112,
+    134,
   ]);
-  const from = Math.max(172, 6 + counts.drinks * (drinkW + 3) + 3);
+  const from = Math.max(172, 3 + counts.drinks * (drinkW + 2) + 6);
   const to = 808;
   const gap = counts.atOnce >= 4 ? 4 : 24;
   const seatW = Math.min(
@@ -267,8 +272,8 @@ export function wideLayout(counts: Counts): FestivalLayout {
     bubble: [x, y, w, h] as const,
     person: [x + (w - 124) / 2, 164, 124, 98] as const,
   }));
-  const grillArt: Rect = [244, 262, 228, 174];
-  const board: Rect = [478, 262, 230, 174];
+  const grillArt: Rect = [276, 262, 228, 174];
+  const board: Rect = [510, 262, 232, 174];
   const trayW = Math.min(168, Math.floor((950 - (counts.trays - 1) * 4) / counts.trays));
   return {
     w: WIDE.w,
@@ -276,9 +281,10 @@ export function wideLayout(counts: Counts): FestivalLayout {
     wide: true,
     back: [8, 4, 74, 74],
     pause: [878, 4, 74, 74],
-    scores: [222, 4, 516, 70],
+    scores: [222, 4, 402, 70],
     status: [88, 10, 128, 58],
-    rivalSays: [744, 10, 128, 62],
+    // (the rival's line comes and goes over the chalkboard, clear of the power-ups and the orders)
+    rivalSays: [812, 82, 144, 62],
     sign: [6, 84, 152, 100],
     special: [820, 92, 132, 122],
     lamps: [
@@ -289,39 +295,40 @@ export function wideLayout(counts: Counts): FestivalLayout {
     counter: 258,
     ledge: [0, 312, 960, 20],
     shelf: [0, 438, 960, 102],
-    rack: [710, 322, 248, 110],
+    rack: [630, 0, 244, 78],
+    plateStand: [760, 330, 142, 106],
     props: [
       // cup stacks beside the drinks, while one machine leaves the room
       ...(counts.drinks === 1
         ? ([
-            { art: "cup", box: [90, 262, 36, 56] },
-            { art: "cup", box: [122, 268, 34, 50] },
+            { art: "cup", box: [114, 244, 52, 76] },
+            { art: "cup", box: [160, 252, 46, 68] },
           ] as const)
         : []),
-      { art: "napkins", box: [714, 262, 44, 52] },
-      { art: "spatula", box: [756, 266, 44, 48] },
-      { art: "tongs", box: [788, 266, 44, 48] },
-      { art: "ketchup", box: [840, 232, 36, 82] },
-      { art: "mustard", box: [868, 232, 36, 82] },
-      { art: "mayo", box: [896, 232, 36, 82] },
-      { art: "salt-pepper", box: [922, 272, 38, 42] },
+      { art: "napkins", box: [744, 248, 58, 66] },
+      { art: "spatula", box: [786, 254, 52, 60] },
+      { art: "tongs", box: [808, 254, 52, 60] },
+      { art: "ketchup", box: [842, 214, 44, 100] },
+      { art: "mustard", box: [876, 214, 44, 100] },
+      { art: "mayo", box: [910, 214, 44, 100] },
+      { art: "salt-pepper", box: [906, 382, 52, 54] },
     ],
     hint: [300, 230, 360, 30],
     drink,
     fryer: [
-      [6, 332, 76, 102],
-      [85, 332, 76, 102],
+      [3, 320, 95, 118],
+      [100, 320, 95, 118],
     ],
-    bin: [164, 332, 76, 102],
+    bin: [197, 320, 76, 118],
     grillArt,
     ...grillSpots(grillArt, counts.grill),
     board,
     plates: platesOn(board, counts.plates),
     trays: row(counts.trays, 0, WIDE.w, 442, trayW, 96, 4),
     powers: [
-      [716, 328, 76, 98],
-      [796, 328, 76, 98],
-      [876, 328, 76, 98],
+      [634, 2, 74, 74],
+      [715, 2, 74, 74],
+      [796, 2, 74, 74],
     ],
   };
 }

@@ -1,24 +1,26 @@
 /**
- * WHICH FESTIVALS ARE OPEN (developer 2026-11-27). Events 1-9 open when the player reaches their campaign level (a save already past it finds them
- * open). Events 10-15 open after the campaign, counted in Endless Restaurant orders: Seafood 4 orders after the campaign is complete, then each next one
- * 4 orders (the Championship 5) after the one before was FIRST PLAYED, so two never arrive together; a loss counts as played. Pure; it opens nothing
- * on its own and never blocks the campaign.
+ * WHICH FESTIVALS ARE OPEN. RULE CHANGE (developer 2026-11-28: "the final 3rd round unlocks the next festival round and playable only after 10 serves or
+ * levels"): the first opens at campaign level 10; every other one when the third stage of the festival before has been won AND 10 more services have been
+ * played since (campaign levels, then Endless Restaurant orders: state.ts `servicesOf`). A festival once played stays open. Pure; it opens nothing on its
+ * own and never blocks the campaign.
  */
 import type { SaveData } from "../SaveManager";
-import { isEndlessUnlocked } from "../daily/EndlessServiceManager";
 import { restaurantLevelOf } from "../restaurant/restaurantMenu";
-import { FESTIVAL_EVENTS, type FestivalEvent } from "./events";
-import { festivalsOf, lifetimeOrdersOf } from "./state";
+import {
+  FESTIVAL_EVENTS,
+  FESTIVAL_STAGES,
+  FESTIVAL_WAIT_SERVICES,
+  type FestivalEvent,
+} from "./events";
+import { festivalsOf, servicesOf } from "./state";
 
 export type FestivalStatus =
   /** Opens at a campaign level. */
   | { state: "level"; level: number }
-  /** Opens after the campaign. */
-  | { state: "campaign" }
-  /** Opens once the festival before has been played. */
+  /** Opens after the third stage of the festival before is won. */
   | { state: "previous"; previous: FestivalEvent }
-  /** Opens after more Endless Restaurant orders. */
-  | { state: "orders"; left: number }
+  /** That is won: opens after more services. */
+  | { state: "services"; left: number }
   | { state: "open" };
 
 export function festivalStatus(save: SaveData, event: FestivalEvent): FestivalStatus {
@@ -29,18 +31,12 @@ export function festivalStatus(save: SaveData, event: FestivalEvent): FestivalSt
   const festivals = festivalsOf(save);
   // played once, open for good
   if (festivals.record[event.id]) return { state: "open" };
-  if (!isEndlessUnlocked(save.levelProgress)) return { state: "campaign" };
   const previous = FESTIVAL_EVENTS[event.number - 2]!;
-  const count = lifetimeOrdersOf(save);
-  let from: number;
-  if (previous.unlock.kind === "level") from = festivals.campaignDoneAtOrder ?? count;
-  else {
-    const played = festivals.record[previous.id];
-    if (!played) return { state: "previous", previous };
-    from = played.playedAtOrder ?? count;
-  }
-  const left = event.unlock.gap - Math.max(0, count - from);
-  return left > 0 ? { state: "orders", left } : { state: "open" };
+  const won = festivals.record[previous.id];
+  if (!won || won.cleared < FESTIVAL_STAGES) return { state: "previous", previous };
+  // (a save that won it before the count was kept has waited long enough)
+  const left = FESTIVAL_WAIT_SERVICES - Math.max(0, servicesOf(save) - (won.wonAt ?? 0));
+  return left > 0 ? { state: "services", left } : { state: "open" };
 }
 
 export const isFestivalOpen = (save: SaveData, event: FestivalEvent): boolean =>

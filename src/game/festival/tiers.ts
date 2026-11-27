@@ -53,6 +53,43 @@ export const PACES: readonly Pace[] = [
   row(15, 20, 4, 37, 2.5, 0.68, 5, 2.8, 4, 4, 0.68, 0),
 ];
 
-/** The pace of an event number (1-15), clamped. */
+/**
+ * THE STAGES' RAMP (RULE CHANGE, developer 2026-11-28: "keep only 3 stages ... try to increase customers as players progress stages and festivals").
+ * CUSTOMERS: every stage has 3 more than the one before it, and every festival has 1 more than the festival before at the same stage (Burger 5, 8, 11;
+ * the Championship 19, 22, 25). A new festival starts below the last one's final, since its food is new. WAITING AT ONCE never falls from a festival to
+ * the next at the same stage: Burger 2, 3, 3; four at once comes in later festivals (in the simulation it, more than the count, is what makes a round
+ * hard). The timing (cooking, patience, spoiling, the rival) comes from the table above: the first stage a row an event, the other two three rows on.
+ */
+const STAGE_ROW = [1, 4, 4] as const;
+const AT_ONCE = [
+  { to: 1, stages: [2, 3, 3] },
+  { to: 4, stages: [3, 3, 3] },
+  { to: 7, stages: [3, 3, 4] },
+  { to: 11, stages: [3, 4, 4] },
+  { to: 15, stages: [4, 4, 4] },
+] as const;
+/** Burners and plates (the same number of each). */
+const STATIONS = [
+  { to: 1, stages: [2, 3, 4] },
+  { to: 4, stages: [3, 3, 4] },
+  { to: 15, stages: [4, 4, 4] },
+] as const;
+
+/** The pace of a stage (1-3) of an event number (1-15), both clamped. */
+export function stagePace(event: number, stage: number): Pace {
+  const e = Math.min(15, Math.max(1, Math.floor(event) || 1));
+  const s = Math.min(3, Math.max(1, Math.floor(stage) || 1)) - 1;
+  const timing = PACES[Math.min(PACES.length, STAGE_ROW[s]! + e - 1) - 1]!;
+  const stations = STATIONS.find((row) => e <= row.to)!.stages[s]!;
+  return {
+    ...timing,
+    orders: 5 + (e - 1) + 3 * s,
+    atOnce: AT_ONCE.find((row) => e <= row.to)!.stages[s]!,
+    grillSlots: stations,
+    plates: stations,
+  };
+}
+
+/** A row of the table (1-15), clamped. */
 export const paceFor = (tier: number): Pace =>
   PACES[Math.min(PACES.length, Math.max(1, Math.floor(tier) || 1)) - 1]!;

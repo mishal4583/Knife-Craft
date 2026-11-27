@@ -1,17 +1,25 @@
 /**
- * THE FIFTEEN FESTIVALS (developer 2026-11-27). Each is hosted by one of the city's 49 rival restaurants (the developer: "use existing ones"). The first
- * nine open at campaign levels 10 to 90; the last six open after the campaign, counted in Endless Restaurant orders, each gap starting only once the
- * festival before has been played (schedule.ts). `built` events can be played; the rest show "Coming soon".
+ * THE FIFTEEN FESTIVALS (developer 2026-11-27). RULE CHANGE (developer 2026-11-28): every festival has THREE STAGES, each against a different one of
+ * the city's 49 rival restaurants ("use existing ones": 45 of them, none twice). Winning the third unlocks the next festival, which can be played
+ * after 10 more services (schedule.ts); the first opens at campaign level 10. `built` events can be played; the rest show "Coming soon".
  */
 import type { FoodId, Pace, RoundConfig } from "./types";
 import { burgerRound } from "./burger";
-import { paceFor } from "./tiers";
+import { paceFor, stagePace } from "./tiers";
 
 export type FestivalUnlock =
   /** The campaign level that opens it (the restaurant game shows it as "in N services"). */
   | { kind: "level"; level: number }
-  /** Endless Restaurant orders after the festival before was first played (the first: after the campaign was completed). */
-  | { kind: "orders"; gap: number };
+  /** Winning the third stage of the festival before, then playing FESTIVAL_WAIT_SERVICES more services. */
+  | { kind: "previous" };
+
+/** Every festival's stages, one rival each. */
+export const FESTIVAL_STAGES = 3;
+/** Services (campaign levels, then Endless Restaurant orders) between a festival's third win and the next one opening. */
+export const FESTIVAL_WAIT_SERVICES = 10;
+
+/** One value a stage, first to third. */
+export type ByStage<T> = readonly [T, T, T];
 
 export type RivalLines = {
   start: string;
@@ -31,22 +39,18 @@ export type FestivalEvent = {
   name: string;
   emoji: string;
   unlock: FestivalUnlock;
-  rivalId: string;
+  /** The rival of each stage, the city's weaker restaurant first. */
+  rivals: ByStage<string>;
+  /** How far down its menu each stage's kitchen goes (the pace's `tier`); unset until the festival is built. */
+  menu?: ByStage<number>;
   /** Set when the festival can be played. */
   round?: (pace: Pace, seed: number) => RoundConfig;
-  /**
-   * How many STAGES a playable festival has (developer 2026-11-27, with the concept stall: the locked burners must become real as the player goes).
-   * Winning a stage opens the next: a little quicker, with more on the counter. Stage s of event e plays at pace e + s - 1.
-   */
-  stages?: number;
-  lines?: RivalLines;
+  /** What each stage's rival says. */
+  lines?: ByStage<RivalLines>;
 };
 
-/** The Burger Festival's stages: by the last one every food of the kit is on the counter (burger.ts BURGER_JOINS). */
-export const BURGER_STAGES = 10;
-
 const level = (n: number): FestivalUnlock => ({ kind: "level", level: n });
-const orders = (gap: number): FestivalUnlock => ({ kind: "orders", gap });
+const after: FestivalUnlock = { kind: "previous" };
 
 /** Chef Dolly Ray's lines at the Burger Festival (Sunny Side Diner). */
 const DOLLY: RivalLines = {
@@ -57,6 +61,24 @@ const DOLLY: RivalLines = {
   beaten: "You out-grilled me. Fair and square.",
   won: "Good fight. Come back hungry.",
 };
+/** Chef Nils Haugen's (Harbor Grill). */
+const NILS: RivalLines = {
+  start: "Sea air and a hot grill. Keep up!",
+  ahead: "The tide is with me. Row harder!",
+  passed: "You sailed right past me!",
+  slip: "That one went overboard.",
+  beaten: "You rode that rush well. Fine catch.",
+  won: "Rough seas today. Sail again soon.",
+};
+/** Chef Walt Ferris's (The Rustic Table). */
+const WALT: RivalLines = {
+  start: "Country cooking, and I'm no slowpoke.",
+  ahead: "My smokehouse is pulling away.",
+  passed: "Well now, you've got some pace.",
+  slip: "Dang. Burnt the edges on that one.",
+  beaten: "You earned this one. Hats off, chef.",
+  won: "Good try. The porch is always open.",
+};
 
 export const FESTIVAL_EVENTS: readonly FestivalEvent[] = [
   {
@@ -65,122 +87,122 @@ export const FESTIVAL_EVENTS: readonly FestivalEvent[] = [
     name: "Burger Festival",
     emoji: "🍔",
     unlock: level(10),
-    rivalId: "sunny-side",
+    rivals: ["sunny-side", "harbor-grill", "the-rustic-table"],
     round: burgerRound,
-    stages: BURGER_STAGES,
-    lines: DOLLY,
+    menu: [1, 5, 10],
+    lines: [DOLLY, NILS, WALT],
   },
   {
     id: "pizza",
     number: 2,
     name: "Pizza Festival",
     emoji: "🍕",
-    unlock: level(20),
-    rivalId: "luigis",
+    unlock: after,
+    rivals: ["mamas-kitchen", "olive-and-fig", "luigis"],
   },
   {
     id: "sandwich",
     number: 3,
     name: "Sandwich Festival",
     emoji: "🥪",
-    unlock: level(30),
-    rivalId: "corner-toast",
+    unlock: after,
+    rivals: ["corner-toast", "the-copper-pan", "maple-and-sage"],
   },
   {
     id: "breakfast",
     number: 4,
     name: "Breakfast Festival",
     emoji: "🥞",
-    unlock: level(40),
-    rivalId: "bean-there",
+    unlock: after,
+    rivals: ["bean-there", "the-soup-pot", "petit-jardin"],
   },
   {
     id: "street",
     number: 5,
     name: "Street Food Festival",
     emoji: "🌮",
-    unlock: level(50),
-    rivalId: "pita-pocket",
+    unlock: after,
+    rivals: ["pita-pocket", "taco-hut", "spice-route"],
   },
   {
     id: "asian",
     number: 6,
     name: "Asian Food Festival",
     emoji: "🍜",
-    unlock: level(60),
-    rivalId: "wok-n-roll",
+    unlock: after,
+    rivals: ["noodle-nook", "wok-n-roll", "jade-dragon"],
   },
   {
     id: "healthy",
     number: 7,
     name: "Healthy Food Festival",
     emoji: "🥗",
-    unlock: level(70),
-    rivalId: "green-fork",
+    unlock: after,
+    rivals: ["salad-days", "green-fork", "aegean-blue"],
   },
   {
     id: "bbq",
     number: 8,
     name: "BBQ Festival",
     emoji: "🍖",
-    unlock: level(80),
-    rivalId: "hearth-and-ember",
+    unlock: after,
+    rivals: ["seoul-food", "hearth-and-ember", "the-iron-chef"],
   },
   {
     id: "pasta",
     number: 9,
     name: "Pasta Festival",
     emoji: "🍝",
-    unlock: level(90),
-    rivalId: "pasta-fresca",
+    unlock: after,
+    rivals: ["little-bistro", "pasta-fresca", "trattoria-sole"],
   },
   {
     id: "seafood",
     number: 10,
     name: "Seafood Festival",
     emoji: "🦐",
-    unlock: orders(4),
-    rivalId: "blue-anchor",
+    unlock: after,
+    rivals: ["blue-anchor", "zen-garden", "cedar-and-salt"],
   },
   {
     id: "bakery",
     number: 11,
     name: "Bakery Festival",
     emoji: "🥐",
-    unlock: orders(4),
-    rivalId: "the-orchard",
+    unlock: after,
+    rivals: ["the-orchard", "silver-birch", "chez-margaux"],
   },
   {
     id: "indian",
     number: 12,
     name: "Indian Street Food",
     emoji: "🥘",
-    unlock: orders(4),
-    rivalId: "curry-corner",
+    unlock: after,
+    rivals: ["curry-corner", "saffron-house", "marigold"],
   },
   {
     id: "mexican",
     number: 13,
     name: "Mexican Festival",
     emoji: "🌯",
-    unlock: orders(4),
-    rivalId: "la-cantina",
+    unlock: after,
+    rivals: ["bangkok-bowl", "casa-verde", "la-cantina"],
   },
   {
     id: "gourmet",
     number: 14,
     name: "Gourmet Festival",
     emoji: "🍽️",
-    unlock: orders(4),
-    rivalId: "aurora",
+    unlock: after,
+    rivals: ["the-velvet-spoon", "the-grand-larder", "aurora"],
   },
   {
     id: "championship",
     number: 15,
     name: "World Championship",
     emoji: "🏆",
-    unlock: orders(5),
-    rivalId: "maison-lumiere",
+    unlock: after,
+    rivals: ["kaiseki-mori", "the-crown-kitchen", "maison-lumiere"],
   },
 ];
 
@@ -189,9 +211,16 @@ export const festivalEvent = (id: string): FestivalEvent | undefined =>
 
 export const FESTIVAL_FIRST_LEVEL = 10;
 
-/** The pace a stage of an event plays at. */
-export const stageTier = (event: FestivalEvent, stage: number): number =>
-  Math.min(15, event.number + Math.max(1, stage) - 1);
+/** The pace a stage of an event plays at (tiers.ts), with that stage's part of the event's menu. */
+export const paceOfStage = (event: FestivalEvent, stage: number): Pace => {
+  const pace = stagePace(event.number, stage);
+  const menu = event.menu?.[Math.min(FESTIVAL_STAGES, Math.max(1, stage)) - 1];
+  return menu === undefined ? pace : { ...pace, tier: menu };
+};
+
+/** Which of a stage's three things (its rival, its lines): a preview with no stage takes the first. */
+export const stageIndex = (stage: number | null): 0 | 1 | 2 =>
+  (Math.min(FESTIVAL_STAGES, Math.max(1, stage ?? 1)) - 1) as 0 | 1 | 2;
 
 /** What a stage adds to the one before it. */
 export type StageNews = {
@@ -200,13 +229,15 @@ export type StageNews = {
   grill: boolean;
   plate: boolean;
   atOnce: boolean;
+  /** How many customers its round has. */
+  customers: number;
 };
 
 export function stageNews(event: FestivalEvent, stage: number): StageNews {
-  const nothing = { foods: [], grill: false, plate: false, atOnce: false };
+  const nothing = { foods: [], grill: false, plate: false, atOnce: false, customers: 0 };
   if (!event.round || stage <= 1) return nothing;
-  const before = event.round(paceFor(stageTier(event, stage - 1)), 1);
-  const now = event.round(paceFor(stageTier(event, stage)), 1);
+  const before = event.round(paceOfStage(event, stage - 1), 1);
+  const now = event.round(paceOfStage(event, stage), 1);
   const foodsOf = (r: RoundConfig) =>
     new Set<FoodId>([
       ...r.kitchen.trays.map((t) => t.item),
@@ -219,21 +250,22 @@ export function stageNews(event: FestivalEvent, stage: number): StageNews {
     grill: slots(now) > slots(before),
     plate: now.kitchen.plates > before.kitchen.plates,
     atOnce: now.pace.atOnce > before.pace.atOnce,
+    customers: now.orders.length,
   };
 }
 
 /** The first stage whose grill has `slots` burners (0 when no stage of this event has that many). */
 export function stageWithBurners(event: FestivalEvent, slots: number): number {
-  for (let stage = 1; stage <= (event.stages ?? 0); stage++)
-    if (paceFor(stageTier(event, stage)).grillSlots >= slots) return stage;
+  for (let stage = 1; event.round && stage <= FESTIVAL_STAGES; stage++)
+    if (paceOfStage(event, stage).grillSlots >= slots) return stage;
   return 0;
 }
 
-/** An event's round at its own pace (or at another, for the developer's preview link), for a seed. */
+/** An event's round for a seed: its first stage's, or at another pace (a stage's, or a row of the table for the developer's preview link). */
 export function festivalRound(
   event: FestivalEvent,
   seed: number,
-  tier: number = event.number,
+  pace: Pace | number = paceOfStage(event, 1),
 ): RoundConfig | null {
-  return event.round ? event.round(paceFor(tier), seed) : null;
+  return event.round ? event.round(typeof pace === "number" ? paceFor(pace) : pace, seed) : null;
 }

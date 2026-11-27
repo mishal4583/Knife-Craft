@@ -3,7 +3,7 @@
  *
  *  A  the save: absent or damaged reads as nothing; a finished round counts once, keeps the best; a won stage opens the next; old saves need nothing;
  *     no money, no ledger
- *  B  the unlocks: Levels 10-90; after the campaign the 25-order schedule, each gap counted only after the festival before was first played
+ *  B  the unlocks (RULE CHANGE, developer 2026-11-28): the first at Level 10; every other one after the third stage of the one before, 10 services later
  *  C  the screen's boxes: every tap target 48 px at the smallest window, inside the stage, none on another, for every pace, upright and wide; the
  *     stall's sign, chalkboard and props never cover a station or an order
  *  D  the art: every picture the festival names exists, small; the 270 MB source folder is kept out of git
@@ -14,11 +14,12 @@
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
-import { FESTIVAL_EVENTS, festivalEvent } from "../src/game/festival/events.ts";
+import { FESTIVAL_EVENTS, festivalEvent, paceOfStage } from "../src/game/festival/events.ts";
 import {
   festivalsOf,
   lifetimeOrdersOf,
   recordFestivalRound,
+  servicesOf,
   stageToPlay,
   withFestivalBaseline,
 } from "../src/game/festival/state.ts";
@@ -26,7 +27,7 @@ import { festivalStatus, waitingFestival } from "../src/game/festival/schedule.t
 import { burgerKitchen } from "../src/game/festival/burger.ts";
 import { cookerOf } from "../src/game/festival/kitchen.ts";
 import { ALL_ART, LAYERS } from "../src/components/kc/festival/festivalArt.ts";
-import { PACES } from "../src/game/festival/tiers.ts";
+import { PACES, stagePace } from "../src/game/festival/tiers.ts";
 import {
   PORTRAIT,
   SMALLEST_SCALE,
@@ -117,9 +118,10 @@ console.log("A. The save");
   assert(JSON.stringify(fresh) === before, "A4: recording never changes the save it was given");
   assert(
     // RULE CHANGE (developer 2026-11-27): a round without a stage number counts as stage 1; the lost round clears nothing
+    // RULE CHANGE (developer 2026-11-28): the first play's order count is no longer written (the old schedule is gone)
     JSON.stringify(festivalsOf(twice).record.burger) ===
-      JSON.stringify({ plays: 2, wins: 1, best: 900, stars: 2, cleared: 1, playedAtOrder: 7 }),
-    "A5: rounds are counted; the best score and stars stay; the first play's order count is kept",
+      JSON.stringify({ plays: 2, wins: 1, best: 900, stars: 2, cleared: 1 }),
+    "A5: rounds are counted; the best score and stars stay",
     festivalsOf(twice).record.burger,
   );
   assert(
@@ -153,25 +155,36 @@ console.log("A. The save");
     recordFestivalRound(s, "burger", { score: 100, stars: won ? 1 : 0, won, stage });
   const cleared = (s: SaveData) => festivalsOf(s).record.burger?.cleared ?? 0;
   let run = fresh;
-  assert(stageToPlay(run, "burger", 10) === 1, "A12: a new player starts at stage 1");
+  // RULE CHANGE (developer 2026-11-28): three stages, not ten
+  assert(stageToPlay(run, "burger", 3) === 1, "A12: a new player starts at stage 1");
   run = play(run, 1, false);
   assert(
-    cleared(run) === 0 && stageToPlay(run, "burger", 10) === 1,
+    cleared(run) === 0 && stageToPlay(run, "burger", 3) === 1,
     "A13: a lost stage opens nothing, and it is simply played again",
   );
   run = play(run, 1, true);
   run = play(run, 2, true);
   assert(
-    cleared(run) === 2 && stageToPlay(run, "burger", 10) === 3,
+    cleared(run) === 2 && stageToPlay(run, "burger", 3) === 3,
     "A14: a won stage opens the next",
   );
   run = play(run, 1, true);
   run = play(run, 0, true);
   assert(cleared(run) === 2, "A15: replaying an earlier stage (or a preview) never takes one back");
-  for (let stage = 3; stage <= 10; stage++) run = play(run, stage, true);
   assert(
-    cleared(run) === 10 && stageToPlay(run, "burger", 10) === 10,
-    "A16: after the last stage, the last one stays to be replayed",
+    festivalsOf(run).record.burger!.wonAt === undefined,
+    "A15b: nothing is stamped before the third",
+  );
+  run = play(run, 3, true);
+  assert(
+    cleared(run) === 3 && stageToPlay(run, "burger", 3) === 3,
+    "A16: after the third stage, it stays to be replayed",
+  );
+  const later = play({ ...run, levelProgress: at(30).levelProgress }, 3, true);
+  assert(
+    festivalsOf(run).record.burger!.wonAt === 11 && festivalsOf(later).record.burger!.wonAt === 11,
+    "A16b: the third stage's first win keeps the services played by then; a replay never moves it",
+    [festivalsOf(run).record.burger!.wonAt, festivalsOf(later).record.burger!.wonAt],
   );
   const wild = {
     ...fresh,
@@ -189,65 +202,74 @@ console.log("B. The unlocks");
     status(at(9), "burger").state === "level" && status(at(10), "burger").state === "open",
     "B1: the Burger Festival opens at Level 10",
   );
-  assert(
-    status(at(19), "pizza").state === "level" && status(at(20), "pizza").state === "open",
-    "B2: Pizza at Level 20",
-  );
-  assert(
-    FESTIVAL_EVENTS.slice(0, 9).every((e) => festivalStatus(at(91), e).state === "open"),
-    "B3: an old save already past a level finds those festivals open",
-  );
-  assert(
-    status(at(91), "seafood").state === "campaign",
-    "B4: Seafood waits for the whole campaign (all 91 levels)",
-  );
-  let save = orders(finished, 100);
+  // RULE CHANGE (developer 2026-11-28): "the final 3rd round unlocks the next festival ... playable only after 10 serves or levels". The old B2-B13
+  // (Levels 20-90, then the 25-order schedule after the campaign) are replaced by these.
+  const win = (save: SaveData, id: string, stage: number) =>
+    recordFestivalRound(save, id, { score: 100, stars: 1, won: true, stage });
+  const moved = (save: SaveData, n: number): SaveData => ({
+    ...save,
+    levelProgress: at(n).levelProgress,
+  });
   const left = (s: SaveData, id: string) => {
     const st = status(s, id);
-    return st.state === "orders" ? st.left : st.state;
+    return st.state === "services" ? st.left : st.state;
   };
   assert(
-    left(save, "seafood") === 4,
-    "B5: with the campaign done, Seafood is 4 orders away, however many were served before",
-    status(save, "seafood"),
+    FESTIVAL_EVENTS.slice(1).every((e) => festivalStatus(at(91), e).state === "previous"),
+    "B2: no other festival opens by level alone, however far the campaign is",
   );
-  save = withFestivalBaseline(orders(save, 101), 100);
-  assert(left(save, "seafood") === 3, "B6: the first Endless order starts the count");
-  save = orders(save, 104);
-  assert(status(save, "seafood").state === "open", "B7: after 4, open");
+  const two = win(win(at(12), "burger", 1), "burger", 2);
   assert(
-    status(save, "bakery").state === "previous",
-    "B8: Bakery waits until Seafood has been played, so two never arrive together",
+    status(two, "pizza").state === "previous" &&
+      status(moved(two, 60), "pizza").state === "previous",
+    "B3: the first two stages unlock nothing, however many services follow",
   );
-  save = orders(save, 120);
-  assert(status(save, "bakery").state === "previous", "B9: even many orders later");
-  let served = 120;
-  const schedule: number[] = [];
-  save = recordFestivalRound(save, "seafood", { score: 1, stars: 0, won: false });
-  for (const [id, gap] of [
-    ["bakery", 4],
-    ["indian", 4],
-    ["mexican", 4],
-    ["gourmet", 4],
-    ["championship", 5],
-  ] as const) {
-    assert(
-      left(save, id) === gap,
-      `B10: after the one before is played (a loss counts), ${id} is ${gap} orders away`,
-    );
-    served += gap;
-    save = orders(save, served);
-    assert(status(save, id).state === "open", `B11: ${id} opens`);
-    schedule.push(gap);
-    save = recordFestivalRound(save, id, { score: 1, stars: 0, won: false });
-  }
+  const three = win(two, "burger", 3);
   assert(
-    4 + schedule.reduce((a, b) => a + b) === 25,
-    "B12: played as soon as they open, the six come over exactly 25 orders",
+    left(three, "pizza") === 10 && left(moved(three, 21), "pizza") === 1,
+    "B4: the third stage won: Pizza is 10 services away, then 1 after nine more levels",
+    [left(three, "pizza"), left(moved(three, 21), "pizza")],
+  );
+  assert(left(moved(three, 22), "pizza") === "open", "B5: after the tenth, it is open");
+  assert(
+    left(win(moved(three, 17), "burger", 3), "pizza") === 5,
+    "B6: replaying the third stage never starts the wait again",
+  );
+  // won near the campaign's end: the Endless Restaurant's orders finish the wait
+  const nearEnd = win(win(win(at(91), "burger", 1), "burger", 2), "burger", 3);
+  const doneSave: SaveData = orders({ ...nearEnd, levelProgress: finished.levelProgress }, 100);
+  assert(
+    servicesOf(doneSave) === levels.length && left(doneSave, "pizza") === 9,
+    "B7: menu guests served during the campaign are not services; the last level is one",
+    [servicesOf(doneSave), left(doneSave, "pizza")],
+  );
+  const endless = withFestivalBaseline(orders(doneSave, 101), 100);
+  assert(
+    left(endless, "pizza") === 8 && left(orders(endless, 109), "pizza") === "open",
+    "B8: then each Endless Restaurant order is a service, from the first one",
+    [left(endless, "pizza"), left(orders(endless, 109), "pizza")],
   );
   assert(
-    status(orders(save, served), "seafood").state === "open",
-    "B13: a played festival stays open to replay",
+    status(moved(three, 91), "sandwich").state === "previous",
+    "B9: the third festival waits for the second's third stage, so two never open together",
+  );
+  const old = {
+    ...at(40),
+    business: {
+      ...at(40).business,
+      festivals: { v: 1, record: { burger: { plays: 9, wins: 9, cleared: 10, playedAtOrder: 3 } } },
+    },
+  } as unknown as SaveData;
+  assert(
+    stageToPlay(old, "burger", 3) === 3 &&
+      status(old, "pizza").state === "open" &&
+      festivalsOf(old).record.burger!.playedAtOrder === 3,
+    "B10: a save from the ten-stage build counts as won, keeps its fields and waits no more",
+  );
+  assert(
+    status(recordFestivalRound(at(12), "pizza", { score: 1, stars: 0, won: false }), "pizza")
+      .state === "open",
+    "B11: a festival once played stays open",
   );
   assert(
     waitingFestival(at(12))?.id === "burger" &&
@@ -259,11 +281,17 @@ console.log("B. The unlocks");
 }
 
 console.log("C. The boxes on the screen");
+// every row of the pace table, and every stage's own pace (developer 2026-11-28)
+const CHECKED = [
+  ...PACES,
+  ...[1, 2, 3].map((s) => paceOfStage(festivalEvent("burger")!, s)),
+  ...FESTIVAL_EVENTS.flatMap((e) => [1, 2, 3].map((s) => stagePace(e.number, s))),
+];
 {
   const bad: string[] = [];
   const heights = [960, portraitHeight(390, 844), portraitHeight(320, 568), 1200];
   // (festivalLayout's smallest windows: 320 x 568 upright, 740 x 360 on its side)
-  for (const pace of PACES) {
+  for (const pace of CHECKED) {
     const kitchen = burgerKitchen(pace);
     const counts = {
       atOnce: pace.atOnce,
@@ -340,7 +368,7 @@ console.log("C. The boxes on the screen");
     Math.min(a[0]! + a[2]!, b[0]! + b[2]!) - Math.max(a[0]!, b[0]!) > 0.5 &&
     Math.min(a[1]! + a[3]!, b[1]! + b[3]!) - Math.max(a[1]!, b[1]!) > 0.5;
   const covered: string[] = [];
-  for (const pace of PACES) {
+  for (const pace of CHECKED) {
     const kitchen = burgerKitchen(pace);
     const counts = {
       atOnce: pace.atOnce,
@@ -361,7 +389,12 @@ console.log("C. The boxes on the screen");
           covered.push(`t${pace.tier} ${name}: a board covers the bar or an order`);
       if (bubbles.some((b) => bar.some((x) => overlap(b, x))))
         covered.push(`t${pace.tier} ${name}: an order under the top bar`);
-      for (const piece of [layout.hint, ...layout.props.map((p) => p.box)])
+      // (developer 2026-11-28: the landscape plate stand is decoration too, so it is held to the same rule)
+      for (const piece of [
+        layout.hint,
+        ...layout.props.map((p) => p.box),
+        ...(layout.plateStand ? [layout.plateStand] : []),
+      ])
         if ([...tapTargets(layout), ...bubbles].some((x) => overlap(piece, x)))
           covered.push(
             `t${pace.tier} ${name}: a prop or the coach line covers ${piece[0]},${piece[1]}`,
@@ -377,6 +410,37 @@ console.log("C. The boxes on the screen");
     covered.length === 0,
     "C3: the stall's sign, chalkboard, props and coach line cover no station, order or button, and the power-ups sit in their rack",
     covered.slice(0, 8),
+  );
+  // developer 2026-11-28 (a marked-up screenshot), landscape: the power-ups beside Pause in the top bar; bigger fryers, machines and bin
+  const moved: string[] = [];
+  for (const pace of CHECKED) {
+    const kitchen = burgerKitchen(pace);
+    const l = wideLayout({
+      atOnce: pace.atOnce,
+      grill: pace.grillSlots,
+      plates: pace.plates,
+      trays: kitchen.trays.length,
+      drinks: cookerOf(kitchen, "drink")!.slots,
+    });
+    const last = l.powers[l.powers.length - 1]!;
+    const gap = l.pause[0] - (last[0] + last[2]);
+    if (l.powers.some(([, y, , h]) => y + h > 90) || gap < 0 || gap > 12)
+      moved.push(`t${pace.tier}: the power-ups are not in the top bar beside Pause (gap ${gap})`);
+    if (l.powers.some((p) => overlap(p, l.scores)))
+      moved.push(`t${pace.tier}: a power-up covers the scores`);
+    if (
+      l.fryer.some(([, , w, h]) => w < 95 || h < 118) ||
+      l.drink.some(([, , w, h]) => w < 86 || h < 134) ||
+      l.bin[3] < 118
+    )
+      moved.push(`t${pace.tier}: a fryer, a drink machine or the bin got smaller`);
+    if (!l.plateStand || l.plateStand[0] < l.board[0] + l.board[2])
+      moved.push(`t${pace.tier}: no plate stand to the right of the board`);
+  }
+  assert(
+    moved.length === 0,
+    "C4: landscape: the power-ups sit in the top bar beside Pause; bigger fryers, drink machines and bin; a plate stand right of the board",
+    moved.slice(0, 8),
   );
   assert(
     portraitHeight(390, 844) === 1169 &&

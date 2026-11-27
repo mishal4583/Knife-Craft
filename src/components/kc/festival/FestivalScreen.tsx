@@ -1,17 +1,26 @@
 import { useRef, useState } from "react";
 import type { SaveData } from "@/game/SaveManager";
-import { festivalEvent, stageTier, type FestivalEvent } from "@/game/festival/events";
+import {
+  FESTIVAL_EVENTS,
+  FESTIVAL_STAGES,
+  festivalEvent,
+  paceOfStage,
+  type FestivalEvent,
+} from "@/game/festival/events";
+import { festivalStatus } from "@/game/festival/schedule";
 import { festivalsOf, stageToPlay } from "@/game/festival/state";
+import { paceFor } from "@/game/festival/tiers";
+import type { Pace } from "@/game/festival/types";
 import { FestivalSelect } from "./FestivalSelect";
 import { FestivalGame } from "./FestivalGame";
 
-/** The developer's preview link: ?festival=<event number> opens that festival's round at once, ?pace=<1-15> plays it at another event's pace. */
-export type FestivalPreview = { eventId: string; tier: number } | null;
+/** The developer's preview link: ?festival=<event number> opens its round at once; &stage=<1-3>, or &pace=<1-15> for a row of the pace table. */
+export type FestivalPreview = { eventId: string; stage: number; pace: number | null } | null;
 
 type Playing = {
   event: FestivalEvent;
-  tier: number;
-  /** null: a preview at a pace past the event's stages. */
+  pace: Pace;
+  /** null: a preview at a row of the pace table. */
   stage: number | null;
   attempt: number;
   coach: boolean;
@@ -39,29 +48,38 @@ export function FestivalScreen({
   }) => void;
 }) {
   const day = save.business.calendar.businessDay;
-  const openStage = (event: FestivalEvent) => stageToPlay(save, event.id, event.stages ?? 1);
+  const openStage = (event: FestivalEvent) => stageToPlay(save, event.id, FESTIVAL_STAGES);
+  /** After the third stage: when the next festival can be played. */
+  const nextNote = (event: FestivalEvent): string => {
+    const next = FESTIVAL_EVENTS[event.number];
+    if (!next) return "";
+    const status = festivalStatus(save, next);
+    if (status.state === "services")
+      return `${next.name} unlocked! Play it in ${status.left} more ${status.left === 1 ? "service" : "services"}.`;
+    return status.state === "open" ? `${next.name} is unlocked.` : "";
+  };
   /** The coach teaches the very first stage of the first festival, the first time it is played. */
   const first = (event: FestivalEvent, stage: number | null) =>
     event.number === 1 && stage === 1 && !festivalsOf(save).record[event.id];
   const atStage = (event: FestivalEvent, stage: number): Playing => ({
     event,
     stage,
-    tier: stageTier(event, stage),
+    pace: paceOfStage(event, stage),
     attempt: 0,
     coach: first(event, stage),
   });
   const [playing, setPlaying] = useState<Playing | null>(() => {
     const event = preview ? festivalEvent(preview.eventId) : undefined;
     if (!event?.round) return null;
-    const stage = preview!.tier - event.number + 1;
-    const known = stage >= 1 && stage <= (event.stages ?? 1) ? stage : null;
-    return { event, tier: preview!.tier, stage: known, attempt: 0, coach: first(event, known) };
+    if (preview!.pace !== null)
+      return { event, pace: paceFor(preview!.pace), stage: null, attempt: 0, coach: false };
+    return { ...atStage(event, preview!.stage) };
   });
   // a new round gets new customers; the same day and attempt always the same ones
   const rounds = useRef(0);
   const seedFor = (p: Playing) =>
     p.event.number * 100003 +
-    p.tier * 977 +
+    (p.pace.tier * 977 + (p.stage ?? 0) * 7919) +
     day * 9176 +
     ((festivalsOf(save).record[p.event.id]?.plays ?? 0) + p.attempt) * 31;
   const [seed, setSeed] = useState(() => (playing ? seedFor(playing) : 0));
@@ -83,11 +101,12 @@ export function FestivalScreen({
   return (
     <FestivalGame
       // a new round is a new game: nothing of the last one is left over
-      key={`${playing.event.id}-${playing.tier}-${rounds.current}`}
+      key={`${playing.event.id}-${playing.stage}-${playing.pace.tier}-${rounds.current}`}
       event={playing.event}
-      tier={playing.tier}
+      pace={playing.pace}
       stage={playing.stage}
       openStage={openStage(playing.event)}
+      nextNote={nextNote(playing.event)}
       seed={seed}
       coach={playing.coach}
       onResult={(r) =>

@@ -169,17 +169,17 @@ const FestivalScreen = lazy(() =>
   loadRestaurantScreens().then((m) => ({ default: m.FestivalScreen })),
 );
 
-/** The Festival Competition's preview link: ?festival=<event 1-15> opens that festival's round at once (only a built one), &pace=<1-15> at another pace. */
-function festivalPreview(): { eventId: string; tier: number } | null {
+/** The Festival Competition's preview link: ?festival=<event 1-15> opens that festival's round at once (only a built one): its first stage, or &stage=<1-3>, or &pace=<1-15> (a row of the pace table, no stage). */
+function festivalPreview(): { eventId: string; stage: number; pace: number | null } | null {
   if (typeof location === "undefined") return null;
   const query = new URLSearchParams(location.search);
   const event = FESTIVAL_EVENTS.find((e) => e.number === Number(query.get("festival")));
   if (!event?.round) return null;
-  const pace = Number(query.get("pace"));
-  return {
-    eventId: event.id,
-    tier: Number.isFinite(pace) && pace >= 1 ? Math.min(15, Math.floor(pace)) : event.number,
+  const whole = (name: string, most: number) => {
+    const n = Number(query.get(name));
+    return Number.isFinite(n) && n >= 1 ? Math.min(most, Math.floor(n)) : null;
   };
+  return { eventId: event.id, stage: whole("stage", 3) ?? 1, pace: whole("pace", 15) };
 }
 
 /** Shown for the moment the Restaurant chunk takes to arrive: the screen's own frame, never a blank. */
