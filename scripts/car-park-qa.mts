@@ -28,6 +28,8 @@ import {
   carParkDue,
   carParkTowAdAvailable,
   withCarParkTowAd,
+  spendCarParkAdTow,
+  carParkStateOf,
   finishCarPark,
   generateLot,
   carParkTierAt,
@@ -349,6 +351,49 @@ console.log("E. The tow ad, the once-a-day Hype and an unused tow (deep check 20
   assert(
     /disabled=\{phase !== "playing" && phase !== "paused"\}/.test(game),
     "E6: Pause does nothing on the end cards (it could restart a cleared lot)",
+  );
+
+  // The ad's tow is the player's until it tows a car (developer 2026-11-28)
+  const reloaded = JSON.parse(JSON.stringify(watched)) as typeof DEFAULT_SAVE;
+  assert(
+    carParkStateOf(today).towHeld === undefined && carParkStateOf(reloaded).towHeld === true,
+    "E7: a watched tow is held in the save, and is still there after the game is closed",
+    reloaded.business.carPark,
+  );
+  const nextDay = {
+    ...reloaded,
+    business: {
+      ...reloaded.business,
+      restaurantDay: { ...reloaded.business.restaurantDay!, day: 8 },
+    },
+  };
+  assert(
+    carParkStateOf(nextDay).towHeld === true &&
+      carParkStateOf(finishCarPark(reloaded, 22, 0, true, 2)).towHeld === true &&
+      carParkStateOf(autoCarPark(reloaded)).towHeld === true,
+    "E8: a new day, a finished lot or the Prep Cook does not take an unused tow away",
+  );
+  const spent = spendCarParkAdTow(reloaded);
+  assert(
+    carParkStateOf(spent).towHeld === undefined &&
+      !("towHeld" in spent.business.carPark!) &&
+      !carParkTowAdAvailable(spent) &&
+      spendCarParkAdTow(spent) === spent &&
+      spendCarParkAdTow(today) === today &&
+      spent.credits === reloaded.credits,
+    "E9: using it removes it once; the same day offers no second ad, and no money moves",
+    spent.business.carPark,
+  );
+  const junk = {
+    ...today,
+    business: { ...today.business, carPark: { towHeld: "yes" as unknown as boolean } },
+  };
+  assert(carParkStateOf(junk).towHeld === undefined, "E10: a damaged value holds no tow");
+  assert(
+    /useState\(\s*\(\) => carParkStateOf\(save\)\.towHeld === true,?\s*\)/.test(game) &&
+      /setBonusTowUsed\(true\);\s+onAction\(\{ kind: "adTowSpent" \}\);/.test(game) &&
+      /persist\(spendCarParkAdTow\(current\)\)/.test(app),
+    "E11: the game starts with the saved tow and tells the app only when the ad's tow is used",
   );
 }
 

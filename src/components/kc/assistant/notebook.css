@@ -1,0 +1,739 @@
+/* Paige's notebook (developer's mock-up, 2026-11-28): a ringed page in a leather frame, a red name banner with her portrait, a green and an
+   orange ribbon over two checklists, and a big green Close. The first part draws it all plainly; the painted pieces (`.pn-art`, at the end)
+   go over that once every picture is here. */
+
+.pn-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(8px, env(safe-area-inset-top)) 10px max(8px, env(safe-area-inset-bottom));
+  background: rgba(34, 20, 10, 0.68);
+  backdrop-filter: blur(3px);
+}
+.pn-book {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 460px;
+  height: 100%;
+  max-height: 700px;
+}
+[data-orient="landscape"] .pn-book {
+  max-width: 660px;
+}
+
+/* ── the head: portrait, banner, X ───────────────────────────────────── */
+.pn-head {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  height: 78px;
+  margin-bottom: -16px;
+  padding: 0 0 0 12px;
+}
+.pn-portrait {
+  position: relative;
+  flex: none;
+  width: 70px;
+  height: 78px;
+  overflow: hidden;
+  border-radius: 50% 50% 14px 14px;
+}
+.pn-portrait img {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 118px;
+  max-width: none;
+  transform: translateX(-52%);
+  pointer-events: none;
+}
+.pn-banner {
+  position: relative;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 48px;
+  margin: 0 6px 6px -6px;
+  border: 2px solid #f0c466;
+  border-radius: 10px;
+  background: linear-gradient(#c8352a, #8f1d18);
+  box-shadow:
+    0 4px 0 #5e110d,
+    0 8px 14px rgba(0, 0, 0, 0.35);
+}
+.pn-title {
+  margin: 0;
+  padding: 0 6px;
+  font-family: var(--font-display);
+  font-size: clamp(17px, 5.4vw, 25px);
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: center;
+  color: #fff3d6;
+  text-shadow: 0 2px 0 rgba(70, 10, 6, 0.75);
+}
+[data-orient="landscape"] .pn-title {
+  font-size: 25px;
+}
+.pn-leaf {
+  position: absolute;
+  width: 26px;
+  height: 14px;
+  border-radius: 100% 0 100% 0;
+  background: linear-gradient(135deg, #8cc34a, #3f7a22);
+}
+.pn-leaf::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 10px;
+  width: 22px;
+  height: 12px;
+  border-radius: inherit;
+  background: inherit;
+  transform: rotate(28deg);
+}
+.pn-leaf-left {
+  left: -10px;
+  bottom: -8px;
+  transform: rotate(150deg);
+}
+.pn-leaf-right {
+  right: -10px;
+  bottom: -4px;
+}
+.pn-hat {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  width: 40px;
+  height: 22px;
+  transform: translateX(-50%);
+}
+.pn-hat::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 8px;
+  width: 24px;
+  height: 9px;
+  border-radius: 2px;
+  background: linear-gradient(#fff, #dcd5c8);
+}
+.pn-hat i {
+  position: absolute;
+  top: 3px;
+  width: 17px;
+  height: 15px;
+  border-radius: 50%;
+  background: #fffdf8;
+}
+.pn-hat i:nth-child(1) {
+  left: 2px;
+}
+.pn-hat i:nth-child(2) {
+  left: 11px;
+  top: 0;
+  height: 18px;
+}
+.pn-hat i:nth-child(3) {
+  right: 2px;
+}
+.pn-x {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 8px;
+  border: 3px solid #f0c466;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #e85a43, #9d1f16);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff6e2;
+}
+
+/* ── the page ────────────────────────────────────────────────────────── */
+.pn-page {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: 8px;
+  padding: 22px 10px 10px 18px;
+  border: 5px solid #94592a;
+  border-radius: 22px;
+  background: linear-gradient(#fdf4de, #f6e5c0);
+  box-shadow:
+    inset 0 0 0 2px #e9c98d,
+    0 10px 24px rgba(0, 0, 0, 0.45);
+}
+.pn-rings {
+  position: absolute;
+  top: 36px;
+  bottom: 56px;
+  left: -13px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.pn-rings i {
+  width: 24px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(#ffe39a, #b57a1f);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.35);
+}
+.pn-tips {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(100%, 460px);
+  margin: 0 auto;
+  padding: 0 8px 0 12px;
+  border: 2px solid #e6cb94;
+  border-radius: 999px;
+  background: #fff7e3;
+}
+.pn-tips-text {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 800;
+  color: #4a2c14;
+}
+.pn-switch {
+  position: relative;
+  flex: none;
+  width: 66px;
+  height: 48px;
+}
+.pn-switch::before {
+  content: "";
+  position: absolute;
+  inset: 9px 0;
+  border-radius: 999px;
+  background: #cbb89a;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+.pn-switch span {
+  position: absolute;
+  top: 12px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fffaf0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+  transition: transform 0.18s;
+}
+.pn-switch[aria-checked="true"]::before {
+  background: linear-gradient(#4f9e22, #6cbd33);
+}
+.pn-switch[aria-checked="true"] span {
+  transform: translateX(36px);
+}
+.pn-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* ── the two checklists ──────────────────────────────────────────────── */
+.pn-group {
+  position: relative;
+  margin-top: 4px;
+}
+.pn-group + .pn-group {
+  margin-top: 10px;
+}
+.pn-ribbon {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  min-width: 210px;
+  height: 28px;
+  margin: 0 0 -10px 8px;
+  padding: 0 28px 0 38px;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 11px) 50%, 100% 100%, 0 100%);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 900;
+  color: #fffbef;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+.pn-medal {
+  position: absolute;
+  left: 4px;
+  top: 2px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #fff2c4;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 900;
+  text-shadow: none;
+}
+.pn-group-done .pn-ribbon {
+  background: linear-gradient(#4a9b27, #2c6d14);
+}
+.pn-group-done .pn-medal {
+  background: #3f8e1e;
+}
+.pn-group-todo .pn-ribbon {
+  background: linear-gradient(#e8941f, #b96a0c);
+}
+.pn-group-todo .pn-medal {
+  background: #c9770f;
+}
+.pn-panel {
+  position: relative;
+  border: 2px solid;
+  border-radius: 16px;
+}
+.pn-group ul {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 16px 6px 6px;
+  list-style: none;
+}
+.pn-group-done .pn-panel {
+  border-color: #cbdc98;
+  background: #eef3cf;
+}
+.pn-group-todo .pn-panel {
+  border-color: #e8d2a2;
+  background: #fbefd2;
+}
+.pn-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 2px 0 8px;
+  border-radius: 12px;
+  background: #fffaec;
+  box-shadow: 0 1px 3px rgba(120, 80, 30, 0.18);
+}
+.pn-group-done .pn-row {
+  background: #f6f9e2;
+}
+.pn-box {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2.5px solid #a2672f;
+  border-radius: 6px;
+  background: #fffdf5;
+}
+.pn-box-done {
+  border-color: #2f7014;
+  background: linear-gradient(#62b236, #3d8a1c);
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+}
+.pn-text {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 0;
+  font-family: var(--font-hand);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: #4a2c14;
+}
+.pn-go {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+}
+.pn-go span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0 0 4px 2px;
+  border: 2px solid #f4d58a;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #e0a038, #9c5a10);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+  color: #fff7e0;
+}
+.pn-empty {
+  padding: 8px 10px;
+  font-family: var(--font-hand);
+  font-size: 16px;
+  color: #6b5a34;
+}
+.pn-close {
+  flex: none;
+  align-self: center;
+  width: min(100%, 300px);
+  min-height: 48px;
+  border: 3px solid #f0c466;
+  border-radius: 999px;
+  background: linear-gradient(#63b32a, #2f7a10);
+  box-shadow:
+    0 4px 0 #215509,
+    0 7px 12px rgba(0, 0, 0, 0.3);
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 900;
+  color: #fffbea;
+  text-shadow: 0 2px 0 rgba(20, 60, 5, 0.6);
+}
+
+/* a short window (a phone on its side): everything tighter, the lists still scroll */
+@media (max-height: 460px) {
+  .pn-head {
+    height: 60px;
+  }
+  .pn-portrait {
+    width: 56px;
+    height: 60px;
+  }
+  .pn-portrait img {
+    width: 94px;
+  }
+  .pn-banner {
+    height: 40px;
+  }
+  .pn-page {
+    gap: 4px;
+    padding-top: 18px;
+    padding-bottom: 6px;
+  }
+}
+
+/* a phone on its side: the two lists stand side by side, and Tips and Close share the bottom row */
+@media (max-height: 460px) {
+  [data-orient="landscape"] .pn-book {
+    max-width: 780px;
+  }
+  [data-orient="landscape"] .pn-page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 10px;
+  }
+  [data-orient="landscape"] .pn-scroll {
+    grid-area: 1 / 1 / 2 / 3;
+    align-self: stretch;
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    grid-template-rows: minmax(0, 1fr);
+    column-gap: 10px;
+    overflow: hidden;
+  }
+  [data-orient="landscape"] .pn-group {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    margin-top: 0;
+  }
+  [data-orient="landscape"] .pn-ribbon {
+    flex: none;
+    align-self: flex-start;
+    min-width: 0;
+  }
+  [data-orient="landscape"] .pn-panel {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  [data-orient="landscape"] .pn-group ul {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  [data-orient="landscape"] .pn-group ul > li {
+    flex: none;
+  }
+  [data-orient="landscape"] .pn-tips {
+    grid-area: 2 / 1;
+  }
+  [data-orient="landscape"] .pn-close {
+    grid-area: 2 / 2;
+    justify-self: center;
+  }
+}
+
+/* ── painted (all the pictures are here: notebookArt.ts) ─────────────── */
+.pn-art-layer {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.pn-art-layer i {
+  position: absolute;
+  display: block;
+}
+.pn-art-tall {
+  container-type: size;
+}
+/* each painted box keeps its picture behind its own words */
+.pn-art .pn-page,
+.pn-art .pn-tips,
+.pn-art .pn-ribbon,
+.pn-art .pn-panel,
+.pn-art .pn-row,
+.pn-art .pn-close {
+  isolation: isolate;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.pn-art .pn-page,
+.pn-art .pn-tips,
+.pn-art .pn-ribbon,
+.pn-art .pn-panel,
+.pn-art .pn-row,
+.pn-art .pn-close {
+  position: relative;
+}
+
+.pn-art .pn-head {
+  height: auto;
+  min-height: 78px;
+}
+.pn-art .pn-portrait {
+  z-index: 1;
+  mask-image: linear-gradient(#000 72%, transparent 98%);
+}
+/* with room to spare she stands taller over the page, as in the mock-up */
+@media (min-width: 640px) and (min-height: 600px) {
+  .pn-art .pn-head {
+    min-height: 100px;
+  }
+  .pn-art .pn-portrait {
+    width: 98px;
+    height: 108px;
+    margin-bottom: -4px;
+  }
+  .pn-art .pn-portrait img {
+    width: 164px;
+  }
+  .pn-art .pn-text {
+    font-size: 19px;
+  }
+  .pn-art .pn-tips-text {
+    font-size: 16px;
+  }
+}
+.pn-art .pn-banner {
+  container-type: inline-size;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 400px;
+  height: auto;
+  aspect-ratio: 607 / 128;
+  /* (on a narrow phone the plaque tucks under her shoulder, to stay readable) */
+  margin: 0 auto 8px -12px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.pn-art .pn-banner img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 5px 6px rgba(0, 0, 0, 0.4));
+}
+/* the words on the plaque's red face, under the hat */
+.pn-art .pn-title {
+  position: absolute;
+  inset: 34% 9% 9%;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  white-space: nowrap;
+  font-size: min(8.4cqw, 30px);
+}
+.pn-art .pn-x {
+  border: 0;
+  background-color: transparent;
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  box-shadow: none;
+  filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.4));
+}
+.pn-art .pn-x span {
+  visibility: hidden;
+}
+
+.pn-art .pn-page {
+  padding: 22px 16px 16px 24px;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.45));
+}
+.pn-art .pn-rings {
+  left: -15px;
+}
+.pn-art .pn-rings i {
+  width: 40px;
+  height: 17px;
+  border-radius: 0;
+  background-color: transparent;
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  box-shadow: none;
+}
+.pn-art .pn-tips {
+  min-height: 50px;
+  padding: 0 10px 0 16px;
+}
+.pn-art .pn-switch {
+  width: 72px;
+  background-position: center;
+  background-size: 80px 40px;
+  background-repeat: no-repeat;
+}
+.pn-art .pn-switch::before,
+.pn-art .pn-switch span {
+  display: none;
+}
+
+.pn-art .pn-ribbon {
+  z-index: 1;
+  height: 34px;
+  min-width: 0;
+  margin: 0 0 -9px 6px;
+  padding: 0 38px 0 68px;
+  clip-path: none;
+  white-space: nowrap;
+}
+.pn-art .pn-group-todo .pn-ribbon {
+  padding: 0 40px 0 60px;
+}
+.pn-art .pn-medal {
+  display: none;
+}
+.pn-spark {
+  position: absolute;
+  pointer-events: none;
+}
+.pn-spark-left {
+  left: -12px;
+  top: -7px;
+  width: 20px;
+}
+.pn-spark-right {
+  right: -28px;
+  top: 12px;
+  width: 32px;
+}
+.pn-art .pn-group ul {
+  gap: 4px;
+  padding: 15px 9px 10px;
+}
+.pn-art .pn-row {
+  min-height: 50px;
+  padding: 1px 4px 1px 12px;
+}
+.pn-art .pn-row .pn-art-layer {
+  filter: drop-shadow(0 1px 2px rgba(110, 70, 20, 0.28));
+}
+.pn-art .pn-row[data-done="true"] .pn-art-layer {
+  filter: hue-rotate(30deg) saturate(0.78) brightness(1.04)
+    drop-shadow(0 1px 2px rgba(60, 90, 20, 0.28));
+}
+.pn-art .pn-box {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+/* the tick breaks out of its box a little, as painted */
+.pn-art .pn-box-done {
+  width: 31px;
+  height: 30px;
+  margin: -3px -3px 0 -2px;
+  font-size: 0;
+}
+.pn-art .pn-go span {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  box-shadow: none;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
+  font-size: 0;
+}
+.pn-art .pn-scroll {
+  padding-bottom: 8px;
+  mask-image: linear-gradient(#000 calc(100% - 14px), transparent);
+}
+/* the narrowest phones: the ribbons draw in */
+@media (max-width: 359px) {
+  .pn-art .pn-ribbon,
+  .pn-art .pn-group-todo .pn-ribbon {
+    padding: 0 30px 0 54px;
+    font-size: 14px;
+  }
+  .pn-spark-right {
+    display: none;
+  }
+}
+.pn-art .pn-close {
+  min-height: 52px;
+  filter: drop-shadow(0 5px 6px rgba(0, 0, 0, 0.35));
+}
+
+@media (max-height: 460px) {
+  .pn-art .pn-head {
+    min-height: 60px;
+  }
+  .pn-art .pn-banner {
+    max-width: 290px;
+    margin-bottom: 4px;
+  }
+  .pn-art .pn-page {
+    padding: 18px 14px 10px 22px;
+  }
+}
+
+.kc-reduced-motion .pn-switch span {
+  transition: none;
+}

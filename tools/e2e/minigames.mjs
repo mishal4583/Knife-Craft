@@ -11,8 +11,9 @@
 //   M8 five phone sizes: the sheet inside the screen, no sideways scroll, every tile and button 48 px
 //   M9 the button never covers the Next customer card, and the Kitchen's other buttons still open
 //   M10 no console errors
-//   M12 (developer 2026-11-28, a mock-up) on its side: the screen fills the window over the menu rail, four cards a row in the order they unlock, in the
-//       mock-up's red and purple, the Festival panel to their right, nothing cut off
+//   M12 (developer 2026-11-28, a mock-up) on its side: four cards a row in the order they unlock, in the mock-up's red and purple, the Festival panel to
+//       their right, nothing cut off. RULE CHANGE 2026-11-28 ("reduce the size of the minigames page to the older small page"): the sheet is the small one
+//       again, at most 780 x 520 layout px and 92 % of the height, flush with the bottom, the dimmed Kitchen and the menu rail left in view
 //   M11 the painted art (2026-11-18; RULE CHANGE 2026-11-28: the cards are red or purple frames, so the state shows on the painted pill): the sheet has its art on the FIRST tap (no paint-in), eight painted icons, the right pill per state, a star and glow on a game with
 //       something waiting, the lock badge on a locked game, the Kitchen's button shows the painted controller, and no broken picture anywhere
 // Screenshots: out/minigames-*.png. Prints PASS/FAIL per check and exits 1 on any failure.
@@ -427,15 +428,20 @@ for (const [w, h] of [
     const festival = rect('[data-testid="mg-festival"]');
     const cards = [...document.querySelectorAll('[data-testid="minigames-sheet"] ul button')];
     const boxes = cards.map((c) => c.getBoundingClientRect());
+    const el = document.querySelector('[data-testid="minigames-sheet"]');
+    // the game is laid out at a logical size and scaled to the window: the sheet's limits are in that size
+    const scale = el.getBoundingClientRect().width / el.offsetWidth;
     return {
-      fills:
-        sheet.left <= 1 &&
-        sheet.top <= 1 &&
-        sheet.right >= innerWidth - 1 &&
-        sheet.bottom >= innerHeight - 1,
-      onTop: !!document
+      size: { w: el.offsetWidth, h: el.offsetHeight, scale },
+      small:
+        el.offsetWidth <= 780 &&
+        el.offsetHeight <= 520 &&
+        el.offsetHeight <= el.parentElement.offsetHeight * 0.92 + 1,
+      atBottom: Math.abs(sheet.bottom - innerHeight) <= 1,
+      roomAbove: sheet.top > 8,
+      railFree: !document
         .elementFromPoint(20, innerHeight / 2)
-        ?.closest('[data-testid="minigames-sheet"]'),
+        ?.closest('[data-testid="minigames-sheet"], [data-testid="minigames-backdrop"]'),
       order: cards.map((c) => c.dataset.testid.replace("minigame-", "")),
       tones: cards.map((c) => c.dataset.tone),
       firstRow: boxes.filter((b) => Math.abs(b.top - boxes[0].top) < 2).length,
@@ -448,9 +454,11 @@ for (const [w, h] of [
     };
   });
   check(
-    `M12 ${w} x ${h}: the screen fills the window over the rail; four a row in unlock order, red and purple; the Festival panel at their right`,
-    m.fills &&
-      m.onTop &&
+    `M12 ${w} x ${h}: the small bottom sheet beside the rail; four a row in unlock order, red and purple; the Festival panel at their right`,
+    m.small &&
+      m.atBottom &&
+      m.roomAbove &&
+      m.railFree &&
       m.order.join() ===
         "inspection,fridge-sort,stockroom,sauce,fridge-check,car-park,kitchen-dispatch,dessert-run" &&
       m.tones.join() === "red,purple,red,purple,purple,red,purple,red" &&

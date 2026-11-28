@@ -13,15 +13,12 @@ import "./assistant.css";
  * LATCHED: saving "seen" can never swap it for another mid-sentence. Presentation only: the hire, the seen mark and "Take me there" are the
  * app's (`onHire`, `onSeen`, `onGo`).
  */
-export type AssistantReplay = { beat: AssistantBeat; nonce: number };
-
 type Rect = { x: number; y: number; w: number; h: number };
 
 export function AssistantHost({
   candidate,
   visit,
   calm,
-  replay,
   onHire,
   onSeen,
   onLater,
@@ -34,8 +31,6 @@ export function AssistantHost({
   visit: string;
   /** Nothing else is on the screen (the app's calm moment). */
   calm: boolean;
-  /** "Show again" from the notebook: shows that tip whatever the visit or calm. */
-  replay: AssistantReplay | null;
   onHire: () => void;
   onSeen: (id: string) => void;
   /** "Later" on a beat that offers it: put off for now, not counted as given. */
@@ -44,7 +39,7 @@ export function AssistantHost({
   /** True while a tip is on screen, so the app can hold its own offers until she is done. */
   onOpen?: (open: boolean) => void;
 }) {
-  const [active, setActive] = useState<{ beat: AssistantBeat; replay: boolean } | null>(null);
+  const [active, setActive] = useState<{ beat: AssistantBeat } | null>(null);
   const [line, setLine] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
   const shownIn = useRef<string | null>(null);
@@ -64,37 +59,30 @@ export function AssistantHost({
   useEffect(() => {
     if (active || !calm || !candidate || shownIn.current === visit) return;
     shownIn.current = visit;
-    setActive({ beat: candidate, replay: false });
+    setActive({ beat: candidate });
     setLine(0);
     AudioManager.playSfx("sortPick");
   }, [active, calm, candidate, visit]);
 
-  // "Show again" from the notebook.
-  useEffect(() => {
-    if (!replay) return;
-    setActive({ beat: replay.beat, replay: true });
-    setLine(0);
-  }, [replay]);
-
   // A tip that something else covers is finished (developer 2026-11-16): it used to come back each time a card closed, so one tip showed
-  // three times when the daily gift and the welcome-back sheet opened over it. Her introduction (it must be answered) and a "Show again" stay.
+  // three times when the daily gift and the welcome-back sheet opened over it. Her introduction (it must be answered) stays.
   // Only once it has been on screen long enough to count as seen: the screen's calm can flicker off for a moment while it loads.
   const countedRef = useRef<string | null>(null);
   useEffect(() => {
-    if (calm || !active || active.replay || active.beat.hire) return;
+    if (calm || !active || active.beat.hire) return;
     if (countedRef.current !== active.beat.id) return;
     setActive(null);
   }, [calm, active]);
 
   // The app holds its own offers (the daily gift, welcome back) while she is on screen, so nothing opens over her.
-  const open = !!active && (calm || active.replay);
+  const open = !!active && calm;
   useEffect(() => {
     onOpen?.(open);
   }, [open, onOpen]);
 
   // A given tip counts as seen once it has been on screen for a moment (the introduction is seen when she is hired).
   const beatId = active?.beat.id ?? null;
-  const counts = !!active && !active.replay && !active.beat.hire;
+  const counts = !!active && !active.beat.hire;
   // A beat that offers "Later" is counted when the player answers it (below), not by this timer.
   const timed = counts && !active?.beat.later;
   useEffect(() => {
@@ -144,7 +132,7 @@ export function AssistantHost({
     };
   }, [target]);
 
-  if (!active || (!calm && !active.replay)) return null;
+  if (!active || !calm) return null;
   const { beat } = active;
   const current = beat.lines[Math.min(line, beat.lines.length - 1)]!;
   const last = line >= beat.lines.length - 1;

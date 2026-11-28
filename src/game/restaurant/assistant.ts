@@ -10,7 +10,10 @@
  * button and an optional "Take me there". Every beat is tied to a rule the game already has (a level, an unlock, a finished first
  * service), is shown AT MOST ONCE (`seen`), and only on the calm home screens (the Kitchen and the Restaurant map), never more than one
  * per screen visit: that part is the host's (components/kc/assistant/AssistantHost.tsx). "Tips: Off" stops every beat except her
- * introduction; the notebook keeps every tip she has given, to read again.
+ * introduction. Her notebook is a checklist of real jobs (paigeTasks.ts, developer 2026-11-28), not a list of old tips.
+ *
+ * WHAT SHE SAYS MUST BE TRUE (developer 2026-11-28: "upgrade your kitchen" was said with the kitchen at its last tier): a beat that tells the
+ * player to do or buy something asks the save whether it can still be done, not only what level it is.
  *
  * Pure and deterministic: no Math.random, no clock, nothing saved except `business.assistant`.
  */
@@ -38,6 +41,12 @@ import {
 import { restaurantLevelOf } from "./restaurantMenu";
 import { RANKING_NEWS_FROM_LEVEL } from "../config/earlyLevels";
 import { RIVALS, cityRanking } from "./cityRanking";
+import { KNIFE_CATALOG } from "../knives/knifeDefinitions";
+import { getKnifePurchaseState } from "../knives/KnifeManager";
+import { BOARD_CATALOG } from "../boards/boardDefinitions";
+import { getBoardPurchaseState } from "../boards/BoardManager";
+import { nextKitchenUpgrade } from "../kitchen/nextKitchenUpgrade";
+import { restaurantStaffOf } from "./staffRequirements";
 import { FEATURED_RIVALS, chefCallName } from "./rivalChefs";
 
 export const ASSISTANT_NAME = "Paige";
@@ -75,8 +84,10 @@ export const PAIGE_POSES: readonly PaigePose[] = [
 export const MAX_LINE_CHARS = 90;
 /** A system's or a mini-game's tip is given in the levels from its unlock to this many levels after it. */
 export const BEAT_WINDOW_LEVELS = 3;
-/** The notebook keeps this many tips. */
+/** This many given tips are remembered, so none is said twice. */
 export const SEEN_KEPT = 120;
+/** At most this many job ids are kept for her checklist's day. */
+export const TASK_IDS_KEPT = 40;
 
 export type AssistantState = {
   hired: boolean;
@@ -84,6 +95,8 @@ export type AssistantState = {
   seen: string[];
   /** "Tips: Off": no bubble pops up by itself (her introduction aside); the notebook stays. */
   tipsOff?: boolean;
+  /** Her checklist's day: the ids of the jobs listed on play day `day` (paigeTasks.ts). No text is saved. */
+  list?: { day: number; ids: string[] };
 };
 
 export type AssistantLine = { text: string; pose: PaigePose };
@@ -116,9 +129,29 @@ const within = (level: number, from: number) => level >= from && level < from + 
 
 const completed = (save: SaveData) => save.levelProgress.completedLevelIds.length;
 
+/** A knife dearer than the one in use that the Market sells now (not owned, its level reached). */
+const betterKnifeOnSale = (save: SaveData): boolean => {
+  const mine = KNIFE_CATALOG.find((k) => k.id === save.equippedKnifeId)?.price ?? 0;
+  return KNIFE_CATALOG.some((k) => {
+    const s = getKnifePurchaseState(save, k.id);
+    return k.price > mine && (s === "affordable" || s === "tooExpensive");
+  });
+};
+/** The same for a cutting board. */
+const betterBoardOnSale = (save: SaveData): boolean => {
+  const mine = BOARD_CATALOG.find((b) => b.id === save.equippedBoardId)?.price ?? 0;
+  return BOARD_CATALOG.some((b) => {
+    const s = getBoardPurchaseState(b.id, save);
+    return b.price > mine && (s === "affordable" || s === "tooExpensive");
+  });
+};
+
 /** A system's id → (what Paige says, where she sends the player). One line each; they match what the unlock card and the guide teach. */
 const SYSTEM_TIPS: Partial<
-  Record<RestaurantSystemId, { text: string; pose: PaigePose; go?: string }>
+  Record<
+    RestaurantSystemId,
+    { text: string; pose: PaigePose; go?: string; still?: (save: SaveData) => boolean }
+  >
 > = {
   menu: {
     text: "Your menu is open! Pick what guests can order.",
@@ -141,12 +174,14 @@ const SYSTEM_TIPS: Partial<
     text: "Services are getting busy. A Prep Cook will soon be needed. See Staff.",
     pose: "thumbs",
     go: "business-staff",
+    still: (save) => !(save.business.staff.hiredRoles as readonly string[]).includes("prep-cook"),
   },
   // Level 31: the Indian cuisine opens and needs its own Indian Chef (the French Bistro at Level 23 needs none); the next ones follow at 38, 40 and 47.
   cuisines: {
     text: "A new cuisine! Indian dishes need an Indian Chef. Hire one in Staff.",
     pose: "surprised",
     go: "business-staff",
+    still: (save) => !restaurantStaffOf(save).specialists.includes("indian-chef"),
   },
   takeaway: {
     text: "Takeaway orders are open. A Cashier packs the bags.",
@@ -162,11 +197,14 @@ const SYSTEM_TIPS: Partial<
     text: "Time to grow! Upgrade your kitchen for more room.",
     pose: "cheer",
     go: "business-kitchen-upgrades",
+    // never with every tier built
+    still: (save) => nextKitchenUpgrade(save)?.state === "available",
   },
   established: {
     text: "An established restaurant! Aim to be No. 1 in the city.",
     pose: "cheer",
     go: "rack",
+    still: (save) => cityRanking(save).rank > 1,
   },
   master: { text: "Master level. Keep your standards high!", pose: "thumbs" },
   "grand-service": { text: "Grand Service. The last stretch. You've got this!", pose: "clap" },
@@ -183,7 +221,7 @@ const systemBeats = (): AssistantBeat[] =>
         lines: [{ text: tip.text, pose: tip.pose }],
         ...(tip.go ? { go: tip.go } : {}),
         priority: 50,
-        when: (_save, level) => within(level, from),
+        when: (save, level) => within(level, from) && (tip.still?.(save) ?? true),
       } satisfies AssistantBeat,
     ];
   });
@@ -438,14 +476,14 @@ export const ASSISTANT_BEATS: readonly AssistantBeat[] = [
     lines: [{ text: "Steak is tough! A better knife in the Market helps.", pose: "tip" }],
     go: "shop",
     priority: 45,
-    when: (_save, level) => within(level, 15),
+    when: (save, level) => within(level, 15) && betterKnifeOnSale(save),
   },
   {
     id: "fish-board",
     lines: [{ text: "Fish is delicate. Look at the Market's boards.", pose: "tip" }],
     go: "shop",
     priority: 45,
-    when: (_save, level) => within(level, 16),
+    when: (save, level) => within(level, 16) && betterBoardOnSale(save),
   },
   {
     id: "cleaning",
@@ -464,7 +502,10 @@ export const ASSISTANT_BEATS: readonly AssistantBeat[] = [
     ],
     go: "inventory-supplies",
     priority: 53,
-    when: (_save, level) => within(level, STOCKROOM_FIRST_LEVEL),
+    // only while a crate of supplies really waits for the shelves
+    when: (save, level) =>
+      within(level, STOCKROOM_FIRST_LEVEL) &&
+      flowSteps(save, level).some((x) => x.id === "shelves"),
   },
   {
     // Developer 2026-11-10: the Sauce Station opens at Level 7 (the Simple Garden Salad), before Level 20.
@@ -540,10 +581,22 @@ export function assistantOf(save: SaveData): AssistantState {
   const seen = Array.isArray(raw?.seen)
     ? [...new Set(raw.seen.filter((s): s is string => typeof s === "string"))].slice(-SEEN_KEPT)
     : [];
+  const list = raw?.list;
+  const day = Math.floor(Number(list?.day));
   return {
     hired: raw?.hired === true,
     seen,
     ...(raw?.tipsOff === true ? { tipsOff: true } : {}),
+    ...(day >= 1 && Array.isArray(list?.ids)
+      ? {
+          list: {
+            day,
+            ids: [...new Set(list.ids.filter((s): s is string => typeof s === "string"))].slice(
+              -TASK_IDS_KEPT,
+            ),
+          },
+        }
+      : {}),
   };
 }
 
@@ -603,15 +656,4 @@ export function assistantBeatFor(save: SaveData): AssistantBeat | null {
     if (!best || beat.priority > best.priority) best = beat;
   }
   return best;
-}
-
-/** Every tip she has given, for the notebook (oldest first), each with its first line. */
-export function notebookEntries(
-  save: SaveData,
-): { id: string; text: string; beat: AssistantBeat }[] {
-  return assistantOf(save)
-    .seen.filter((id) => !id.startsWith(FLOOR_NUDGE_PREFIX))
-    .map((id) => beatById(id))
-    .filter((b): b is AssistantBeat => !!b && !b.hire)
-    .map((beat) => ({ id: beat.id, text: beat.lines[0]!.text, beat }));
 }

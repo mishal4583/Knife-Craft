@@ -5,7 +5,7 @@
  *   B  the hire is FREE: no credits, ledger, inventory or staff change; hiring twice is the same save; her state survives junk
  *   C  the beats: tied to real rules (first cash, a missing food, a system's unlock, the mini-games, milestones, the finale), windowed so an
  *      old save is not flooded, each shown once, one at a time, highest priority first
- *   D  Tips: Off stops every beat but keeps the notebook; a given tip is in the notebook
+ *   D  Tips: Off stops every beat but keeps the notebook, which is a checklist of jobs (paige-checklist-qa)
  *   E  copy rules: at most 90 characters a line, one or two lines, at most one emoji, English, known poses, known screens, real targets
  *   F  pure and free of money: no wallet, ledger, random or clock in the rule file
  *   G  the wiring: calm moments only, never over the guide card or Grandma's pointer, one per visit, her introduction before Grandma's pointer
@@ -343,12 +343,14 @@ const hired = (s: SaveData) => A.hireAssistant(s);
         ),
     ) && F.floorAdvice(richLate, 30)?.kind !== "second-machine",
   );
-  const book = A.notebookEntries(
-    A.markAssistantSeen(A.markAssistantSeen(hired(at(16)), "floor-nudge:polish:20"), "restock"),
+  // RULE CHANGE (developer 2026-11-28): the notebook is a checklist of jobs, not a list of given tips, so no tip or reminder is listed in it.
+  const { paigeChecklist, trackPaigeTasks } = await import("../src/game/restaurant/paigeTasks.ts");
+  const reminded = paigeChecklist(
+    trackPaigeTasks(A.markAssistantSeen(hired(at(16)), "floor-nudge:polish:20")),
   );
   check(
-    "I11 the reminders are not kept in the notebook, and when the list of given tips is full the OLD reminders go first, never a one-off tip she already gave",
-    book.map((e) => e.id).join() === "restock" &&
+    "I11 the reminders are not on her checklist, and when the list of given tips is full the OLD reminders go first, never a one-off tip she already gave",
+    [...reminded.todo, ...reminded.done].every((t) => !/nudge|polish/i.test(`${t.id} ${t.text}`)) &&
       (() => {
         let st = A.markAssistantSeen(hired(at(16)), "first-pay");
         for (let i = 0; i < A.SEEN_KEPT + 10; i++)
@@ -377,6 +379,86 @@ const hired = (s: SaveData) => A.hireAssistant(s);
   );
 }
 
+// ── I14-I18. A tip that says "do this" asks the save first (developer 2026-11-28: "upgrade your kitchen" with the kitchen at its last tier) ──
+{
+  const { KITCHEN_UPGRADE_CATALOG } =
+    await import("../src/game/kitchen/kitchenUpgradeDefinitions.ts");
+  const { KNIFE_CATALOG } = await import("../src/game/knives/knifeDefinitions.ts");
+  const { BOARD_CATALOG } = await import("../src/game/boards/boardDefinitions.ts");
+  const { flowSteps } = await import("../src/game/business/deliveryFlow.ts");
+  const { cityRanking } = await import("../src/game/restaurant/cityRanking.ts");
+  const says = (id: string, s: SaveData, n: number) => A.beatById(id)!.when(s, n);
+  const from = (id: Parameters<typeof restaurantSystem>[0]) => restaurantSystem(id).firstLevel;
+
+  const e = from("expansion");
+  const small = hired(at(e));
+  const tiers = KITCHEN_UPGRADE_CATALOG.map((k) => k.id);
+  const maxed: SaveData = {
+    ...small,
+    ownedKitchenUpgradeIds: tiers,
+    equippedKitchenUpgradeId: tiers.at(-1)!,
+  };
+  check(
+    "I14 'Upgrade your kitchen' is said while a tier is left, never with every tier built",
+    says("system:expansion", small, e) && !says("system:expansion", maxed, e),
+  );
+
+  const st = from("staff");
+  const cu = from("cuisines");
+  const noStaff = hired(at(st));
+  const withCook: SaveData = {
+    ...noStaff,
+    business: {
+      ...noStaff.business,
+      staff: {
+        ...noStaff.business.staff,
+        hiredRoles: [...noStaff.business.staff.hiredRoles, "prep-cook"],
+      },
+    },
+  };
+  const noChef = hired(at(cu));
+  const withChef: SaveData = {
+    ...noChef,
+    business: { ...noChef.business, restaurantStaff: { specialists: ["indian-chef"] } },
+  };
+  check(
+    "I15 'A Prep Cook will soon be needed' and 'Hire an Indian Chef' are not said to a player who has hired them",
+    says("system:staff", noStaff, st) &&
+      !says("system:staff", withCook, st) &&
+      says("system:cuisines", noChef, cu) &&
+      !says("system:cuisines", withChef, cu),
+  );
+
+  const es = from("established");
+  check(
+    "I16 'Aim to be No. 1' is said only while the restaurant is not No. 1",
+    says("system:established", hired(at(es)), es) === cityRanking(hired(at(es))).rank > 1 &&
+      /still: \(save\) => cityRanking\(save\)\.rank > 1/.test(
+        read("src/game/restaurant/assistant.ts"),
+      ),
+  );
+
+  const k15 = hired(at(15));
+  const b16 = hired(at(16));
+  const allKnives: SaveData = { ...k15, ownedKnifeIds: KNIFE_CATALOG.map((k) => k.id) };
+  const allBoards: SaveData = { ...b16, ownedBoardIds: BOARD_CATALOG.map((b) => b.id) };
+  check(
+    "I17 the steak and fish tips send the player to the Market only while it sells a better knife or board he does not own",
+    says("steak-knife", k15, 15) &&
+      !says("steak-knife", allKnives, 15) &&
+      says("fish-board", b16, 16) &&
+      !says("fish-board", allBoards, 16),
+  );
+
+  const shelfAt = A.ASSISTANT_BEATS.find((b) => b.id === "stockroom-sort")!;
+  const empty = hired(at(4));
+  check(
+    "I18 'Put the new supplies on the shelves' is said only while a crate really waits",
+    !flowSteps(empty, 4).some((x) => x.id === "shelves") &&
+      [3, 4, 5, 6, 7, 8, 9].every((n) => !shelfAt.when(hired(at(n)), n)),
+  );
+}
+
 // ── D. Tips: Off and the notebook ──────────────────────────────────────
 {
   const l2 = hired(at(2));
@@ -389,19 +471,23 @@ const hired = (s: SaveData) => A.hireAssistant(s);
       A.assistantBeatFor(A.setAssistantTips(off, true))?.id === "first-pay" &&
       A.setAssistantTips(l2, true) === l2,
   );
+  // RULE CHANGE (developer 2026-11-28, "the paige notebook should be like a check list for task to be done"): D2 and D3 used to read the list of
+  // tips she had given. The checklist's own rules are in paige-checklist-qa.
+  const { paigeChecklist } = await import("../src/game/restaurant/paigeTasks.ts");
   const given = A.markAssistantSeen(A.markAssistantSeen(l2, "first-pay"), "restock");
-  const book = A.notebookEntries(given);
+  const book = paigeChecklist(given);
   check(
-    "D2 the notebook lists the tips she gave (not her introduction), each with its first line",
-    book.map((e) => e.id).join() === "first-pay,restock" && book.every((e) => e.text.length > 0),
-    book.map((e) => e.id),
+    "D2 the notebook is a checklist of jobs: the words of a tip already given are not a line in it, and serving is always the last job",
+    book.todo.at(-1)?.id === "serve" &&
+      [...book.todo, ...book.done].every((t) => t.text !== A.beatById("first-pay")!.lines[0]!.text),
+    book.todo.map((t) => t.id),
   );
   check(
     "D3 Tips Off keeps the notebook",
-    A.notebookEntries(A.setAssistantTips(given, false)).length === 2,
+    JSON.stringify(paigeChecklist(A.setAssistantTips(given, false))) === JSON.stringify(book),
   );
   check(
-    "D4 the notebook holds at most SEEN_KEPT tips",
+    "D4 at most SEEN_KEPT given tips are remembered",
     (() => {
       let s = l2;
       for (let i = 0; i < A.SEEN_KEPT + 30; i++) s = A.markAssistantSeen(s, `x${i}`);
@@ -516,13 +602,15 @@ const hired = (s: SaveData) => A.hireAssistant(s);
       /backdrop-blur/.test(host) &&
       /shadow-\[0_0_0_200vmax_rgba/.test(host) &&
       /querySelector\(target\)/.test(host) &&
-      /setActive\(\{ beat: candidate, replay: false \}\)/.test(host) &&
+      // RULE CHANGE (developer 2026-11-28): the "replay" field went with "Show again"; the beat on screen is still latched.
+      /setActive\(\{ beat: candidate \}\)/.test(host) &&
       /\.kc-reduced-motion \.paige-in/.test(read("src/components/kc/assistant/assistant.css")),
   );
   const appSource = read("src/App.tsx");
   check(
-    "G7 (developer 2026-11-16: one tip showed three times) a tip something covers, once it has counted as seen, is finished and never comes back (her introduction and 'Show again' stay), and the daily gift and welcome back wait while a tip is on screen",
-    /if \(calm \|\| !active \|\| active\.replay \|\| active\.beat\.hire\) return;\s*if \(countedRef\.current !== active\.beat\.id\) return;\s*setActive\(null\);/.test(
+    // RULE CHANGE (developer 2026-11-28): "Show again" went with the old list of tips.
+    "G7 (developer 2026-11-16: one tip showed three times) a tip something covers, once it has counted as seen, is finished and never comes back (her introduction stays), and the daily gift and welcome back wait while a tip is on screen",
+    /if \(calm \|\| !active \|\| active\.beat\.hire\) return;\s*if \(countedRef\.current !== active\.beat\.id\) return;\s*setActive\(null\);/.test(
       host,
     ) &&
       /onOpen\?\.\(open\)/.test(host) &&

@@ -18,18 +18,23 @@ class PauseManagerImpl {
   private wiredToPlatform = false;
   /** The platform paused the game while an ad was on screen (and it wasn't already paused). */
   private pausedForAd = false;
+  /** The pause in force is the platform's own: it paused a running game. Only that pause is lifted by the platform's resume. */
+  private pausedByPlatform = false;
 
   /** Registers the platform pause/resume listeners exactly once. */
   wireToPlatform(): void {
     if (this.wiredToPlatform) return;
     this.wiredToPlatform = true;
     onPlatformPause(() => {
-      if (isAdActive() && !this.paused) this.pausedForAd = true;
+      // already paused (by the player, or by an earlier platform pause): nothing changes hands
+      if (this.paused) return;
       this.pause();
+      this.pausedByPlatform = true;
+      if (isAdActive()) this.pausedForAd = true;
     });
+    // (deep check 2026-11-28) a player who paused and then switched away must come back to a paused game
     onPlatformResume(() => {
-      this.pausedForAd = false;
-      this.resume();
+      if (this.pausedByPlatform) this.resume();
     });
     // A platform may send the pause when an ad starts but not always the
     // resume when it ends — which would leave the game paused and silent.
@@ -37,19 +42,21 @@ class PauseManagerImpl {
     // dead-request guard), wake the game — but only if it was the platform's
     // ad-time pause; a player's own pause is never undone.
     onAdActiveChange((active) => {
-      if (active || !this.pausedForAd) return;
-      this.pausedForAd = false;
-      this.resume();
+      if (!active && this.pausedForAd) this.resume();
     });
   }
 
   pause(): void {
     if (this.paused) return;
+    this.pausedByPlatform = false;
+    this.pausedForAd = false;
     this.paused = true;
     this.notify();
   }
 
   resume(): void {
+    this.pausedByPlatform = false;
+    this.pausedForAd = false;
     if (!this.paused) return;
     this.paused = false;
     this.notify();

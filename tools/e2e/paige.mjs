@@ -2,11 +2,14 @@
 //   P1 a brand-new game: after the intro and the naming card Paige introduces herself in the Kitchen (her pose, her painted bubble, "Hire Paige")
 //   P2 her introduction comes BEFORE Grandma's pointer; the hire is free (credits and ledger unchanged); then the pointer appears with Paige's face
 //   P3 after the first service the first-cash tip rings the Market tab; one beat per screen visit; "Got it" saves it as seen
-//   P4 Ask Paige opens the notebook with that tip; "Show again" brings the bubble back; the Tips switch turns her off and on and is saved
+//   P4 Ask Paige opens her checklist (Serve is the last job, no old tips); an arrow opens the job's place; the Tips switch is saved
 //   P5 Tips Off: no bubble pops up by itself
 //   P6 her card on the Staff screen (portrait, free, notebook, tips)
 //   P7 at 320 x 568 and 390 x 844 the bubble fits, nothing scrolls sideways, every button is at least 48 px
 //   P8 no console errors
+//   P10 a day in the checklist: the kitchen job's arrow, the upgrade bought, the tick (kept over a reload), gone when the day closes
+//   P11 the notebook fits upright, on its side and wide: nothing off screen, no sideways scroll, 48 px buttons, two or more jobs in view
+//   P12 it wears its painted pieces: every picture it names loads, upright and wide, with no plain drawing left over
 // Prints PASS/FAIL per check and exits 1 on any failure.
 import {
   MOVED_IN_BUSINESS,
@@ -196,27 +199,47 @@ try {
   // ---- P4: the notebook ----
   const ask = await q('[data-testid="ask-paige"]');
   await click('[data-testid="ask-paige"]', 500);
-  const book = await page.evaluate(() => ({
-    open: !!document.querySelector('[data-testid="paige-notebook"]'),
-    tips: [...document.querySelectorAll("[data-tip]")].map((e) => e.getAttribute("data-tip")),
-    switchOn: document
-      .querySelector('[data-testid="paige-tips-switch"]')
-      ?.getAttribute("aria-checked"),
-  }));
+  // RULE CHANGE (developer 2026-11-28, "like a check list for task to be done"): the notebook lists jobs, not the tips she gave.
+  const readBook = () =>
+    page.evaluate(() => {
+      const of = (id) =>
+        [...document.querySelectorAll(`[data-testid="${id}"] [data-task]`)].map((e) =>
+          e.getAttribute("data-task"),
+        );
+      return {
+        open: !!document.querySelector('[data-testid="paige-notebook"]'),
+        todo: of("paige-todo"),
+        done: of("paige-done"),
+        text: document.querySelector('[data-testid="paige-notebook"]')?.textContent ?? "",
+        switchOn: document
+          .querySelector('[data-testid="paige-tips-switch"]')
+          ?.getAttribute("aria-checked"),
+      };
+    });
+  const book = await readBook();
   await shot(page, "paige-4-notebook");
   check(
-    "P4 Ask Paige opens the notebook with the tip she gave and Tips: On",
-    ask && book.open && book.tips.join() === "first-pay" && book.switchOn === "true",
+    "P4 Ask Paige opens her checklist: Recently Completed and Next to Do, serving is the last job, no old tip is a line, Tips: On",
+    ask &&
+      book.open &&
+      book.todo.at(-1) === "serve" &&
+      /Recently Completed/.test(book.text) &&
+      /Next to Do/.test(book.text) &&
+      !/You earned your first cash/.test(book.text) &&
+      book.switchOn === "true",
     book,
   );
-  await click('[data-testid="paige-replay"]', 700);
-  const replayed = await bubble();
+  await click('[data-task="restock"] [data-testid="paige-task-go"]', 900);
+  const market = await page.evaluate(() => ({
+    book: !!document.querySelector('[data-testid="paige-notebook"]'),
+    market: !!document.querySelector('[data-testid^="market-"]'),
+  }));
   check(
-    "P4b 'Show again' closes the notebook and brings that bubble back",
-    !!replayed && replayed.beat === "first-pay" && !(await q('[data-testid="paige-notebook"]')),
-    replayed && replayed.beat,
+    "P4b the shopping job's arrow closes the notebook and opens the Market",
+    book.todo.includes("restock") && !market.book && market.market,
+    market,
   );
-  await click('[data-testid="assistant-ok"]', 400);
+  await click('[data-nav="kitchen"]', 700);
   await click('[data-testid="ask-paige"]', 400);
   await click('[data-testid="paige-tips-switch"]', 500);
   const off = await readSave(page);
@@ -409,6 +432,198 @@ try {
     "P9 the tip shows once and is read first; the gift opens only after she is closed; the tip does not come back over it",
     seen.join(",") === "tip,none,gift,none",
     seen,
+  );
+
+  // ---- P10: a day in the checklist (the developer's own case: the kitchen upgrade) ----
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+  await boot(
+    page,
+    seedSave({
+      credits: 1_900_000, // enough for the next kitchen tier (this seed already owns the Growing Kitchen)
+      business: {
+        ...MOVED_IN_BUSINESS,
+        assistant: { hired: true, seen: [], tipsOff: true },
+        sectionsSeen: ["shop", "inventory", "rack", "business", "staff", "equipment"],
+      },
+      levelProgress: {
+        currentLevelId: "level-20",
+        highestUnlockedLevelId: "level-20",
+        completedLevelIds: Array.from({ length: 19 }, (_, i) => `level-${i + 1}`),
+        campaignVersion: 4,
+      },
+      story: { introDone: true, milestoneMask: 0xffff, finaleSeen: true },
+    }),
+  );
+  const closeOffers = async () => {
+    for (let i = 0; i < 4; i++) {
+      const had = await page.evaluate(() => {
+        const x = [...document.querySelectorAll("button")].find(
+          (y) => y.textContent.trim() === "Later",
+        );
+        x?.click();
+        return !!x;
+      });
+      await sleep(400);
+      if (!had) break;
+    }
+  };
+  const openBook = async () => {
+    await closeOffers();
+    await click('[data-testid="ask-paige"]', 700);
+    return readBook();
+  };
+  const first = await openBook();
+  const KITCHEN = first.todo.find((id) => id.startsWith("kitchen:")) ?? "kitchen:none";
+  const TIER = KITCHEN.split(":")[1];
+  await shot(page, "paige-10a-todo");
+  await click(`[data-task="${KITCHEN}"] [data-testid="paige-task-go"]`, 1200);
+  const pressed = await page.evaluate(() => {
+    const x = [...document.querySelectorAll("button")].find(
+      (y) => !y.disabled && /Build ·/.test(y.textContent),
+    );
+    x?.click();
+    return x?.textContent.trim() ?? null;
+  });
+  await sleep(1500);
+  const owned = (await readSave(page))?.ownedKitchenUpgradeIds ?? [];
+  const reload = async () => {
+    await page.reload({ waitUntil: "networkidle0" });
+    await page.waitForFunction(
+      () => document.elementFromPoint(5, 5)?.closest("#loading-overlay") === null,
+      { timeout: 20000 },
+    );
+    await sleep(1800);
+  };
+  await reload();
+  const ticked = await openBook();
+  await shot(page, "paige-10b-ticked");
+  check(
+    "P10 the kitchen job is listed, its arrow leads to the purchase, and once bought it is ticked (also after a reload) and no longer to do",
+    first.todo.includes(KITCHEN) &&
+      !!pressed &&
+      owned.includes(TIER) &&
+      ticked.done.includes(KITCHEN) &&
+      !ticked.todo.includes(KITCHEN),
+    { first, pressed, owned, ticked },
+  );
+  // the day closes: the stored save's day moves on, as closing a service does
+  const day = await readSave(page);
+  day.business.restaurantDay = {
+    ...day.business.restaurantDay,
+    day: (day.business.restaurantDay?.day ?? 1) + 1,
+  };
+  day.business.calendar.businessDay += 1;
+  await page.evaluate(async (v) => {
+    await window.bridge.storage.set(["knifecraft_save"], [JSON.stringify(v)]);
+  }, day);
+  await reload();
+  const tomorrow = await openBook();
+  await shot(page, "paige-10c-tomorrow");
+  check(
+    "P10b after the day closes the tick is gone and the new day lists its jobs",
+    tomorrow.done.length === 0 && !tomorrow.todo.includes(KITCHEN) && tomorrow.todo.length > 0,
+    tomorrow,
+  );
+
+  // ---- P11: it fits ----
+  const bookFits = [];
+  for (const [w, h] of [
+    [320, 568],
+    [390, 844],
+    [844, 390],
+    [1280, 720],
+  ]) {
+    await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
+    await reload();
+    await openBook();
+    await shot(page, `paige-11-book-${w}x${h}`);
+    bookFits.push(
+      await page.evaluate((size) => {
+        const root = document.querySelector('[data-testid="paige-notebook"]');
+        const scroll = root?.querySelector(".pn-scroll");
+        const inside = (el) => {
+          const r = el.getBoundingClientRect();
+          return (
+            r.left >= -1 && r.top >= -1 && r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1
+          );
+        };
+        const rows = [...(root?.querySelectorAll('[data-testid="paige-todo"] [data-task]') ?? [])];
+        return {
+          size,
+          fixed: ["paige-close", "paige-notebook-x", "paige-tips-switch"].every((id) => {
+            const el = root?.querySelector(`[data-testid="${id}"]`);
+            return !!el && inside(el);
+          }),
+          inView: rows.filter(inside).length,
+          sideways:
+            !!scroll &&
+            (scroll.scrollWidth > scroll.clientWidth + 1 ||
+              document.documentElement.scrollWidth > innerWidth + 1),
+          small: [...(root?.querySelectorAll("button") ?? [])]
+            .map((x) => x.getBoundingClientRect())
+            .filter((r) => r.width < 47.5 || r.height < 47.5).length,
+        };
+      }, `${w}x${h}`),
+    );
+  }
+  check(
+    "P11 at every size Close, the X and Tips are on screen, at least two jobs are in view, nothing scrolls sideways, every button is 48 px",
+    bookFits.every((f) => f.fixed && f.inView >= 2 && !f.sideways && f.small === 0),
+    bookFits,
+  );
+
+  // ---- P12: the painted pieces (the notebook is still open from P11, wide) ----
+  const painted = [];
+  for (const [w, h] of [
+    [390, 844],
+    [1280, 720],
+  ]) {
+    await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
+    await reload();
+    await openBook();
+    await sleep(900);
+    painted.push(
+      await page.evaluate(async () => {
+        const root = document.querySelector('[data-testid="paige-notebook"]');
+        const urls = new Set();
+        for (const el of root?.querySelectorAll("*") ?? []) {
+          const bg = getComputedStyle(el).backgroundImage;
+          for (const m of bg.matchAll(/url\("([^"]+notebook\/[^"]+)"\)/g)) urls.add(m[1]);
+          if (el.tagName === "IMG" && /notebook\//.test(el.src)) urls.add(el.src);
+        }
+        const broken = [];
+        for (const url of urls) {
+          const ok = await new Promise((res) => {
+            const i = new Image();
+            i.onload = () => res(true);
+            i.onerror = () => res(false);
+            i.src = url;
+          });
+          if (!ok) broken.push(url);
+        }
+        return {
+          art: root?.dataset.art,
+          pictures: urls.size,
+          broken,
+          pieces: [
+            ...new Set(
+              [...root.querySelectorAll("[data-art-piece]")].map((e) => e.dataset.artPiece),
+            ),
+          ],
+          plain: root.querySelectorAll(".pn-leaf, .pn-hat").length,
+        };
+      }),
+    );
+    await shot(page, `paige-12-painted-${w}x${h}`);
+  }
+  check(
+    "P12 the notebook wears its painted pieces upright and wide: the right page, every picture loads, no plain drawing left",
+    painted.every(
+      (p) => p.art === "1" && p.pictures >= 14 && p.broken.length === 0 && p.plain === 0,
+    ) &&
+      painted[0].pieces.includes("page-upright") &&
+      painted[1].pieces.includes("page-wide"),
+    painted,
   );
 
   const bad = logs.filter(

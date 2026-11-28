@@ -449,6 +449,9 @@ export function AreaCleaningPrototype({
     onComplete();
   }
 
+  /** The way out. A room already clean (the ending is playing) keeps its clean: leaving only skips the ending (deep check 2026-11-28). */
+  const leave = () => (completeRef.current ? finish() : onClose());
+
   /** Past the threshold: the last stains wipe themselves in a quick cascade, then "Spotless!". */
   function finale() {
     completeRef.current = true;
@@ -601,7 +604,7 @@ export function AreaCleaningPrototype({
       style={{ touchAction: "none", overscrollBehavior: "contain" }}
       role="presentation"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget) leave();
       }}
     >
       <section
@@ -644,7 +647,7 @@ export function AreaCleaningPrototype({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={leave}
             aria-label={`Close ${roomTitle.toLowerCase()} cleaning`}
             className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-walnut/15 bg-white/70 font-ui text-xl font-black text-walnut-dark"
           >

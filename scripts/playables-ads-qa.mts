@@ -832,6 +832,32 @@ Date.now = realDateNow;
     !PauseManager.isPaused(),
     "G9: when the platform does resume, the game is simply running afterwards",
   );
+  // (deep check 2026-11-28) the platform's resume lifts only the platform's own pause
+  PauseManager.pause();
+  fire(EVENT_NAME.PAUSE_STATE_CHANGED, true);
+  fire(EVENT_NAME.PAUSE_STATE_CHANGED, false);
+  assert(
+    PauseManager.isPaused(),
+    "G10: the player's own pause is still there after the platform pauses and resumes (the player switched away from a paused game)",
+  );
+  PauseManager.resume();
+  fire(EVENT_NAME.PAUSE_STATE_CHANGED, true);
+  fire(EVENT_NAME.PAUSE_STATE_CHANGED, true);
+  fire(EVENT_NAME.PAUSE_STATE_CHANGED, false);
+  assert(!PauseManager.isPaused(), "G11: a pause the platform sends twice is lifted by one resume");
+  fire(EVENT_NAME.PAUSE_STATE_CHANGED, true);
+  PauseManager.resume();
+  assert(
+    !PauseManager.isPaused(),
+    "G12: the player's Resume still works while the platform has the game paused (never a soft-lock)",
+  );
+  PauseManager.pause();
+  fire(EVENT_NAME.PAUSE_STATE_CHANGED, false);
+  assert(
+    PauseManager.isPaused(),
+    "G13: a platform resume that arrives late never lifts a pause the player made since",
+  );
+  PauseManager.resume();
   mock.timers.reset();
 }
 

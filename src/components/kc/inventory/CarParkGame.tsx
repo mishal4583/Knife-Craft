@@ -113,7 +113,10 @@ export function CarParkGame({
   const [honks, setHonks] = useState(0);
   const [towMode, setTowMode] = useState(false);
   const [freeTowUsed, setFreeTowUsed] = useState(false);
-  const [bonusTowAvailable, setBonusTowAvailable] = useState(false);
+  // an ad's tow that was never used waits in the save (developer 2026-11-28)
+  const [bonusTowAvailable, setBonusTowAvailable] = useState(
+    () => carParkStateOf(save).towHeld === true,
+  );
   const [bonusTowUsed, setBonusTowUsed] = useState(false);
   const [hintId, setHintId] = useState<string | null>(null);
   const [bumpId, setBumpId] = useState<string | null>(null);
@@ -170,8 +173,10 @@ export function CarParkGame({
       const next = towVehicle(lot, id);
       driveOff(id);
       setLot(next);
-      if (freeTowUsed) setBonusTowUsed(true);
-      else setFreeTowUsed(true);
+      if (freeTowUsed) {
+        setBonusTowUsed(true);
+        onAction({ kind: "adTowSpent" });
+      } else setFreeTowUsed(true);
       setTowMode(false);
       AudioManager.playSfx("delivery");
       if (isLotCleared(next)) win(honks, true);
@@ -411,7 +416,7 @@ export function CarParkGame({
               {towMode
                 ? "Choose a vehicle"
                 : canTow
-                  ? `${freeTowUsed ? "Bonus tow" : "Tow"} · costs 1★`
+                  ? `${freeTowUsed ? "Bonus tow" : bonusTowAvailable ? "Tow ×2" : "Tow"} · costs 1★`
                   : towAdAvailable && carParkTowAdAvailable(save)
                     ? "Watch for extra tow"
                     : "Tow used"}

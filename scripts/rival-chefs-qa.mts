@@ -36,11 +36,11 @@ import {
   assistantBeatFor,
   assistantOf,
   markAssistantSeen,
-  notebookEntries,
   putOffAt,
   withBeatPutOff,
 } from "../src/game/restaurant/assistant.ts";
 import { restaurantLevelOf } from "../src/game/restaurant/restaurantMenu.ts";
+import { paigeChecklist } from "../src/game/restaurant/paigeTasks.ts";
 import { celebrationFor } from "../src/game/restaurant/celebrations.ts";
 import { RANKING_NEWS_FROM_LEVEL } from "../src/game/config/earlyLevels.ts";
 
@@ -460,9 +460,11 @@ console.log("I. Paige's Later on a rival message (audit Batch 4, developer 2026-
         JSON.stringify(assistantOf(later).seen) === JSON.stringify(assistantOf(found).seen),
       "I6: Later does not count it as given (it is not in the saved tips, so not in the notebook)",
     );
+    // RULE CHANGE (developer 2026-11-28): the notebook is a checklist of jobs, so a message is never a line in it, put off or answered.
+    const book = paigeChecklist(later);
     assert(
-      !notebookEntries(later).some((e) => e.id === mamas.id),
-      "I7: and it is not in the notebook until the player answers it",
+      [...book.todo, ...book.done].every((t) => t.text !== mamas.lines[0]!.text),
+      "I7: and it is not a line in her notebook",
     );
     // the next level: the same rule offers it again, while its own window lasts
     const nextLevelWhen = mamas.when(later, level + 1);

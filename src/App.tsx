@@ -345,7 +345,7 @@ import {
   setAssistantTips,
   type AssistantBeat,
 } from "@/game/restaurant/assistant";
-import { AssistantHost, type AssistantReplay } from "@/components/kc/assistant/AssistantHost";
+import { AssistantHost } from "@/components/kc/assistant/AssistantHost";
 import {
   PRAISE_STARS,
   isPraiseId,
@@ -354,8 +354,13 @@ import {
 } from "@/game/restaurant/miniGamePraise";
 import { AssistantProvider, type AssistantApi } from "@/components/kc/assistant/AssistantContext";
 import { PaigeNotebook } from "@/components/kc/assistant/PaigeNotebook";
+import { trackPaigeTasks, type PaigeTask } from "@/game/restaurant/paigeTasks";
 import { openStaffFor } from "@/components/kc/staffFocus";
-import { openMarketIngredients, openMarketSupplies } from "@/components/kc/marketFocus";
+import {
+  openMarketIngredients,
+  openMarketPlan,
+  openMarketSupplies,
+} from "@/components/kc/marketFocus";
 import { serviceHirePrompts } from "@/game/restaurant/serviceHire";
 import {
   fireSpecialist,
@@ -556,6 +561,7 @@ import {
   finishCarPark,
   withCarParkTowAd,
   carParkTowAdAvailable,
+  spendCarParkAdTow,
   type CarParkAction,
   type CarParkActionResult,
 } from "@/game/business/carPark";
@@ -937,7 +943,6 @@ export function App() {
   const [paigeNotebook, setPaigeNotebook] = useState(false);
   // A moment worth feeling (game/restaurant/celebrations.ts): the ranking climbed, popularity rose, a spotless run.
   const [celebration, setCelebration] = useState<Celebration | null>(null);
-  const [paigeReplay, setPaigeReplay] = useState<AssistantReplay | null>(null);
   // A tip is on screen: the daily gift and welcome back wait for it (developer 2026-11-16: they used to open over it and make it show again).
   const [paigeOpen, setPaigeOpen] = useState(false);
   // Paige's praise for a perfect mini-game round (restaurant/miniGamePraise.ts): held until the player is back on a home screen, then said once.
@@ -1074,8 +1079,10 @@ export function App() {
         if (synced !== loaded) void SaveManager.save(synced);
         // Rewards already waiting at load are shown by the tab's badge, not a banner.
         for (const x of collectable(synced)) announcedRef.current.add(x.id);
-        saveRef.current = synced;
-        setSave(synced);
+        // (Paige's jobs of the day are noted from the start; they are written with the next save)
+        const opened = RESTAURANT_MODE ? trackPaigeTasks(synced) : synced;
+        saveRef.current = opened;
+        setSave(opened);
         // The loading screen (index.html, src/lib/bootSplash.ts) stays until the FIRST screen's pictures and fonts are here, so the player sees the
         // kitchen whole instead of watching it paint in: the kitchen's backdrop (and Paige when she is hired); the first two story pictures for a new
         // player. Time-limited: a slow phone sees the game rather than a stuck bar. Nothing here touches the save.
@@ -1301,7 +1308,9 @@ export function App() {
     const synced = syncKitchenUpgradeOwnership(next);
     // Economy V2.5 — a milestone reached by this change is paid right here,
     // once (milestoneRewards.ts: the ledger entry is the record).
-    const { save: rewarded, granted } = grantEarnedMilestoneRewards(synced, legacyOnly);
+    const { save: paid, granted } = grantEarnedMilestoneRewards(synced, legacyOnly);
+    // Paige's checklist: today's open jobs are written down with the change that made them, so each can be ticked later (paigeTasks.ts).
+    const rewarded = RESTAURANT_MODE ? trackPaigeTasks(paid) : paid;
     // The one save funnel refuses money the game can't have (economy/wallet.ts).
     const violation = walletInvariantViolation(rewarded);
     if (violation) {
@@ -1657,6 +1666,10 @@ export function App() {
     if (action.kind === "howto") {
       const old = current.business.carPark ?? {};
       persist({ ...current, business: { ...current.business, carPark: { ...old, howto: true } } });
+      return { ok: true };
+    }
+    if (action.kind === "adTowSpent") {
+      persist(spendCarParkAdTow(current));
       return { ok: true };
     }
     if (action.kind === "auto") {
@@ -5175,6 +5188,15 @@ export function App() {
     if (to === "shop") openMarketIngredients(go);
     else go(to as ScreenId);
   };
+  // An arrow in her checklist: the place where that job is done (a staff job and a restock job open on their own card).
+  const openPaigeTask = (task: PaigeTask) => {
+    setPaigeNotebook(false);
+    if (task.id === "restock") openMarketPlan(go);
+    else if (task.go === "business-staff" && task.focus) openStaffFor(go, [task.focus]);
+    else if (task.go === "shop-supplies" && task.supply)
+      openMarketSupplies(go, getSupplyItem(task.supply)?.section ?? "cleaning", task.supply);
+    else go(task.go as ScreenId);
+  };
   const paigeTips = (on: boolean) => {
     const cur = saveRef.current;
     if (!cur) return;
@@ -5921,7 +5943,6 @@ export function App() {
           candidate={paigeCandidate}
           visit={screen}
           calm={paigeCalm}
-          replay={paigeReplay}
           onHire={hirePaige}
           onSeen={paigeSeen}
           onLater={paigeLater}
@@ -5934,10 +5955,7 @@ export function App() {
           save={save}
           tipsOff={assistantApi.tipsOff}
           onTips={paigeTips}
-          onReplay={(beat) => {
-            setPaigeNotebook(false);
-            setPaigeReplay({ beat, nonce: Date.now() });
-          }}
+          onGo={openPaigeTask}
           onClose={() => setPaigeNotebook(false)}
         />
       ) : null}

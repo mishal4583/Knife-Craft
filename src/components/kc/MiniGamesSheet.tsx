@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import type { SaveData } from "@/game/SaveManager";
 import { miniGameViews, type MiniGameView } from "@/game/business/miniGames";
@@ -23,6 +22,9 @@ import { waitingFestival } from "@/game/festival/schedule";
  * name on a cream ribbon, a pill under it) and the Festival Competition as a tall panel at the right (upright: a banner above the cards). The
  * artwork is Codex's, painted after the mock-up (`minigamesArt.ts`); every piece falls back to the earlier plain look, drawn by CSS, until its
  * file is there. Every word and number is drawn by the code.
+ *
+ * ITS SIZE (developer 2026-11-28, "reduce the size of the minigames page to the older small page"): a bottom sheet in the Kitchen, as before that look
+ * (560 px wide upright, 780 px and at most 92 % of the height on its side), with the dimmed Kitchen round it. It never covers the whole window.
  */
 export function MiniGamesSheet({
   save,
@@ -80,19 +82,14 @@ export function MiniGamesSheet({
   const painted = has("name-ribbon") && has("pill-ready") && has("pill-locked");
   const tabsPainted = has("tab-on") && has("tab-off");
   const festival = RESTAURANT_MODE && section === "games";
-  // the whole game area, so the screen covers the menu rail too, as in the mock-up
-  const host =
-    typeof document === "undefined"
-      ? null
-      : document.querySelector<HTMLElement>("[data-game-content]");
 
-  const screen = (
+  return (
     <div
       className="absolute inset-0 z-40 flex items-end justify-center bg-walnut-dark/60 backdrop-blur-[2px]"
       onClick={onClose}
       data-testid="minigames-backdrop"
     >
-      {/* Flush with the bottom of the window at every size, never a floating card: an upright phone keeps a strip above it (a tap there closes it), a window on its side is filled. */}
+      {/* Flush with the bottom of the window at every size, never a floating card: the dim strip round it stays (a tap there closes it). */}
       <section
         ref={sheetRef}
         role="dialog"
@@ -101,7 +98,7 @@ export function MiniGamesSheet({
         data-testid="minigames-sheet"
         data-art={painted ? "1" : "0"}
         onClick={(e) => e.stopPropagation()}
-        className="anim-up relative flex h-[calc(100%-44px)] w-full max-w-[560px] flex-col overflow-hidden rounded-t-[24px] px-3 pb-2 pt-[26px] shadow-[0_-8px_28px_rgba(34,18,8,0.45)] land:h-full land:max-w-none land:rounded-none land:px-4 [@media(max-height:430px)]:pt-[16px]"
+        className="anim-up relative flex h-[90%] w-full max-w-[560px] flex-col overflow-hidden rounded-t-[24px] px-3 pb-2 pt-[26px] shadow-[0_-8px_28px_rgba(34,18,8,0.45)] land:h-[min(92%,520px)] land:max-w-[780px] [@media(max-height:430px)]:pt-[16px]"
       >
         <div
           aria-hidden
@@ -113,7 +110,7 @@ export function MiniGamesSheet({
         <div className="relative flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             {has("title-plaque") ? (
-              <div className="relative h-[54px] w-[171px] shrink-0 [@media(max-width:359px)]:h-[44px] [@media(max-width:359px)]:w-[139px] land:h-[62px] land:w-[197px] [@media(max-height:430px)]:h-[50px] [@media(max-height:430px)]:w-[159px]">
+              <div className="relative h-[54px] w-[171px] shrink-0 [@media(max-width:359px)]:h-[44px] [@media(max-width:359px)]:w-[139px] [@media(max-height:430px)]:h-[50px] [@media(max-height:430px)]:w-[159px]">
                 <img
                   src={mgUrl("title-plaque")}
                   alt=""
@@ -122,20 +119,20 @@ export function MiniGamesSheet({
                   className="absolute inset-0 h-full w-full drop-shadow-[0_4px_4px_rgba(60,15,0,0.4)]"
                 />
                 {/* (the plaque's middle sits below its chef's hat) */}
-                <h2 className="relative flex h-full items-center justify-center whitespace-nowrap pt-[9%] font-display text-[18px] [@media(max-width:359px)]:text-[15px] font-black leading-none text-[#fff3d4] [text-shadow:0_2px_2px_rgba(60,8,0,0.75)] land:text-[21px] [@media(max-height:430px)]:text-[17px]">
+                <h2 className="relative flex h-full items-center justify-center whitespace-nowrap pt-[9%] font-display text-[18px] [@media(max-width:359px)]:text-[15px] font-black leading-none text-[#fff3d4] [text-shadow:0_2px_2px_rgba(60,8,0,0.75)] [@media(max-height:430px)]:text-[17px]">
                   Mini-games
                 </h2>
               </div>
             ) : (
               <div className="relative shrink-0 rounded-[16px] border-[3px] border-[#ffd36b] bg-[linear-gradient(180deg,#d4311f,#8e130c)] px-4 py-1.5 shadow-[0_0_0_2px_#a4611a,0_4px_6px_rgba(60,15,0,0.35)]">
-                <h2 className="whitespace-nowrap font-display text-[19px] font-black leading-none text-[#fff3d4] [text-shadow:0_2px_2px_rgba(60,8,0,0.7)] land:text-[22px]">
+                <h2 className="whitespace-nowrap font-display text-[19px] font-black leading-none text-[#fff3d4] [text-shadow:0_2px_2px_rgba(60,8,0,0.7)]">
                   Mini-games
                 </h2>
               </div>
             )}
             <p
               data-testid="minigames-count"
-              className="min-w-0 whitespace-nowrap rounded-full border-2 border-[#d9ae62] [@media(max-width:359px)]:px-1.5 [@media(max-width:359px)]:text-[11px] bg-[#fff6df] px-3 py-1 font-display text-[12.5px] font-black leading-tight text-[#4a2410] shadow-sm land:px-4 land:py-1.5 land:text-[clamp(13px,1.15vw,18px)]"
+              className="min-w-0 whitespace-nowrap rounded-full border-2 border-[#d9ae62] [@media(max-width:359px)]:px-1.5 [@media(max-width:359px)]:text-[11px] bg-[#fff6df] px-3 py-1 font-display text-[12.5px] font-black leading-tight text-[#4a2410] shadow-sm"
             >
               {section === "cleaning"
                 ? cleaningLocked
@@ -153,7 +150,7 @@ export function MiniGamesSheet({
             data-testid="minigames-close"
             onClick={onClose}
             className={cn(
-              "press relative grid h-12 w-12 shrink-0 place-items-center rounded-full font-ui text-[22px] font-black leading-none text-white land:h-[56px] land:w-[56px] [@media(max-height:430px)]:h-12 [@media(max-height:430px)]:w-12",
+              "press relative grid h-12 w-12 shrink-0 place-items-center rounded-full font-ui text-[22px] font-black leading-none text-white",
               !has("close-button") &&
                 "border-[3px] border-[#ffd36b] bg-[radial-gradient(circle_at_40%_30%,#f2573f,#a8160c_72%)] shadow-[0_0_0_2px_#a4611a,0_4px_6px_rgba(60,15,0,0.4)] [text-shadow:0_2px_2px_rgba(60,8,0,0.6)]",
             )}
@@ -177,7 +174,7 @@ export function MiniGamesSheet({
           className={cn(
             "relative mt-2 flex min-h-0 flex-1 flex-col gap-2",
             festival &&
-              "land:grid land:grid-cols-[minmax(0,1fr)_clamp(168px,23%,372px)] land:grid-rows-[auto_minmax(0,1fr)] land:gap-x-3",
+              "land:grid land:grid-cols-[minmax(0,1fr)_clamp(160px,23%,180px)] land:grid-rows-[auto_minmax(0,1fr)] land:gap-x-3",
           )}
         >
           <div
@@ -307,7 +304,6 @@ export function MiniGamesSheet({
       </section>
     </div>
   );
-  return host ? createPortal(screen, host) : screen;
 }
 
 /** A painted piece stretched between its two ends, filling its box behind the words (see `STRETCH`). */
@@ -349,7 +345,7 @@ function Awning({ painted }: { painted: boolean }) {
       <div
         aria-hidden
         data-testid="mg-awning"
-        className="pointer-events-none absolute inset-x-0 top-0 h-[34px] drop-shadow-[0_3px_3px_rgba(90,30,0,0.3)] land:h-[44px] [@media(max-height:430px)]:h-[24px]"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[34px] drop-shadow-[0_3px_3px_rgba(90,30,0,0.3)] [@media(max-height:430px)]:h-[24px]"
         style={{ background: `url(${mgUrl("awning")}) 0 0 / auto 100% repeat-x` }}
       />
     );
@@ -385,10 +381,7 @@ function Leaves({ has }: { has: (name: string) => boolean }) {
           alt=""
           aria-hidden
           draggable={false}
-          className={cn(
-            "pointer-events-none absolute w-[48px] land:w-[clamp(44px,6.2%,112px)]",
-            corner,
-          )}
+          className={cn("pointer-events-none absolute w-[48px]", corner)}
         />
       ))}
     </>

@@ -105,6 +105,8 @@ export type CarParkState = {
   howto?: boolean;
   doneDay?: number;
   towAdDay?: number;
+  /** A tow the player watched an ad for and has not used yet (developer 2026-11-28: it is theirs until it tows a car, even after leaving or closing the game). */
+  towHeld?: boolean;
 };
 const colors = ["red", "blue", "yellow", "green", "orange", "purple"] as const;
 const BUS_GUEST_COLORS = ["blue", "yellow", "green"] as const;
@@ -120,6 +122,7 @@ export const carParkStateOf = (save: SaveData): CarParkState => {
     ...(raw?.howto ? { howto: true } : {}),
     ...(Number.isFinite(raw?.doneDay) ? { doneDay: whole(raw?.doneDay) } : {}),
     ...(Number.isFinite(raw?.towAdDay) ? { towAdDay: whole(raw?.towAdDay) } : {}),
+    ...(raw?.towHeld === true ? { towHeld: true } : {}),
   };
 };
 export const isCarParkOpen = (level: number) =>
@@ -139,9 +142,14 @@ export const withCarParkTowAd = (save: SaveData): SaveData => ({
   ...save,
   business: {
     ...save.business,
-    carPark: { ...(save.business.carPark ?? {}), towAdDay: playDayOf(save) },
+    carPark: { ...(save.business.carPark ?? {}), towAdDay: playDayOf(save), towHeld: true },
   },
 });
+/** The ad's tow has towed a car: it is gone. */
+export const spendCarParkAdTow = (save: SaveData): SaveData => {
+  const { towHeld, ...rest } = carParkStateOf(save);
+  return towHeld ? { ...save, business: { ...save.business, carPark: rest } } : save;
+};
 
 function rngFor(seed: number) {
   let a = seed >>> 0;
@@ -440,6 +448,7 @@ export type CarParkAction =
   | { kind: "finish"; honks: number; towUsed: boolean; stars: 0 | 1 | 2 | 3 }
   | { kind: "failed"; honks: number }
   | { kind: "auto" }
+  | { kind: "adTowSpent" }
   | { kind: "skip" }
   | { kind: "howto" };
 export type CarParkActionResult = { ok: true } | { ok: false };

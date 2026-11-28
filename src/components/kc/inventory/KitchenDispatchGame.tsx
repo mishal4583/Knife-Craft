@@ -199,6 +199,8 @@ export function KitchenDispatchGame({
   const armedRef = useRef<KdView["armed"]>(null);
   const freezeRef = useRef(0);
   const timers = useRef<number[]>([]);
+  /** The notice's own timer: a new message starts its full time again. */
+  const noticeTimer = useRef(0);
   const [armed, setArmedState] = useState<KdView["armed"]>(null);
   const [frozen, setFrozen] = useState(false);
 
@@ -216,13 +218,15 @@ export function KitchenDispatchGame({
   }, []);
   const say = useCallback((text: string) => {
     setNotice(text);
-    timers.current.push(window.setTimeout(() => setNotice(""), NOTICE_MS));
+    window.clearTimeout(noticeTimer.current);
+    noticeTimer.current = window.setTimeout(() => setNotice(""), NOTICE_MS);
   }, []);
 
   // a new board, or the same one again
   useEffect(() => {
     timers.current.forEach((t) => window.clearTimeout(t));
     timers.current = [];
+    window.clearTimeout(noticeTimer.current);
     leavingRef.current = [];
     visRef.current = new Map();
     dragRef.current = null;
@@ -243,6 +247,7 @@ export function KitchenDispatchGame({
   useEffect(
     () => () => {
       timers.current.forEach((t) => window.clearTimeout(t));
+      window.clearTimeout(noticeTimer.current);
     },
     [],
   );
