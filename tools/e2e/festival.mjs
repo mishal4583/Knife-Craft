@@ -1,7 +1,8 @@
 // THE FESTIVAL FAST FOOD COMPETITION in a real browser, restaurant build (developer 2026-11-27: game/festival + components/kc/festival).
 // Run with tsx, because it plays rounds with the game's own simulated player:  npx tsx tools/e2e/festival.mjs
 //   F1 the Kitchen's Mini-games sheet: the Festival card is locked below Level 10 ("opens in N services", no level number), ready from it
-//   F2 the select screen: 15 cards; Event 1 playable; events 2-9 "Coming soon" once reached, locked ones say what opens them; no level number anywhere
+//   F2 the select screen: 15 cards; Event 1 playable; the others locked behind the one before and say so; no level number anywhere (every festival is
+//       built since 2026-11-28; each is checked by festival-menus.mjs)
 //   F3 the intro card names the rival and the goals; the round waits until Start
 //   F4 a whole first round WITH REAL TAPS (the simulated player reading the screen): coached for the first customers, every customer served, a win,
 //      the stars; the save records it (business.festivals) and the money and ledger do not move
@@ -20,6 +21,8 @@
 //   F12 (developer 2026-11-28) customers walk in from the stall's sides and walk off again; landscape power-ups beside Pause; the plate stand
 //   F14 (developer 2026-11-28, a picture: "sorted and organised") on its side: the tray of pans and the Sauce Station; stage 3 has every place
 //       open; stage 1 shows the rest locked with its stage, in the places they will take, and a tap on a locked one does nothing
+//   F15 (developer 2026-11-28) the plates lie inside the board's flat surface, the whole board in view; a real tap on each plate's picture
+//       selects that plate, and so does a tap on a lower plate's burger where it rises past its tap box
 //   F8 no console errors
 // Screenshots: out/festival-*.png. Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -114,6 +117,7 @@ async function screenState(round) {
       spots[id] = [...document.querySelectorAll(`[data-testid^="fest-${id}-"]`)].map((b) => ({
         item: b.dataset.item,
         phase: b.dataset.phase,
+        dish: b.dataset.dish,
       }));
     return {
       phase: game.dataset.phase,
@@ -146,7 +150,13 @@ async function screenState(round) {
                 : s.phase === "over"
                   ? cook + def.readyMs
                   : cook + def.readyMs + def.overMs;
-          return { item: s.item, t };
+          return {
+            item: s.item,
+            t,
+            ...(s.dish
+              ? { dish: s.dish.split("+").map((item) => ({ item, quality: "good" })) }
+              : {}),
+          };
         }),
       ];
     }),
@@ -161,7 +171,8 @@ async function screenState(round) {
       const what = w.replace("done:", "");
       return {
         done,
-        item: what.startsWith("bun")
+        // (a dish always has its base and at least one more part)
+        item: what.includes("+")
           ? { kind: "dish", parts: what.split("+") }
           : { kind: "side", item: what },
       };
@@ -955,6 +966,81 @@ for (const [w, h] of [
       under,
       grillAfter,
     },
+  );
+}
+
+// F15: the plates on the board
+for (const [w, h] of [
+  [1919, 908],
+  [844, 390],
+  [740, 360],
+  [390, 844],
+  [320, 568],
+]) {
+  await open("?festival=1&stage=3", 12, w, h);
+  await page.waitForSelector(q("fest-start"), { timeout: 15000 });
+  await page.click(q("fest-start"));
+  await sleep(2500);
+  const m = await page.evaluate(() => {
+    const board = document.querySelector('img[src*="station-board"]').getBoundingClientRect();
+    const plates = [...document.querySelectorAll('[data-testid^="fest-plate-"]')].map((b) =>
+      b.querySelector(".fest-dish").getBoundingClientRect(),
+    );
+    return {
+      boardBottom: Math.round(board.bottom),
+      window: innerHeight,
+      inside: plates.map(
+        (p) =>
+          p.left >= board.left + board.width * 0.08 &&
+          p.right <= board.right - board.width * 0.08 &&
+          p.top >= board.top + board.height * 0.095 &&
+          p.bottom <= board.top + board.height * 0.81,
+      ),
+      middles: plates.map((p) => [p.left + p.width / 2, p.top + p.height / 2]),
+    };
+  });
+  const picked = [];
+  for (const i of [1, 3, 2, 0]) {
+    await page.mouse.click(m.middles[i][0], m.middles[i][1]);
+    await sleep(150);
+    picked.push(
+      await page.$eval('[data-testid^="fest-plate-"][data-selected]', (e) =>
+        Number(e.dataset.testid.replace("fest-plate-", "")),
+      ),
+    );
+  }
+  // a burger on a lower plate: buns until it has one (they fill the empty plates in order), then a tap on the top of what is drawn there
+  for (let n = 0; n < 4; n++) {
+    if (await page.$eval(q("fest-plate-2"), (e) => !!e.dataset.parts)) break;
+    await tapOn(q("fest-tray-bun"));
+    await sleep(200);
+  }
+  await sleep(500);
+  await page.mouse.click(m.middles[0][0], m.middles[0][1]);
+  await sleep(150);
+  const top = await page.evaluate(() => {
+    const art = document.querySelector('[data-testid="fest-plate-2"] .fest-onplate');
+    if (!art) return null;
+    const layers = [...art.querySelectorAll("image")].map((e) => e.getBoundingClientRect());
+    const r = layers.reduce((a, b) => (b.top < a.top ? b : a));
+    // a point on the bun, a little below its top edge
+    const x = r.left + r.width / 2;
+    const y = r.top + r.height * 0.4;
+    return {
+      x,
+      y,
+      under: document.elementFromPoint(x, y)?.closest("button")?.dataset.testid ?? null,
+    };
+  });
+  await shot(page, `festival-plates-${w}x${h}`);
+  check(
+    `F15 ${w} x ${h}: the whole board in view, four plates inside its flat surface; a tap on each picks it, and a tap on a lower plate's bun picks the lower one`,
+    m.boardBottom <= m.window + 1 &&
+      m.inside.length === 4 &&
+      m.inside.every(Boolean) &&
+      picked.join() === "1,3,2,0" &&
+      top?.under === "fest-plate-2",
+    { ...m, middles: undefined, picked, top },
   );
 }
 

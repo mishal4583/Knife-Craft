@@ -3,6 +3,7 @@
  * words use. Rival chefs use the game's own portraits (game/chefArt.ts). Every picture the festival names is listed here (ALL_ART), and
  * festival-save-qa checks that each one exists and that no other file is shipped.
  */
+import { MENU_FOODS } from "../../../game/festival/menus";
 import type { FoodId } from "@/game/festival/types";
 
 export const festivalUrl = (name: string) => `${import.meta.env.BASE_URL}festival/${name}.webp`;
@@ -26,23 +27,8 @@ export const personUrl = (look: number, mood: Mood) =>
 export const moodFor = (left: number): Mood =>
   left > 0.6 ? "happy" : left > 0.3 ? "neutral" : "impatient";
 
-export const FOOD_NAMES: Record<FoodId, string> = {
-  bun: "Bun",
-  patty: "Patty",
-  chicken: "Chicken",
-  veggie: "Veggie",
-  cheese: "Cheese",
-  lettuce: "Lettuce",
-  tomato: "Tomato",
-  onion: "Onion",
-  pickles: "Pickles",
-  ketchup: "Ketchup",
-  mustard: "Mustard",
-  fries: "Fries",
-  cola: "Cola",
-  lemonade: "Lemonade",
-  milkshake: "Shake",
-};
+/** Every food's name on the screen (the menus' own). */
+export const FOOD_NAMES: Readonly<Record<FoodId, string>> = Object.fromEntries(MENU_FOODS);
 
 export const STATION_ART = {
   grill: "burger/station-grill",
@@ -54,14 +40,14 @@ export const STATION_ART = {
 } as const;
 
 /** The drink machine's taps (the shake has the blender instead) and what stands under them. */
-export const TAP_ART: Partial<Record<FoodId, string>> = {
+export const TAP_ART: Readonly<Record<string, string>> = {
   cola: "burger/tap-cola",
   lemonade: "burger/tap-lemonade",
 };
 export const CUP_EMPTY = "burger/cup-empty";
 
 /** A finished side or drink. */
-export const SIDE_ART: Partial<Record<FoodId, string>> = {
+export const SIDE_ART: Readonly<Record<string, string>> = {
   fries: "burger/fries",
   cola: "burger/cup-cola",
   lemonade: "burger/cup-lemonade",
@@ -69,7 +55,7 @@ export const SIDE_ART: Partial<Record<FoodId, string>> = {
 };
 
 /** What the player taps to start something. */
-export const TRAY_ART: Partial<Record<FoodId, string>> = {
+export const TRAY_ART: Readonly<Record<string, string>> = {
   bun: "burger/tray-bun",
   patty: "burger/tray-patty",
   chicken: "burger/tray-chicken",
@@ -85,7 +71,7 @@ export const TRAY_ART: Partial<Record<FoodId, string>> = {
 };
 
 /** The little pictures under the burger in an order bubble: the meat and each topping. */
-export const CHIP_ART: Partial<Record<FoodId, string>> = {
+export const CHIP_ART: Readonly<Record<string, string>> = {
   patty: "burger/chip-patty",
   chicken: "burger/chip-chicken",
   veggie: "burger/chip-veggie",
@@ -99,6 +85,7 @@ export const CHIP_ART: Partial<Record<FoodId, string>> = {
 };
 
 /** The meats on the grill, in each state. */
+/** The meats the kit painted in every state. */
 export const MEATS: readonly FoodId[] = ["patty", "chicken", "veggie"];
 export const MEAT_STATES = ["raw", "cooking", "cooked", "burnt"] as const;
 export type MeatState = (typeof MEAT_STATES)[number];
@@ -110,7 +97,20 @@ export const BASKET_ART = {
   burnt: "burger/basket-burnt",
 } as const;
 
-export type LayerId = Exclude<FoodId, "fries" | "cola" | "lemonade" | "milkshake"> | "lid";
+/** The layers the Burger kit painted (the other festivals' are drawn, foodLooks.ts). */
+export type LayerId =
+  | "bun"
+  | "patty"
+  | "chicken"
+  | "veggie"
+  | "cheese"
+  | "lettuce"
+  | "tomato"
+  | "onion"
+  | "pickles"
+  | "ketchup"
+  | "mustard"
+  | "lid";
 /**
  * The burger's layers. Each picture is a square with the layer in its middle, as wide as the square. `height` is how much of a 400-high square the
  * layer covers, and `thick` how far it raises what is stacked on it (tuned so the burgers look like burgers: scratch stack tests, 2026-11-27).

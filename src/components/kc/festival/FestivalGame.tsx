@@ -41,17 +41,27 @@ import type {
   PowerId,
   RoundState,
 } from "@/game/festival/types";
-import { sortParts } from "@/game/festival/burger";
-import { Basket, BurgerStack, DrinkMachine, FoodPicture, Meat, OPEN_SPREAD } from "./FestivalFood";
+import { foodAt, placeOf, sortParts } from "@/game/festival/menu";
+import { menuOf, type FestivalMenu } from "@/game/festival/menus";
+import {
+  Basket,
+  DishStack,
+  DrinkMachine,
+  FoodPicture,
+  Meat,
+  OPEN_SPREAD,
+  TrayPicture,
+} from "./FestivalFood";
+import { machinePicture } from "./festivalFoodParts";
+import { Cookware, DrawnChip, Oven } from "./DrawnFood";
+import { FOOD_LOOKS } from "./foodLooks";
 import {
   BACKDROP_ART,
   FOOD_NAMES,
   PEOPLE,
   ROUND_ART,
   STATION_ART,
-  TAP_ART,
   TALL_COUNTER_EDGE,
-  TRAY_ART,
   UI_ART,
   festivalUrl,
   gameUrl,
@@ -119,8 +129,11 @@ function tallBackdrop(counter: number, stage: number): CSSProperties {
 /** What a stage adds to the one before, in a few words. */
 function newsLine(event: FestivalEvent, stage: number, count = true): string {
   const news = stageNews(event, stage);
+  const hot = menuOf(event.id)?.hot ?? "Grill";
   const room = [
-    ...(news.grill ? ["another burner"] : []),
+    ...(news.grill
+      ? [hot === "Grill" ? "another burner" : `more room in the ${hot.toLowerCase()}`]
+      : []),
     ...(news.plate ? ["another plate"] : []),
     ...(news.atOnce ? ["a longer queue"] : []),
   ];
@@ -161,23 +174,23 @@ function ChefHat() {
 }
 
 /** What the coach says about the tap the simulated player would make (the first play only). */
-function coachText(action: Action, state: RoundState): string {
+function coachText(action: Action, state: RoundState, menu: FestivalMenu): string {
   if (action.kind === "tray")
-    return action.item === "bun"
-      ? "Tap the bun"
-      : action.item === "patty" || action.item === "chicken" || action.item === "veggie"
-        ? `Tap ${FOOD_NAMES[action.item].toLowerCase()} to grill it`
-        : action.item === "fries"
-          ? "Tap fries to fry them"
-          : `Add ${FOOD_NAMES[action.item].toLowerCase()}`;
+    return action.item === menu.base.id
+      ? `Tap the ${menu.base.name.toLowerCase()}`
+      : menu.mains.some((m) => m.id === action.item)
+        ? `Tap ${FOOD_NAMES[action.item]!.toLowerCase()} to ${menu.hot === "Grill" ? "grill" : "cook"} it`
+        : action.item === menu.side.id
+          ? `Tap ${menu.side.name.toLowerCase()} to cook them`
+          : `Add ${FOOD_NAMES[action.item]!.toLowerCase()}`;
   if (action.kind === "cooker") {
     const slot = state.cookers[action.cooker]?.[action.slot];
     if (!slot) return action.cooker === "drink" ? "Tap to pour the drink" : "Tap to start cooking";
-    if (action.cooker === "grill") return "Ready! Tap it onto the bun";
-    return `Ready! Tap to serve the ${FOOD_NAMES[slot.item].toLowerCase()}`;
+    if (action.cooker === "grill") return `Ready! Tap it onto the ${menu.base.name.toLowerCase()}`;
+    return `Ready! Tap to serve the ${FOOD_NAMES[slot.item]!.toLowerCase()}`;
   }
   if (action.kind === "plate")
-    return plateTaker(state, action.plate) ? "Tap the burger to serve it" : "Tap this plate";
+    return plateTaker(state, action.plate) ? `Tap the ${menu.dish} to serve it` : "Tap this plate";
   return "Bin it";
 }
 
@@ -219,6 +232,7 @@ export function FestivalGame({
   onExit: () => void;
 }) {
   const round = useMemo(() => festivalRound(event, seed, pace)!, [event, seed, pace]);
+  const menu = menuOf(event.id)!;
   const rival = useMemo(() => rivalPlan(round, seed), [round, seed]);
   const rivalId = event.rivals[stageIndex(stage)];
   const { chefName, stallName, portrait } = rivalOf(rivalId);
@@ -234,7 +248,8 @@ export function FestivalGame({
     grill: cookerOf(round.kitchen, "grill")!.slots,
     plates: round.kitchen.plates,
     trays: round.kitchen.trays.length,
-    trayItems: round.kitchen.trays.map((t) => t.item),
+    // (the layouts know the counter's places by the Burger Festival's foods: each menu's food stands in its role's place)
+    trayItems: round.kitchen.trays.map((t) => placeOf(menu, t.item)),
     drinks: cookerOf(round.kitchen, "drink")!.slots,
   };
   const layout = wide
@@ -476,11 +491,11 @@ export function FestivalGame({
     const name = machine
       ? `${FOOD_NAMES[machine]} machine`
       : cooker === "fryer"
-        ? `Fryer ${i + 1}`
-        : `Grill ${i + 1}`;
+        ? `${menu.fry} ${i + 1}`
+        : `${menu.hot} ${i + 1}`;
     const stateText = !slot
       ? "empty"
-      : `${FOOD_NAMES[slot.item]} ${phaseNow === "over" ? "overcooked" : phaseNow}`;
+      : `${slot.dish ? menu.dish : FOOD_NAMES[slot.item]} ${phaseNow === "over" ? "overcooked" : phaseNow}`;
     const press = () => tap({ kind: "cooker", cooker, slot: i });
     const marks = (
       <>
@@ -521,6 +536,7 @@ export function FestivalGame({
         data-testid={`fest-${cooker}-${i}`}
         data-phase={phaseNow ?? "empty"}
         data-item={slot?.item}
+        data-dish={slot?.dish?.map((p) => p.item).join("+")}
         aria-label={`${name}: ${stateText}`}
         onPointerDown={(e) => {
           e.preventDefault();
@@ -536,12 +552,32 @@ export function FestivalGame({
             className="fest-onring"
             style={at([food[0] - rect[0], food[1] - rect[1], food[2], food[3]])}
           >
-            {slot ? <Meat item={slot.item} phase={phaseNow!} progress={progress} /> : null}
+            {slot?.dish ? (
+              // a pizza in the oven: pale going in, golden when it is ready, charred if it is left
+              <DishStack
+                parts={sortParts(
+                  slot.dish.map((p) => p.item),
+                  menu,
+                )}
+                className={`fest-inoven fest-inoven-${phaseNow}`}
+              />
+            ) : slot ? (
+              <>
+                {COOKWARE[menu.hot] ? <Cookware kind={COOKWARE[menu.hot]!} /> : null}
+                <Meat item={slot.item} phase={phaseNow!} progress={progress} />
+              </>
+            ) : null}
             {marks}
           </span>
         ) : machine ? (
           <>
-            <DrinkMachine drink={machine} pouring={!!slot} phase={phaseNow} progress={progress} />
+            <DrinkMachine
+              drink={machine}
+              place={i}
+              pouring={!!slot}
+              phase={phaseNow}
+              progress={progress}
+            />
             <span className="fest-tray-name">{FOOD_NAMES[machine]}</span>
             {marks}
           </>
@@ -549,9 +585,14 @@ export function FestivalGame({
           <>
             <img src={festivalUrl(STATION_ART.fryer)} alt="" className="fest-fryer-pic" />
             {slot ? (
-              <Basket phase={phaseNow!} progress={progress} className="fest-basket" />
+              <Basket
+                item={slot.item}
+                phase={phaseNow!}
+                progress={progress}
+                className="fest-basket"
+              />
             ) : (
-              <span className="fest-tray-name">Fryer</span>
+              <span className="fest-tray-name">{menu.fry}</span>
             )}
             {marks}
           </>
@@ -638,11 +679,11 @@ export function FestivalGame({
                         .filter((w) => !w.done)
                         .map((w) =>
                           w.item.kind === "dish"
-                            ? `a burger with ${w.item.parts
+                            ? `a ${menu.dish} with ${w.item.parts
                                 .slice(1)
-                                .map((p) => FOOD_NAMES[p].toLowerCase())
+                                .map((p) => FOOD_NAMES[p]!.toLowerCase())
                                 .join(", ")}`
-                            : FOOD_NAMES[w.item.item].toLowerCase(),
+                            : FOOD_NAMES[w.item.item]!.toLowerCase(),
                         )
                         .join(" and ")}`}
                       role="img"
@@ -655,7 +696,7 @@ export function FestivalGame({
                               key={k}
                               className={`fest-want fest-want-dish ${w.done ? "fest-done" : ""}`}
                             >
-                              <BurgerStack parts={w.item.parts} lid className="fest-want-burger" />
+                              <DishStack parts={w.item.parts} lid className="fest-want-burger" />
                               {/* the toppings again as little pictures, so a small screen still says exactly what to add (a double is one picture with a 2) */}
                               <span className="fest-chips" data-testid="fest-chips">
                                 {countParts(w.item.parts.slice(1)).map(([p, n]) => (
@@ -705,7 +746,7 @@ export function FestivalGame({
             );
           })}
 
-          <StallSides layout={layout} margin={margin} name={event.name} />
+          <StallSides layout={layout} margin={margin} name={event.name} menu={menu} />
           <StallCounter layout={layout} margin={margin} />
 
           {/* the kitchen */}
@@ -727,12 +768,18 @@ export function FestivalGame({
             <span className="fest-tray-name">Bin</span>
             {ring({ kind: "bin" })}
           </button>
-          <img
-            src={festivalUrl(STATION_ART.grill)}
-            alt=""
-            className="fest-base"
-            style={at(layout.grillArt)}
-          />
+          {menu.hot === "Oven" ? (
+            <span className="fest-base" style={at(layout.grillArt)} data-testid="fest-oven">
+              <Oven />
+            </span>
+          ) : (
+            <img
+              src={festivalUrl(STATION_ART.grill)}
+              alt=""
+              className="fest-base"
+              style={at(layout.grillArt)}
+            />
+          )}
           {layout.locked.map(([x, y, w, h], i) => {
             // a ring this stage does not use yet: it says which stage turns it on
             const opens = stageWithBurners(event, counts.grill + i + 1);
@@ -758,7 +805,7 @@ export function FestivalGame({
           />
           {layout.plates.map((rect, i) => {
             const plate = view.plates[i] ?? [];
-            const wanted = !!plateTaker(view, i);
+            const wanted = !!plateTaker(view, i, round.kitchen);
             const parts = plate.map((p) => p.item);
             return (
               <button
@@ -770,7 +817,7 @@ export function FestivalGame({
                 data-selected={view.selected === i || undefined}
                 aria-label={`Plate ${i + 1}: ${
                   parts.length ? parts.map((p) => FOOD_NAMES[p]).join(", ") : "empty"
-                }${wanted ? ", ready to serve" : ""}`}
+                }${wanted ? (menu.bake ? ", ready to bake" : ", ready to serve") : ""}`}
                 onPointerDown={(e) => {
                   e.preventDefault();
                   tap({ kind: "plate", plate: i });
@@ -779,20 +826,24 @@ export function FestivalGame({
                 className="fest-station fest-plate"
                 style={at(rect)}
               >
-                <span aria-hidden="true" className="fest-halo" />
-                <img src={festivalUrl(STATION_ART.plate)} alt="" className="fest-dish" />
-                {parts.length ? (
-                  // drawn in a burger's order however they were tapped, so nothing is hidden under the meat; held apart until it is right
-                  <BurgerStack
-                    parts={sortParts(parts)}
-                    spread={wanted ? 1 : OPEN_SPREAD}
-                    lid={wanted}
-                    over={plate.some((p) => p.quality === "over")}
-                    className="fest-onplate"
-                  />
-                ) : null}
-                {wanted ? <span className="fest-serve">Serve</span> : null}
-                {ring({ kind: "plate", plate: i })}
+                <span className="fest-face" style={within(layout.plateFaces[i]!, rect)}>
+                  <span aria-hidden="true" className="fest-halo" />
+                  <img src={festivalUrl(STATION_ART.plate)} alt="" className="fest-dish" />
+                  {parts.length ? (
+                    // drawn in a burger's order however they were tapped, so nothing is hidden under the meat; held apart until it is right
+                    <DishStack
+                      parts={sortParts(parts, menu)}
+                      spread={wanted || menu.bake ? 1 : OPEN_SPREAD}
+                      lid={wanted}
+                      over={plate.some((p) => p.quality === "over")}
+                      className="fest-onplate"
+                    />
+                  ) : null}
+                  {wanted ? (
+                    <span className="fest-serve">{menu.bake ? "Bake" : "Serve"}</span>
+                  ) : null}
+                  {ring({ kind: "plate", plate: i })}
+                </span>
               </button>
             );
           })}
@@ -809,28 +860,33 @@ export function FestivalGame({
                   tap({ kind: "tray", item: tray.item });
                 }}
                 onClick={(e) => e.detail === 0 && tap({ kind: "tray", item: tray.item })}
-                className={`fest-station fest-tray ${layout.sauces && SAUCE_ITEMS.includes(tray.item) ? "fest-saucebottle" : ""}`}
+                className={`fest-station fest-tray ${layout.sauces && SAUCE_PLACES.includes(placeOf(menu, tray.item)) ? "fest-saucebottle" : ""}`}
+                data-place={placeOf(menu, tray.item)}
                 style={at(rect)}
               >
-                <img src={festivalUrl(TRAY_ART[tray.item]!)} alt="" className="fest-tray-food" />
+                <TrayPicture item={tray.item} className="fest-tray-food" />
                 <span className="fest-tray-name">{FOOD_NAMES[tray.item]}</span>
                 {ring({ kind: "tray", item: tray.item })}
               </button>
             );
           })}
           {/* landscape: what this stage has not got yet waits in its own place, so nothing ever moves */}
-          {layout.lockedSlots.map((slot) => (
-            <LockedPlace
-              key={slot.kind === "plate" ? `plate-${slot.number}` : slot.item}
-              slot={slot}
-              opens={
-                slot.kind === "plate"
-                  ? stageWithPlates(event, slot.number)
-                  : stageWithFood(event, slot.item)
-              }
-              sauce={slot.kind === "tray" && SAUCE_ITEMS.includes(slot.item)}
-            />
-          ))}
+          {layout.lockedSlots.map((slot) => {
+            const food = slot.kind === "plate" ? "" : foodAt(menu, slot.item);
+            return (
+              <LockedPlace
+                key={slot.kind === "plate" ? `plate-${slot.number}` : slot.item}
+                slot={slot}
+                food={food}
+                opens={
+                  slot.kind === "plate"
+                    ? stageWithPlates(event, slot.number)
+                    : stageWithFood(event, food)
+                }
+                sauce={slot.kind === "tray" && SAUCE_PLACES.includes(slot.item)}
+              />
+            );
+          })}
           {POWERS.map((power, i) => (
             <button
               key={power.id}
@@ -922,7 +978,7 @@ export function FestivalGame({
               role="status"
               data-testid="fest-coach-text"
             >
-              👉 {coachText(coachAction, view)}
+              👉 {coachText(coachAction, view, menu)}
             </div>
           ) : hint ? (
             <div
@@ -1182,26 +1238,58 @@ export function FestivalGame({
   );
 }
 
-/** The two that stand in the Sauce Station (landscape). */
-const SAUCE_ITEMS: readonly FoodId[] = ["ketchup", "mustard"];
+/** A box given in stage units, placed inside another one (its parent). */
+const within = ([x, y, w, h]: Rect, [px, py]: Rect): CSSProperties => at([x - px, y - py, w, h]);
+
+const DRINK_PLACES: readonly FoodId[] = ["cola", "lemonade", "milkshake"];
+/** The two places in the Sauce Station (landscape). */
+const SAUCE_PLACES: readonly FoodId[] = ["ketchup", "mustard"];
+/** The hot stations that show their own cookware under the food (the grill's rings need none). */
+const COOKWARE: Readonly<Record<string, "pot" | "wok" | "pan" | "tawa">> = {
+  Pot: "pot",
+  Wok: "wok",
+  Pan: "pan",
+  Tawa: "tawa",
+};
 
 /** A pan, a drink machine or a plate this stage has not got yet: greyed in its own place, with the stage that brings it. Never tapped. */
-function LockedPlace({ slot, opens, sauce }: { slot: LockedSlot; opens: number; sauce: boolean }) {
-  const picture =
-    slot.kind === "plate"
-      ? STATION_ART.plate
-      : slot.kind === "drink"
-        ? (TAP_ART[slot.item] ?? STATION_ART.blender)
-        : TRAY_ART[slot.item]!;
+function LockedPlace({
+  slot,
+  food,
+  opens,
+  sauce,
+}: {
+  slot: LockedSlot;
+  /** This festival's food for the place ("" for a plate). */
+  food: FoodId;
+  opens: number;
+  sauce: boolean;
+}) {
   return (
     <span
       aria-hidden="true"
       className={`fest-slot-locked fest-slot-${slot.kind} ${sauce ? "fest-slot-sauce" : ""}`}
-      style={at(slot.rect)}
+      style={at(slot.kind === "plate" ? slot.face : slot.rect)}
       data-testid="fest-slot-locked"
       data-item={slot.kind === "plate" ? `plate-${slot.number}` : slot.item}
     >
-      <img src={festivalUrl(picture)} alt="" className="fest-slot-pic" />
+      {slot.kind === "tray" ? (
+        sauce && FOOD_LOOKS[food] ? (
+          <DrawnChip look={FOOD_LOOKS[food]!} className="fest-slot-pic" />
+        ) : (
+          <TrayPicture item={food} className="fest-slot-pic" />
+        )
+      ) : (
+        <img
+          src={festivalUrl(
+            slot.kind === "plate"
+              ? STATION_ART.plate
+              : machinePicture(food, DRINK_PLACES.indexOf(slot.item)),
+          )}
+          alt=""
+          className="fest-slot-pic"
+        />
+      )}
       <span className="fest-slot-lock">
         <img src={festivalUrl(UI_ART.lock)} alt="" />
         {opens ? <b>Stage {opens}</b> : null}

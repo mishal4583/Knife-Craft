@@ -100,19 +100,21 @@ console.log("A. The fifteen events");
       FESTIVAL_EVENTS.slice(1).every((e) => e.unlock.kind === "previous"),
     "A4: the first opens at Level 10; every other one after the third stage of the one before, 10 services later",
   );
+  // RULE CHANGE (developer 2026-11-28, "design for all the levels and build"): all fifteen are built (was: only the Burger Festival)
   assert(
-    FESTIVAL_EVENTS.filter((e) => e.round)
-      .map((e) => e.id)
-      .join() === "burger" && FESTIVAL_EVENTS.every((e) => !e.round === !e.lines),
-    "A5: only the Burger Festival can be played yet, and every playable event has its rival's lines",
+    FESTIVAL_EVENTS.every((e) => !!e.round && !!e.lines && !!e.menu),
+    "A5: every one of the fifteen can be played, each with its menu and its rivals' lines",
   );
-  const lines = FESTIVAL_EVENTS[0]!.lines!.map((l) => Object.values(l));
+  const lines = FESTIVAL_EVENTS.flatMap((e) => e.lines!.map((l) => Object.values(l)));
   assert(
-    lines.length === 3 &&
+    lines.length === 45 &&
       lines.every((set) => set.length === 6 && set.every((l) => l.length > 5 && l.length <= 48)) &&
-      new Set(lines.flat()).size === 18,
-    "A6: each of the three rivals says its own short lines (start, ahead, passed, slip, beaten, won)",
-    lines.flat().filter((l) => l.length > 48),
+      new Set(lines.flat()).size === 270,
+    "A6: each of the 45 rivals says its own short lines (start, ahead, passed, slip, beaten, won), no two the same",
+    {
+      long: lines.flat().filter((l) => l.length > 48),
+      twice: lines.flat().filter((l, i, all) => all.indexOf(l) !== i),
+    },
   );
 }
 
@@ -181,7 +183,8 @@ console.log("B. The Burger kitchen and its customers");
   assert(
     festivalRound(FESTIVAL_EVENTS[0]!, 1)!.pace.tier === 1 &&
       festivalRound(FESTIVAL_EVENTS[0]!, 1, 15)!.pace.tier === 15 &&
-      festivalRound(FESTIVAL_EVENTS[1]!, 1) === null,
+      // (RULE CHANGE 2026-11-28: no event is unbuilt any more; an event without a round still has none)
+      festivalRound({ ...FESTIVAL_EVENTS[1]!, round: undefined } as never, 1) === null,
     "B4: an event plays at its own pace (or the preview's); an unbuilt one has no round",
   );
   const joins = (item: FoodId) =>

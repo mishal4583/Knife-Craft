@@ -147,7 +147,8 @@
   width: 100%;
   height: 52px;
 }
-.fest-chalk-food img {
+.fest-chalk-food img,
+.fest-chalk-food .fest-chalk-side {
   width: 30px;
   height: 44px;
   object-fit: contain;
@@ -713,7 +714,22 @@
   animation: fest-smoke 1.6s ease-in-out infinite alternate;
 }
 
-/* a plate keeps its shape however wide its place is (two plates have the whole board's width) */
+/* a plate keeps its shape however wide its place is (two plates have the whole board's width). It is drawn in its face box, which lies on the
+   board's flat middle; the plate and its burger take the finger even where they reach past the tap box, so what is seen is what is tapped */
+.fest-face {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+.fest-plate .fest-face .fest-dish,
+.fest-plate .fest-face .fest-onplate {
+  pointer-events: auto;
+}
+/* on its side the two rows stand close: a burger stays low enough to leave the plate behind it in view */
+.fest-wide .fest-face .fest-onplate {
+  top: 12%;
+  height: 70%;
+}
 .fest-halo {
   position: absolute;
   left: 50%;
@@ -832,7 +848,7 @@
   object-position: 50% 100%;
 }
 .fest-slot-plate .fest-slot-pic {
-  top: 38%;
+  top: 40%;
   width: min(90%, 118px);
   height: 56%;
 }
@@ -850,7 +866,11 @@
   object-fit: contain;
 }
 .fest-slot-plate .fest-slot-lock {
-  top: 30%;
+  top: 38%;
+}
+.fest-slot-plate .fest-slot-lock img {
+  width: 20px;
+  height: 20px;
 }
 .fest-slot-lock b {
   margin-top: 1px;
@@ -882,6 +902,99 @@
 }
 .fest-wide .fest-round-btn {
   background: radial-gradient(circle at 40% 30%, #ee5a3a, #b22112 75%);
+}
+
+/* the temporary drawn food (DrawnFood.tsx): in the same boxes as the painted pictures */
+.fest-tray svg.fest-tray-food,
+.fest-slot-locked svg.fest-slot-pic {
+  display: block;
+  overflow: visible;
+}
+.fest-art svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.fest-want-pic,
+.fest-chip svg {
+  overflow: visible;
+}
+/* a drawn piece is wider than it is tall: in its square it is drawn larger, so the order reads as easily as a painted one */
+.fest-chip svg {
+  transform: scale(1.32);
+}
+svg.fest-want-pic {
+  transform: scale(1.18);
+}
+svg.fest-blender {
+  overflow: visible;
+}
+/* which drink a blender holds, and the colour in a tap's window */
+.fest-drinktag {
+  position: absolute;
+  right: 2%;
+  bottom: 18px;
+  width: 38%;
+  height: 34%;
+  overflow: visible;
+  pointer-events: none;
+}
+.fest-tapwindow {
+  position: absolute;
+  left: 29%;
+  right: 29%;
+  top: 17%;
+  height: 11%;
+  border-radius: 5px;
+  box-shadow: inset 0 3px 4px rgba(255, 255, 255, 0.45);
+  pointer-events: none;
+}
+.fest-drawncup {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+.fest-drawncup svg {
+  position: absolute;
+  inset: -4% -40% 0;
+  width: 180%;
+  height: 104%;
+}
+/* a pot, a wok or a pan on its ring, under the food */
+.fest-cookware {
+  position: absolute;
+  left: -8%;
+  right: -8%;
+  top: -4%;
+  bottom: -14%;
+  width: 116%;
+  height: 118%;
+  overflow: visible;
+}
+.fest-onring .fest-cookware ~ .fest-art {
+  inset: 8% 12% 6%;
+}
+.fest-ovenart {
+  width: 100%;
+  height: 100%;
+}
+.fest-inoven {
+  position: absolute;
+  inset: -6% 0 0;
+  width: 100%;
+  height: 106%;
+  overflow: visible;
+}
+.fest-inoven-cooking {
+  filter: brightness(1.12) saturate(0.7);
+}
+.fest-inoven-over {
+  filter: brightness(0.76) saturate(0.85);
+}
+.fest-inoven-burnt {
+  filter: brightness(0.3) saturate(0.4);
 }
 
 /* a name plate: dark wood in a gold rim */
@@ -918,6 +1031,16 @@
 }
 .fest-wide .fest-drink .fest-tray-name {
   font-size: 13.5px;
+}
+/* where a pan is narrow, a long name ("Cinnamon roll") takes two lines rather than being cut */
+.fest-tray .fest-tray-name {
+  width: max-content;
+  line-height: 1.02;
+  white-space: normal;
+}
+.fest-tall .fest-tray .fest-tray-name {
+  padding: 0 3px 1px;
+  font-size: 14.5px;
 }
 .fest-hand {
   position: absolute;
@@ -1031,7 +1154,8 @@
 }
 .fest-score-row {
   display: grid;
-  grid-template-columns: 140px 1fr 62px;
+  /* (wide enough for the longest chef: "Chef Reginald") */
+  grid-template-columns: 164px 1fr 62px;
   align-items: center;
   gap: 8px;
   padding: 4px 10px;

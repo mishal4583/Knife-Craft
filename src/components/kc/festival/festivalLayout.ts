@@ -35,7 +35,7 @@ export type StallProp = {
 /** A place this stage does not use yet (landscape): what will stand there. Never tapped. */
 export type LockedSlot =
   | { kind: "tray" | "drink"; item: FoodId; rect: Rect }
-  | { kind: "plate"; number: number; rect: Rect };
+  | { kind: "plate"; number: number; rect: Rect; face: Rect };
 
 export type FestivalLayout = {
   w: number;
@@ -77,9 +77,11 @@ export type FestivalLayout = {
   grillArt: Rect;
   grill: readonly GrillSpot[];
   locked: readonly Rect[];
-  /** The wooden board under the plates. */
+  /** The wooden board under the plates (its picture's box). */
   board: Rect;
+  /** Each plate's place to tap, and the box its picture is drawn in: inside the board's flat middle, clear of its rim. */
   plates: readonly Rect[];
+  plateFaces: readonly Rect[];
   trays: readonly Rect[];
   powers: readonly Rect[];
 };
@@ -152,6 +154,35 @@ function platesOn([x, y, w, h]: Rect, count: number): Rect[] {
   ];
   if (count === 3) return [four[0]!, four[1]!, [x + (w - pw) / 2, low, pw, ph]];
   return four.slice(0, count);
+}
+
+/** The flat wood inside the board picture's rim and front edge, as parts of the picture (measured on station-board.webp). */
+export const BOARD_SURFACE = { left: 0.085, right: 0.915, top: 0.1, bottom: 0.805 } as const;
+/** Where the plate itself lies inside a plate's drawing box, as parts of it (festival.css: .fest-dish). */
+export const DISH_IN_FACE = { left: 0.05, top: 0.4, width: 0.9, height: 0.56 } as const;
+
+/**
+ * The drawing box of each plate: the plates lie in two rows and two columns on the board's flat surface, with the same room round each. A plate
+ * whose tap box takes the whole width (two stacked) or sits in the middle (the third of three) lies in the middle.
+ */
+function facesOn([x, y, w, h]: Rect, taps: readonly Rect[]): Rect[] {
+  const sx = x + w * BOARD_SURFACE.left;
+  const sw = w * (BOARD_SURFACE.right - BOARD_SURFACE.left);
+  const sy = y + h * BOARD_SURFACE.top;
+  const sh = h * (BOARD_SURFACE.bottom - BOARD_SURFACE.top);
+  const dishW = sw * 0.46;
+  const dishH = sh * 0.4;
+  const faceW = dishW / DISH_IN_FACE.width;
+  const faceH = dishH / DISH_IN_FACE.height;
+  const middle = taps.reduce((n, [tx, , tw]) => n + tx + tw / 2, 0) / Math.max(1, taps.length);
+  return taps.map(([tx, ty, tw, th], i): Rect => {
+    const lower = taps.length === 2 && tw > w / 2 ? i === 1 : ty + th / 2 > y + h / 2;
+    const off = tx + tw / 2 - middle;
+    const centred = tw > w / 2 || (taps.length === 3 && i === 2) || Math.abs(off) < 1;
+    const cx = sx + sw * (centred ? 0.5 : off < 0 ? 0.255 : 0.745);
+    const dishTop = sy + sh * (lower ? 0.545 : 0.055);
+    return [cx - faceW / 2, dishTop - faceH * DISH_IN_FACE.top, faceW, faceH];
+  });
 }
 
 export type Counts = {
@@ -267,6 +298,7 @@ export function portraitLayout(counts: Counts, height: number = PORTRAIT.h): Fes
     ...grillSpots(grillArt, counts.grill),
     board,
     plates: platesOn(board, counts.plates),
+    plateFaces: facesOn(board, platesOn(board, counts.plates)),
     trays,
     powers: row(3, 0, PORTRAIT.w, down(872), 108, 82, 12),
   };
@@ -341,10 +373,12 @@ export function wideLayout(counts: Counts, width: number = WIDE.w): FestivalLayo
   const drink = Array.from({ length: counts.drinks }, (_, i) => drinkBox(i));
 
   const grillArt = m(540, 346, 402, 276);
-  // (the board starts just right of the bin, so their tap boxes never meet)
-  const board: Rect = [mx(516), my(622), mx(446), WIDE.h - my(622)];
-  // the plates keep their four places; those this stage has not got wait locked
-  const places = platesOn(board, 4);
+  // the whole board is in view, its front edge just above the bottom of the stage
+  const board: Rect = [mx(504), my(624), mx(456), WIDE.h - 3 - my(624)];
+  // the plates keep their four places (their tap boxes start just right of the bin, so the two never meet); those this stage has not got
+  // wait locked
+  const places = platesOn([mx(516), my(622), mx(446), WIDE.h - my(622)], 4);
+  const faces = facesOn(board, places);
 
   const trays = counts.trayItems.map((item) => at((PANS[item] ?? SAUCES[item])!));
   const lockedSlots: LockedSlot[] = [
@@ -353,9 +387,12 @@ export function wideLayout(counts: Counts, width: number = WIDE.w): FestivalLayo
       item,
       rect: drinkBox(counts.drinks + i),
     })),
-    ...places
-      .slice(counts.plates)
-      .map((rect, i): LockedSlot => ({ kind: "plate", number: counts.plates + i + 1, rect })),
+    ...places.slice(counts.plates).map((rect, i): LockedSlot => ({
+      kind: "plate",
+      number: counts.plates + i + 1,
+      rect,
+      face: faces[counts.plates + i]!,
+    })),
     ...WIDE_PLACES.filter((item) => !counts.trayItems.includes(item)).map((item): LockedSlot => ({
       kind: "tray",
       item,
@@ -408,6 +445,7 @@ export function wideLayout(counts: Counts, width: number = WIDE.w): FestivalLayo
     ...grillSpots(grillArt, counts.grill),
     board,
     plates: places.slice(0, counts.plates),
+    plateFaces: faces.slice(0, counts.plates),
     trays,
     powers: [0, 1, 2].map((i) => [powersFrom + i * 78, 2, 74, 74] as const),
   };

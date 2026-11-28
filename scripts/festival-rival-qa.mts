@@ -7,8 +7,8 @@
  *  B  every round ends; a quick player (a tap each 0.8 s) wins every pace almost every time; an average one (1.2 s) the first eight; a slow one
  *     (1.6 s) the first five; a very slow one (2.2 s) the first three; a player who does nothing always loses
  *  C  the rival: fixed before the round from the round alone, never changed by the player, climbing to exactly its final score
- *  E  the stages themselves (developer 2026-11-28): the Burger Festival's three, and all 45 stage paces on the Burger kitchen (a stand-in until each
- *     festival has its own, which must then be proved again)
+ *  E  the stages themselves (developer 2026-11-28): the Burger Festival's three, all 45 stage paces on the Burger kitchen, and (E5, once every
+ *     festival had its own menu) all 45 stages on their own kitchens, the pizza oven's too
  *  D  nobody is left waiting: an empty counter fills at once, and a round is short (a quick player: Event 1 under a minute, Event 15 under 3 minutes)
  *
  * Run: npx tsx scripts/festival-rival-qa.mts
@@ -234,6 +234,44 @@ console.log("E. The stages");
     hard.length === 0,
     `E3: all 45 stage paces are won by a tap each 0.8 s, never by doing nothing (lowest ${Math.round(Math.min(...all.map((r) => r.wins)) * 100)}%)`,
     hard,
+  );
+  // every festival's own three stages, on its own kitchen and customers
+  const own = FESTIVAL_EVENTS.flatMap((e) =>
+    [1, 2, 3].map((s) => {
+      const pace = paceOfStage(e, s);
+      let wins = 0;
+      let unfinished = 0;
+      let idle = 0;
+      let ms = 0;
+      for (let k = 1; k <= SEEDS; k++) {
+        const round = e.round!(pace, k);
+        const plan = rivalPlan(round, k);
+        const run = playRound(round, 800);
+        if (!run.state.done) unfinished++;
+        if (run.state.done && resultOf(round, run.state, plan.final).won) wins++;
+        ms += run.ms;
+        if (k <= 3) {
+          let state = startState(round);
+          while (!state.done && state.now < 30 * 60_000) state = tick(round, state, 500).state;
+          if (!state.done || resultOf(round, state, plan.final).won) idle++;
+        }
+      }
+      return {
+        at: `${e.id}.${s}`,
+        wins: wins / SEEDS,
+        unfinished,
+        idle,
+        seconds: ms / SEEDS / 1000,
+      };
+    }),
+  );
+  const weak = own.filter(
+    (r) => r.wins < 0.95 || r.unfinished > 0 || r.idle > 0 || r.seconds >= 200,
+  );
+  assert(
+    own.length === 45 && weak.length === 0,
+    `E5: all 45 stages on their own menus: every round ends, a tap each 0.8 s wins (lowest ${Math.round(Math.min(...own.map((r) => r.wins)) * 100)}%), doing nothing never does, none over 200 s (longest ${Math.max(...own.map((r) => r.seconds)).toFixed(0)} s)`,
+    weak,
   );
   const longest = Math.max(...all.map((r) => r.seconds));
   assert(

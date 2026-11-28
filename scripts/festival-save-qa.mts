@@ -6,7 +6,8 @@
  *  B  the unlocks (RULE CHANGE, developer 2026-11-28): the first at Level 10; every other one after the third stage of the one before, 10 services later
  *  C  the screen's boxes: every tap target 48 px at the smallest window, inside the stage, none on another, for every pace, upright and wide; the
  *     stall's sign, chalkboard and props never cover a station or an order; landscape (the developer's picture, 2026-11-28): every food, drink and
- *     plate keeps its own place at every stage, and what a stage has not got waits there, locked, with the stage that brings it
+ *     plate keeps its own place at every stage, and what a stage has not got waits there, locked, with the stage that brings it; every plate lies
+ *     inside the board's flat surface, mostly within its own tap box, on no other plate
  *  D  the art: every picture the festival names exists, small; the 270 MB source folder is kept out of git
  *  E  wiring: the screen, the preview link, the level lock, the result, the after-campaign count, the Mini-games card, pause; Dessert Run untouched
  *
@@ -36,6 +37,8 @@ import { cookerOf } from "../src/game/festival/kitchen.ts";
 import { ALL_ART, LAYERS } from "../src/components/kc/festival/festivalArt.ts";
 import { PACES, stagePace } from "../src/game/festival/tiers.ts";
 import {
+  BOARD_SURFACE,
+  DISH_IN_FACE,
   PORTRAIT,
   SMALLEST_SCALE,
   WIDE,
@@ -565,6 +568,65 @@ const CHECKED = [
     "C6: a locked place names the first stage that has it, and the third stage has nothing locked",
     wrong,
   );
+  // developer 2026-11-28 (a screenshot of plates over the board's front edge): "place the plates properly in the square"
+  const off: string[] = [];
+  const heights2 = [960, portraitHeight(390, 844), 1200];
+  for (const pace of CHECKED) {
+    const kitchen = burgerKitchen(pace);
+    const counts = {
+      atOnce: pace.atOnce,
+      grill: pace.grillSlots,
+      plates: pace.plates,
+      trays: kitchen.trays.length,
+      trayItems: kitchen.trays.map((t) => t.item),
+      drinks: cookerOf(kitchen, "drink")!.slots,
+    };
+    for (const [name, l] of [
+      ...heights2.map((h) => [`upright ${h}`, portraitLayout(counts, h)] as const),
+      ...[WIDE.w, WIDE.maxW].map((w) => [`wide ${w}`, wideLayout(counts, w)] as const),
+    ]) {
+      const [bx, by, bw, bh] = l.board;
+      const faces = [
+        ...l.plateFaces,
+        ...l.lockedSlots.flatMap((s) => (s.kind === "plate" ? [s.face] : [])),
+      ];
+      const dishes = faces.map(([x, y, w, h]): Rect => [
+        x + w * DISH_IN_FACE.left,
+        y + h * DISH_IN_FACE.top,
+        w * DISH_IN_FACE.width,
+        h * DISH_IN_FACE.height,
+      ]);
+      if (l.plateFaces.length !== l.plates.length) off.push(`t${pace.tier} ${name}: faces`);
+      if (by + bh > l.h) off.push(`t${pace.tier} ${name}: the board runs off the stage`);
+      dishes.forEach(([x, y, w, h], i) => {
+        if (
+          x < bx + bw * BOARD_SURFACE.left - 0.5 ||
+          x + w > bx + bw * BOARD_SURFACE.right + 0.5 ||
+          y < by + bh * BOARD_SURFACE.top - 0.5 ||
+          y + h > by + bh * BOARD_SURFACE.bottom + 0.5
+        )
+          off.push(`t${pace.tier} ${name}: plate ${i + 1} reaches onto the rim`);
+        if (dishes.some((d, j) => j > i && overlap(d, [x, y, w, h])))
+          off.push(`t${pace.tier} ${name}: plate ${i + 1} lies on another`);
+        // the plate's own middle is inside its own tap box, so a tap on it reaches it
+        const tap = l.plates[i];
+        const mid = [x + w / 2, y + h / 2] as const;
+        if (
+          tap &&
+          (mid[0] < tap[0] ||
+            mid[0] > tap[0] + tap[2] ||
+            mid[1] < tap[1] ||
+            mid[1] > tap[1] + tap[3])
+        )
+          off.push(`t${pace.tier} ${name}: plate ${i + 1} is drawn away from its tap box`);
+      });
+    }
+  }
+  assert(
+    off.length === 0,
+    "C7: the whole board is in view and every plate lies inside its flat surface, on no other plate, its middle in its own tap box",
+    off.slice(0, 8),
+  );
   assert(
     portraitHeight(390, 844) === 1169 &&
       portraitHeight(320, 568) === 960 &&
@@ -622,9 +684,10 @@ console.log("D. The art");
     strays,
   );
   const screen = read("src/components/kc/festival/FestivalGame.tsx");
+  // RULE CHANGE (developer 2026-11-28): a plate is stacked in its festival's own order; a pizza lies flat (it is not held apart)
   assert(
-    /parts=\{sortParts\(parts\)\}/.test(screen) &&
-      /spread=\{wanted \? 1 : OPEN_SPREAD\}/.test(screen),
+    /parts=\{sortParts\(parts, menu\)\}/.test(screen) &&
+      /spread=\{wanted \|\| menu\.bake \? 1 : OPEN_SPREAD\}/.test(screen),
     "D7: a plate draws its parts in a burger's order (a topping tapped before the meat is not hidden under it), held apart until someone wants it",
   );
 }

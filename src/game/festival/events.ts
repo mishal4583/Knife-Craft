@@ -1,10 +1,13 @@
 /**
  * THE FIFTEEN FESTIVALS (developer 2026-11-27). RULE CHANGE (developer 2026-11-28): every festival has THREE STAGES, each against a different one of
  * the city's 49 rival restaurants ("use existing ones": 45 of them, none twice). Winning the third unlocks the next festival, which can be played
- * after 10 more services (schedule.ts); the first opens at campaign level 10. `built` events can be played; the rest show "Coming soon".
+ * after 10 more services (schedule.ts); the first opens at campaign level 10. RULE CHANGE (developer 2026-11-28, "design for all the levels and
+ * build"): every festival is built from its menu (menus.ts) and its rivals' lines (lines.ts). A `round` is what makes one playable.
  */
 import type { FoodId, Pace, RoundConfig } from "./types";
-import { burgerRound } from "./burger";
+import { FESTIVAL_LINES } from "./lines";
+import { menuRound } from "./menu";
+import { menuOf } from "./menus";
 import { paceFor, stagePace } from "./tiers";
 
 export type FestivalUnlock =
@@ -80,7 +83,7 @@ const WALT: RivalLines = {
   won: "Good try. The porch is always open.",
 };
 
-export const FESTIVAL_EVENTS: readonly FestivalEvent[] = [
+const LIST: readonly FestivalEvent[] = [
   {
     id: "burger",
     number: 1,
@@ -88,8 +91,6 @@ export const FESTIVAL_EVENTS: readonly FestivalEvent[] = [
     emoji: "🍔",
     unlock: level(10),
     rivals: ["sunny-side", "harbor-grill", "the-rustic-table"],
-    round: burgerRound,
-    menu: [1, 5, 10],
     lines: [DOLLY, NILS, WALT],
   },
   {
@@ -205,6 +206,22 @@ export const FESTIVAL_EVENTS: readonly FestivalEvent[] = [
     rivals: ["kaiseki-mori", "the-crown-kitchen", "maison-lumiere"],
   },
 ];
+
+/** Each event with what its menu and its rivals give it. */
+const built = (event: FestivalEvent): FestivalEvent => {
+  const menu = menuOf(event.id);
+  const lines = event.lines ?? FESTIVAL_LINES[event.id];
+  return menu && lines
+    ? {
+        ...event,
+        lines,
+        menu: menu.stages,
+        round: (pace: Pace, seed: number) => menuRound(menu, pace, seed),
+      }
+    : event;
+};
+
+export const FESTIVAL_EVENTS: readonly FestivalEvent[] = LIST.map(built);
 
 export const festivalEvent = (id: string): FestivalEvent | undefined =>
   FESTIVAL_EVENTS.find((e) => e.id === id);

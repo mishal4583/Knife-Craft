@@ -9,6 +9,7 @@ import {
   FIRST_ARRIVAL_MS,
   act,
   cookerOf,
+  openDishes,
   plateTaker,
   slotPhase,
   startState,
@@ -19,8 +20,8 @@ import {
 import type { Action, CookerId, FoodId, RoundConfig, RoundState } from "./types";
 
 /** Which waiting dish each plate is being built for (longest waiting first, the fullest plate that still fits). */
-function assignPlates(state: RoundState) {
-  const dishes = stillWanted(state).flatMap((w) => (w.item.kind === "dish" ? [w.item.parts] : []));
+function assignPlates(round: RoundConfig, state: RoundState) {
+  const dishes = openDishes(round.kitchen, state).map((w) => w.parts);
   const forPlate: (readonly FoodId[] | undefined)[] = state.plates.map(() => undefined);
   const open: (readonly FoodId[])[] = [];
   /** The assigned plates, the longest waiting customer's first. */
@@ -74,9 +75,18 @@ export function nextAction(round: RoundConfig, state: RoundState): Action | null
   // 1. burnt food is in the way
   const burnt = spots.find((s) => s.phase === "burnt");
   if (burnt) return tapSpot(burnt.def.id, burnt.i);
-  // 2. serve what is finished
-  const ready = state.plates.findIndex((_, i) => plateTaker(state, i));
-  if (ready >= 0) return { kind: "plate", plate: ready };
+  // 2. serve what is finished (a baked pizza first, then a finished plate: into the oven, if it has room)
+  const baked = spots.find(
+    (s) =>
+      s.def.bake &&
+      (s.phase === "ready" || s.phase === "over") &&
+      takerFor(state, { kind: "dish", parts: s.slot!.dish!.map((p) => p.item) }),
+  );
+  if (baked) return tapSpot(baked.def.id, baked.i);
+  const full = spots.every((s) => !s.def.bake || s.slot !== null);
+  const oven = kitchen.cookers.some((c) => c.bake);
+  const ready = state.plates.findIndex((_, i) => plateTaker(state, i, kitchen));
+  if (ready >= 0 && !(oven && full)) return { kind: "plate", plate: ready };
   const side = spots.find(
     (s) =>
       s.def.serves &&
@@ -84,7 +94,7 @@ export function nextAction(round: RoundConfig, state: RoundState): Action | null
       takerFor(state, { kind: "side", item: s.slot!.item }),
   );
   if (side) return tapSpot(side.def.id, side.i);
-  const { forPlate, open, byWaiting } = assignPlates(state);
+  const { forPlate, open, byWaiting } = assignPlates(round, state);
   const missing = forPlate.map((parts, i) => (parts ? missingOn(state, i, parts) : []));
   // 3. a plate nobody wants goes in the bin once every plate is taken
   const stale = state.plates.findIndex((p, i) => p.length > 0 && !forPlate[i]);
@@ -94,6 +104,7 @@ export function nextAction(round: RoundConfig, state: RoundState): Action | null
   const cookedOnGrill = spots.find(
     (s) =>
       !s.def.serves &&
+      !s.def.bake &&
       (s.phase === "ready" || s.phase === "over") &&
       missing.some((m) => m.includes(s.slot!.item)),
   );
@@ -117,6 +128,8 @@ export function nextAction(round: RoundConfig, state: RoundState): Action | null
   ];
   const making = spots.flatMap((s) => (s.slot && s.phase !== "burnt" ? [s.slot.item] : []));
   for (const def of kitchen.cookers) {
+    // (nothing is started in an oven: finished pizzas are put in it, above)
+    if (def.bake) continue;
     for (const item of Object.keys(def.cookMs) as FoodId[]) {
       if (countOf(needed, item) <= countOf(making, item)) continue;
       // (a drink machine makes only its own drink)

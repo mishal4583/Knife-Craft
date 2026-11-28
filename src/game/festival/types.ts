@@ -4,22 +4,8 @@
  * round can be replayed exactly and proved winnable by a simulated player (bot.ts). The festival uses no Business Inventory and moves no money.
  */
 
-export type FoodId =
-  | "bun"
-  | "patty"
-  | "chicken"
-  | "veggie"
-  | "cheese"
-  | "lettuce"
-  | "tomato"
-  | "onion"
-  | "pickles"
-  | "ketchup"
-  | "mustard"
-  | "fries"
-  | "cola"
-  | "lemonade"
-  | "milkshake";
+/** A food of any festival's menu (menus.ts holds every one; festival-menus-qa checks each has a name, a place and a picture). */
+export type FoodId = string;
 
 export type CookerId = "grill" | "fryer" | "drink";
 
@@ -35,6 +21,8 @@ export type CookerDef = {
   overMs: number;
   /** true: what it makes is served by itself (a side or a drink). false: it goes onto a plate (a patty). */
   serves: boolean;
+  /** A pizza oven: a finished plate goes in whole, and what comes out is served as it is. */
+  bake?: boolean;
 };
 
 /** Something the player taps to start with: it goes to a plate, or raw into a cooker. */
@@ -49,6 +37,8 @@ export type KitchenConfig = {
   /** How many of each thing one plate takes (besides the base, which it takes once). */
   limits: Partial<Record<FoodId, number>>;
   points: Partial<Record<FoodId, number>>;
+  /** What this festival calls things, for the short words on the screen. */
+  words: { dish: string; base: string; aBase: string; hot: string; fry: string };
 };
 
 /** One thing a customer wants: an assembled plate with exactly these parts (sorted), or a side / drink. */
@@ -85,7 +75,8 @@ export type RoundConfig = {
 };
 
 export type Quality = "good" | "over";
-export type Slot = { item: FoodId; t: number } | null;
+/** `dish`: what is baking, in a pizza oven (the whole plate). */
+export type Slot = { item: FoodId; t: number; dish?: Plate } | null;
 export type SlotPhase = "cooking" | "ready" | "over" | "burnt";
 export type PlatePart = { item: FoodId; quality: Quality };
 export type Plate = readonly PlatePart[];

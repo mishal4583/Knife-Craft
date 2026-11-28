@@ -9,6 +9,8 @@
  *    which it does, else the chosen plate, else any plate that takes it.
  *  - Serving: tapping a finished plate or side gives it to the customer who has waited longest for exactly that. Nothing can go to the wrong person;
  *    what nobody ordered stays where it is. A mistake never blocks: burnt food is tapped away and a plate can go in the bin.
+ *  - A pizza oven (`bake`): the mains go on raw; tapping a finished pizza that someone wants puts the whole of it in the oven, and tapping it
+ *    once baked serves it. A pizza already in the oven counts as made, so the counter builds the next one.
  *  - Score: the parts' points (overcooked food counts 60 %), up to 30 % more for patience left, times the combo of orders served in a row (x1.0 to
  *    x1.5). A customer who leaves, and burnt food, break the combo.
  */
@@ -31,7 +33,7 @@ import type {
   Step,
   Wanted,
 } from "./types";
-import { sortParts } from "./burger";
+import { sortParts } from "./menu";
 
 export const OVER_QUALITY = 0.6;
 export const SPEED_BONUS = 0.3;
@@ -120,6 +122,24 @@ export function stillWanted(
     );
 }
 
+/** What still has to be put together: the dishes waited for, less the ones already in the oven (the longest waiting has the oven's first). */
+export function openDishes(round: KitchenConfig, state: RoundState) {
+  const wanted = stillWanted(state).flatMap((w) =>
+    w.item.kind === "dish" ? [{ ...w, parts: w.item.parts }] : [],
+  );
+  const oven = cookerOf(round, "grill");
+  if (!oven?.bake) return wanted;
+  const inside = (state.cookers.grill ?? []).flatMap((slot) =>
+    slot?.dish && slotPhase(oven, slot) !== "burnt" ? [plateKey(slot.dish)] : [],
+  );
+  return wanted.filter((w) => {
+    const at = inside.indexOf(key(w.parts));
+    if (at < 0) return true;
+    inside.splice(at, 1);
+    return false;
+  });
+}
+
 /** The customer who has waited longest for exactly this, if anyone has. */
 export function takerFor(state: RoundState, offer: OrderItem) {
   const wanted = offer.kind === "dish" ? key(offer.parts) : offer.item;
@@ -130,11 +150,19 @@ export function takerFor(state: RoundState, offer: OrderItem) {
   );
 }
 
-export const plateTaker = (state: RoundState, index: number) => {
+/**
+ * Who this plate is for, if anyone: with a pizza oven (pass the kitchen) only a pizza that is not already in the oven, as this plate would be the
+ * one to bake next.
+ */
+export const plateTaker = (state: RoundState, index: number, kitchen?: KitchenConfig) => {
   const plate = state.plates[index];
-  return plate && plate.length
-    ? takerFor(state, { kind: "dish", parts: plate.map((p) => p.item) })
-    : undefined;
+  if (!plate?.length) return undefined;
+  const parts = plate.map((p) => p.item);
+  if (kitchen && cookerOf(kitchen, "grill")?.bake) {
+    const wanted = plateKey(plate);
+    return openDishes(kitchen, state).find((w) => key(w.parts) === wanted);
+  }
+  return takerFor(state, { kind: "dish", parts });
 };
 
 /** Can the plate take this part at all (the bun starts an empty plate; the rest need the bun and have their limits)? */
@@ -146,7 +174,7 @@ export function plateTakes(kitchen: KitchenConfig, plate: Plate, item: FoodId): 
 
 /** The plate a patty or topping lands on (-1: none takes it). */
 export function targetPlate(kitchen: KitchenConfig, state: RoundState, item: FoodId): number {
-  const dishes = stillWanted(state).flatMap((w) => (w.item.kind === "dish" ? [w.item.parts] : []));
+  const dishes = openDishes(kitchen, state).map((w) => w.parts);
   const takes = state.plates.flatMap((plate, i) => (plateTakes(kitchen, plate, item) ? [i] : []));
   const leads = takes.filter((i) => dishes.some((d) => fitsDish(state.plates[i]!, item, d)));
   if (leads.includes(state.selected)) return state.selected;
@@ -247,11 +275,12 @@ function startCooking(
   };
 }
 
-const NAMES: Record<CookerId, string> = {
-  grill: "The grill",
-  fryer: "The fryer",
-  drink: "The tap",
-};
+const stationName = (kitchen: KitchenConfig, id: CookerId): string =>
+  id === "grill"
+    ? `The ${kitchen.words.hot.toLowerCase()}`
+    : id === "fryer"
+      ? `The ${kitchen.words.fry.toLowerCase()}`
+      : "The tap";
 
 function actTray(round: RoundConfig, state: RoundState, item: FoodId): Step {
   const tray = round.kitchen.trays.find((t) => t.item === item);
@@ -259,7 +288,7 @@ function actTray(round: RoundConfig, state: RoundState, item: FoodId): Step {
   if (tray.to !== "plate") {
     const free = state.cookers[tray.to]!.indexOf(null);
     return free < 0
-      ? hint(state, `${NAMES[tray.to]} is full`)
+      ? hint(state, `${stationName(round.kitchen, tray.to)} is full`)
       : startCooking(round, state, tray.to, item, free);
   }
   if (item === round.kitchen.base) {
@@ -269,7 +298,9 @@ function actTray(round: RoundConfig, state: RoundState, item: FoodId): Step {
       : placeOnPlate(state, free, item, "good");
   }
   const at = targetPlate(round.kitchen, state, item);
-  return at < 0 ? hint(state, "Put a bun on a plate first") : placeOnPlate(state, at, item, "good");
+  return at < 0
+    ? hint(state, `Put ${round.kitchen.words.aBase} on a plate first`)
+    : placeOnPlate(state, at, item, "good");
 }
 
 /** What tapping an empty spot starts: a drink machine's own drink, else the cooker's first food. */
@@ -282,6 +313,7 @@ function actCooker(round: RoundConfig, state: RoundState, cooker: CookerId, at: 
   if (!def || !slots || at < 0 || at >= slots.length) return { state, events: [] };
   const slot = slots[at];
   if (!slot) {
+    if (def.bake) return hint(state, `Tap a finished ${round.kitchen.words.dish} to bake it`);
     const item = emptySpotItem(def, at);
     return item ? startCooking(round, state, cooker, item, at) : { state, events: [] };
   }
@@ -296,13 +328,20 @@ function actCooker(round: RoundConfig, state: RoundState, cooker: CookerId, at: 
     def.id === "drink"
       ? s
       : { ...s, cooked: s.cooked + 1, perfect: s.perfect + (quality === "good" ? 1 : 0) };
+  if (def.bake) {
+    // what comes out of the oven is served as it is
+    const taker = takerFor(state, { kind: "dish", parts: slot.dish!.map((p) => p.item) });
+    if (!taker) return hint(state, "Nobody is waiting for it now");
+    const out = counted(withSlot(state, cooker, at, null));
+    return deliver(round, out, taker, quality);
+  }
   if (def.serves) {
     const taker = takerFor(state, { kind: "side", item: slot.item });
     if (!taker) return hint(state, "Nobody is waiting for it yet");
     return deliver(round, counted(withSlot(state, cooker, at, null)), taker, quality);
   }
   const plate = targetPlate(round.kitchen, state, slot.item);
-  if (plate < 0) return hint(state, "Put a bun on a plate first");
+  if (plate < 0) return hint(state, `Put ${round.kitchen.words.aBase} on a plate first`);
   // (a cooked part is counted when it leaves the counter: served, or binned with its plate)
   return placeOnPlate(withSlot(state, cooker, at, null), plate, slot.item, quality);
 }
@@ -310,13 +349,24 @@ function actCooker(round: RoundConfig, state: RoundState, cooker: CookerId, at: 
 /** The cooked parts on a plate (the things that count for accuracy). */
 const cookedParts = (round: RoundConfig, plate: Plate) =>
   plate.filter((p) =>
-    round.kitchen.cookers.some((c) => !c.serves && c.cookMs[p.item] !== undefined),
+    // (a pizza's base is cooked only once it has been in the oven, never while it is on a plate)
+    round.kitchen.cookers.some((c) => !c.serves && !c.bake && c.cookMs[p.item] !== undefined),
   );
 
 function actPlate(round: RoundConfig, state: RoundState, at: number): Step {
   const plate = state.plates[at];
   if (!plate) return { state, events: [] };
-  const taker = plateTaker(state, at);
+  const taker = plateTaker(state, at, round.kitchen);
+  const oven = cookerOf(round.kitchen, "grill");
+  if (taker && oven?.bake) {
+    const free = state.cookers.grill!.indexOf(null);
+    if (free < 0) return hint(state, `The ${round.kitchen.words.hot.toLowerCase()} is full`);
+    const emptied: RoundState = { ...withPlate(state, at, []), selected: at };
+    return {
+      state: withSlot(emptied, "grill", free, { item: round.kitchen.base, t: 0, dish: plate }),
+      events: [{ type: "cooking", cooker: "grill", slot: free }],
+    };
+  }
   if (taker) {
     const cooked = cookedParts(round, plate);
     const quality: Quality = plate.some((p) => p.quality === "over") ? "over" : "good";
@@ -329,7 +379,11 @@ function actPlate(round: RoundConfig, state: RoundState, at: number): Step {
     return deliver(round, emptied, taker, quality);
   }
   if (state.selected !== at) return { state: { ...state, selected: at }, events: [] };
-  if (!plate.length) return hint(state, "Tap the bun to start a burger");
+  if (!plate.length)
+    return hint(
+      state,
+      `Tap the ${round.kitchen.words.base.toLowerCase()} to start a ${round.kitchen.words.dish}`,
+    );
   return hint(state, "No one ordered it like this yet");
 }
 

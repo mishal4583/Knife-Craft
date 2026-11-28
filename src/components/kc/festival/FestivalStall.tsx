@@ -7,8 +7,10 @@
  * units; the stall's edges and corner things follow it.
  */
 import type { CSSProperties } from "react";
-import { BurgerStack } from "./FestivalFood";
-import { SIDE_ART, STALL_ART, STATION_ART, festivalUrl } from "./festivalArt";
+import type { FestivalMenu } from "@/game/festival/menus";
+import { DishStack, FoodPicture } from "./FestivalFood";
+import { signatureParts } from "./festivalFoodParts";
+import { STALL_ART, STATION_ART, festivalUrl } from "./festivalArt";
 import type { FestivalLayout, Rect } from "./festivalLayout";
 
 const at = ([x, y, w, h]: Rect): CSSProperties => ({
@@ -72,7 +74,7 @@ function Lamp({ x, y }: { x: number; y: number }) {
 }
 
 /** The festival's own sign: a red marquee with lit bulbs and its burger on top. */
-function Sign({ box, name }: { box: Rect; name: string }) {
+function Sign({ box, name, menu }: { box: Rect; name: string; menu: FestivalMenu }) {
   const [first, ...rest] = name.toUpperCase().split(" ");
   const bulbs: [number, number][] = [
     ...Array.from({ length: 11 }, (_, i): [number, number] => [14 + i * 12.4, 36]),
@@ -107,20 +109,27 @@ function Sign({ box, name }: { box: Rect; name: string }) {
             strokeWidth="1"
           />
         ))}
-        <text x="76" y="63" textAnchor="middle" className="fest-sign-text">
-          {first}
-        </text>
-        <text x="76" y="86" textAnchor="middle" className="fest-sign-text">
-          {rest.join(" ")}
-        </text>
+        {[first!, rest.join(" ")].map((words, i) => (
+          // (a long name is drawn closer so it stays on the board)
+          <text
+            key={i}
+            x="76"
+            y={i ? 86 : 63}
+            textAnchor="middle"
+            className="fest-sign-text"
+            {...(words.length > 9 ? { textLength: 126, lengthAdjust: "spacingAndGlyphs" } : {})}
+          >
+            {words}
+          </text>
+        ))}
       </svg>
-      <BurgerStack parts={["bun", "patty", "cheese", "lettuce"]} lid className="fest-sign-burger" />
+      <DishStack parts={signatureParts(menu)} lid className="fest-sign-burger" />
     </div>
   );
 }
 
 /** The chalkboard hanging at the side. */
-function Special({ box }: { box: Rect }) {
+function Special({ box, menu }: { box: Rect; menu: FestivalMenu }) {
   return (
     <div className="fest-special" style={at(box)} data-testid="fest-special" aria-hidden="true">
       <span className="fest-chain" />
@@ -128,13 +137,9 @@ function Special({ box }: { box: Rect }) {
       <span className="fest-slate">
         <span className="fest-chalk-title">Today&apos;s Special</span>
         <span className="fest-chalk-food">
-          <BurgerStack
-            parts={["bun", "patty", "cheese", "lettuce"]}
-            lid
-            className="fest-chalk-burger"
-          />
-          <img src={festivalUrl(SIDE_ART.fries!)} alt="" />
-          <img src={festivalUrl(SIDE_ART.cola!)} alt="" />
+          <DishStack parts={signatureParts(menu)} lid className="fest-chalk-burger" />
+          <FoodPicture item={menu.side.id} className="fest-chalk-side" />
+          <FoodPicture item={menu.drinks[0].id} className="fest-chalk-side" />
         </span>
       </span>
     </div>
@@ -209,10 +214,12 @@ export function StallSides({
   layout,
   margin,
   name,
+  menu,
 }: {
   layout: FestivalLayout;
   margin: number;
   name: string;
+  menu: FestivalMenu;
 }) {
   return (
     <>
@@ -226,8 +233,8 @@ export function StallSides({
         className="fest-post right"
         style={{ left: layout.w + margin - 14, top: -20, height: layout.counter + 24 }}
       />
-      {layout.sign ? <Sign box={layout.sign} name={name} /> : null}
-      {layout.special ? <Special box={layout.special} /> : null}
+      {layout.sign ? <Sign box={layout.sign} name={name} menu={menu} /> : null}
+      {layout.special ? <Special box={layout.special} menu={menu} /> : null}
     </>
   );
 }
