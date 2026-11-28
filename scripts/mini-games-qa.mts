@@ -16,7 +16,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DEFAULT_SAVE } from "../src/game/SaveManager.ts";
-import { MG_ART, NINE_SLICE } from "../src/components/kc/minigamesArt.ts";
+import { MG_ART, STRETCH } from "../src/components/kc/minigamesArt.ts";
 import { CAR_PARK_FIRST_LEVEL } from "../src/game/business/carPark.ts";
 import { CRATE_FIRST_LEVEL } from "../src/game/business/crateDispatch.ts";
 import { DESSERT_RUN_FIRST_LEVEL } from "../src/game/business/dessertRun.ts";
@@ -184,12 +184,13 @@ console.log("E. Wiring");
       sheet.includes("h-12 w-12"),
     "E2: a test id per tile, tiles over 48 px (the painted card is min-h 132, was 112 before the art of 2026-11-18), a 48 px close button",
   );
+  // RULE CHANGE (developer 2026-11-28, the fair-stall art): the three card states became two cards, red and purple, each one whole picture (the
+  // state is the pill under the name); the rule they kept: a full frame, and the picture inside it, never lifted over its top
   assert(
     !/relative -mt-/.test(sheet) &&
-      (["card-ready", "card-resting", "card-locked"] as const).every(
-        (n) => NINE_SLICE[n].slice === "72" && NINE_SLICE[n].w === 288 && NINE_SLICE[n].h === 288,
-      ),
-    "E2b: (developer 2026-11-18) every card state is a FULL rounded frame (ready, resting and locked are all 288 x 288 sliced 72 on every side, none a two-plank strip) and the icon sits inside it, never lifted over the top border",
+      /const card = tone === "red" \? "card-red" : "card-purple";/.test(sheet) &&
+      /url\(\$\{mgUrl\(card\)\}\) 0 0 \/ 100% 100% no-repeat/.test(sheet),
+    "E2b: (developer 2026-11-18, 2026-11-28) every card is a FULL rounded frame drawn as one picture (red or purple), and the game's picture sits inside it",
   );
   const router = read("src/ScreensRouter.tsx");
   const exits = (router.match(/leaveTo\(/g) ?? []).length;
@@ -237,9 +238,10 @@ console.log("F. The painted art (developer 2026-11-18)");
     return null;
   };
   const missing = MG_ART.filter((n) => !fs.existsSync(path.join(dir, `${n}.webp`)));
+  // RULE CHANGE (developer 2026-11-28): the mock-up's art is 32 pictures (was 22; the waiting glow is drawn by CSS now)
   assert(
-    missing.length === 0 && MG_ART.length === 22,
-    "F1: all 22 pictures exist (scripts/make-minigame-assets.py builds them from the Codex folder)",
+    missing.length === 0 && MG_ART.length === 32,
+    "F1: all 32 pictures exist (scripts/make-minigame-assets.py builds them from the Codex folder)",
     missing,
   );
   const total = MG_ART.reduce(
@@ -251,14 +253,16 @@ console.log("F. The painted art (developer 2026-11-18)");
     0,
   );
   assert(
-    total > 0 && total <= 300 * 1024,
-    `F2: together they weigh ${Math.round(total / 1024)} KB (limit 300 KB; lazy: fetched a moment after the Kitchen opens, never in its first load)`,
+    total > 0 && total <= 600 * 1024,
+    `F2: together they weigh ${Math.round(total / 1024)} KB (limit 600 KB, RULE CHANGE 2026-11-28, was 300: a whole painted screen with the Festival panel; lazy: fetched a moment after the Kitchen opens, never in its first load)`,
     total,
   );
   const bad: unknown[] = [];
-  for (const [name, n] of Object.entries(NINE_SLICE)) {
+  for (const [name, n] of Object.entries(STRETCH)) {
     const sz = webpSize(path.join(dir, `${name}.webp`));
     if (!sz || sz.w !== n.w || sz.h !== n.h) bad.push({ name, got: sz, want: [n.w, n.h] });
+    // two ends must leave a middle to stretch
+    if (2 * n.cap >= n.w) bad.push({ name, cap: n.cap });
   }
   assert(
     bad.length === 0,
@@ -270,18 +274,38 @@ console.log("F. The painted art (developer 2026-11-18)");
     icons.every(
       (id) =>
         MG_ART.includes(`icon-${id}` as never) &&
-        (webpSize(path.join(dir, `icon-${id}.webp`))?.w ?? 0) === 288,
+        (webpSize(path.join(dir, `icon-${id}.webp`))?.w ?? 0) === 480,
     ),
-    "F4: every mini-game on the shelf has its painted icon (288 px) under its own id",
+    "F4: every mini-game on the shelf has its painted picture (480 px wide, RULE CHANGE 2026-11-28, was a 288 px icon) under its own id",
   );
   const sheet = read("src/components/kc/MiniGamesSheet.tsx");
+  // RULE CHANGE (developer 2026-11-28, a mock-up of the whole screen): the painted bottom-sheet panel gave way to CSS frames; the painted pieces
+  // still used (icons, name ribbon, pills, badges) must each keep a plain look until their file is there
   assert(
-    /has\("sheet-panel"\)/.test(sheet) &&
-      /has\(`icon-\$\{entry\.id\}`\)/.test(sheet) &&
-      /have the plain look|falls back to the earlier plain look/.test(sheet) &&
-      sheet.includes("🎮 Mini-games") &&
-      sheet.includes("entry.glyph"),
-    "F5: every painted piece falls back to the earlier plain look (the glyph tile, the emoji title, the gradient card) until its file is there",
+    /has\(`icon-\$\{entry\.id\}`\)/.test(sheet) &&
+      /has\("name-ribbon"\)/.test(sheet) &&
+      /has\(pillName\)/.test(sheet) &&
+      /has\("lock-badge"\)/.test(sheet) &&
+      /falls back to the[\s*]+earlier plain look/.test(sheet) &&
+      sheet.includes("entry.glyph") &&
+      sheet.includes("🔒"),
+    "F5: every painted piece on the screen falls back to a plain look (the glyph, a plain ribbon and pill, the emoji lock) until its file is there",
+  );
+  const panelPieces = [
+    "festival-scene-tall",
+    "festival-scene-wide",
+    "festival-frame-top",
+    "festival-frame-mid",
+    "festival-frame-bottom",
+    "festival-ribbon",
+    "button-green",
+  ];
+  assert(
+    panelPieces.every((n) => MG_ART.includes(n as never) && sheet.includes(`has("${n}")`)) &&
+      /has\("awning"\)/.test(sheet) &&
+      /has\("close-button"\)/.test(sheet) &&
+      /has\("title-plaque"\)/.test(sheet),
+    "F5b: (developer 2026-11-28) the Festival panel, the awning, the title and the close button also draw plainly until their pictures are there",
   );
   assert(
     /minigame-\$\{entry\.id\}/.test(sheet) &&

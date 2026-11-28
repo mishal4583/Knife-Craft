@@ -1,15 +1,16 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 
 /**
- * The Mini-games sheet's painted art (developer 2026-11-18; Codex pictures built by scripts/make-minigame-assets.py into public/business/minigames/;
- * plan: docs/planning/MINIGAMES-SHEET-ART-PLAN-AND-CODEX-PROMPTS-2026-11-18.md). Each file is probed once and remembered, so a piece that is missing
- * (or has not arrived yet) is drawn by the earlier plain look instead; the Kitchen warms every file a moment after it opens, so the sheet shows
- * its art on the first tap and nothing paints in afterwards. Presentation only: it never touches a save.
+ * The Mini-games screen's painted art (developer 2026-11-18, repainted 2026-11-28 after the developer's mock-up of a fair stall; Codex pictures
+ * built by scripts/make-minigame-assets.py into public/business/minigames/; prompt: docs/planning/MINIGAMES-SCREEN-CODEX-PROMPT-2026-11-28.md).
+ * Each file is probed once and remembered, so a piece that is missing (or has not arrived yet) is drawn by a plain CSS look instead; the Kitchen
+ * warms every file a moment after it opens, so the screen shows its art on the first tap and nothing paints in afterwards. Presentation only: it
+ * never touches a save.
  */
 
 export const mgUrl = (name: string) => `${import.meta.env.BASE_URL}business/minigames/${name}.webp`;
 
-/** Every file the sheet and the Kitchen's button use. */
+/** The eight game pictures, then the screen's pieces. */
 export const MG_ART = [
   "icon-inspection",
   "icon-fridge-sort",
@@ -19,45 +20,47 @@ export const MG_ART = [
   "icon-car-park",
   "icon-dessert-run",
   "icon-kitchen-dispatch",
-  "card-ready",
-  "card-resting",
-  "card-locked",
-  "ready-glow",
-  "sheet-panel",
-  "title-ribbon",
-  "close-button",
+  "card-red",
+  "card-purple",
+  "name-ribbon",
   "pill-ready",
   "pill-rest",
   "pill-locked",
   "lock-badge",
   "badge-ready",
+  "title-plaque",
+  "close-button",
+  "tab-on",
+  "tab-off",
+  "icon-gamepad",
+  "awning",
+  "leaves-corner",
+  "festival-scene-tall",
+  "festival-scene-wide",
+  "festival-frame-top",
+  "festival-frame-mid",
+  "festival-frame-bottom",
+  "festival-trophy",
+  "festival-ribbon",
+  "button-green",
   "shortcut-icon",
-  "header-sparkle",
 ] as const;
 export type MgArt = (typeof MG_ART)[number];
 
-/** The pieces drawn as stretchable frames (CSS border-image): the file's size in pixels, the slice and the width they are drawn at (css px). */
-export const NINE_SLICE = {
-  "card-ready": { w: 288, h: 288, slice: "72", width: "20px" },
-  "card-resting": { w: 288, h: 288, slice: "72", width: "20px" },
-  "card-locked": { w: 288, h: 288, slice: "72", width: "20px" },
-  "ready-glow": { w: 288, h: 288, slice: "56", width: "18px" },
-  "sheet-panel": { w: 384, h: 376, slice: "96", width: "32px" },
-  "pill-ready": { w: 288, h: 84, slice: "0 42", width: "0 13px" },
-  "pill-rest": { w: 288, h: 84, slice: "0 42", width: "0 13px" },
-  "pill-locked": { w: 288, h: 84, slice: "0 42", width: "0 13px" },
+/**
+ * The pieces stretched between two painted ends (the name ribbon, the pills, the tabs, the green button): the file's size and the width of each end
+ * in file pixels. Drawn as two ends and a middle that overlaps them by a pixel: a CSS border-image left hairline seams once the game was scaled.
+ */
+export const STRETCH = {
+  "name-ribbon": { w: 440, h: 90, cap: 60 },
+  "pill-ready": { w: 258, h: 50, cap: 28 },
+  "pill-rest": { w: 258, h: 50, cap: 28 },
+  "pill-locked": { w: 258, h: 50, cap: 28 },
+  "tab-on": { w: 450, h: 70, cap: 38 },
+  "tab-off": { w: 450, h: 70, cap: 38 },
+  "button-green": { w: 320, h: 81, cap: 44 },
 } as const;
-export type NineSliceArt = keyof typeof NINE_SLICE;
-
-/** The CSS of one stretchable frame: put it on an empty, absolutely placed box (or, for a pill, on the label itself). `fill` paints the middle too. */
-export function frameStyle(name: NineSliceArt, fill = true): CSSProperties {
-  const n = NINE_SLICE[name];
-  return {
-    borderStyle: "solid",
-    borderWidth: n.width,
-    borderImage: `url(${mgUrl(name)}) ${n.slice}${fill ? " fill" : ""} / ${n.width} stretch`,
-  };
-}
+export type StretchArt = keyof typeof STRETCH;
 
 const known = new Map<string, boolean>();
 const failedAt = new Map<string, number>();

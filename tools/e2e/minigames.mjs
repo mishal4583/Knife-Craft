@@ -11,7 +11,9 @@
 //   M8 five phone sizes: the sheet inside the screen, no sideways scroll, every tile and button 48 px
 //   M9 the button never covers the Next customer card, and the Kitchen's other buttons still open
 //   M10 no console errors
-//   M11 the painted art (2026-11-18): the sheet has its art on the FIRST tap (no paint-in), eight painted icons, the right card plate per state, a star and glow on a game with
+//   M12 (developer 2026-11-28, a mock-up) on its side: the screen fills the window over the menu rail, four cards a row in the order they unlock, in the
+//       mock-up's red and purple, the Festival panel to their right, nothing cut off
+//   M11 the painted art (2026-11-18; RULE CHANGE 2026-11-28: the cards are red or purple frames, so the state shows on the painted pill): the sheet has its art on the FIRST tap (no paint-in), eight painted icons, the right pill per state, a star and glow on a game with
 //       something waiting, the lock badge on a locked game, the Kitchen's button shows the painted controller, and no broken picture anywhere
 // Screenshots: out/minigames-*.png. Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -349,22 +351,27 @@ const first = await page.evaluate(() => {
 await sleep(400);
 const art = await page.evaluate(() => {
   const imgs = [...document.querySelectorAll('[data-testid="minigames-sheet"] img')];
-  const plate = (id) => {
-    const t = document.querySelector(`[data-testid="minigame-${id}"]`);
-    const span = t?.querySelector("span[style*='border-image']");
-    return span ? getComputedStyle(span).borderImageSource : "";
-  };
+  // RULE CHANGE (developer 2026-11-28): the state's painted piece is the pill under the name (the card plates are gone)
+  const plate = (id) =>
+    document.querySelector(`[data-testid="mg-status-${id}"] [data-art-piece]`)?.dataset.artPiece ??
+    "";
+  const cardArt = [...document.querySelectorAll('[data-testid^="mg-card-"]')].map(
+    (c) => /card-(red|purple)\.webp/.exec(getComputedStyle(c).backgroundImage)?.[1] ?? "",
+  );
   return {
     broken: imgs
       .filter((i) => !(i.complete && i.naturalWidth > 0))
       .map((i) => i.src.split("/").pop()),
     icons: document.querySelectorAll('[data-testid^="mg-icon-"]').length,
-    readyPlate: /card-ready/.test(plate("dessert-run")),
-    restingPlate: /card-resting/.test(plate("inspection")),
+    readyPlate: /pill-ready/.test(plate("dessert-run")),
+    restingPlate: /pill-rest/.test(plate("inspection")),
     star: !!document.querySelector('[data-testid="mg-star-sauce"]'),
     glow: !!document.querySelector('[data-testid="mg-glow-sauce"]'),
     noStarOnFreePlay: !document.querySelector('[data-testid="mg-star-dessert-run"]'),
     ribbon: !!document.querySelector('[data-testid="minigames-panel"]'),
+    cardArt,
+    festivalArt: document.querySelector('[data-testid="mg-festival"]')?.dataset.art,
+    awning: !!document.querySelector('[data-testid="mg-awning"]'),
   };
 });
 await shot(page, "minigames-art-390");
@@ -374,10 +381,10 @@ await sleep(3000);
 await openSheet();
 const locked = await page.evaluate(() => {
   const t = document.querySelector('[data-testid="minigame-car-park"]');
-  const span = t?.querySelector("span[style*='border-image']");
+  const piece = t?.querySelector('[data-testid="mg-status-car-park"] [data-art-piece]');
   return {
     state: t?.dataset.state,
-    plate: span ? /card-locked/.test(getComputedStyle(span).borderImageSource) : false,
+    plate: piece?.dataset.artPiece === "pill-locked",
     lockBadge: !!t?.querySelector('img[src*="lock-badge"]'),
   };
 });
@@ -395,11 +402,67 @@ check(
     art.glow &&
     art.noStarOnFreePlay &&
     art.ribbon &&
+    art.cardArt.length === 8 &&
+    art.cardArt.every(Boolean) &&
+    art.festivalArt === "1" &&
+    art.awning &&
     locked.state === "locked" &&
     locked.plate &&
     locked.lockBadge,
   { first, art, locked },
 );
+
+// M12: the mock-up's layout on a window on its side
+for (const [w, h] of [
+  [1659, 948],
+  [1280, 720],
+  [844, 390],
+]) {
+  await open(20, w, h);
+  await openSheet();
+  await sleep(700);
+  const m = await page.evaluate(() => {
+    const rect = (sel) => document.querySelector(sel).getBoundingClientRect();
+    const sheet = rect('[data-testid="minigames-sheet"]');
+    const festival = rect('[data-testid="mg-festival"]');
+    const cards = [...document.querySelectorAll('[data-testid="minigames-sheet"] ul button')];
+    const boxes = cards.map((c) => c.getBoundingClientRect());
+    return {
+      fills:
+        sheet.left <= 1 &&
+        sheet.top <= 1 &&
+        sheet.right >= innerWidth - 1 &&
+        sheet.bottom >= innerHeight - 1,
+      onTop: !!document
+        .elementFromPoint(20, innerHeight / 2)
+        ?.closest('[data-testid="minigames-sheet"]'),
+      order: cards.map((c) => c.dataset.testid.replace("minigame-", "")),
+      tones: cards.map((c) => c.dataset.tone),
+      firstRow: boxes.filter((b) => Math.abs(b.top - boxes[0].top) < 2).length,
+      besideCards: boxes.every((b) => b.right <= festival.left + 1),
+      festivalInside: festival.right <= innerWidth + 1 && festival.bottom <= innerHeight + 1,
+      cut: [
+        ...document.querySelectorAll('[data-testid="minigames-sheet"] [data-testid^="mg-status-"]'),
+      ].filter((e) => e.scrollWidth > e.clientWidth + 1).length,
+      sideways: document.documentElement.scrollWidth > innerWidth,
+    };
+  });
+  check(
+    `M12 ${w} x ${h}: the screen fills the window over the rail; four a row in unlock order, red and purple; the Festival panel at their right`,
+    m.fills &&
+      m.onTop &&
+      m.order.join() ===
+        "inspection,fridge-sort,stockroom,sauce,fridge-check,car-park,kitchen-dispatch,dessert-run" &&
+      m.tones.join() === "red,purple,red,purple,purple,red,purple,red" &&
+      m.firstRow === 4 &&
+      m.besideCards &&
+      m.festivalInside &&
+      m.cut === 0 &&
+      !m.sideways,
+    m,
+  );
+  await shot(page, `minigames-wide-${w}`);
+}
 
 check(
   "M10 no console errors",

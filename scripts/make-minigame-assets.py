@@ -1,104 +1,141 @@
 """
-Builds the Mini-games sheet's pictures (developer 2026-11-18) from 'Mini-games Sheet Assets' (Codex, the MG-*.png files) into
-public/business/minigames/ as small WebP files.
+Builds the Mini-games screen's pictures into public/business/minigames/ as small WebP files.
 
     python scripts/make-minigame-assets.py
 
-Plan and prompts: docs/planning/MINIGAMES-SHEET-ART-PLAN-AND-CODEX-PROMPTS-2026-11-18.md.
-Sizes are 3x the largest a phone shows them at (the same rule as the other mini-games). The nine-slice pictures (cards, panel, glow) are CROPPED
-to their painted edge first (two of the cards carry transparent margins), and the slice sizes the screen uses are in
-src/components/kc/minigamesArt.ts; scripts/mini-games-qa.mts checks that the two agree.
+Sources, both in 'Mini-games Sheet Assets' (Codex art, never committed):
+  - v2/ (developer 2026-11-28, the fair-stall screen; prompt docs/planning/MINIGAMES-SCREEN-CODEX-PROMPT-2026-11-28.md, painted after the
+    developer's mock-up): the eight game pictures, cards, ribbons, pills, tabs, badges, header, awning, leaves and the Festival panel;
+  - MG-*.png (2026-11-18): only the Kitchen button's controller is still used.
+Sizes are about 2-3x the largest a phone shows them at. The stretchable pieces' slices live in src/components/kc/minigamesArt.ts;
+scripts/mini-games-qa.mts checks that the two agree.
+
+Some pieces are made here rather than copied:
+  - the awning: Codex's tile has finished ends, so it cannot be repeated; two whole stripe pairs from its middle repeat without a seam;
+  - the unselected tab and the resting pill: the purple tab and the brown pill with only their inside recoloured cream (Codex's cream tab came
+    out grey with a rough inner edge, and the mock-up has no resting pill);
+  - the Festival frame in three parts (top, one run of side bulbs, bottom), cut between bulbs, so its bulbs stay round at every panel height.
 """
 
 from pathlib import Path
 
-from PIL import Image
+import numpy as np
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "Mini-games Sheet Assets"
+V2 = SRC / "v2"
 OUT = ROOT / "public" / "business" / "minigames"
 OUT.mkdir(parents=True, exist_ok=True)
 
 total = 0
+made = []
 
 
-def put(name, src_name, size=None, crop=None, quality=84):
-    """Crop (left, top, right, bottom in source pixels), resize to `size` (w, h) or keep, save as WebP."""
+def save(name, im, quality=82):
     global total
-    im = Image.open(SRC / src_name).convert("RGBA")
+    path = OUT / (name + ".webp")
+    im.save(path, "WEBP", quality=quality, method=6, alpha_quality=100)
+    total += path.stat().st_size
+    made.append(name)
+    print(f"{name:22s} {im.size[0]:4d}x{im.size[1]:<4d} {path.stat().st_size / 1024:6.1f} KB")
+
+
+def load(path):
+    return Image.open(path).convert("RGBA")
+
+
+def put(name, source, size=None, crop=None, quality=82):
+    """Crop (left, top, right, bottom in source pixels), resize to `size` (w, h) or keep, save as WebP."""
+    im = load(source)
     if crop:
         im = im.crop(crop)
     if size:
         im = im.resize(size, Image.LANCZOS)
-    path = OUT / (name + ".webp")
-    im.save(path, "WEBP", quality=quality, method=6, alpha_quality=100)
-    total += path.stat().st_size
-    print(f"{name:20s} {im.size[0]:4d}x{im.size[1]:<4d} {path.stat().st_size / 1024:6.1f} KB")
+    save(name, im, quality)
 
 
-# the eight game icons (shown at 76 css px; 288 = ~3.8x)
-for game in (
-    "inspection",
-    "fridge-sort",
-    "sauce",
-    "stockroom",
-    "fridge-check",
-    "car-park",
-    "dessert-run",
-    "kitchen-dispatch",
-):
-    put(f"icon-{game}", f"MG-icon-{game}.png", (288, 288), quality=82)
-
-# the cards: nine-slice. Ready fills its canvas; resting and locked are made from ready (below).
-put("card-ready", "MG-card-ready.png", (288, 288), crop=(0, 0, 384, 384))
-def recolor_ready(name, paper_rgb, wood_sat, wood_val, paper_cut, light_margin):
-    """The resting and locked cards (developer 2026-11-18: the four grey cards had only a plank on top and one below, no sides, and the dark
-    locked card had no left edge). Codex's MG-card-resting.png / MG-card-locked.png are those open plaques, so both are made from the READY
-    frame: the same rounded frame all round, its wood recoloured, its lights taken out, its paper tinted (`paper_rgb` is the new paper colour,
-    given as the ready paper's mean (248, 220, 177) scaled to it). Same size and slice as card-ready."""
-    import numpy as np
-    from matplotlib import colors as mc
-    from scipy.ndimage import median_filter
-
-    global total
-    a = np.array(Image.open(OUT / "card-ready.webp").convert("RGBA")).astype(float) / 255
-    rgb, al = a[:, :, :3], a[:, :, 3]
-    hsv = mc.rgb_to_hsv(rgb)
-    sat, val = hsv[:, :, 1], hsv[:, :, 2]
-    paper = (sat < paper_cut[0]) & (val > paper_cut[1])
-    out = rgb.copy()
-    out[paper] = np.clip(rgb[paper] * (np.array(paper_rgb) / np.array([248, 220, 177])), 0, 1)
-    wood = ~paper
-    hsv[:, :, 1] = np.where(wood, sat * wood_sat, sat)
-    hsv[:, :, 2] = np.where(wood, val * wood_val, val)
-    out[wood] = mc.hsv_to_rgb(hsv)[wood]
-    lum = out.mean(axis=2)
-    med = np.dstack([median_filter(out[:, :, c], size=11) for c in range(3)])
-    lights = wood & (lum > med.mean(axis=2) + light_margin) & (al > 0.9)
-    out[lights] = med[lights]
-    im = Image.fromarray((np.dstack([out, al]) * 255).round().astype("uint8"), "RGBA")
-    path = OUT / (name + ".webp")
-    im.save(path, "WEBP", quality=84, method=6, alpha_quality=100)
-    total += path.stat().st_size
-    print(f"{name:20s} {im.size[0]:4d}x{im.size[1]:<4d} {path.stat().st_size / 1024:6.1f} KB")
+def cream_inside(source, inset, top, bottom):
+    """The pill or bar with its coloured inside made cream: the capsule `inset` (left/right, top, bottom, in source pixels) inside the gold rim is
+    repainted, a soft shade at its upper and lower edge; the rim stays as painted."""
+    im = load(source)
+    w, h = im.size
+    side, upper, lower = inset
+    over = 4
+    box = (side * over, upper * over, (w - side) * over - 1, (h - lower) * over - 1)
+    mask = Image.new("L", (w * over, h * over), 0)
+    ImageDraw.Draw(mask).rounded_rectangle(box, radius=(box[3] - box[1]) // 2, fill=255)
+    mask = mask.resize((w, h), Image.LANCZOS)
+    t = np.linspace(0, 1, h - upper - lower)[:, None]
+    shade = np.clip(np.array(top) * (1 - t) + np.array(bottom) * t, 0, 255)
+    # a thin shadow just under the rim, so the face sits inside it
+    shade[:3] *= np.array([0.78, 0.86, 0.93])[:, None]
+    shade[-2:] *= np.array([0.94, 0.88])[:, None]
+    column = np.zeros((h, 3))
+    column[upper : h - lower] = shade
+    column[:upper] = shade[0]
+    column[h - lower :] = shade[-1]
+    paper = np.repeat(column[:, None, :], w, axis=1).round().astype("uint8")
+    face = Image.fromarray(paper, "RGB").convert("RGBA")
+    face.putalpha(im.getchannel("A"))
+    return Image.composite(face, im, mask)
 
 
-# dusty brown frame, cool grey-beige paper
-recolor_ready("card-resting", (228, 218, 197), 0.58, 0.80, (0.45, 0.80), 0.07)
-# dark walnut frame, dark leather paper
-recolor_ready("card-locked", (61, 42, 36), 0.60, 0.42, (0.60, 0.72), 0.05)
-put("ready-glow", "MG-ready-glow.png", (288, 288))
-# the sheet panel: rounded top corners, flat bottom; the 10 px transparent strip at the very top is cropped
-put("sheet-panel", "MG-sheet-panel.png", (384, 376), crop=(0, 10, 512, 512))
-# furniture
-put("title-ribbon", "MG-title-ribbon.png", (576, 144))
-put("close-button", "MG-close-button.png", (144, 144))
-put("pill-ready", "MG-pill-ready.png")
-put("pill-rest", "MG-pill-rest.png")
-put("pill-locked", "MG-pill-locked.png")
-put("lock-badge", "MG-lock-badge.png", (96, 96))
-put("badge-ready", "MG-badge-ready.png")
-put("shortcut-icon", "MG-shortcut-icon.png", (192, 192))
-put("header-sparkle", "MG-header-sparkle.png", (192, 96))
+# the eight game pictures (named by the game's id)
+for game in ("inspection", "fridge-sort", "sauce", "stockroom", "fridge-check", "car-park", "dessert-run"):
+    put(f"icon-{game}", V2 / f"art_{game.replace('-', '_')}.png", (480, 315), quality=80)
+# Unload the Van: the repaint (one van, nothing before its open doors); the first art_kitchen_dispatch.png stood a second car there
+put("icon-kitchen-dispatch", V2 / "art_kitchen_dispatch_v2.png", (480, 315), quality=80)
 
-print(f"total {total / 1024:.0f} KB in {len(list(OUT.glob('*.webp')))} files")
+# the cards: nine-slice
+put("card-red", V2 / "card_red.png", (360, 346), crop=(20, 12, 620, 588))
+put("card-purple", V2 / "card_purple.png", (360, 346), crop=(20, 12, 620, 588))
+
+# name ribbon and pills: stretched between their ends (each cut to its painting, inside Codex's 12 px margin)
+def painted(path):
+    im = load(path)
+    return (12, 12, im.width - 12, im.height - 12)
+
+
+put("name-ribbon", V2 / "ribbon_name.png", (440, 90), crop=painted(V2 / "ribbon_name.png"))
+put("pill-ready", V2 / "pill_green.png", (258, 50), crop=painted(V2 / "pill_green.png"))
+put("pill-locked", V2 / "pill_brown.png", (258, 50), crop=painted(V2 / "pill_brown.png"))
+resting = cream_inside(V2 / "pill_brown.png", (20, 20, 20), (255, 245, 219), (240, 214, 164))
+save("pill-rest", resting.crop(painted(V2 / "pill_brown.png")).resize((258, 50), Image.LANCZOS))
+
+# badges
+put("lock-badge", V2 / "badge_lock.png", (120, 144), crop=(20, 12, 200, 228))
+put("badge-ready", V2 / "badge_star.png", (120, 123), crop=(14, 12, 205, 208))
+
+# header
+put("title-plaque", V2 / "title_ribbon.png", (480, 151), crop=(72, 12, 888, 268))
+put("close-button", V2 / "button_close.png", (144, 145), crop=(12, 12, 207, 208))
+put("tab-on", V2 / "tab_purple.png", (450, 70), crop=painted(V2 / "tab_purple.png"))
+unselected = cream_inside(V2 / "tab_purple.png", (32, 28, 28), (255, 246, 221), (238, 211, 160))
+save("tab-off", unselected.crop(painted(V2 / "tab_purple.png")).resize((450, 70), Image.LANCZOS))
+put("icon-gamepad", V2 / "icon_gamepad.png", (120, 80), crop=(12, 21, 188, 138))
+# two red-and-cream pairs from the awning's middle (a pair is 87 px wide)
+put("awning", V2 / "awning_tile.png", (116, 92), crop=(175, 0, 349, 138), quality=86)
+put("leaves-corner", V2 / "leaves_corner.png", (220, 283), crop=(0, 0, 340, 437))
+
+# the Festival panel
+put("festival-scene-tall", V2 / "festival_scene_tall.png", (432, 792), quality=68)
+put("festival-scene-wide", V2 / "festival_scene_wide.png", (864, 336), quality=70)
+# cut between bulbs (their centres: 261, 325 ... 707, 771 ... 1092, 1155): the middle is three bulbs
+put("festival-frame-top", V2 / "festival_frame.png", (360, 146), crop=(0, 0, 720, 292))
+put("festival-frame-mid", V2 / "festival_frame.png", (360, 96), crop=(0, 739, 720, 931))
+put("festival-frame-bottom", V2 / "festival_frame.png", (360, 99), crop=(0, 1122, 720, 1320))
+put("festival-trophy", V2 / "festival_trophy.png", (240, 240))
+put("festival-ribbon", V2 / "festival_ribbon.png", (480, 218), crop=painted(V2 / "festival_ribbon.png"))
+put("button-green", V2 / "button_green.png", (320, 81), crop=painted(V2 / "button_green.png"))
+
+# kept from the first set: the Kitchen's button
+put("shortcut-icon", SRC / "MG-shortcut-icon.png", (192, 192))
+
+# anything this script no longer makes is not shipped
+for old in OUT.glob("*.webp"):
+    if old.stem not in made:
+        old.unlink()
+        print(f"removed {old.name}")
+
+print(f"total {total / 1024:.0f} KB in {len(made)} files")
