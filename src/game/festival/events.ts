@@ -261,6 +261,26 @@ export function stageWithBurners(event: FestivalEvent, slots: number): number {
   return 0;
 }
 
+/** The first stage (1-3) whose kitchen has a food: its pan or its drink machine (0: none, or not built). */
+export function stageWithFood(event: FestivalEvent, food: FoodId): number {
+  for (let stage = 1; event.round && stage <= FESTIVAL_STAGES; stage++) {
+    const { kitchen } = event.round(paceOfStage(event, stage), 1);
+    if (
+      kitchen.trays.some((t) => t.item === food) ||
+      kitchen.cookers.some((c) => c.perSlot?.includes(food))
+    )
+      return stage;
+  }
+  return 0;
+}
+
+/** The first stage that has this many plates (0: none, or not built). */
+export function stageWithPlates(event: FestivalEvent, plates: number): number {
+  for (let stage = 1; event.round && stage <= FESTIVAL_STAGES; stage++)
+    if (paceOfStage(event, stage).plates >= plates) return stage;
+  return 0;
+}
+
 /** An event's round for a seed: its first stage's, or at another pace (a stage's, or a row of the table for the developer's preview link). */
 export function festivalRound(
   event: FestivalEvent,

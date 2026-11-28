@@ -13,6 +13,8 @@ import {
   stageIndex,
   stageNews,
   stageWithBurners,
+  stageWithFood,
+  stageWithPlates,
   type FestivalEvent,
 } from "@/game/festival/events";
 import {
@@ -47,6 +49,7 @@ import {
   PEOPLE,
   ROUND_ART,
   STATION_ART,
+  TAP_ART,
   TALL_COUNTER_EDGE,
   TRAY_ART,
   UI_ART,
@@ -56,7 +59,14 @@ import {
   personUrl,
   type Mood,
 } from "./festivalArt";
-import { portraitHeight, portraitLayout, wideLayout, type Rect } from "./festivalLayout";
+import {
+  portraitHeight,
+  portraitLayout,
+  wideLayout,
+  wideWidth,
+  type LockedSlot,
+  type Rect,
+} from "./festivalLayout";
 import { StallBack, StallCounter, StallSides } from "./FestivalStall";
 import "./festival.css";
 
@@ -224,9 +234,12 @@ export function FestivalGame({
     grill: cookerOf(round.kitchen, "grill")!.slots,
     plates: round.kitchen.plates,
     trays: round.kitchen.trays.length,
+    trayItems: round.kitchen.trays.map((t) => t.item),
     drinks: cookerOf(round.kitchen, "drink")!.slots,
   };
-  const layout = wide ? wideLayout(counts) : portraitLayout(counts, portraitHeight(box.w, box.h));
+  const layout = wide
+    ? wideLayout(counts, wideWidth(box.w, box.h))
+    : portraitLayout(counts, portraitHeight(box.w, box.h));
   const scale = box.w > 0 ? Math.min(box.w / layout.w, box.h / layout.h) : 0;
   /** How far the window reaches past each side of the stage, in stage units: the stall's edges and corner things go out there. */
   const margin = scale > 0 ? Math.max(0, (box.w / scale - layout.w) / 2) : 0;
@@ -566,11 +579,11 @@ export function FestivalGame({
       <img
         src={festivalUrl(layout.wide ? BACKDROP_ART.wide : BACKDROP_ART.tall)}
         alt=""
-        className="fest-backdrop"
+        className={`fest-backdrop ${layout.wide ? "fest-backdrop-wide" : ""}`}
       />
       {scale > 0 ? (
         <div
-          className={`fest-stage ${layout.wide ? "fest-wide" : "fest-tall"}${counts.trays > 9 ? " fest-crowded" : ""}`}
+          className={`fest-stage ${layout.wide ? "fest-wide" : "fest-tall"}${!layout.wide && counts.trays > 9 ? " fest-crowded" : ""}`}
           data-testid="fest-stage"
           style={{
             width: layout.w,
@@ -796,7 +809,7 @@ export function FestivalGame({
                   tap({ kind: "tray", item: tray.item });
                 }}
                 onClick={(e) => e.detail === 0 && tap({ kind: "tray", item: tray.item })}
-                className="fest-station fest-tray"
+                className={`fest-station fest-tray ${layout.sauces && SAUCE_ITEMS.includes(tray.item) ? "fest-saucebottle" : ""}`}
                 style={at(rect)}
               >
                 <img src={festivalUrl(TRAY_ART[tray.item]!)} alt="" className="fest-tray-food" />
@@ -805,6 +818,19 @@ export function FestivalGame({
               </button>
             );
           })}
+          {/* landscape: what this stage has not got yet waits in its own place, so nothing ever moves */}
+          {layout.lockedSlots.map((slot) => (
+            <LockedPlace
+              key={slot.kind === "plate" ? `plate-${slot.number}` : slot.item}
+              slot={slot}
+              opens={
+                slot.kind === "plate"
+                  ? stageWithPlates(event, slot.number)
+                  : stageWithFood(event, slot.item)
+              }
+              sauce={slot.kind === "tray" && SAUCE_ITEMS.includes(slot.item)}
+            />
+          ))}
           {POWERS.map((power, i) => (
             <button
               key={power.id}
@@ -875,7 +901,7 @@ export function FestivalGame({
               👥 {view.served + view.lost}/{round.orders.length}
             </span>
             <span className={view.combo > 1 ? "fest-combo" : ""}>
-              {view.combo > 1 ? `Combo x${view.combo}` : `✨ ${accuracy}%`}
+              {view.combo > 1 ? `Combo x${view.combo}` : `⭐ ${accuracy}%`}
             </span>
           </div>
           {says && phase === "play" ? (
@@ -1153,6 +1179,34 @@ export function FestivalGame({
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** The two that stand in the Sauce Station (landscape). */
+const SAUCE_ITEMS: readonly FoodId[] = ["ketchup", "mustard"];
+
+/** A pan, a drink machine or a plate this stage has not got yet: greyed in its own place, with the stage that brings it. Never tapped. */
+function LockedPlace({ slot, opens, sauce }: { slot: LockedSlot; opens: number; sauce: boolean }) {
+  const picture =
+    slot.kind === "plate"
+      ? STATION_ART.plate
+      : slot.kind === "drink"
+        ? (TAP_ART[slot.item] ?? STATION_ART.blender)
+        : TRAY_ART[slot.item]!;
+  return (
+    <span
+      aria-hidden="true"
+      className={`fest-slot-locked fest-slot-${slot.kind} ${sauce ? "fest-slot-sauce" : ""}`}
+      style={at(slot.rect)}
+      data-testid="fest-slot-locked"
+      data-item={slot.kind === "plate" ? `plate-${slot.number}` : slot.item}
+    >
+      <img src={festivalUrl(picture)} alt="" className="fest-slot-pic" />
+      <span className="fest-slot-lock">
+        <img src={festivalUrl(UI_ART.lock)} alt="" />
+        {opens ? <b>Stage {opens}</b> : null}
+      </span>
+    </span>
   );
 }
 

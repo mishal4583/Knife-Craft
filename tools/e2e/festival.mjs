@@ -15,8 +15,11 @@
 //   F9 the developer's art (2026-11-27), a round with the whole menu: no broken picture; on upright windows the painted counter covers the stage
 //      with its edge on the counter line; the coach's hand points inside its target; the first event's two unused grill rings show a lock and the
 //      stage that opens them
-//   F11 the stall reaches the window's edges: an upright tablet's counter, a wide phone's cloth
+//   F11 the stall reaches the window's edges: the counter on an upright tablet and on a very wide window (RULE CHANGE 2026-11-28: the checked cloth
+//       is gone, the developer's picture of the sorted stall has none)
 //   F12 (developer 2026-11-28) customers walk in from the stall's sides and walk off again; landscape power-ups beside Pause; the plate stand
+//   F14 (developer 2026-11-28, a picture: "sorted and organised") on its side: the tray of pans and the Sauce Station; stage 3 has every place
+//       open; stage 1 shows the rest locked with its stage, in the places they will take, and a tap on a locked one does nothing
 //   F8 no console errors
 // Screenshots: out/festival-*.png. Prints PASS/FAIL per check and exits 1 on any failure.
 import {
@@ -727,7 +730,7 @@ check(
 for (const [w, h, part] of [
   [768, 1024, "fest-wood"],
   [912, 432, "fest-wood"],
-  [912, 432, "fest-cloth"],
+  [1920, 720, "fest-wood"],
 ]) {
   await open("?festival=1", 12, w, h);
   await page.waitForSelector(q("fest-start"), { timeout: 15000 });
@@ -739,8 +742,8 @@ for (const [w, h, part] of [
     })
     .catch(() => null);
   check(
-    `F11 ${w} x ${h}: ${part === "fest-wood" ? "the counter runs from one window edge to the other" : "the cloth hangs at the window's left edge"}`,
-    !!box && box.left <= 1 && (part === "fest-wood" ? box.right >= box.window - 1 : box.right > 20),
+    `F11 ${w} x ${h}: the counter runs from one window edge to the other`,
+    !!box && box.left <= 1 && box.right >= box.window - 1,
     box,
   );
 }
@@ -867,6 +870,93 @@ const walkOut = await page.evaluate(() => {
   };
 });
 check("F12 a customer who leaves walks off past the window's edge", !!walkOut?.gone, walkOut);
+
+// F14: the sorted stall
+const stallPlaces = () =>
+  page.evaluate(() => {
+    const middle = (e) => {
+      const r = e.getBoundingClientRect();
+      return [Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2)];
+    };
+    const places = {};
+    for (const e of document.querySelectorAll('[data-testid^="fest-tray-"]'))
+      places[e.dataset.testid.replace("fest-tray-", "")] = middle(e);
+    const locked = {};
+    for (const e of document.querySelectorAll('[data-testid="fest-slot-locked"]')) {
+      locked[e.dataset.item] = e.textContent.trim();
+      places[e.dataset.item] = middle(e);
+    }
+    return {
+      places,
+      locked,
+      pantry: !!document.querySelector('[data-testid="fest-pantry"]'),
+      rack: document.querySelector('[data-testid="fest-saucerack"]')?.textContent.trim(),
+      plates: document.querySelectorAll('[data-testid^="fest-plate-"]').length,
+    };
+  });
+for (const [w, h] of [
+  [1819, 865],
+  [844, 390],
+]) {
+  const seen = {};
+  for (const stage of [3, 1]) {
+    await open(`?festival=1&stage=${stage}`, 12, w, h);
+    await page.waitForSelector(q("fest-start"), { timeout: 15000 });
+    await page.click(q("fest-start"));
+    await sleep(2500);
+    seen[stage] = await stallPlaces();
+    await shot(page, `festival-sorted-${w}-stage${stage}`);
+  }
+  // stage 1: a real tap on the locked chicken pan changes nothing
+  const before = await page.evaluate(
+    () => document.querySelector('[data-testid="fest-stage"]').innerHTML.length,
+  );
+  const [cx, cy] = seen[1].places.chicken;
+  const under = await page.evaluate(
+    (x, y) => document.elementFromPoint(x, y)?.closest("button")?.dataset.testid ?? null,
+    cx,
+    cy,
+  );
+  await page.mouse.click(cx, cy);
+  await sleep(300);
+  const grillAfter = await page.$$eval('[data-testid^="fest-grill-"]', (l) =>
+    l.map((e) => e.dataset.item ?? "").join(""),
+  );
+  const names = Object.keys(seen[3].places).filter((n) => !n.startsWith("plate-"));
+  const stayed = names
+    .filter((n) => seen[1].places[n])
+    .every((n) => {
+      const [ax, ay] = seen[3].places[n];
+      const [bx, by] = seen[1].places[n];
+      return Math.abs(ax - bx) <= 2 && Math.abs(ay - by) <= 2;
+    });
+  check(
+    `F14 ${w} x ${h}: sorted: the tray of pans and the Sauce Station; stage 3 all open; stage 1 the rest locked in their own places; a locked pan does nothing`,
+    seen[3].pantry &&
+      seen[3].rack === "Sauce Station" &&
+      Object.keys(seen[3].locked).length === 0 &&
+      names.length === 12 &&
+      seen[3].plates === 4 &&
+      seen[1].locked.chicken === "Stage 2" &&
+      seen[1].locked.veggie === "Stage 3" &&
+      seen[1].locked.ketchup === "Stage 2" &&
+      seen[1].locked.lemonade === "Stage 2" &&
+      seen[1].locked.milkshake === "Stage 3" &&
+      seen[1].locked["plate-3"] === "Stage 2" &&
+      seen[1].plates === 2 &&
+      stayed &&
+      under === null &&
+      grillAfter === "" &&
+      before > 0,
+    {
+      stage3: Object.keys(seen[3].places),
+      stage1Locked: seen[1].locked,
+      stayed,
+      under,
+      grillAfter,
+    },
+  );
+}
 
 check(
   "F8 no console errors",

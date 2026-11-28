@@ -6,13 +6,21 @@
  * THE STALL (developer 2026-11-27, the concept image): one continuous wooden workstation. The drink machines stand on a ledge at the back of the
  * counter with the fryers and the bin below them, the grill and the assembly board are in the middle and the ingredient pans stand on the front
  * shelf. The landscape boxes follow the concept's proportions (its 1823 x 863, centred: x = (px - 145) * 0.626).
- * Developer 2026-11-28 (a marked-up screenshot), landscape: the power-ups moved to the top bar beside Pause; the fryers, the drink machines, the
- * bin and the counter's small things are bigger; the grill and the board sit further right and a plate stand takes the power-ups' old place.
+ * Developer 2026-11-28 (a marked-up screenshot), landscape: the power-ups moved to the top bar beside Pause.
+ *
+ * LANDSCAPE, SORTED (developer 2026-11-28, a picture of the whole screen: "make the festival stall exactly like this sorted and organised"): the
+ * drinks, the fryers with the bin and the Sauce Station stand in three rows at the left; the grill over the board of plates in the middle; every
+ * pan in one wooden tray at the right, three by three, with the fries, the plate stand and the table things under them. EVERY FOOD, DRINK AND
+ * PLATE HAS ITS OWN PLACE AT EVERY STAGE: what a stage has not got yet stands there locked (`lockedSlots`), so nothing ever moves. The boxes
+ * are measured on the developer's picture (1819 x 865); the stage is as wide as the window, from 960 units up to the picture's own shape.
  */
+import { DRINKS } from "../../../game/festival/burger";
+import type { FoodId } from "../../../game/festival/types";
+
 export type Rect = readonly [x: number, y: number, w: number, h: number];
 
 export const PORTRAIT = { w: 540, h: 960, maxH: 1200 } as const;
-export const WIDE = { w: 960, h: 540 } as const;
+export const WIDE = { w: 960, h: 540, maxW: 1136 } as const;
 /** The smallest scale each stage is shown at (a 320 x 568 phone; a 740 x 360 phone on its side). */
 export const SMALLEST_SCALE = { portrait: 320 / 540, wide: 360 / 540 } as const;
 
@@ -20,9 +28,14 @@ export const SMALLEST_SCALE = { portrait: 320 / 540, wide: 360 / 540 } as const;
 export type GrillSpot = { tap: Rect; food: Rect };
 
 export type StallProp = {
-  art: "ketchup" | "mustard" | "mayo" | "napkins" | "salt-pepper" | "spatula" | "tongs" | "cup";
+  art: "mayo" | "napkins" | "salt-pepper" | "spatula" | "tongs" | "box" | "planter";
   box: Rect;
 };
+
+/** A place this stage does not use yet (landscape): what will stand there. Never tapped. */
+export type LockedSlot =
+  | { kind: "tray" | "drink"; item: FoodId; rect: Rect }
+  | { kind: "plate"; number: number; rect: Rect };
 
 export type FestivalLayout = {
   w: number;
@@ -42,12 +55,17 @@ export type FestivalLayout = {
   seats: readonly { bubble: Rect; person: Rect }[];
   /** The y of the counter's front edge. */
   counter: number;
-  /** The back ledge's lip (the drink machines stand on it), and the front shelf the pans stand on. */
-  ledge: Rect;
-  shelf: Rect;
+  /** The ledges' lips (upright: one the drink machines stand on; landscape: under the drinks and under the fryers, at the left only). */
+  ledges: readonly Rect[];
+  /** Upright: the front shelf the pans stand on. Landscape: none (the pans lie in `pantry`). */
+  shelf: Rect | null;
+  /** Landscape: the wooden tray of pans, and the Sauce Station's rack. */
+  pantry: Rect | null;
+  sauces: Rect | null;
+  lockedSlots: readonly LockedSlot[];
   /** The little wooden rack the power-ups sit in (upright: on the front of the counter; landscape: in the top bar, beside Pause). */
   rack: Rect;
-  /** The stand of clean plates beside the board (landscape only; never tapped). */
+  /** The stand of clean plates under the pans (landscape only; never tapped). */
   plateStand: Rect | null;
   /** Things that only stand there (never tapped). */
   props: readonly StallProp[];
@@ -141,6 +159,8 @@ export type Counts = {
   grill: number;
   plates: number;
   trays: number;
+  /** The pans' foods in the kitchen's own order: landscape gives each its fixed place; `layout.trays` follows this order. */
+  trayItems: readonly FoodId[];
   drinks: number;
 };
 
@@ -230,8 +250,11 @@ export function portraitLayout(counts: Counts, height: number = PORTRAIT.h): Fes
         : [],
     seats,
     counter: up(370),
-    ledge: [0, rowY + 86, 540, 18],
+    ledges: [[0, rowY + 86, 540, 18]],
     shelf: [0, trayTop - 4, 540, trayBottom - trayTop + 8],
+    pantry: null,
+    sauces: null,
+    lockedSlots: [],
     rack: [88, down(868), 364, 90],
     plateStand: null,
     props: [],
@@ -249,87 +272,144 @@ export function portraitLayout(counts: Counts, height: number = PORTRAIT.h): Fes
   };
 }
 
-export function wideLayout(counts: Counts): FestivalLayout {
-  // the drink machines stand at the left on the back ledge, bigger while there are fewer of them; the customers take the room to their right
-  const drinkW = counts.drinks <= 1 ? 104 : counts.drinks === 2 ? 96 : 86;
-  const drink: Rect[] = Array.from({ length: counts.drinks }, (_, i) => [
-    3 + i * (drinkW + 2),
-    186,
-    drinkW,
-    134,
-  ]);
-  const from = Math.max(172, 3 + counts.drinks * (drinkW + 2) + 6);
-  const to = 808;
+/** The developer's picture the landscape boxes are measured on. */
+const PICTURE = { w: 1819, h: 865 } as const;
+
+/** The landscape stage's width for a window: the window's own shape, from 960 up to the picture's. */
+export const wideWidth = (width: number, height: number): number =>
+  height > 0
+    ? Math.round(Math.min(WIDE.maxW, Math.max(WIDE.w, (WIDE.h * width) / height)))
+    : WIDE.w;
+
+/** Where each pan lies in the picture (x, y, width, height): three rows of three, and the fries under them. */
+const PANS: Partial<Record<FoodId, Rect>> = {
+  bun: [992, 361, 258, 120],
+  patty: [1254, 361, 258, 120],
+  chicken: [1516, 361, 258, 120],
+  veggie: [992, 482, 258, 120],
+  cheese: [1254, 482, 258, 120],
+  lettuce: [1516, 482, 258, 120],
+  tomato: [992, 603, 258, 119],
+  onion: [1254, 603, 258, 119],
+  pickles: [1516, 603, 258, 119],
+  fries: [1190, 726, 214, 134],
+};
+/** The Sauce Station's bottles. */
+const SAUCES: Partial<Record<FoodId, Rect>> = {
+  ketchup: [102, 724, 142, 134],
+  mustard: [246, 724, 142, 134],
+};
+/** Every food with a place in the landscape stall (a new festival's food needs one: festival-save-qa C1). */
+export const WIDE_PLACES: readonly FoodId[] = [
+  ...Object.keys(PANS),
+  ...Object.keys(SAUCES),
+] as FoodId[];
+
+export function wideLayout(counts: Counts, width: number = WIDE.w): FestivalLayout {
+  const W = Math.min(WIDE.maxW, Math.max(WIDE.w, width));
+  const mx = (x: number) => (x * W) / PICTURE.w;
+  const my = (y: number) => (y * WIDE.h) / PICTURE.h;
+  /** A box measured on the picture, in stage units. */
+  const m = (x: number, y: number, w: number, h: number): Rect => [mx(x), my(y), mx(w), my(h)];
+  const at = ([x, y, w, h]: Rect) => m(x, y, w, h);
+
+  // the top bar: Back, the count, the two scores, the power-ups right beside Pause
+  const back: Rect = [mx(122), 4, 74, 74];
+  const pause: Rect = [mx(1503), 4, 74, 74];
+  const powersFrom = pause[0] - 6 - (3 * 74 + 2 * 4);
+  const status: Rect = [back[0] + 82, 10, mx(200), 60];
+  const scoresFrom = status[0] + status[2] + 8;
+
+  // the customers stand between the sign and the chalkboard, the middle one just right of the grill
+  const from = mx(378);
+  const to = mx(1482);
   const gap = counts.atOnce >= 4 ? 4 : 24;
   const seatW = Math.min(
     counts.atOnce >= 4 ? 139 : 168,
     Math.floor((to - from - (counts.atOnce - 1) * gap) / counts.atOnce),
   );
-  // two or three customers stand round the middle of the stall, never over the machines
   const span = counts.atOnce * seatW + (counts.atOnce - 1) * gap;
-  const start = Math.min(to - span, Math.max(from, WIDE.w / 2 - span / 2));
-  const seats = row(counts.atOnce, start, span, 78, seatW, 96, gap).map(([x, y, w, h]) => ({
+  const start = Math.min(to - span, Math.max(from, mx(930) - span / 2));
+  const seats = row(counts.atOnce, start, span, 71, seatW, 81, gap).map(([x, y, w, h]) => ({
     bubble: [x, y, w, h] as const,
-    person: [x + (w - 124) / 2, 164, 124, 98] as const,
+    person: [x + (w - 124) / 2, 142, 124, 88] as const,
   }));
-  const grillArt: Rect = [276, 262, 228, 174];
-  const board: Rect = [510, 262, 232, 174];
-  const trayW = Math.min(168, Math.floor((950 - (counts.trays - 1) * 4) / counts.trays));
+
+  // the drinks keep their own places, left to right; one not on this stage's menu waits there, locked
+  const column = [76, 224, 372] as const;
+  const drinkBox = (i: number) => m(column[i]!, 306, 143, 188);
+  const drink = Array.from({ length: counts.drinks }, (_, i) => drinkBox(i));
+
+  const grillArt = m(540, 346, 402, 276);
+  // (the board starts just right of the bin, so their tap boxes never meet)
+  const board: Rect = [mx(516), my(622), mx(446), WIDE.h - my(622)];
+  // the plates keep their four places; those this stage has not got wait locked
+  const places = platesOn(board, 4);
+
+  const trays = counts.trayItems.map((item) => at((PANS[item] ?? SAUCES[item])!));
+  const lockedSlots: LockedSlot[] = [
+    ...DRINKS.slice(counts.drinks).map((item, i): LockedSlot => ({
+      kind: "drink",
+      item,
+      rect: drinkBox(counts.drinks + i),
+    })),
+    ...places
+      .slice(counts.plates)
+      .map((rect, i): LockedSlot => ({ kind: "plate", number: counts.plates + i + 1, rect })),
+    ...WIDE_PLACES.filter((item) => !counts.trayItems.includes(item)).map((item): LockedSlot => ({
+      kind: "tray",
+      item,
+      rect: at((PANS[item] ?? SAUCES[item])!),
+    })),
+  ];
+
   return {
-    w: WIDE.w,
+    w: W,
     h: WIDE.h,
     wide: true,
-    back: [8, 4, 74, 74],
-    pause: [878, 4, 74, 74],
-    scores: [222, 4, 402, 70],
-    status: [88, 10, 128, 58],
+    back,
+    pause,
+    scores: [scoresFrom, 3, powersFrom - 8 - scoresFrom, 65],
+    status,
     // (the rival's line comes and goes over the chalkboard, clear of the power-ups and the orders)
-    rivalSays: [812, 82, 144, 62],
-    sign: [6, 84, 152, 100],
-    special: [820, 92, 132, 122],
+    rivalSays: [mx(1488) - 8, 82, mx(222) + 12, 62],
+    sign: [mx(135), 82, mx(225), 82],
+    special: m(1488, 130, 222, 148),
     lamps: [
-      [184, 124],
-      [782, 124],
+      [mx(430), 106],
+      [mx(1242), 106],
     ],
     seats,
-    counter: 258,
-    ledge: [0, 312, 960, 20],
-    shelf: [0, 438, 960, 102],
-    rack: [630, 0, 244, 78],
-    plateStand: [760, 330, 142, 106],
+    counter: my(345),
+    ledges: [m(0, 488, 505, 10), m(0, 682, 505, 10)],
+    shelf: null,
+    pantry: m(976, 350, 822, 513),
+    sauces: m(98, 690, 346, 170),
+    lockedSlots,
+    rack: [powersFrom - 4, 0, 3 * 74 + 2 * 4 + 8, 78],
+    plateStand: m(998, 728, 176, 132),
     props: [
-      // cup stacks beside the drinks, while one machine leaves the room
-      ...(counts.drinks === 1
-        ? ([
-            { art: "cup", box: [114, 244, 52, 76] },
-            { art: "cup", box: [160, 252, 46, 68] },
-          ] as const)
-        : []),
-      { art: "napkins", box: [744, 248, 58, 66] },
-      { art: "spatula", box: [786, 254, 52, 60] },
-      { art: "tongs", box: [808, 254, 52, 60] },
-      { art: "ketchup", box: [842, 214, 44, 100] },
-      { art: "mustard", box: [876, 214, 44, 100] },
-      { art: "mayo", box: [910, 214, 44, 100] },
-      { art: "salt-pepper", box: [906, 382, 52, 54] },
+      { art: "planter", box: m(0, 296, 74, 94) },
+      { art: "planter", box: m(1744, 292, 75, 64) },
+      { art: "mayo", box: m(390, 722, 50, 118) },
+      { art: "napkins", box: m(1416, 742, 78, 100) },
+      { art: "salt-pepper", box: m(1506, 766, 72, 74) },
+      { art: "spatula", box: m(1580, 752, 52, 88) },
+      { art: "tongs", box: m(1612, 752, 52, 88) },
+      { art: "box", box: m(1670, 792, 102, 64) },
+      { art: "box", box: m(1674, 740, 94, 60) },
     ],
-    hint: [300, 230, 360, 30],
+    // (under the customers' chins, over the counter's edge and clear of the grill)
+    hint: [W / 2 - 150, 191, 300, 25],
     drink,
-    fryer: [
-      [3, 320, 95, 118],
-      [100, 320, 95, 118],
-    ],
-    bin: [197, 320, 76, 118],
+    fryer: [m(76, 506, 143, 180), m(224, 506, 143, 180)],
+    bin: m(372, 506, 143, 180),
     grillArt,
     ...grillSpots(grillArt, counts.grill),
     board,
-    plates: platesOn(board, counts.plates),
-    trays: row(counts.trays, 0, WIDE.w, 442, trayW, 96, 4),
-    powers: [
-      [634, 2, 74, 74],
-      [715, 2, 74, 74],
-      [796, 2, 74, 74],
-    ],
+    plates: places.slice(0, counts.plates),
+    trays,
+    powers: [0, 1, 2].map((i) => [powersFrom + i * 78, 2, 74, 74] as const),
   };
 }
 

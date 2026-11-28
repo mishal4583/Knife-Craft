@@ -22,6 +22,16 @@
   object-position: 50% 30%;
   pointer-events: none;
 }
+/* on its side the counter stands higher up the window, so the painting sits higher too and its fountain shows over the counter */
+.fest-backdrop-wide {
+  object-position: 50% 100%;
+}
+/* a much wider window crops far more of the painting: lower it less, so the sky stays */
+@media (min-aspect-ratio: 23 / 10) {
+  .fest-backdrop-wide {
+    object-position: 50% 68%;
+  }
+}
 .fest-stage {
   position: absolute;
   left: 50%;
@@ -39,8 +49,7 @@
 .fest-prop,
 .fest-lamp,
 .fest-sign,
-.fest-special,
-.fest-cloth {
+.fest-special {
   position: absolute;
   pointer-events: none;
 }
@@ -190,14 +199,48 @@
     inset 0 3px 8px rgba(20, 6, 0, 0.55),
     0 6px 8px rgba(40, 14, 0, 0.45);
 }
-/* a checked cloth thrown over the end of the counter */
-.fest-cloth {
-  background:
-    repeating-linear-gradient(90deg, rgba(196, 32, 26, 0.62) 0 17px, transparent 17px 34px),
-    repeating-linear-gradient(180deg, rgba(196, 32, 26, 0.62) 0 17px, transparent 17px 34px),
-    #fff4e2;
-  clip-path: polygon(0 0, 100% 4%, 88% 38%, 96% 70%, 72% 100%, 46% 90%, 22% 99%, 0 92%);
-  filter: drop-shadow(0 6px 5px rgba(40, 14, 0, 0.45));
+/* LANDSCAPE, SORTED (the developer's picture of 2026-11-28): one wooden tray holds every pan, and the sauces have a rack of their own */
+.fest-pantry,
+.fest-saucerack {
+  position: absolute;
+  pointer-events: none;
+  border: 4px solid #e7a44a;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #a9561c, #8d4413 55%, #9b4d18);
+  box-shadow:
+    0 0 0 2px #7a3a0e,
+    0 7px 9px rgba(40, 14, 0, 0.5),
+    inset 0 0 0 2px rgba(255, 214, 150, 0.35),
+    inset 0 8px 14px rgba(45, 16, 0, 0.45);
+}
+.fest-saucerack {
+  /* the rack starts under its name's ribbon */
+  border-top-width: 5px;
+}
+.fest-saucerack::after {
+  /* the shelf lip the bottles stand on */
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 7px;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #ffe0a0, #d98a36 60%, #7c3d12);
+}
+.fest-saucerack span {
+  position: absolute;
+  left: 50%;
+  top: -10px;
+  transform: translateX(-50%);
+  padding: 2px 14px 3px;
+  border: 2.5px solid #ffcb5c;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #d8321f, #9d160c);
+  color: #fff4dc;
+  font: 900 14px/1.15 var(--font-ui, sans-serif);
+  white-space: nowrap;
+  box-shadow: 0 3px 5px rgba(30, 8, 0, 0.5);
 }
 
 /* landscape: the power-ups' frame hangs in the top bar beside Pause, and what stands on the counter's left is drawn bigger */
@@ -735,6 +778,112 @@
   object-position: 50% 85%;
   pointer-events: none;
 }
+/* in the pantry the pans lie wide and flat, as in the picture, their names over their near edge */
+.fest-wide .fest-tray-food {
+  left: 50%;
+  width: min(98%, 156px);
+  height: calc(100% - 9px);
+  transform: translateX(-50%);
+  object-fit: fill;
+}
+/* the sauces are bottles standing in their rack (known by their colour, as in the picture; each keeps its spoken name) */
+.fest-wide .fest-saucebottle .fest-tray-food {
+  top: 2px;
+  width: 100%;
+  height: calc(100% - 11px);
+  object-fit: contain;
+  object-position: 50% 100%;
+}
+.fest-wide .fest-saucebottle[data-testid="fest-tray-ketchup"] .fest-tray-food {
+  object-position: 78% 100%;
+}
+.fest-wide .fest-saucebottle[data-testid="fest-tray-mustard"] .fest-tray-food {
+  object-position: 36% 100%;
+}
+.fest-wide .fest-saucebottle .fest-tray-name {
+  display: none;
+}
+.fest-wide .fest-saucebottle::before {
+  left: 30%;
+  right: 30%;
+}
+
+/* a place this stage does not use yet: what will stand there, greyed, with a lock and the stage that brings it */
+.fest-slot-locked {
+  position: absolute;
+  pointer-events: none;
+}
+.fest-slot-pic {
+  position: absolute;
+  left: 50%;
+  top: 2%;
+  width: min(98%, 156px);
+  height: 92%;
+  max-width: none;
+  transform: translateX(-50%);
+  object-fit: fill;
+  filter: grayscale(1) brightness(0.62);
+  opacity: 0.55;
+}
+.fest-slot-drink .fest-slot-pic,
+.fest-slot-sauce .fest-slot-pic {
+  width: 100%;
+  object-fit: contain;
+  object-position: 50% 100%;
+}
+.fest-slot-plate .fest-slot-pic {
+  top: 38%;
+  width: min(90%, 118px);
+  height: 56%;
+}
+.fest-slot-lock {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.fest-slot-lock img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+.fest-slot-plate .fest-slot-lock {
+  top: 30%;
+}
+.fest-slot-lock b {
+  margin-top: 1px;
+  padding: 0 7px 1px;
+  border-radius: 8px;
+  background: rgba(30, 12, 2, 0.82);
+  color: #ffe7ad;
+  font: 800 12.5px/1.25 var(--font-ui, sans-serif);
+  white-space: nowrap;
+}
+
+.fest-wide .fest-hint {
+  font-size: 16.5px;
+}
+.fest-wide .fest-hint-coach {
+  border-width: 2px;
+}
+/* the picture's two score bars are shallow */
+.fest-wide .fest-scores {
+  gap: 3px;
+}
+.fest-wide .fest-score-row {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+/* the picture has no chains over its top bar, and Back and Pause are red there */
+.fest-wide .fest-chain {
+  display: none;
+}
+.fest-wide .fest-round-btn {
+  background: radial-gradient(circle at 40% 30%, #ee5a3a, #b22112 75%);
+}
+
 /* a name plate: dark wood in a gold rim */
 .fest-tray-name {
   position: absolute;
@@ -766,9 +915,6 @@
 .fest-crowded .fest-tray .fest-tray-name {
   padding: 0 3px 1px;
   font-size: 15px;
-}
-.fest-wide.fest-crowded .fest-tray .fest-tray-name {
-  font-size: 13px;
 }
 .fest-wide .fest-drink .fest-tray-name {
   font-size: 13.5px;

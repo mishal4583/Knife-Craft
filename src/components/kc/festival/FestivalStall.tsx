@@ -1,6 +1,7 @@
 /**
  * THE STALL (developer 2026-11-27, the concept image): the roof beam, posts, garlands and hanging lamps; the festival's lit sign and the day's
- * chalkboard; the continuous wooden workstation (ledge, shelf, power-up rack, plate stand) and the things that only stand on it. The posts and
+ * chalkboard; the continuous wooden workstation (ledges, shelf, the tray of pans, the Sauce Station's rack, power-up rack, plate stand) and the
+ * things that only stand on it. The posts and
  * the two boards are drawn in front of the customers, who walk in from the stall's sides behind them (developer 2026-11-28). Decoration: nothing here is
  * tapped, and it is all drawn beneath the stations. `margin` is how far the window reaches past each side of the stage (a wide phone), in stage
  * units; the stall's edges and corner things follow it.
@@ -269,16 +270,44 @@ export function StallCounter({ layout, margin }: { layout: FestivalLayout; margi
         className="fest-countertop"
         style={{ ...edge, top: layout.counter - 2 }}
       />
-      <div
-        aria-hidden="true"
-        className="fest-ledge"
-        style={{ ...edge, top: layout.ledge[1], height: layout.ledge[3] }}
-      />
-      <div
-        aria-hidden="true"
-        className="fest-shelf"
-        style={{ ...edge, top: layout.shelf[1], height: layout.shelf[3] }}
-      />
+      {layout.ledges.map(([x, y, w, h]) => (
+        <div
+          key={y}
+          aria-hidden="true"
+          className="fest-ledge"
+          // upright the ledge runs the whole counter; on its side the two stop where the grill begins
+          style={
+            layout.wide
+              ? { left: edge.left, width: x + w - edge.left, top: y, height: h }
+              : { ...edge, top: y, height: h }
+          }
+        />
+      ))}
+      {layout.shelf ? (
+        <div
+          aria-hidden="true"
+          className="fest-shelf"
+          style={{ ...edge, top: layout.shelf[1], height: layout.shelf[3] }}
+        />
+      ) : null}
+      {layout.pantry ? (
+        <div
+          aria-hidden="true"
+          className="fest-pantry"
+          data-testid="fest-pantry"
+          style={at(layout.pantry)}
+        />
+      ) : null}
+      {layout.sauces ? (
+        <div
+          aria-hidden="true"
+          className="fest-saucerack"
+          data-testid="fest-saucerack"
+          style={at(layout.sauces)}
+        >
+          <span>Sauce Station</span>
+        </div>
+      ) : null}
       <div
         aria-hidden="true"
         className={`fest-rack ${layout.wide ? "fest-rack-top" : ""}`}
@@ -286,22 +315,8 @@ export function StallCounter({ layout, margin }: { layout: FestivalLayout; margi
       />
       {layout.plateStand ? <PlateStand box={layout.plateStand} /> : null}
       {layout.props.map((p) => (
-        <Prop key={`${p.art}-${p.box[0]}`} name={p.art} box={p.box} />
+        <Prop key={`${p.art}-${p.box[0]}-${p.box[1]}`} name={p.art} box={p.box} />
       ))}
-      {layout.wide && margin >= 40 ? (
-        // a wide phone's spare sides: a checked cloth over the counter, take-away boxes and flowers
-        <>
-          <div
-            aria-hidden="true"
-            className="fest-cloth"
-            data-testid="fest-cloth"
-            style={at([-margin - 4, layout.counter + 20, Math.min(96, margin + 2), 214])}
-          />
-          <Prop name="planter" box={[layout.w + 4, 188, Math.min(110, margin - 2), 96]} />
-          <Prop name="box" box={[layout.w + 4, 380, Math.min(104, margin - 4), 68]} />
-          <Prop name="box" box={[layout.w + 6, 340, Math.min(98, margin - 8), 62]} />
-        </>
-      ) : null}
     </>
   );
 }

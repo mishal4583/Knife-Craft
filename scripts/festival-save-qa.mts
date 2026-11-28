@@ -5,7 +5,8 @@
  *     no money, no ledger
  *  B  the unlocks (RULE CHANGE, developer 2026-11-28): the first at Level 10; every other one after the third stage of the one before, 10 services later
  *  C  the screen's boxes: every tap target 48 px at the smallest window, inside the stage, none on another, for every pace, upright and wide; the
- *     stall's sign, chalkboard and props never cover a station or an order
+ *     stall's sign, chalkboard and props never cover a station or an order; landscape (the developer's picture, 2026-11-28): every food, drink and
+ *     plate keeps its own place at every stage, and what a stage has not got waits there, locked, with the stage that brings it
  *  D  the art: every picture the festival names exists, small; the 270 MB source folder is kept out of git
  *  E  wiring: the screen, the preview link, the level lock, the result, the after-campaign count, the Mini-games card, pause; Dessert Run untouched
  *
@@ -14,7 +15,13 @@
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { DEFAULT_SAVE, type SaveData } from "../src/game/SaveManager.ts";
-import { FESTIVAL_EVENTS, festivalEvent, paceOfStage } from "../src/game/festival/events.ts";
+import {
+  FESTIVAL_EVENTS,
+  festivalEvent,
+  paceOfStage,
+  stageWithFood,
+  stageWithPlates,
+} from "../src/game/festival/events.ts";
 import {
   festivalsOf,
   lifetimeOrdersOf,
@@ -31,11 +38,15 @@ import { PACES, stagePace } from "../src/game/festival/tiers.ts";
 import {
   PORTRAIT,
   SMALLEST_SCALE,
+  WIDE,
+  WIDE_PLACES,
   portraitHeight,
   portraitLayout,
   tapTargets,
   wideLayout,
+  wideWidth,
   type FestivalLayout,
+  type Rect,
 } from "../src/components/kc/festival/festivalLayout.ts";
 import { getLevels } from "../src/game/levels/LevelManager.ts";
 
@@ -298,6 +309,7 @@ const CHECKED = [
       grill: pace.grillSlots,
       plates: pace.plates,
       trays: kitchen.trays.length,
+      trayItems: kitchen.trays.map((t) => t.item),
       drinks: cookerOf(kitchen, "drink")!.slots,
     };
     const layouts: { name: string; layout: FestivalLayout; scale: number }[] = [
@@ -306,7 +318,12 @@ const CHECKED = [
         layout: portraitLayout(counts, h),
         scale: SMALLEST_SCALE.portrait,
       })),
-      { name: "wide", layout: wideLayout(counts), scale: SMALLEST_SCALE.wide },
+      // (the landscape stage is as wide as the window: its narrowest and its widest)
+      ...[WIDE.w, WIDE.maxW].map((w) => ({
+        name: `wide ${w}`,
+        layout: wideLayout(counts, w),
+        scale: SMALLEST_SCALE.wide,
+      })),
     ];
     for (const { name, layout, scale } of layouts) {
       const targets = tapTargets(layout);
@@ -375,11 +392,12 @@ const CHECKED = [
       grill: pace.grillSlots,
       plates: pace.plates,
       trays: kitchen.trays.length,
+      trayItems: kitchen.trays.map((t) => t.item),
       drinks: cookerOf(kitchen, "drink")!.slots,
     };
     for (const [name, layout] of [
       ...heights.map((h) => [`upright ${h}`, portraitLayout(counts, h)] as const),
-      ["wide", wideLayout(counts)] as const,
+      ...[WIDE.w, WIDE.maxW].map((w) => [`wide ${w}`, wideLayout(counts, w)] as const),
     ]) {
       const bar = [layout.back, layout.pause, layout.scores, layout.status];
       const boards = [layout.sign, layout.special].filter((b) => b !== null);
@@ -394,6 +412,8 @@ const CHECKED = [
         layout.hint,
         ...layout.props.map((p) => p.box),
         ...(layout.plateStand ? [layout.plateStand] : []),
+        // (developer 2026-11-28: a locked place is not tapped, so it may not lie on anything that is)
+        ...layout.lockedSlots.map((slot) => slot.rect),
       ])
         if ([...tapTargets(layout), ...bubbles].some((x) => overlap(piece, x)))
           covered.push(
@@ -411,36 +431,139 @@ const CHECKED = [
     "C3: the stall's sign, chalkboard, props and coach line cover no station, order or button, and the power-ups sit in their rack",
     covered.slice(0, 8),
   );
-  // developer 2026-11-28 (a marked-up screenshot), landscape: the power-ups beside Pause in the top bar; bigger fryers, machines and bin
+  // RULE CHANGE (developer 2026-11-28, a picture of the whole landscape screen: "make the festival stall exactly like this sorted and organised"):
+  // C4 held the sizes of the arrangement before (fryers 95 x 118, a plate stand right of the board). The power-ups still sit beside Pause; now the
+  // stall is sorted into fixed places.
   const moved: string[] = [];
-  for (const pace of CHECKED) {
-    const kitchen = burgerKitchen(pace);
-    const l = wideLayout({
-      atOnce: pace.atOnce,
-      grill: pace.grillSlots,
-      plates: pace.plates,
-      trays: kitchen.trays.length,
-      drinks: cookerOf(kitchen, "drink")!.slots,
-    });
-    const last = l.powers[l.powers.length - 1]!;
-    const gap = l.pause[0] - (last[0] + last[2]);
-    if (l.powers.some(([, y, , h]) => y + h > 90) || gap < 0 || gap > 12)
-      moved.push(`t${pace.tier}: the power-ups are not in the top bar beside Pause (gap ${gap})`);
-    if (l.powers.some((p) => overlap(p, l.scores)))
-      moved.push(`t${pace.tier}: a power-up covers the scores`);
-    if (
-      l.fryer.some(([, , w, h]) => w < 95 || h < 118) ||
-      l.drink.some(([, , w, h]) => w < 86 || h < 134) ||
-      l.bin[3] < 118
-    )
-      moved.push(`t${pace.tier}: a fryer, a drink machine or the bin got smaller`);
-    if (!l.plateStand || l.plateStand[0] < l.board[0] + l.board[2])
-      moved.push(`t${pace.tier}: no plate stand to the right of the board`);
+  const middle = ([x, y, w, h]: Rect) => [x + w / 2, y + h / 2] as const;
+  for (const width of [WIDE.w, WIDE.maxW]) {
+    const places = new Map<string, string>();
+    for (const pace of CHECKED) {
+      const kitchen = burgerKitchen(pace);
+      const items = kitchen.trays.map((t) => t.item);
+      const l = wideLayout(
+        {
+          atOnce: pace.atOnce,
+          grill: pace.grillSlots,
+          plates: pace.plates,
+          trays: items.length,
+          trayItems: items,
+          drinks: cookerOf(kitchen, "drink")!.slots,
+        },
+        width,
+      );
+      const last = l.powers[l.powers.length - 1]!;
+      const gap = l.pause[0] - (last[0] + last[2]);
+      if (l.powers.some(([, y, , h]) => y + h > 90) || gap < 0 || gap > 12)
+        moved.push(`t${pace.tier}: the power-ups are not in the top bar beside Pause (gap ${gap})`);
+      if (l.powers.some((p) => overlap(p, l.scores)))
+        moved.push(`t${pace.tier}: a power-up covers the scores`);
+      // every place is filled, by the thing itself or by its locked picture: 10 pans, 2 sauces, 3 drinks, 4 plates
+      const drinks = ["cola", "lemonade", "milkshake"];
+      const here: [string, Rect][] = [
+        ...items.map((item, i): [string, Rect] => [item, l.trays[i]!]),
+        ...l.drink.map((r, i): [string, Rect] => [drinks[i]!, r]),
+        ...l.plates.map((r, i): [string, Rect] => [`plate-${i + 1}`, r]),
+        ...l.lockedSlots.map((s): [string, Rect] => [
+          s.kind === "plate" ? `plate-${s.number}` : s.item,
+          s.rect,
+        ]),
+      ];
+      if (here.length !== 19 || new Set(here.map(([name]) => name)).size !== 19)
+        moved.push(`t${pace.tier}: ${here.length} places, not the 19 each once`);
+      for (const [name, rect] of here) {
+        const box = rect.map((n) => n.toFixed(1)).join();
+        if (places.has(name) && places.get(name) !== box)
+          moved.push(`t${pace.tier}: ${name} moved`);
+        places.set(name, box);
+      }
+      const spot = (name: string) => middle(places.get(name)!.split(",").map(Number) as never);
+      if (items.length === WIDE_PLACES.length) {
+        // three by three, read left to right and top to bottom, the fries under them
+        const grid = [
+          "bun",
+          "patty",
+          "chicken",
+          "veggie",
+          "cheese",
+          "lettuce",
+          "tomato",
+          "onion",
+          "pickles",
+        ];
+        const sorted = grid.every((name, i) => {
+          const [x, y] = spot(name);
+          return (
+            (i % 3 === 0 ||
+              (x > spot(grid[i - 1]!)[0] && Math.abs(y - spot(grid[i - 1]!)[1]) < 1)) &&
+            (i < 3 || (y > spot(grid[i - 3]!)[1] && Math.abs(x - spot(grid[i - 3]!)[0]) < 3)) &&
+            x > l.grillArt[0] + l.grillArt[2]
+          );
+        });
+        if (!sorted || !(spot("fries")[1] > spot("onion")[1]))
+          moved.push("the pans are not three by three with the fries under them");
+        // the left side's three rows: drinks, fryers and bin, the sauces
+        const rows = [spot("cola")[1], middle(l.fryer[0]!)[1], spot("ketchup")[1]];
+        if (
+          !(rows[0]! < rows[1]! && rows[1]! < rows[2]!) ||
+          !(spot("cola")[0] < spot("lemonade")[0] && spot("lemonade")[0] < spot("milkshake")[0]) ||
+          !(spot("ketchup")[0] < spot("mustard")[0]) ||
+          [...l.fryer, l.bin].some((r) => r[0] + r[2] > l.grillArt[0])
+        )
+          moved.push("the left side is not drinks, then fryers and bin, then sauces");
+        if (!(l.grillArt[1] + l.grillArt[3] <= l.board[1] + 0.5))
+          moved.push("the grill is not over the board of plates");
+        if (
+          !l.pantry ||
+          !l.plateStand ||
+          !overlap(l.plateStand, l.pantry) ||
+          !(l.plateStand[1] > spot("onion")[1])
+        )
+          moved.push("the plate stand is not in the tray, under the pans");
+      }
+    }
   }
   assert(
     moved.length === 0,
-    "C4: landscape: the power-ups sit in the top bar beside Pause; bigger fryers, drink machines and bin; a plate stand right of the board",
+    "C4: landscape, sorted: drinks / fryers and bin / sauces at the left, the grill over the plates, the pans three by three; every food, drink and plate keeps its place at every stage; the power-ups beside Pause",
     moved.slice(0, 8),
+  );
+  assert(
+    wideWidth(1819, 865) === WIDE.maxW &&
+      wideWidth(1280, 720) === WIDE.w &&
+      wideWidth(740, 360) === 1110 &&
+      wideWidth(2400, 700) === WIDE.maxW &&
+      wideWidth(0, 0) === WIDE.w,
+    "C5: the landscape stage is as wide as the window, from 960 units to the picture's own shape",
+  );
+  // what a locked place says is true: that stage is the first one that has it
+  const wrong: string[] = [];
+  const burger = festivalEvent("burger")!;
+  for (const stage of [1, 2, 3]) {
+    const kitchen = burgerKitchen(paceOfStage(burger, stage));
+    const items = kitchen.trays.map((t) => t.item);
+    const l = wideLayout({
+      atOnce: 2,
+      grill: kitchen.cookers.find((c) => c.id === "grill")!.slots,
+      plates: kitchen.plates,
+      trays: items.length,
+      trayItems: items,
+      drinks: cookerOf(kitchen, "drink")!.slots,
+    });
+    for (const slot of l.lockedSlots) {
+      const opens =
+        slot.kind === "plate"
+          ? stageWithPlates(burger, slot.number)
+          : stageWithFood(burger, slot.item);
+      const name = slot.kind === "plate" ? `plate ${slot.number}` : slot.item;
+      if (!(opens > stage && opens <= 3)) wrong.push(`stage ${stage}: ${name} says ${opens}`);
+    }
+    if (stage === 3 && l.lockedSlots.length !== 0) wrong.push("stage 3 still has a locked place");
+  }
+  assert(
+    wrong.length === 0,
+    "C6: a locked place names the first stage that has it, and the third stage has nothing locked",
+    wrong,
   );
   assert(
     portraitHeight(390, 844) === 1169 &&
